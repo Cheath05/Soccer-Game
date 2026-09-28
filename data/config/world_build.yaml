@@ -1,0 +1,61 @@
+# How a new world fills in values no dataset provides. Every random draw is deterministic
+# for a given world seed, so the same seed rebuilds the same world.
+
+potential:
+  # Mean growth in overall still to come, by age at 1 July of the start season.
+  growth_by_age: {16: 16, 17: 14, 18: 12, 19: 10, 20: 8, 21: 6.5, 22: 5, 23: 3.5,
+                  24: 2.5, 25: 1.5, 26: 0.8}
+  sd_ratio: 0.30       # spread = sd_ratio * mean + sd_floor
+  sd_floor: 1.0
+  headroom_share: 0.85 # can't grow by more than 85% of the gap to 99
+  # Growth above elite_threshold (or above the player's current overall, if higher) is
+  # scaled by elite_compression, so world-class potential stays rare. Tuned so that, per
+  # birth year, roughly 1-2 players can reach 90+ and very few 93+.
+  elite_threshold: 86
+  elite_compression: 0.6
+  max_potential: 97
+
+physique:
+  # EA hasn't published heights/weights yet; Transfermarkt heights are used when a player
+  # matches. Otherwise height comes from position, adjusted by strength, heading and
+  # balance (EA's balance/agility are lower for tall players).
+  height_by_position: {GK: 190, CB: 187, LB: 177, RB: 177, LWB: 176, RWB: 176, DM: 181,
+                       CM: 179, AM: 176, LM: 176, RM: 176, LW: 175, RW: 175, ST: 182}
+  height_sd: 4.0
+  attribute_reference: 65
+  height_per_point: {strength: 0.10, heading_accuracy: 0.08, balance: -0.12, agility: -0.06}
+  height_range: [160, 203]
+  bmi_mean: 23.0
+  bmi_sd: 0.8
+  bmi_per_strength_point: 0.04
+  weight_range: [55, 105]
+
+personality:
+  default: {mean: 11, sd: 3.5}
+  # Better players tend to be more consistent and professional: per overall point above
+  # overall_reference, shift these traits' means.
+  overall_reference: 70
+  overall_effect_per_point: {consistency: 0.15, big_matches: 0.12, professionalism: 0.08}
+  overrides:
+    controversy: {mean: 7, sd: 3.5}
+    injury_proneness: {mean: 9, sd: 3.5}
+    sportsmanship: {mean: 12, sd: 3.5}
+
+contracts:
+  # Years left on a generated contract (ends 30 June), used when no real expiry is known.
+  remaining_years:
+    - {max_age: 21, min_years: 2, max_years: 5}
+    - {max_age: 29, min_years: 1, max_years: 5}
+    - {max_age: 32, min_years: 1, max_years: 3}
+    - {max_age: 99, min_years: 1, max_years: 2}
+
+reputation:
+  # Club reputation (1-99) from the average overall of its best `club_top_players`.
+  club_top_players: 18
+  club_reference_overall: 55
+  club_base: 10
+  club_per_point: 2.8
+  # Player reputation (1-99) from overall, nudged by club reputation.
+  player_reference_overall: 45
+  player_per_point: 1.6
+  player_club_weight: 0.15

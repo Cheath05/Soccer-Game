@@ -1,0 +1,23 @@
+# England 2026-27. League dates: Premier League / EFL announcements.
+# International windows: FIFA calendar (extended Sep-Oct window from 2026).
+# Transfer window dates are approximate: check the FA's published dates.
+key: ENG-2026-27
+season: "2026-27"
+nation: ENG
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  ENG1: {start: 2026-08-21, end: 2027-05-30}
+  ENG2: {start: 2026-08-14, end: 2027-05-01, playoffs_end: 2027-05-29}
+  ENG3: {start: 2026-08-15, end: 2027-05-01, playoffs_end: 2027-05-30,
+         pause_for_international_windows: false}
+  ENG4: {start: 2026-08-15, end: 2027-05-01, playoffs_end: 2027-05-31,
+         pause_for_international_windows: false}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-06-15, end: 2026-09-01}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate

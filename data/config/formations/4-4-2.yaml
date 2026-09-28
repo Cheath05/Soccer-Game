@@ -1,0 +1,35 @@
+# See 4-3-3.yaml for field conventions.
+
+key: "4-4-2"
+name: 4-4-2 (flat)
+description: Two banks of four with a front pair; compact and hard to play through centrally.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,        base: {x: .04, y: .50}}
+  - {id: LB,  position: LB, default_role: full_back,         base: {x: .22, y: .12}}
+  - {id: LCB, position: CB, default_role: central_defender,  base: {x: .18, y: .37}}
+  - {id: RCB, position: CB, default_role: central_defender,  base: {x: .18, y: .63}}
+  - {id: RB,  position: RB, default_role: full_back,         base: {x: .22, y: .88}}
+  - {id: LM,  position: LM, default_role: wide_midfielder,   base: {x: .44, y: .13}}
+  - {id: LCM, position: CM, default_role: box_to_box,        base: {x: .40, y: .38}}
+  - {id: RCM, position: CM, default_role: central_midfielder, base: {x: .40, y: .62}}
+  - {id: RM,  position: RM, default_role: wide_midfielder,   base: {x: .44, y: .87}}
+  - id: LS
+    position: ST
+    default_role: advanced_forward
+    base: {x: .66, y: .41}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+  - id: RS
+    position: ST
+    default_role: target_forward
+    base: {x: .68, y: .59}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LB, LCB, RCB, RB]}
+  - {type: midfield_line, slots: [LM, LCM, RCM, RM]}
+  - {type: strike_pair, slots: [LS, RS]}
+  - {type: flank_unit, slots: [LB, LM]}
+  - {type: flank_unit, slots: [RB, RM]}

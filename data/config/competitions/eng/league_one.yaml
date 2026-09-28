@@ -1,0 +1,30 @@
+key: ENG3
+name: EFL League One
+short_name: League One
+nation: ENG
+tier: 3
+clubs: 24
+sim_level: simulated
+calendar: ENG-2026-27
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              h2h_goals_for, h2h_away_goals_for, drawing_of_lots]
+movements:
+  - {kind: promotion, ranks: [1, 2], to: ENG2}
+  - {kind: relegation, ranks: [21, 24], to: ENG4}
+playoffs:
+  - key: ENG3_PO
+    name: League One Play-offs
+    winner_to: ENG2
+    rounds:
+      - name: Semi-finals
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: SF1, a: {rank: 3}, b: {rank: 6}}
+          - {id: SF2, a: {rank: 4}, b: {rank: 5}}
+      - name: Final
+        legs: 1
+        host: neutral
+        ties:
+          - {id: F, a: {winner_of: [SF1]}, b: {winner_of: [SF2]}}

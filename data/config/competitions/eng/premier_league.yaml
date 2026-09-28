@@ -1,0 +1,19 @@
+key: ENG1
+name: Premier League
+short_name: PL
+nation: ENG
+tier: 1
+clubs: 20
+sim_level: playable
+calendar: ENG-2026-27
+format: {type: round_robin, legs: 2}
+points: {win: 3, draw: 1, loss: 0}
+# Real rule: a play-off match decides title/relegation/European places if still level after
+# head-to-head; drawing of lots is our placeholder until play-off matches are supported.
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_away_goals_for, drawing_of_lots]
+movements:
+  - {kind: relegation, ranks: [18, 20], to: ENG2}
+squad_rules:
+  max_registered: 25
+  min_homegrown: 8
+  exempt_under_age: 21

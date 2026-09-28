@@ -1,0 +1,29 @@
+# Role conventions (all roles files):
+#   weight_modifiers  added to the position group's base weights, clipped at 0, renormalised.
+#   movement.phase_offsets  dx: towards the opponent goal (+); d_out: towards the slot's own
+#                           touchline (+) or the centre (-). Normalised pitch units.
+#   movement.freedom  radius the player may roam from his anchor when seeking space.
+#   movement.runs     propensity (0-1) for each run type when the phase allows it.
+#   on_ball / defending  biases in [-1, 1]; 0 = neutral.
+# Movement and on-ball values are first-pass estimates, tuned during engine calibration.
+
+- key: goalkeeper
+  name: Goalkeeper
+  group: GK
+  description: Stays on his line, commands the box, distributes safely.
+  movement: {freedom: 0.02}
+  on_ball: {pass_risk: -0.3}
+
+- key: sweeper_keeper
+  name: Sweeper Keeper
+  group: GK
+  description: Plays high behind the defensive line, rushes out to intercept balls in behind and joins build-up.
+  weight_modifiers: {gk_rushing_out: .07, gk_kicking: .03, short_passing: .03, acceleration: .02,
+                     gk_handling: -.05, gk_command_of_area: -.02}
+  movement:
+    freedom: 0.04
+    phase_offsets:
+      build_up: {dx: .02}
+      def_high: {dx: .06}
+      def_mid: {dx: .03}
+  on_ball: {pass_risk: 0.1}

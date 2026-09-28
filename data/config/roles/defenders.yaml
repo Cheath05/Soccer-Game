@@ -1,0 +1,75 @@
+# See goalkeepers.yaml for field conventions.
+
+- key: central_defender
+  name: Central Defender
+  group: CB
+  description: Holds the line, wins duels, keeps possession simple.
+  on_ball: {pass_risk: -0.3}
+  defending: {hold_line: true, track_runners: 0.5}
+
+- key: ball_playing_defender
+  name: Ball-Playing Defender
+  group: CB
+  description: Splits wide in build-up and looks to break lines with passes or carries.
+  weight_modifiers: {short_passing: .05, long_passing: .04, vision: .03, composure: .03,
+                     aggression: -.02, heading_accuracy: -.02}
+  movement:
+    phase_offsets:
+      build_up: {d_out: .03}
+  on_ball: {pass_risk: 0.3, dribble_bias: 0.1}
+  defending: {hold_line: true}
+
+- key: stopper
+  name: Stopper
+  group: CB
+  description: Steps out of the line to engage forwards who drop, relying on aggression and strength.
+  weight_modifiers: {aggression: .03, standing_tackle: .02, strength: .02, bravery: .03,
+                     def_positioning: -.03}
+  movement:
+    phase_offsets:
+      def_mid: {dx: .03}
+  on_ball: {pass_risk: -0.2}
+  defending: {press_bias: 0.4, track_runners: 0.7}
+
+- key: full_back
+  name: Full-Back
+  group: FB
+  description: Balanced full-back who supports attacks with measured overlaps.
+  movement:
+    phase_offsets:
+      progression: {dx: .04}
+      final_third: {dx: .06}
+    runs: {overlap: 0.25}
+  on_ball: {cross_bias: 0.1}
+  defending: {track_runners: 0.7}
+
+- key: wing_back
+  name: Wing-Back
+  group: FB
+  description: Provides the team's width, pushing high on the flank in possession.
+  weight_modifiers: {stamina: .04, crossing: .03, acceleration: .02, work_rate: .02,
+                     def_positioning: -.03, marking: -.02}
+  movement:
+    freedom: 0.08
+    phase_offsets:
+      build_up: {dx: .08, d_out: .03}
+      progression: {dx: .14, d_out: .03}
+      final_third: {dx: .18, d_out: .02}
+    runs: {overlap: 0.45}
+  on_ball: {cross_bias: 0.3}
+  defending: {track_runners: 0.6}
+
+- key: inverted_full_back
+  name: Inverted Full-Back
+  group: FB
+  description: Moves into central midfield in possession to create a numerical overload and protect against counters.
+  weight_modifiers: {short_passing: .04, vision: .03, first_touch: .02, composure: .02,
+                     crossing: -.05, sprint_speed: -.02}
+  movement:
+    phase_offsets:
+      build_up: {dx: .10, d_out: -.22}
+      progression: {dx: .12, d_out: -.20}
+      final_third: {dx: .12, d_out: -.18}
+    runs: {invert: 0.5}
+  on_ball: {pass_risk: 0.1, cross_bias: -0.4}
+  defending: {track_runners: 0.6}

@@ -1,0 +1,65 @@
+# Formation conventions (all formation files):
+#   base            the organised shape with the ball near the centre spot, in normalised pitch
+#                   coordinates from the team's view (x: own goal 0 -> opponent goal 1,
+#                   y: left touchline 0 -> right touchline 1).
+#   phase_offsets   per-slot shape changes for a phase (explicit dx/dy, so mirror signs by side).
+# The engine adds role offsets, instructions and a ball-relative block shift on top of this.
+
+key: "4-3-3"
+name: 4-3-3 (single pivot)
+description: Back four, a holding midfielder behind two eights, and a front three.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,           base: {x: .04, y: .50}}
+  - id: LB
+    position: LB
+    default_role: full_back
+    base: {x: .22, y: .12}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .37}
+    phase_offsets:
+      build_up: {dx: -.03, dy: -.06}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .63}
+    phase_offsets:
+      build_up: {dx: -.03, dy: .06}
+  - id: RB
+    position: RB
+    default_role: full_back
+    base: {x: .22, y: .88}
+  - id: DM
+    position: DM
+    default_role: defensive_midfielder
+    base: {x: .32, y: .50}
+    phase_offsets:
+      build_up: {dx: -.04}
+  - {id: LCM, position: CM, default_role: box_to_box,           base: {x: .44, y: .32}}
+  - {id: RCM, position: CM, default_role: central_midfielder,   base: {x: .44, y: .68}}
+  - id: LW
+    position: LW
+    default_role: inside_forward
+    base: {x: .64, y: .12}
+    phase_offsets:
+      def_mid: {dx: -.06}
+      def_low: {dx: -.12}
+  - id: ST
+    position: ST
+    default_role: advanced_forward
+    base: {x: .70, y: .50}
+    phase_offsets:
+      def_low: {dx: -.08}
+  - id: RW
+    position: RW
+    default_role: inside_forward
+    base: {x: .64, y: .88}
+    phase_offsets:
+      def_mid: {dx: -.06}
+      def_low: {dx: -.12}
+relationships:
+  - {type: back_line, slots: [LB, LCB, RCB, RB]}
+  - {type: single_pivot, slots: [DM]}
+  - {type: flank_unit, slots: [LB, LCM, LW]}
+  - {type: flank_unit, slots: [RB, RCM, RW]}

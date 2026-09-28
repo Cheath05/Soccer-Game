@@ -1,0 +1,39 @@
+key: ENG2
+name: EFL Championship
+short_name: Championship
+nation: ENG
+tier: 2
+clubs: 24
+sim_level: playable
+calendar: ENG-2026-27
+format: {type: round_robin, legs: 2}
+# EFL tiebreakers: verify against the current EFL regulations before relying on H2H order.
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              h2h_goals_for, h2h_away_goals_for, drawing_of_lots]
+movements:
+  - {kind: promotion, ranks: [1, 2], to: ENG1}
+  - {kind: relegation, ranks: [22, 24], to: ENG3}
+playoffs:
+  # Expanded to 3rd-8th from 2026-27: single-leg eliminators at the higher-placed club,
+  # two-legged semi-finals (3rd meets the lowest-ranked eliminator winner), Wembley final.
+  - key: ENG2_PO
+    name: Championship Play-offs
+    winner_to: ENG1
+    rounds:
+      - name: Eliminators
+        legs: 1
+        host: higher_ranked
+        ties:
+          - {id: E1, a: {rank: 5}, b: {rank: 8}}
+          - {id: E2, a: {rank: 6}, b: {rank: 7}}
+      - name: Semi-finals
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: SF1, a: {rank: 3}, b: {winner_of: [E1, E2], pick: lowest_ranked}}
+          - {id: SF2, a: {rank: 4}, b: {winner_of: [E1, E2], pick: highest_ranked}}
+      - name: Final
+        legs: 1
+        host: neutral
+        ties:
+          - {id: F, a: {winner_of: [SF1]}, b: {winner_of: [SF2]}}

@@ -1,0 +1,32 @@
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Data that must never be committed (third-party datasets, built worlds, reports).
+# EA FC ratings files in particular are EA's IP: keep them local only.
+data/raw/
+data/staging/
+data/worlds/
+data/reports/
+
+# Career saves
+saves/*
+!saves/.gitkeep
+
+# Generated reports
+reports/

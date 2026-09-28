@@ -1,0 +1,86 @@
+# Positions and position groups.
+#
+# Each group's `weights` is the base attribute weighting for rating a player in that group
+# (weights sum to 1). Roles adjust these with their own `weight_modifiers`.
+# `adjacency` gives the familiarity (0-20) a player natural in `from` gets in `to`
+# when the source data doesn't list that position for them.
+
+positions:
+  - {code: GK,  name: Goalkeeper,            group: GK, side: center}
+  - {code: CB,  name: Centre-Back,           group: CB, side: center}
+  - {code: LB,  name: Left-Back,             group: FB, side: left}
+  - {code: RB,  name: Right-Back,            group: FB, side: right}
+  - {code: LWB, name: Left Wing-Back,        group: FB, side: left}
+  - {code: RWB, name: Right Wing-Back,       group: FB, side: right}
+  - {code: DM,  name: Defensive Midfielder,  group: DM, side: center}
+  - {code: CM,  name: Central Midfielder,    group: CM, side: center}
+  - {code: AM,  name: Attacking Midfielder,  group: AM, side: center}
+  - {code: LM,  name: Left Midfielder,       group: W,  side: left}
+  - {code: RM,  name: Right Midfielder,      group: W,  side: right}
+  - {code: LW,  name: Left Winger,           group: W,  side: left}
+  - {code: RW,  name: Right Winger,          group: W,  side: right}
+  - {code: ST,  name: Striker,               group: ST, side: center}
+
+groups:
+  - group: ST
+    weights: {finishing: .20, off_ball: .14, composure: .09, reactions: .09, sprint_speed: .07,
+              acceleration: .07, first_touch: .09, dribbling: .07, shot_power: .07,
+              heading_accuracy: .05, strength: .03, decisions: .03}
+  - group: W
+    weights: {finishing: .08, off_ball: .07, composure: .03, reactions: .06, sprint_speed: .09,
+              acceleration: .10, first_touch: .12, dribbling: .15, crossing: .07,
+              short_passing: .08, vision: .06, agility: .06, long_shots: .03}
+  - group: AM
+    weights: {finishing: .07, off_ball: .08, composure: .07, reactions: .07, first_touch: .13,
+              dribbling: .11, decisions: .08, short_passing: .14, vision: .14, agility: .05,
+              long_shots: .06}
+  - group: CM
+    weights: {composure: .06, reactions: .08, first_touch: .10, dribbling: .06, strength: .02,
+              decisions: .08, short_passing: .16, vision: .10, long_shots: .03, long_passing: .08,
+              stamina: .07, interceptions: .06, standing_tackle: .05, work_rate: .05}
+  - group: DM
+    weights: {composure: .06, reactions: .08, strength: .06, decisions: .08, short_passing: .12,
+              long_passing: .07, stamina: .05, interceptions: .13, standing_tackle: .11,
+              def_positioning: .12, marking: .06, concentration: .06}
+  - group: FB
+    weights: {reactions: .07, sprint_speed: .09, acceleration: .07, first_touch: .06, crossing: .09,
+              short_passing: .09, stamina: .08, interceptions: .09, standing_tackle: .10,
+              work_rate: .05, def_positioning: .09, marking: .08, sliding_tackle: .04}
+  - group: CB
+    weights: {composure: .05, reactions: .07, sprint_speed: .04, heading_accuracy: .10,
+              strength: .09, short_passing: .03, interceptions: .10, standing_tackle: .12,
+              def_positioning: .14, marking: .12, concentration: .05, jumping: .06, aggression: .03}
+  - group: GK
+    weights: {gk_reflexes: .21, gk_diving: .20, gk_handling: .15, gk_positioning: .17,
+              gk_one_on_ones: .08, gk_command_of_area: .07, gk_kicking: .05, reactions: .04,
+              composure: .03}
+
+adjacency:
+  - {from: LB,  to: LWB, familiarity: 15}
+  - {from: RB,  to: RWB, familiarity: 15}
+  - {from: LWB, to: LB,  familiarity: 14}
+  - {from: RWB, to: RB,  familiarity: 14}
+  - {from: LB,  to: RB,  familiarity: 10}
+  - {from: RB,  to: LB,  familiarity: 10}
+  - {from: LWB, to: LM,  familiarity: 11}
+  - {from: RWB, to: RM,  familiarity: 11}
+  - {from: CB,  to: DM,  familiarity: 8}
+  - {from: DM,  to: CB,  familiarity: 9}
+  - {from: DM,  to: CM,  familiarity: 14}
+  - {from: CM,  to: DM,  familiarity: 13}
+  - {from: CM,  to: AM,  familiarity: 13}
+  - {from: AM,  to: CM,  familiarity: 12}
+  - {from: AM,  to: ST,  familiarity: 10}
+  - {from: ST,  to: AM,  familiarity: 9}
+  - {from: LW,  to: LM,  familiarity: 14}
+  - {from: RW,  to: RM,  familiarity: 14}
+  - {from: LM,  to: LW,  familiarity: 14}
+  - {from: RM,  to: RW,  familiarity: 14}
+  - {from: LW,  to: RW,  familiarity: 11}
+  - {from: RW,  to: LW,  familiarity: 11}
+  - {from: LM,  to: RM,  familiarity: 11}
+  - {from: RM,  to: LM,  familiarity: 11}
+  - {from: LW,  to: ST,  familiarity: 10}
+  - {from: RW,  to: ST,  familiarity: 10}
+  - {from: ST,  to: LW,  familiarity: 9}
+  - {from: ST,  to: RW,  familiarity: 9}

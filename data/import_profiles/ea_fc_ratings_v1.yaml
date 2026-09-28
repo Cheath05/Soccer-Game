@@ -1,0 +1,256 @@
+# Import profile for the EA SPORTS FC ratings CSV (Kaggle: mikedpad/ea-sports-fc27-player-ratings).
+# The data belongs to EA. Keep the CSV in data/raw/ (gitignored); never commit or redistribute it.
+#
+# A profile maps a source file onto the canonical player model. To import your own ratings
+# file, copy this profile and change the column names.
+
+key: ea_fc_ratings_v1
+source: ea_fc27
+description: EA SPORTS FC ratings API export (one row per player).
+filters:
+  gender: "Men's Football"
+
+columns:
+  source_id: player_id
+  first_name: first_name
+  last_name: last_name
+  known_as: common_name
+  birth_date: birthdate
+  nationality: nationality
+  club: club
+  league: league
+  position: position
+  alt_positions: alternate_positions
+  preferred_foot: preferred_foot
+  weak_foot: weak_foot
+  skill_moves: skill_moves
+  height_cm: height_cm
+  weight_kg: weight_kg
+  overall: overall_rating
+  playstyles: playstyles
+
+attributes:
+  crossing: attacking_crossing
+  finishing: attacking_finishing
+  heading_accuracy: attacking_heading_accuracy
+  short_passing: attacking_short_passing
+  volleys: attacking_volleys
+  dribbling: skill_dribbling
+  curve: skill_curve
+  free_kicks: skill_fk_accuracy
+  long_passing: skill_long_passing
+  first_touch: skill_ball_control
+  acceleration: movement_acceleration
+  sprint_speed: movement_sprint_speed
+  agility: movement_agility
+  reactions: movement_reactions
+  balance: movement_balance
+  shot_power: power_shot_power
+  jumping: power_jumping
+  stamina: power_stamina
+  strength: power_strength
+  long_shots: power_long_shots
+  aggression: mentality_aggression
+  interceptions: mentality_interceptions
+  off_ball: mentality_positioning
+  vision: mentality_vision
+  penalties: mentality_penalties
+  composure: mentality_composure
+  def_positioning: defending_awareness
+  standing_tackle: defending_standing_tackle
+  sliding_tackle: defending_sliding_tackle
+  gk_diving: goalkeeping_diving
+  gk_handling: goalkeeping_handling
+  gk_kicking: goalkeeping_kicking
+  gk_positioning: goalkeeping_positioning
+  gk_reflexes: goalkeeping_reflexes
+
+positions:
+  GK: GK
+  CB: CB
+  LB: LB
+  RB: RB
+  LWB: LWB
+  RWB: RWB
+  CDM: DM
+  CM: CM
+  CAM: AM
+  LM: LM
+  RM: RM
+  LW: LW
+  RW: RW
+  ST: ST
+  CF: ST
+  LF: LW
+  RF: RW
+
+# Source league -> competition key (leagues we simulate). Other leagues are imported as a
+# dormant player pool: their clubs and players exist, age and can be bought.
+leagues:
+  Premier League: ENG1
+  EFL Championship: ENG2
+  EFL League One: ENG3
+  EFL League Two: ENG4
+
+league_nations:
+  Premier League: England
+  EFL Championship: England
+  EFL League One: England
+  EFL League Two: England
+  LALIGA EA SPORTS: Spain
+  LALIGA HYPERMOTION: Spain
+  Bundesliga: Germany
+  Bundesliga 2: Germany
+  3. Liga: Germany
+  Serie A Enilive: Italy
+  Serie BKT: Italy
+  Ligue 1 McDonald's: France
+  Ligue 2 BKT: France
+  MLS: United States
+  Liga BBVA MX: Mexico
+  Eredivisie: Holland
+  Liga Portugal: Portugal
+  Trendyol Süper Lig: Turkey
+  1A Pro League: Belgium
+  Scottish Premiership: Scotland
+  ROSHN Saudi League: Saudi Arabia
+  LPF: Argentina
+  Ekstraklasa: Poland
+  SUPERLIGA: Romania
+  Metropolitan Division: Denmark
+  Allsvenskan: Sweden
+  Eliteserien: Norway
+  Brack Super League: Switzerland
+  Ö. Bundesliga: Austria
+  K League 1: Korea Republic
+  CSL: China PR
+  Isuzu UTE A League: Australia
+  ISL: India
+  SSE Airtricity Men's Premier Division: Republic of Ireland
+  Hellas Liga: Greece
+  Česká Liga: Czech Republic
+  Finnliiga: Finland
+  Liga Azerbaijan: Azerbaijan
+  Liga Bulgaria: Bulgaria
+  Liga Colombia: Colombia
+  Liga Cyprus: Cyprus
+  Liga Hrvatska: Croatia
+  Liga do Brasil: Brazil
+  Magyar Liga: Hungary
+  Thailand League: Thailand
+  Ukrayina Liha: Ukraine
+  United Emirates League: United Arab Emirates
+  # CONMEBOL Libertadores/Sudamericana hold clubs from several countries in EA's data,
+  # so their clubs get no nation.
+
+# Attributes EA doesn't publish. Weighted sum of other attributes (in canonical names),
+# plus deterministic per-player noise. `max` takes the larger of several attributes, so an
+# attacker's anticipation leans on off-ball movement and a defender's on positioning.
+# `goalkeepers_only`: outfield players get the mean of their goalkeeping attributes instead.
+derived:
+  natural_fitness:
+    terms: [{attr: stamina, w: .70}, {attr: strength, w: .30}]
+    noise_sd: 5
+  anticipation:
+    terms: [{attr: reactions, w: .55}, {max: [off_ball, def_positioning], w: .45}]
+    noise_sd: 3
+  decisions:
+    terms: [{attr: reactions, w: .45}, {attr: composure, w: .30}, {attr: vision, w: .25}]
+    noise_sd: 3
+  concentration:
+    terms: [{attr: reactions, w: .45}, {attr: composure, w: .35},
+            {max: [def_positioning, off_ball], w: .20}]
+    noise_sd: 4
+  work_rate:
+    terms: [{attr: stamina, w: .60}, {attr: aggression, w: .40}]
+    noise_sd: 6
+  teamwork:
+    terms: [{attr: vision, w: .35}, {attr: short_passing, w: .35}, {attr: reactions, w: .30}]
+    noise_sd: 6
+  bravery:
+    terms: [{attr: aggression, w: .50}, {attr: strength, w: .25}, {attr: jumping, w: .25}]
+    noise_sd: 6
+  flair:
+    terms: [{attr: dribbling, w: .45}, {attr: curve, w: .25}, {attr: agility, w: .15},
+            {attr: vision, w: .15}]
+    noise_sd: 5
+  marking:
+    terms: [{attr: def_positioning, w: .50}, {attr: standing_tackle, w: .25},
+            {attr: agility, w: .15}, {attr: strength, w: .10}]
+    noise_sd: 3
+  gk_throwing:
+    terms: [{attr: gk_kicking, w: .70}, {attr: gk_handling, w: .30}]
+    noise_sd: 4
+    goalkeepers_only: true
+  gk_one_on_ones:
+    terms: [{attr: gk_reflexes, w: .45}, {attr: gk_diving, w: .35}, {attr: gk_positioning, w: .20}]
+    noise_sd: 4
+    goalkeepers_only: true
+  gk_command_of_area:
+    terms: [{attr: gk_handling, w: .50}, {attr: jumping, w: .30}, {attr: gk_positioning, w: .20}]
+    noise_sd: 5
+    goalkeepers_only: true
+  gk_rushing_out:
+    terms: [{attr: gk_positioning, w: .35}, {attr: reactions, w: .35}, {attr: acceleration, w: .30}]
+    noise_sd: 5
+    goalkeepers_only: true
+
+# PlayStyle bonuses to *derived* attributes (EA's own attributes already reflect them).
+# A PlayStyle+ (trailing "+") applies the bonus times plus_multiplier.
+plus_multiplier: 1.6
+playstyle_effects:
+  Anticipate: {anticipation: 6}
+  Intercept: {anticipation: 3}
+  Relentless: {work_rate: 8, natural_fitness: 4}
+  Press Proven: {work_rate: 3}
+  Bruiser: {bravery: 5}
+  Enforcer: {bravery: 4}
+  Aerial Fortress: {bravery: 3}
+  Trickster: {flair: 8}
+  Inventive: {flair: 6}
+  Gamechanger: {flair: 5}
+  Technical: {flair: 4}
+  Rush Out: {gk_rushing_out: 10}
+  Cross Claimer: {gk_command_of_area: 10}
+  Far Throw: {gk_throwing: 10}
+  Footwork: {gk_one_on_ones: 6}
+  Far Reach: {gk_one_on_ones: 3}
+
+# PlayStyle -> behavioural trait read by the match engine.
+playstyle_traits:
+  Finesse Shot: finesse_shots
+  Power Shot: power_shots
+  Low Driven Shot: low_driven_shots
+  Chip Shot: chips_keeper
+  Dead Ball: set_piece_specialist
+  Acrobatic: acrobatic_finishes
+  Precision Header: strong_header
+  Gamechanger: gamechanger
+  Incisive Pass: tries_killer_balls
+  Pinged Pass: driven_passes
+  Long Ball Pass: plays_long_balls
+  Tiki Taka: plays_one_twos
+  Whipped Pass: whipped_crosses
+  Inventive: creative_passes
+  Technical: close_control
+  Rapid: speed_dribbler
+  First Touch: clean_first_touch
+  Trickster: uses_skills
+  Quick Step: explosive_burst
+  Relentless: relentless
+  Press Proven: press_resistant
+  Jockey: jockeys
+  Block: blocks_shots
+  Intercept: reads_passes
+  Anticipate: reads_play
+  Slide Tackle: slide_tackler
+  Bruiser: physical_duels
+  Enforcer: enforcer
+  Aerial Fortress: aerial_threat
+  Long Throw: long_throws
+  Rush Out: rushes_out
+  Cross Claimer: claims_crosses
+  Far Throw: long_distribution
+  Footwork: quick_feet_saves
+  Far Reach: far_reach
+  Deflector: parries_wide

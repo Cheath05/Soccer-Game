@@ -1,0 +1,75 @@
+# See goalkeepers.yaml for field conventions.
+
+- key: defensive_midfielder
+  name: Defensive Midfielder
+  group: DM
+  description: Screens the defence, breaks up play and recycles possession.
+  movement:
+    freedom: 0.05
+    phase_offsets:
+      build_up: {dx: -.03}
+  on_ball: {pass_risk: -0.2}
+  defending: {press_bias: 0.1, track_runners: 0.6}
+
+- key: deep_lying_playmaker
+  name: Deep-Lying Playmaker
+  group: DM
+  description: Dictates tempo from deep, dropping to receive and spraying passes.
+  weight_modifiers: {short_passing: .04, long_passing: .05, vision: .05, composure: .02,
+                     standing_tackle: -.04, marking: -.03, strength: -.02}
+  movement:
+    phase_offsets:
+      build_up: {dx: -.05}
+    runs: {drop_deep: 0.3}
+  on_ball: {pass_risk: 0.35}
+
+- key: central_midfielder
+  name: Central Midfielder
+  group: CM
+  description: All-round midfielder linking defence and attack.
+  movement:
+    runs: {arrive_late: 0.15}
+
+- key: box_to_box
+  name: Box-to-Box Midfielder
+  group: CM
+  description: Covers ground in both boxes, arriving late for chances and pressing hard.
+  weight_modifiers: {stamina: .05, work_rate: .04, off_ball: .03, finishing: .02, vision: -.03}
+  movement:
+    phase_offsets:
+      final_third: {dx: .06}
+    runs: {arrive_late: 0.4}
+  on_ball: {shoot_bias: 0.1}
+  defending: {press_bias: 0.2}
+
+- key: mezzala
+  name: Mezzala
+  group: CM
+  description: Drifts into the half-space and wide channel to combine and attack the box.
+  weight_modifiers: {dribbling: .03, off_ball: .03, vision: .02, finishing: .02,
+                     interceptions: -.03, standing_tackle: -.03}
+  movement:
+    phase_offsets:
+      progression: {dx: .03, d_out: .06}
+      final_third: {dx: .08, d_out: .08}
+    runs: {arrive_late: 0.35, drift_wide: 0.2}
+  on_ball: {dribble_bias: 0.2}
+
+- key: attacking_midfielder
+  name: Attacking Midfielder
+  group: AM
+  description: Operates between the lines, creating and arriving for chances.
+  movement:
+    runs: {arrive_late: 0.3}
+  on_ball: {shoot_bias: 0.1}
+
+- key: advanced_playmaker
+  name: Advanced Playmaker
+  group: AM
+  description: Roams between the lines to find pockets of space and play the killer pass.
+  weight_modifiers: {vision: .04, short_passing: .03, first_touch: .02, finishing: -.03,
+                     off_ball: -.02}
+  movement:
+    freedom: 0.10
+    runs: {drop_deep: 0.2}
+  on_ball: {pass_risk: 0.4}

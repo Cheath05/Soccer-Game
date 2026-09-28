@@ -1,0 +1,28 @@
+# Rough weekly gross wages in EUR, used to give imported players a contract wage.
+# Keys are source league names (EA spelling). reference_overall is about the league's
+# average overall in FC 27, so reference_wage is a typical (median-ish) squad player's wage.
+# These are coarse estimates from public wage surveys; tune freely.
+minimum_weekly_wage: 400
+default: {reference_overall: 64, reference_wage: 3500, per_point: 1.10}
+leagues:
+  Premier League:        {reference_overall: 75, reference_wage: 50000, per_point: 1.12}
+  EFL Championship:      {reference_overall: 68.5, reference_wage: 10000, per_point: 1.12}
+  EFL League One:        {reference_overall: 63.5, reference_wage: 3000, per_point: 1.11}
+  EFL League Two:        {reference_overall: 60.5, reference_wage: 1600, per_point: 1.10}
+  LALIGA EA SPORTS:      {reference_overall: 73.5, reference_wage: 28000, per_point: 1.13}
+  LALIGA HYPERMOTION:    {reference_overall: 67.5, reference_wage: 5000, per_point: 1.11}
+  Bundesliga:            {reference_overall: 72, reference_wage: 30000, per_point: 1.12}
+  Bundesliga 2:          {reference_overall: 66, reference_wage: 8000, per_point: 1.11}
+  3. Liga:               {reference_overall: 62, reference_wage: 2500, per_point: 1.10}
+  Serie A Enilive:       {reference_overall: 73, reference_wage: 25000, per_point: 1.12}
+  Serie BKT:             {reference_overall: 67, reference_wage: 5000, per_point: 1.11}
+  Ligue 1 McDonald's:    {reference_overall: 71, reference_wage: 20000, per_point: 1.12}
+  Ligue 2 BKT:           {reference_overall: 64.5, reference_wage: 4000, per_point: 1.10}
+  MLS:                   {reference_overall: 65, reference_wage: 7000, per_point: 1.13}
+  Liga BBVA MX:          {reference_overall: 68, reference_wage: 12000, per_point: 1.11}
+  ROSHN Saudi League:    {reference_overall: 63.5, reference_wage: 15000, per_point: 1.15}
+  Eredivisie:            {reference_overall: 67, reference_wage: 8000, per_point: 1.11}
+  Liga Portugal:         {reference_overall: 68, reference_wage: 7000, per_point: 1.12}
+  Trendyol Süper Lig:    {reference_overall: 67.5, reference_wage: 12000, per_point: 1.12}
+  1A Pro League:         {reference_overall: 65.5, reference_wage: 7000, per_point: 1.11}
+  Scottish Premiership:  {reference_overall: 65, reference_wage: 5000, per_point: 1.12}

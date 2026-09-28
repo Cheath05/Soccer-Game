@@ -1,0 +1,52 @@
+# Nations with codes. `name` matches the EA FC spelling; `aliases` are other spellings
+# (Transfermarkt) used when matching players across sources. `eu` feeds non-EU player rules.
+# Nationalities not listed here are still imported, just without a code.
+nations:
+  - {code: ENG, name: England, confederation: UEFA}
+  - {code: SCO, name: Scotland, confederation: UEFA}
+  - {code: WAL, name: Wales, confederation: UEFA}
+  - {code: NIR, name: Northern Ireland, confederation: UEFA}
+  - {code: IRL, name: Republic of Ireland, confederation: UEFA, eu: true, aliases: [Ireland]}
+  - {code: ESP, name: Spain, confederation: UEFA, eu: true}
+  - {code: GER, name: Germany, confederation: UEFA, eu: true}
+  - {code: ITA, name: Italy, confederation: UEFA, eu: true}
+  - {code: FRA, name: France, confederation: UEFA, eu: true}
+  - {code: NED, name: Holland, confederation: UEFA, eu: true, aliases: [Netherlands]}
+  - {code: POR, name: Portugal, confederation: UEFA, eu: true}
+  - {code: BEL, name: Belgium, confederation: UEFA, eu: true}
+  - {code: AUT, name: Austria, confederation: UEFA, eu: true}
+  - {code: SUI, name: Switzerland, confederation: UEFA}
+  - {code: DEN, name: Denmark, confederation: UEFA, eu: true}
+  - {code: SWE, name: Sweden, confederation: UEFA, eu: true}
+  - {code: NOR, name: Norway, confederation: UEFA}
+  - {code: FIN, name: Finland, confederation: UEFA, eu: true}
+  - {code: POL, name: Poland, confederation: UEFA, eu: true}
+  - {code: CZE, name: Czech Republic, confederation: UEFA, eu: true, aliases: [Czechia]}
+  - {code: SVK, name: Slovakia, confederation: UEFA, eu: true}
+  - {code: SVN, name: Slovenia, confederation: UEFA, eu: true}
+  - {code: CRO, name: Croatia, confederation: UEFA, eu: true}
+  - {code: SRB, name: Serbia, confederation: UEFA}
+  - {code: HUN, name: Hungary, confederation: UEFA, eu: true}
+  - {code: ROU, name: Romania, confederation: UEFA, eu: true}
+  - {code: BUL, name: Bulgaria, confederation: UEFA, eu: true}
+  - {code: GRE, name: Greece, confederation: UEFA, eu: true}
+  - {code: CYP, name: Cyprus, confederation: UEFA, eu: true}
+  - {code: TUR, name: Turkey, confederation: UEFA, aliases: [Türkiye]}
+  - {code: UKR, name: Ukraine, confederation: UEFA}
+  - {code: RUS, name: Russia, confederation: UEFA}
+  - {code: AZE, name: Azerbaijan, confederation: UEFA}
+  - {code: USA, name: United States, confederation: CONCACAF}
+  - {code: CAN, name: Canada, confederation: CONCACAF}
+  - {code: MEX, name: Mexico, confederation: CONCACAF}
+  - {code: BRA, name: Brazil, confederation: CONMEBOL}
+  - {code: ARG, name: Argentina, confederation: CONMEBOL}
+  - {code: URU, name: Uruguay, confederation: CONMEBOL}
+  - {code: COL, name: Colombia, confederation: CONMEBOL}
+  - {code: KSA, name: Saudi Arabia, confederation: AFC}
+  - {code: UAE, name: United Arab Emirates, confederation: AFC}
+  - {code: JPN, name: Japan, confederation: AFC}
+  - {code: KOR, name: Korea Republic, confederation: AFC, aliases: ["Korea, South"]}
+  - {code: CHN, name: China PR, confederation: AFC, aliases: [China]}
+  - {code: AUS, name: Australia, confederation: AFC}
+  - {code: IND, name: India, confederation: AFC}
+  - {code: THA, name: Thailand, confederation: AFC}

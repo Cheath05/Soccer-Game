@@ -1,0 +1,107 @@
+# See goalkeepers.yaml for field conventions.
+
+- key: winger
+  name: Winger
+  group: W
+  description: Hugs the touchline, beats the full-back on the outside and crosses.
+  weight_modifiers: {crossing: .04, sprint_speed: .02, acceleration: .02, finishing: -.03,
+                     off_ball: -.02}
+  movement:
+    phase_offsets:
+      build_up: {d_out: .03}
+      progression: {d_out: .03}
+    runs: {in_behind: 0.15}
+  on_ball: {cross_bias: 0.45, dribble_bias: 0.25}
+
+- key: inside_forward
+  name: Inside Forward
+  group: W
+  description: Starts wide and cuts inside onto his stronger foot to shoot or run in behind.
+  weight_modifiers: {finishing: .04, off_ball: .03, composure: .02, crossing: -.04}
+  movement:
+    phase_offsets:
+      final_third: {dx: .04, d_out: -.10}
+    runs: {in_behind: 0.35, invert: 0.4}
+  on_ball: {shoot_bias: 0.3, cross_bias: -0.3, dribble_bias: 0.25}
+
+- key: inverted_winger
+  name: Inverted Winger
+  group: W
+  description: Drifts inside to create, combining in the half-space rather than crossing.
+  weight_modifiers: {short_passing: .03, vision: .03, curve: .02, crossing: -.02}
+  movement:
+    phase_offsets:
+      progression: {d_out: -.06}
+      final_third: {d_out: -.08}
+    runs: {invert: 0.35}
+  on_ball: {pass_risk: 0.15, dribble_bias: 0.25, cross_bias: -0.1}
+
+- key: wide_midfielder
+  name: Wide Midfielder
+  group: W
+  description: Hard-working wide player who tracks back to form a flat midfield line.
+  weight_modifiers: {stamina: .05, work_rate: .05, standing_tackle: .03, crossing: .03,
+                     finishing: -.05, off_ball: -.03, dribbling: -.03}
+  movement:
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.06}
+  on_ball: {cross_bias: 0.3}
+  defending: {press_bias: 0.1, track_runners: 0.8}
+
+- key: advanced_forward
+  name: Advanced Forward
+  group: ST
+  description: Leads the line, constantly threatening to run in behind.
+  movement:
+    runs: {in_behind: 0.45}
+  on_ball: {shoot_bias: 0.15}
+  defending: {press_bias: 0.1}
+
+- key: target_forward
+  name: Target Forward
+  group: ST
+  description: Physical focal point who wins headers and holds the ball up for teammates.
+  weight_modifiers: {heading_accuracy: .07, strength: .06, jumping: .03, balance: .02,
+                     sprint_speed: -.04, acceleration: -.04, dribbling: -.03}
+  movement:
+    freedom: 0.05
+    runs: {in_behind: 0.1}
+  on_ball: {pass_risk: -0.1}
+
+- key: poacher
+  name: Poacher
+  group: ST
+  description: Lives on the shoulder of the last defender and in the six-yard box.
+  weight_modifiers: {finishing: .06, off_ball: .05, composure: .02, dribbling: -.03,
+                     first_touch: -.02, decisions: -.02}
+  movement:
+    freedom: 0.05
+    runs: {in_behind: 0.5}
+  on_ball: {shoot_bias: 0.35}
+  defending: {press_bias: -0.3}
+
+- key: pressing_forward
+  name: Pressing Forward
+  group: ST
+  description: First line of the press, hunting the ball high up the pitch.
+  weight_modifiers: {work_rate: .06, stamina: .05, aggression: .03, finishing: -.03,
+                     composure: -.02}
+  movement:
+    runs: {in_behind: 0.35}
+  defending: {press_bias: 0.8}
+
+- key: false_nine
+  name: False Nine
+  group: ST
+  description: Drops into midfield to create overloads, drag centre-backs out and link play.
+  weight_modifiers: {vision: .06, short_passing: .06, first_touch: .03, decisions: .03,
+                     heading_accuracy: -.05, strength: -.03, off_ball: -.03}
+  movement:
+    freedom: 0.12
+    phase_offsets:
+      build_up: {dx: -.10}
+      progression: {dx: -.10}
+      final_third: {dx: -.06}
+    runs: {drop_deep: 0.7}
+  on_ball: {pass_risk: 0.3}

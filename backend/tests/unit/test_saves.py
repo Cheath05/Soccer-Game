@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from footsim.persistence.database import create_database, open_database, read_meta, write_meta
 from footsim.persistence.saves import SaveError, SaveManager
-from footsim.persistence.schema import nation
+from footsim.persistence.schema import SCHEMA_VERSION, nation
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_meta_round_trips_and_is_summarised(tmp_path: Path, base_world: Path) ->
     working = saves.new_career(2, base_world)
     engine = open_database(working)
     write_meta(engine, {"game_date": "2026-08-21"})
-    assert read_meta(engine)["schema_version"] == 1
+    assert read_meta(engine)["schema_version"] == SCHEMA_VERSION
     engine.dispose()
     saves.save(2)
     summary = saves.list_slots()[1]

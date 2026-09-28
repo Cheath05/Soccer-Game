@@ -1,12 +1,49 @@
-"""FastAPI entry point. Presentation layer only: no simulation logic lives here."""
+"""FastAPI application: the /api routes plus, when built, the frontend itself.
 
-from fastapi import FastAPI
+Presentation layer only: no simulation logic lives here.
+"""
+
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from footsim import __version__
+from footsim.api.routes import router
+from footsim.api.session import CareerSession, NoCareer, default_session
+from footsim.core.paths import REPO_ROOT
+from footsim.persistence.database import SchemaMismatch
 
-app = FastAPI(title="footsim", version=__version__)
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "version": __version__}
+def create_app(session: CareerSession | None = None, frontend: Path | None = FRONTEND_DIST
+               ) -> FastAPI:
+    app = FastAPI(title="footsim", version=__version__)
+    app.state.session = session or default_session()
+
+    @app.exception_handler(NoCareer)
+    def _no_career(_request: Request, exc: NoCareer) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(SchemaMismatch)
+    def _schema(_request: Request, exc: SchemaMismatch) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    app.include_router(router)
+
+    if frontend is not None and (frontend / "index.html").exists():
+        app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        def spa(path: str) -> FileResponse:
+            candidate = (frontend / path).resolve()
+            if path and candidate.is_file() and frontend.resolve() in candidate.parents:
+                return FileResponse(candidate)
+            return FileResponse(frontend / "index.html")
+
+    return app
+
+
+app = create_app()

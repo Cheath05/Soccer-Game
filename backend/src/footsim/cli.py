@@ -80,6 +80,63 @@ def _build_world(args: argparse.Namespace) -> int:
     return 0
 
 
+def _sim_season(args: argparse.Namespace) -> int:
+    import shutil
+    import tempfile
+    import time
+
+    from sqlalchemy import select, text
+
+    from footsim.persistence.database import open_database
+    from footsim.persistence.schema import competition, league_final
+    from footsim.world.career import advance, initialize_career
+    from footsim.world.context import get_world
+    from footsim.world.squads import club_name
+
+    world = get_world()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "sim.sqlite"
+        shutil.copy(args.world, path)
+        engine = open_database(path)
+        with engine.begin() as conn:
+            initialize_career(conn, world, None, None)
+        for number in range(1, args.seasons + 1):
+            started = time.perf_counter()
+            with engine.begin() as conn:
+                result = advance(conn, world, max_days=400)
+            elapsed = time.perf_counter() - started
+            with engine.connect() as conn:
+                season_id = number
+                stats = conn.execute(text("""
+                    SELECT COUNT(*) n, AVG(home_goals + away_goals) goals,
+                           AVG(home_goals > away_goals) home, AVG(home_goals = away_goals) draw,
+                           AVG(home_goals + away_goals = 0) nil, MAX(home_goals + away_goals) most
+                    FROM fixture WHERE season_id = :s AND stage = 'league'
+                """), {"s": season_id}).one()
+                print(f"\n=== Season {season_id}: {stats.n} league matches in {elapsed:.1f}s "
+                      f"({result.stop}) ===")
+                print(f"goals/match {stats.goals:.2f}  home {100 * stats.home:.0f}%  "
+                      f"draw {100 * stats.draw:.0f}%  0-0 {100 * stats.nil:.1f}%  "
+                      f"max goals {stats.most}")
+                for comp in conn.execute(select(competition).order_by(competition.c.tier)):
+                    rows = conn.execute(select(league_final).where(
+                        league_final.c.season_id == season_id,
+                        league_final.c.competition_id == comp.id,
+                    ).order_by(league_final.c.position)).all()
+                    if not rows:
+                        continue
+                    print(f"-- {comp.name}")
+                    for r in rows:
+                        if r.position <= 3 or r.position >= len(rows) - 2 or r.outcome:
+                            print(f"  {r.position:2d}. {club_name(conn, r.club_id):28} "
+                                  f"{r.points:3d} pts  {r.goals_for:3d}-{r.goals_against:<3d} "
+                                  f"{r.outcome or ''}")
+                for message in result.messages:
+                    print(f"  * {message}")
+        engine.dispose()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="footsim")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -106,6 +163,11 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--out", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     build.add_argument("--force", action="store_true", help="overwrite an existing world")
     build.set_defaults(func=_build_world)
+
+    sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
+    sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    sim.add_argument("--seasons", type=int, default=1)
+    sim.set_defaults(func=_sim_season)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

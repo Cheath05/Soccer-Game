@@ -6,6 +6,7 @@ attributes as one wide row per player (a column per attribute).
 
 from sqlalchemy import (
     Column,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -20,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # bump on any schema change; older databases need migrating
 
 metadata = MetaData()
 
@@ -165,4 +166,131 @@ external_id = Table(
     Column("source_id", Text, nullable=False),
     UniqueConstraint("entity_type", "source", "source_id"),
     Index("ix_external_entity", "entity_type", "entity_id"),
+)
+
+
+# --- Career runtime ------------------------------------------------------------------
+
+fixture = Table(
+    "fixture",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("stage", Text, nullable=False),  # "league" or a play-off key such as ENG2_PO
+    Column("round", Integer, nullable=False),  # league matchday, or play-off round index
+    Column("tie", Text),  # play-off tie id (E1, SF1, F)
+    Column("leg", Integer),  # 1 or 2 for two-legged ties
+    Column("date", Text, nullable=False),
+    Column("home_club_id", ForeignKey("club.id"), nullable=False),
+    Column("away_club_id", ForeignKey("club.id"), nullable=False),
+    Column("neutral", Integer, nullable=False, default=0),
+    Column("status", Text, nullable=False),  # scheduled | played
+    Column("home_goals", Integer),
+    Column("away_goals", Integer),
+    Column("extra_time", Integer),
+    Column("home_pens", Integer),
+    Column("away_pens", Integer),
+    Column("sim", Text),  # quick | live | instant
+    Column("stats", Text),  # JSON {"home": TeamStats, "away": TeamStats}
+    Index("ix_fixture_date", "date"),
+    Index("ix_fixture_comp", "competition_id", "season_id", "stage"),
+    Index("ix_fixture_home", "home_club_id"),
+    Index("ix_fixture_away", "away_club_id"),
+)
+
+playoff_tie = Table(
+    "playoff_tie",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("playoff_key", Text, nullable=False),
+    Column("tie", Text, nullable=False),
+    Column("round", Integer, nullable=False),
+    Column("club_a_id", ForeignKey("club.id"), nullable=False),  # higher league rank
+    Column("club_b_id", ForeignKey("club.id"), nullable=False),
+    Column("rank_a", Integer, nullable=False),
+    Column("rank_b", Integer, nullable=False),
+    Column("winner_club_id", ForeignKey("club.id")),
+    UniqueConstraint("season_id", "playoff_key", "tie"),
+)
+
+league_final = Table(
+    "league_final",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("position", Integer, nullable=False),
+    Column("played", Integer, nullable=False),
+    Column("won", Integer, nullable=False),
+    Column("drawn", Integer, nullable=False),
+    Column("lost", Integer, nullable=False),
+    Column("goals_for", Integer, nullable=False),
+    Column("goals_against", Integer, nullable=False),
+    Column("points", Integer, nullable=False),
+    Column("outcome", Text),  # champion | promoted | playoff_winner | relegated | None
+    PrimaryKeyConstraint("season_id", "competition_id", "club_id"),
+)
+
+match_event = Table(
+    "match_event",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("fixture_id", ForeignKey("fixture.id"), nullable=False),
+    Column("minute", Integer, nullable=False),
+    # goal | own_goal | penalty_goal | penalty_miss | yellow | red | sub | injury
+    Column("type", Text, nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("player_id", ForeignKey("player.person_id")),
+    Column("other_player_id", ForeignKey("player.person_id")),  # assist, or player coming on
+    Column("detail", Text),
+    Index("ix_match_event_fixture", "fixture_id"),
+)
+
+player_match = Table(
+    "player_match",
+    metadata,
+    Column("fixture_id", ForeignKey("fixture.id"), nullable=False),
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("started", Integer, nullable=False),
+    Column("minutes", Integer, nullable=False),
+    Column("goals", Integer, nullable=False, default=0),
+    Column("assists", Integer, nullable=False, default=0),
+    Column("shots", Integer, nullable=False, default=0),
+    Column("shots_on_target", Integer, nullable=False, default=0),
+    Column("passes", Integer, nullable=False, default=0),
+    Column("passes_completed", Integer, nullable=False, default=0),
+    Column("tackles", Integer, nullable=False, default=0),
+    Column("interceptions", Integer, nullable=False, default=0),
+    Column("saves", Integer, nullable=False, default=0),
+    Column("yellow", Integer, nullable=False, default=0),
+    Column("red", Integer, nullable=False, default=0),
+    Column("rating", Float, nullable=False),
+    PrimaryKeyConstraint("fixture_id", "player_id"),
+    Index("ix_player_match_player", "player_id"),
+)
+
+player_state = Table(
+    "player_state",
+    metadata,
+    Column("player_id", ForeignKey("player.person_id"), primary_key=True),
+    Column("condition", Float, nullable=False),  # 0-100 match fitness
+    Column("form", Float, nullable=False),  # rolling average match rating
+    Column("injured_until", Text),  # date the player is fit again
+    Column("injury", Text),
+    Column("suspended_matches", Integer, nullable=False, default=0),
+    Column("season_yellows", Integer, nullable=False, default=0),
+)
+
+tactic = Table(
+    "tactic",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("formation", Text, nullable=False),
+    Column("roles", Text, nullable=False),  # JSON {slot id: role key}
+    Column("lineup", Text),  # JSON {slot id: player id}, None = pick automatically
+    Column("instructions", Text, nullable=False),  # JSON {instruction: level}
 )

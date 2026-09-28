@@ -25,6 +25,7 @@ dev = [
     "mypy>=1.11",
     "types-pyyaml",
     "httpx2>=2.13.1",
+    "scipy-stubs>=1.18.1.1",
 ]
 data = [
     "duckdb>=1.1",

@@ -22,7 +22,9 @@ def _set_pragmas(dbapi_conn: DBAPIConnection, _record: ConnectionPoolEntry) -> N
 
 
 def open_database(path: Path) -> Engine:
-    engine = create_engine(f"sqlite:///{path}")
+    # The API serves requests from a thread pool; SQLAlchemy's pool hands each connection to
+    # one thread at a time, so sqlite3's same-thread check can be relaxed.
+    engine = create_engine(f"sqlite:///{path}", connect_args={"check_same_thread": False})
     event.listen(engine, "connect", _set_pragmas)
     return engine
 
@@ -37,6 +39,20 @@ def create_database(path: Path) -> Engine:
     with engine.begin() as conn:
         conn.execute(game_meta.insert(), [{"key": "schema_version", "value": str(SCHEMA_VERSION)}])
     return engine
+
+
+class SchemaMismatch(Exception):
+    pass
+
+
+def check_schema(engine: Engine) -> None:
+    """Refuse databases written by a different schema version (no migrations exist yet)."""
+    version = read_meta(engine).get("schema_version")
+    if version != SCHEMA_VERSION:
+        raise SchemaMismatch(
+            f"database schema v{version}, this build needs v{SCHEMA_VERSION}: "
+            "rebuild the world with `just build-world --force` and start a new career"
+        )
 
 
 def write_meta(engine: Engine, values: dict[str, Any]) -> None:

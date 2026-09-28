@@ -17,6 +17,7 @@ from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
+from footsim.defs.match import InstructionDef, QuickEngineParams
 from footsim.defs.nations import NationDef, NationsFile
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
 from footsim.defs.roles import RoleDef
@@ -40,6 +41,8 @@ class GameDefinitions:
     nations: dict[str, NationDef]
     world_build: WorldBuildRules
     wage_levels: WageLevelsFile
+    quick_engine: QuickEngineParams
+    instructions: dict[str, InstructionDef]
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -89,6 +92,8 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         nations={n.code: n for n in _parse(NationsFile, root / "nations.yaml").nations},
         world_build=_parse(WorldBuildRules, root / "world_build.yaml"),
         wage_levels=_parse(WageLevelsFile, root / "finance" / "wage_levels.yaml"),
+        quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
+        instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
     )
     _cross_validate(defs)
     return defs
@@ -127,6 +132,19 @@ def _cross_validate(defs: GameDefinitions) -> None:
         PERSONALITY_TRAITS
     ):
         errors.append(f"world_build personality rule for unknown trait {trait}")
+
+    quick = defs.quick_engine
+    for name in ("attack_weights", "defence_weights", "midfield_weights", "scorer_weights",
+                 "assist_weights"):
+        missing = set(PositionGroup) - set(getattr(quick, name))
+        if missing:
+            errors.append(f"quick_engine {name} lacks {sorted(missing)}")
+    for key, levels in quick.instructions.items():
+        known = defs.instructions.get(key)
+        if known is None:
+            errors.append(f"quick_engine reacts to unknown instruction {key}")
+        elif set(levels) - set(known.options):
+            errors.append(f"quick_engine: unknown {key} levels {set(levels) - set(known.options)}")
 
     for league in defs.leagues.values():
         if league.nation not in defs.nations:

@@ -1,0 +1,50 @@
+# Fast statistical engine: plays every match you don't watch.
+# Expected goals per side = base_goals x home advantage
+#   x exp(attack_beta * (attack - opposing defence) + midfield_beta * (midfield - opposing midfield))
+# where attack/defence/midfield are weighted averages of the starters' slot ratings.
+# Targets (recent Premier League seasons): ~2.8 goals per match, home wins ~44%, draws ~24%.
+
+base_goals: 1.30
+home_advantage: 1.15
+attack_beta: 0.060
+midfield_beta: 0.025
+second_half_share: 0.55
+
+attack_weights:   {GK: 0.0, CB: 0.1, FB: 0.35, DM: 0.2, CM: 0.5, AM: 0.9, W: 0.9, ST: 1.0}
+defence_weights:  {GK: 1.2, CB: 1.0, FB: 0.7, DM: 0.8, CM: 0.35, AM: 0.1, W: 0.15, ST: 0.05}
+midfield_weights: {GK: 0.0, CB: 0.2, FB: 0.3, DM: 0.9, CM: 1.0, AM: 0.7, W: 0.3, ST: 0.1}
+
+# Who scores and assists (relative weights, scaled by finishing / creativity).
+scorer_weights: {GK: 0.0, CB: 0.10, FB: 0.07, DM: 0.08, CM: 0.22, AM: 0.50, W: 0.60, ST: 1.0}
+assist_weights: {GK: 0.02, CB: 0.10, FB: 0.45, DM: 0.30, CM: 0.60, AM: 1.0, W: 1.0, ST: 0.5}
+assist_share: 0.72
+own_goal_share: 0.03
+penalty_share: 0.09
+
+xg_per_shot: 0.11
+on_target_share: 0.34
+
+yellows_per_team: 1.9
+straight_reds_per_team: 0.04
+red_card_own_goals: 0.72
+red_card_opponent_goals: 1.30
+injuries_per_team: 0.12
+
+chasing_minute: 70
+chasing_own_goals: 1.15
+chasing_opponent_goals: 1.10
+# Game management: well-ahead sides ease off, which keeps blowouts rare.
+easing_lead: 3
+easing_own_goals: 0.55
+subs_per_team: 4
+
+# Team instructions: multipliers on own and opponent expected goals, and stamina drain.
+instructions:
+  mentality:
+    defensive: {own_goals: 0.85, opponent_goals: 0.88}
+    balanced: {}
+    attacking: {own_goals: 1.12, opponent_goals: 1.10}
+  pressing:
+    low: {own_goals: 0.97, opponent_goals: 0.98, fatigue: 0.9}
+    normal: {}
+    high: {own_goals: 1.04, opponent_goals: 1.00, fatigue: 1.15}

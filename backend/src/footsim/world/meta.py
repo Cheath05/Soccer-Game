@@ -1,0 +1,49 @@
+"""Career-level state stored in game_meta."""
+
+import json
+from dataclasses import dataclass
+from datetime import date
+
+from sqlalchemy import Connection, select
+
+from footsim.persistence.schema import game_meta
+
+
+@dataclass
+class CareerMeta:
+    world_seed: int
+    current_date: date
+    season_id: int
+    base_calendar: str
+    user_club_id: int | None
+    manager_name: str | None
+
+    @property
+    def seed(self) -> int:
+        return self.world_seed
+
+
+def read_meta(conn: Connection) -> CareerMeta:
+    values = {k: json.loads(v) for k, v in conn.execute(select(game_meta.c.key, game_meta.c.value))}
+    return CareerMeta(
+        world_seed=int(values["world_seed"]),
+        current_date=date.fromisoformat(values["game_date"]),
+        season_id=int(values.get("season_id", 1)),
+        base_calendar=values.get("base_calendar", values.get("calendar", "")),
+        user_club_id=values.get("user_club_id"),
+        manager_name=values.get("manager_name"),
+    )
+
+
+def write_meta(conn: Connection, meta: CareerMeta) -> None:
+    values = {
+        "world_seed": meta.world_seed,
+        "game_date": meta.current_date.isoformat(),
+        "season_id": meta.season_id,
+        "base_calendar": meta.base_calendar,
+        "user_club_id": meta.user_club_id,
+        "manager_name": meta.manager_name,
+    }
+    for key, value in values.items():
+        conn.execute(game_meta.delete().where(game_meta.c.key == key))
+        conn.execute(game_meta.insert().values(key=key, value=json.dumps(value)))

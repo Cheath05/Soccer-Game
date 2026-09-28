@@ -1,0 +1,8 @@
+# Team instructions offered in the tactics screen. Both match engines read the chosen level;
+# data/config/match/quick_engine.yaml says how the fast engine responds to each one.
+- {key: mentality, label: Mentality, options: [defensive, balanced, attacking], default: balanced}
+- {key: pressing, label: Pressing, options: [low, normal, high], default: normal}
+- {key: line, label: Defensive line, options: [deep, normal, high], default: normal}
+- {key: width, label: Width, options: [narrow, normal, wide], default: normal}
+- {key: tempo, label: Tempo, options: [slow, normal, fast], default: normal}
+- {key: passing, label: Passing, options: [short, mixed, direct], default: mixed}

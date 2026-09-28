@@ -30,6 +30,18 @@ These supersede the matching parts of the sections below.
 - **League One and League Two are imported as `simulated` leagues**, since their squads exist. League Two relegation is disabled until a National League exists.
 - **Potential calibration.** Growth above 86 is compressed. The built world has 19 players with potential of 90+ and one with 93+ (Lamine Yamal).
 - **Task runner:** `just` (see `justfile`).
+- **2026-09-28. First playable demo.**
+  - **Other matches** use the fast statistical engine (Tier 1, v1). It plays minute by minute from slot ratings, with goals, cards, injuries, substitutions, extra time and penalties. It's calibrated to real outcome rates: ~2.8 goals, 44% home wins, 24% draws. Its parameters are in `data/config/match/quick_engine.yaml`.
+  - **The user's matches**, watched or instant, use the agent engine (Tier 0, v1), as §12 designs.
+  - **Agent engine calibration.** It was calibrated in batches against real Premier League targets, and currently averages 3.4 goals (target 2.8), 32 shots (25), 88% pass accuracy (82%), 28 fouls (22), 5 offsides (4) and 8.5 corners (10). Home-win and draw rates are realistic.
+  - **Engine cost:** about 6.5 s per headless match in pure Python, well inside the 15 s budget.
+  - **Next calibration steps:** fit the Tier 1 surrogate to Tier 0 outputs (§12) so both engines agree, and move the agent engine's tuning constants into YAML.
+- **Seeds and determinism.** Each career gets its own random seed, so careers differ. Within a career every match and season process is reproducible from that seed.
+- **Schema migrations.** Until the first stable release, databases carry a schema version and older ones are refused with a clear message. Alembic migrations come once saves need to survive upgrades.
+- **Placeholders until the relevant systems exist:**
+  - Contracts auto-renew at season end, because there's no transfer market yet.
+  - There are no retirements or youth intake yet.
+  - Player development is an annual pass (§16 first cut).
 
 ## 1. Executive Summary
 

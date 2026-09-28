@@ -99,7 +99,7 @@ def _sim_season(args: argparse.Namespace) -> int:
         shutil.copy(args.world, path)
         engine = open_database(path)
         with engine.begin() as conn:
-            initialize_career(conn, world, None, None)
+            initialize_career(conn, world, None, None, seed=args.seed)
         for number in range(1, args.seasons + 1):
             started = time.perf_counter()
             with engine.begin() as conn:
@@ -167,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     sim.add_argument("--seasons", type=int, default=1)
+    sim.add_argument("--seed", type=int, default=2026)
     sim.set_defaults(func=_sim_season)
 
     args = parser.parse_args(argv)

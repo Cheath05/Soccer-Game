@@ -113,7 +113,7 @@ export default function LivePage() {
       if (msg.type === 'end') {
         setEnded(msg.score)
         if (liveRef.current) {
-          const done = { ...liveRef.current, score: msg.score, finished: true, paused: true }
+          const done = { ...liveRef.current, score: msg.score, stats: msg.stats ?? liveRef.current.stats, finished: true, paused: true }
           liveRef.current = done
           setLive(done)
         }
@@ -249,7 +249,7 @@ export default function LivePage() {
   const user = live?.userTeam ?? 0
   const myPlayers = (live?.lineup ?? []).filter((p) => p.team === user && p.active)
   const myBench = live?.bench[user] ?? []
-  const clock = live ? minuteLabel(live.minute, live.period) : ''
+  const clock = live ? (live.finished || ended ? 'FT' : minuteLabel(live.minute, live.period)) : ''
 
   return (
     <Stack gap="sm">

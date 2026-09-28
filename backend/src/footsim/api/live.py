@@ -247,6 +247,7 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
             if live.mode == "finish" or live.engine.finished:
                 await asyncio.to_thread(_finish, session, live)
                 await ws.send_json({"type": "end", "score": list(live.engine.score),
+                                    "stats": live.engine.live_stats(),
                                     "fixture_id": fixture_id})
                 return
             if live.paused:

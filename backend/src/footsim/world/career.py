@@ -1,6 +1,7 @@
 """Career flow: starting a career, advancing the calendar, playing fixtures."""
 
 import json
+import secrets
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
@@ -37,13 +38,17 @@ class AdvanceResult:
 
 
 def initialize_career(conn: Connection, world: World, club_id: int | None,
-                      manager_name: str | None) -> None:
-    """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only)."""
+                      manager_name: str | None, seed: int | None = None) -> None:
+    """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only).
+
+    Each career gets its own random seed (unless one is given), so two careers from the
+    same world play out differently; within a career everything stays reproducible."""
     metadata.create_all(conn)  # worlds built before a schema addition get the new tables
     base = {k: json.loads(v) for k, v in conn.execute(select(game_meta.c.key, game_meta.c.value))}
     calendar_key = base["calendar"]
     start = world.defs.calendars[calendar_key].season_start
-    meta = CareerMeta(world_seed=int(base["world_seed"]), current_date=start, season_id=1,
+    career_seed = seed if seed is not None else secrets.randbits(31)
+    meta = CareerMeta(world_seed=career_seed, current_date=start, season_id=1,
                       base_calendar=calendar_key, user_club_id=club_id,
                       manager_name=manager_name)
     write_meta(conn, meta)

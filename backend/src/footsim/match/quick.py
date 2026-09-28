@@ -29,6 +29,7 @@ INJURIES = [  # (name, median days, spread)
 INJURY_WEIGHTS = [0.30, 0.18, 0.12, 0.12, 0.08, 0.10, 0.04, 0.04, 0.02]
 FATIGUE_PER_MINUTE = 0.30
 SUB_BELOW_STAMINA = 88.0
+GOALKEEPER_FATIGUE = 0.3  # keepers cover a fraction of an outfielder's distance
 
 
 @dataclass
@@ -165,6 +166,8 @@ class QuickEngine:
             for sp in side.on_pitch:
                 stamina = sp.player.attr("stamina")
                 drain = FATIGUE_PER_MINUTE * factor * (1.25 - stamina / 200)
+                if sp.group is PositionGroup.GK:
+                    drain *= GOALKEEPER_FATIGUE
                 side.stamina[sp.player_id] = max(0.0, side.stamina[sp.player_id] - drain)
 
     def _pick(self, players: list[SheetPlayer], weights: list[float],

@@ -24,9 +24,9 @@ from footsim.api.schemas import (
     TacticsIn,
     TacticsOut,
 )
-from footsim.api.session import CareerSession
+from footsim.api.session import CareerSession, NoCareer
 from footsim.persistence.schema import fixture
-from footsim.world.career import advance, play_fixture, set_user_tactic
+from footsim.world.career import advance, play_user_instant, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.meta import read_meta
 
@@ -72,7 +72,8 @@ def saves(session: Session) -> list[SaveSlotOut]:
 
 
 def _career(session: CareerSession) -> CareerOut:
-    assert session.slot is not None
+    if session.slot is None:
+        raise NoCareer("no career loaded")
     with session.read() as conn:
         return queries.career(conn, get_world(), session.slot)
 
@@ -179,7 +180,7 @@ def play_now(fixture_id: int, session: Session) -> MatchOut:
             raise HTTPException(400, "not your match")
         if fx.date != meta.current_date.isoformat():
             raise HTTPException(400, "this match isn't today")
-        play_fixture(conn, world, meta, fx, meta.current_date, sim="instant")
+        play_user_instant(conn, world, meta, fx, meta.current_date)
     with session.read() as conn:
         return queries.match_detail(conn, fixture_id)
 

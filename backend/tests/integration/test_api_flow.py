@@ -64,3 +64,36 @@ def test_career_flow(client: TestClient) -> None:
 
     reloaded = client.post("/api/saves/1/load").json()
     assert reloaded["date"] == stop["date"]  # unsaved progress is discarded on load
+
+
+def test_live_match_over_websocket(client: TestClient) -> None:
+    leagues = client.get("/api/world/leagues").json()
+    club = next(c for lg in leagues if lg["key"] == "ENG2" for c in lg["clubs"])
+    client.post("/api/saves/2/new", json={"club_id": club["id"], "manager_name": "Live"})
+    stop = client.post("/api/career/advance").json()
+    assert stop["stop"] == "match"
+
+    with client.websocket_connect(f"/api/fixtures/{stop['fixture_id']}/live") as ws:
+        init = ws.receive_json()
+        assert init["type"] == "init" and len(init["lineup"]) == 22 and init["paused"]
+        ws.send_json({"type": "speed", "value": 64})
+        ws.send_json({"type": "resume"})
+        frames = 0
+        for _ in range(6):
+            msg = ws.receive_json()
+            frames += len(msg.get("frames", []))
+        assert frames > 100  # 64 ticks per message once running
+        ws.send_json({"type": "formation", "key": "4-4-2"})
+        ws.send_json({"type": "instruction", "key": "mentality", "value": "attacking"})
+        changed = ws.receive_json()
+        while changed.get("formation") is None:
+            changed = ws.receive_json()
+        assert changed["formation"][init["user_team"]] == "4-4-2"
+        ws.send_json({"type": "finish"})
+        msg = ws.receive_json()
+        while msg["type"] != "end":
+            msg = ws.receive_json()
+
+    report = client.get(f"/api/fixtures/{stop['fixture_id']}").json()
+    assert report["fixture"]["status"] == "played"
+    assert report["stats"]["home"]["passes"] > 100

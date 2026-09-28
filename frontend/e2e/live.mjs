@@ -1,0 +1,41 @@
+// Starts a career, goes to match day and watches the live match. Usage: node e2e/live.mjs <url> <dir>
+import { chromium } from 'playwright'
+
+const base = process.argv[2] ?? 'http://127.0.0.1:8765'
+const out = process.argv[3] ?? '/tmp'
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+const shot = (name) => page.screenshot({ path: `${out}/${name}.png` })
+
+await page.goto(base)
+await page.getByText('New career').waitFor()
+await page.getByPlaceholder('Your name').fill('Alex')
+await page.getByText('Liverpool', { exact: true }).click()
+await page.getByRole('button', { name: 'Start career' }).click()
+await page.getByRole('button', { name: 'Continue' }).click()
+await page.getByText('Your starting XI').waitFor({ timeout: 60000 })
+await page.getByRole('button', { name: 'Watch match' }).click()
+await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })
+await page.waitForTimeout(1500)
+await shot('10-live-kickoff')
+await page.getByRole('button', { name: 'Play' }).click()
+await page.getByText('8×').click()
+await page.waitForTimeout(12000)
+await shot('11-live-playing')
+await page.getByRole('tab', { name: 'Tactics' }).click()
+await page.waitForTimeout(500)
+await shot('12-live-tactics')
+await page.getByRole('tab', { name: 'Stats' }).click()
+await page.waitForTimeout(8000)
+await shot('13-live-stats')
+await page.getByRole('button', { name: 'Skip to result' }).click()
+await page.getByText('Full time').waitFor({ timeout: 60000 })
+await shot('14-live-end')
+await page.getByRole('button', { name: 'Match report' }).click()
+await page.getByText('Statistics').waitFor({ timeout: 30000 })
+await page.screenshot({ path: `${out}/15-live-report.png`, fullPage: true })
+console.log(errors.length ? `ERRORS:\n${errors.join('\n')}` : 'no browser errors')
+await browser.close()

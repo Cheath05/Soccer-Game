@@ -162,14 +162,25 @@ class LineupPicker:
 _GROUP_ORDER = list(PositionGroup)
 
 
+# Traditional numbers by position, most preferred first.
+_PREFERRED_NUMBERS = {
+    "GK": [1], "RB": [2], "RWB": [2], "LB": [3], "LWB": [3], "CB": [5, 4, 6],
+    "DM": [6, 4], "CM": [8, 4, 16], "AM": [10, 8], "RM": [7], "LM": [11],
+    "RW": [7], "LW": [11], "ST": [9, 10, 19],
+}
+
+
 def _number(sheet: TeamSheet) -> None:
-    """Shirt numbers: goalkeeper 1, then by position group from the back."""
-    everyone = sorted(sheet.starters, key=lambda s: _GROUP_ORDER.index(s.group))
-    everyone += sheet.bench
+    """Shirt numbers: traditional numbers for the starters where free, then the rest."""
     used: set[int] = set()
-    for sp in everyone:
-        if sp.group is PositionGroup.GK and 1 not in used:
-            sp.number = 1
-        else:
-            sp.number = next(n for n in range(2, 100) if n not in used)
-        used.add(sp.number)
+    starters = sorted(sheet.starters, key=lambda s: _GROUP_ORDER.index(s.group))
+    for sp in starters:
+        free = [n for n in _PREFERRED_NUMBERS.get(sp.position, []) if n not in used]
+        if free:
+            sp.number = free[0]
+            used.add(sp.number)
+    for sp in [*starters, *sheet.bench]:
+        if sp.number == 0:
+            sp.number = next(n for n in range(2 if sp.group is not PositionGroup.GK else 1, 100)
+                             if n not in used)
+            used.add(sp.number)

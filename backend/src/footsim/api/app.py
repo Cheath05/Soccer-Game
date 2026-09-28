@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from footsim import __version__
+from footsim.api.live import router as live_router
 from footsim.api.routes import router
 from footsim.api.session import CareerSession, NoCareer, default_session
 from footsim.core.paths import REPO_ROOT
@@ -32,6 +33,7 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
         return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     app.include_router(router)
+    app.include_router(live_router)
 
     if frontend is not None and (frontend / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")

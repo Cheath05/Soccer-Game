@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import Connection, Row, func, literal, or_, select, text
 
 from footsim.core.rng import derive_rng
+from footsim.match.engine.engine import MatchEngine
 from footsim.match.report import MatchReport
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.context import World
@@ -82,6 +83,26 @@ def play_fixture(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],
     report = world.quick.play(home, away, rng, neutral=bool(fx.neutral),
                               decider=decider_for(conn, world, fx))
     record_result(conn, fx.id, report, day, sim)
+    return report
+
+
+def agent_match(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], day: date,
+                record: bool) -> MatchEngine:
+    """The watchable agent-based engine, set up for fixture ``fx``."""
+    home = team_sheet(conn, world, fx.home_club_id, day)
+    away = team_sheet(conn, world, fx.away_club_id, day)
+    rng = derive_rng(meta.seed, "live-match", fx.id)
+    return MatchEngine(world.defs, home, away, rng, neutral=bool(fx.neutral),
+                       decider=decider_for(conn, world, fx), record=record)
+
+
+def play_user_instant(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],
+                      day: date) -> MatchReport:
+    """The user's match without watching: the same agent engine, run headless."""
+    engine = agent_match(conn, world, meta, fx, day, record=False)
+    engine.run()
+    report = engine.report()
+    record_result(conn, fx.id, report, day, "instant")
     return report
 
 

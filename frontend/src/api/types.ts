@@ -1,0 +1,229 @@
+// Mirrors backend/src/footsim/api/schemas.py.
+
+export interface ClubRef {
+  id: number
+  name: string
+}
+
+export interface ClubOption extends ClubRef {
+  reputation: number
+  average_overall: number
+}
+
+export interface LeagueOption {
+  key: string
+  name: string
+  tier: number
+  clubs: ClubOption[]
+}
+
+export interface SaveSlot {
+  slot: number
+  has_save: boolean
+  has_autosave: boolean
+  saved_at: string | null
+  club: string | null
+  manager: string | null
+  game_date: string | null
+  active: boolean
+}
+
+export interface Fixture {
+  id: number
+  date: string
+  competition: string
+  competition_name: string
+  stage: string
+  round: number
+  tie: string | null
+  leg: number | null
+  home: ClubRef
+  away: ClubRef
+  neutral: boolean
+  status: 'scheduled' | 'played'
+  home_goals: number | null
+  away_goals: number | null
+  extra_time: boolean
+  home_pens: number | null
+  away_pens: number | null
+}
+
+export interface Competition {
+  key: string
+  name: string
+  tier: number
+}
+
+export interface Career {
+  slot: number
+  date: string
+  season: string
+  manager: string | null
+  club: ClubRef
+  competition: Competition | null
+  position: number | null
+  next_fixture: Fixture | null
+  recent: Fixture[]
+}
+
+export interface AdvanceResult {
+  date: string
+  stop: 'match' | 'season_end' | 'limit'
+  fixture_id: number | null
+  messages: string[]
+}
+
+export interface TableRow {
+  position: number
+  club: ClubRef
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  goal_difference: number
+  points: number
+  zone: 'champion' | 'promotion' | 'playoff' | 'relegation' | null
+  form: string[]
+}
+
+export interface Table {
+  competition: string
+  name: string
+  season: string
+  rows: TableRow[]
+}
+
+export interface SquadPlayer {
+  id: number
+  name: string
+  short_name: string
+  position: string
+  positions: string[]
+  age: number
+  nationality: string | null
+  overall: number
+  condition: number
+  form: number
+  injury: string | null
+  injured_until: string | null
+  suspended: number
+  value_eur: number
+  wage_weekly_eur: number
+  contract_end: string
+  height_cm: number | null
+  preferred_foot: string
+  appearances: number
+  goals: number
+  assists: number
+  average_rating: number | null
+}
+
+export interface PlayerDetail extends SquadPlayer {
+  club: ClubRef | null
+  weight_kg: number | null
+  weak_foot: number
+  skill_moves: number
+  attributes: Record<string, { key: string; value: number }[]>
+  face: Record<string, number>
+  roles: { key: string; name: string; position_group: string; rating: number }[]
+  familiarity: Record<string, number>
+  potential: { low: number; high: number; label: string }
+  traits: string[]
+  own_player: boolean
+}
+
+export interface MatchEvent {
+  minute: number
+  type: string
+  club_id: number
+  player: string | null
+  other_player: string | null
+  detail: string | null
+}
+
+export interface PlayerLine {
+  player_id: number
+  name: string
+  started: boolean
+  minutes: number
+  goals: number
+  assists: number
+  shots: number
+  passes: number
+  passes_completed: number
+  tackles: number
+  saves: number
+  yellow: number
+  red: number
+  rating: number
+}
+
+export type TeamStats = Record<string, number>
+
+export interface MatchReport {
+  fixture: Fixture
+  events: MatchEvent[]
+  home_lines: PlayerLine[]
+  away_lines: PlayerLine[]
+  stats: { home: TeamStats; away: TeamStats } | null
+}
+
+export interface FormationSlot {
+  id: string
+  position: string
+  x: number
+  y: number
+  default_role: string
+}
+
+export interface Formation {
+  key: string
+  name: string
+  slots: FormationSlot[]
+}
+
+export interface RoleOption {
+  key: string
+  name: string
+  group: string
+  description: string
+}
+
+export interface InstructionOption {
+  key: string
+  label: string
+  options: string[]
+  default: string
+}
+
+export interface SheetEntry {
+  slot: string | null
+  position: string
+  role: string
+  player_id: number
+  name: string
+  number: number
+  rating: number
+  condition: number
+}
+
+export interface Tactics {
+  formation: string
+  roles: Record<string, string>
+  lineup: Record<string, number> | null
+  instructions: Record<string, string>
+  starters: SheetEntry[]
+  bench: SheetEntry[]
+  formations: Formation[]
+  roles_by_group: Record<string, RoleOption[]>
+  instruction_options: InstructionOption[]
+}
+
+export interface TacticsUpdate {
+  formation: string
+  roles: Record<string, string>
+  lineup: Record<string, number> | null
+  instructions: Record<string, string>
+}

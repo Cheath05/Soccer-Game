@@ -29,6 +29,20 @@ calibrate:
 build-world *args:
     cd {{backend}} && uv run footsim build-world {{args}}
 
+# Build the interface and play: http://127.0.0.1:8000
+demo:
+    cd {{frontend}} && npm run build
+    @echo "Footsim is running at http://127.0.0.1:8000  (Ctrl+C to stop)"
+    cd {{backend}} && uv run uvicorn footsim.api.app:app --host 127.0.0.1 --port 8000
+
+# Play a season of every English league without a user club and print the tables
+sim-season *args:
+    cd {{backend}} && uv run footsim sim-season {{args}}
+
+# Browser smoke test against a running server (default: the demo on port 8000)
+e2e url="http://127.0.0.1:8000":
+    cd {{frontend}} && node e2e/smoke.mjs {{url}} /tmp && node e2e/live.mjs {{url}} /tmp
+
 # API server on http://127.0.0.1:8000
 api:
     cd {{backend}} && uv run uvicorn footsim.api.app:app --host 127.0.0.1 --port 8000 --reload

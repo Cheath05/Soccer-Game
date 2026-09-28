@@ -12,3 +12,7 @@ def config_dir() -> Path:
 
 def data_dir() -> Path:
     return Path(os.environ.get("FOOTSIM_DATA_DIR", REPO_ROOT / "data"))
+
+
+def saves_dir() -> Path:
+    return Path(os.environ.get("FOOTSIM_SAVES_DIR", REPO_ROOT / "saves"))

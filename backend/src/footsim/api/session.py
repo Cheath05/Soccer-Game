@@ -7,7 +7,7 @@ from pathlib import Path
 
 from sqlalchemy import Connection, Engine
 
-from footsim.core.paths import REPO_ROOT, data_dir
+from footsim.core.paths import data_dir, saves_dir
 from footsim.persistence.database import check_schema, open_database
 from footsim.persistence.saves import SaveManager
 from footsim.world.career import initialize_career
@@ -92,4 +92,4 @@ class CareerSession:
 
 
 def default_session() -> CareerSession:
-    return CareerSession(REPO_ROOT / "saves", data_dir() / "worlds" / "base-2026-27.sqlite")
+    return CareerSession(saves_dir(), data_dir() / "worlds" / "base-2026-27.sqlite")

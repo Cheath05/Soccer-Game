@@ -11,10 +11,19 @@ The project lives at `/Users/alexbenton/Developer/Soccer-Game`. Always use absol
 
 ## Running a batch
 
+Batches run from the measurement worktree, a separate checkout pinned to a commit, so development in the main checkout can't change a batch halfway through. The prompt names the commit to measure; if it doesn't, use the branch head (`git -C /Users/alexbenton/Developer/Soccer-Game rev-parse HEAD`).
+
 ```bash
-cd /Users/alexbenton/Developer/Soccer-Game/backend
-uv run --frozen footsim calibrate-engine --division ENG1 --n 200 --seed 1 --workers 7 --out <dir>
+cd /Users/alexbenton/Developer/Soccer-Game
+git -C .worktrees/measure checkout -q --detach <commit>
+cd .worktrees/measure/backend && uv sync --frozen -q
+uv run --frozen footsim calibrate-engine --division ENG1 --n 200 --seed 1 --workers 7 \
+  --out /Users/alexbenton/Developer/Soccer-Game/reports/engine
 ```
+
+- If `.worktrees/measure` is missing, see "Where batches run" in `.claude/skills/calibrate-engine/SKILL.md`.
+- Report the commit you measured.
+- **Timing on this Mac:** it has 4 performance and 4 efficiency cores. 200 matches take about 4–5 min, and a 7-arm × 200 A/B about 35–40 min, when nothing else heavy runs.
 
 - `--division` ENG1–ENG4 picks the clubs and the target ranges. `--synthetic` uses generated teams instead, and needs no world file.
 - `--ab NAME:KEY=VALUE,...` adds an arm for the focus side (repeatable); `--focus-club ID` fixes which club the arms apply to. Every arm replays exactly the same fixtures and seeds, so arms are paired.
@@ -27,7 +36,7 @@ uv run --frozen footsim calibrate-engine --division ENG1 --n 200 --seed 1 --work
 1. **Batch size.** Any tuning decision needs at least 200 fixtures, and phase acceptance needs 1,000. If asked to judge a smaller batch, run it but say plainly that it can't support a decision.
 2. **Pairing.** When comparing with an earlier run, use the same `--seed`, `--n` and division so the fixtures pair up.
 3. **One heavy batch at a time.** Before starting, check `ps -eo pid,etime,command | grep "[c]alibrate-engine"`. If a batch is already running, wait for it to finish (poll every 60 s) rather than starting a second one.
-4. **Timing.** Note the wall time. More than 8 s per match per worker (roughly `runtime × workers / matches`) is a performance regression: flag it.
+4. **Timing.** Note the wall time and the load average (`uptime`). Per-match time in a batch is only comparable between runs made on a quiet machine. For a performance check, time one synthetic match on its own: more than 8 s is a regression, so flag it.
 
 ## What to return
 

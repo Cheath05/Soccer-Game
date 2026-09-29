@@ -11,10 +11,31 @@ The harness is `backend/src/footsim/calibration/engine_batch.py`, run through `f
 
 For long runs, delegate to the `engine-calibrator` agent in the background and keep coding.
 
-## Commands
+## Where batches run: the measurement worktree
+
+A batch loads the engine code when it starts, and its worker processes keep that version. Editing engine files while a queue of batches is waiting would silently measure a mix of versions. So batches run from a separate checkout pinned to a commit, `.worktrees/measure`:
 
 ```bash
-cd /Users/alexbenton/Developer/Soccer-Game/backend
+cd /Users/alexbenton/Developer/Soccer-Game
+git add ... && git commit ...                               # measure committed code only
+git -C .worktrees/measure checkout -q --detach <commit>     # usually the branch head
+cd .worktrees/measure/backend && uv sync --frozen -q        # only if dependencies changed
+uv run --frozen footsim calibrate-engine ... --out /Users/alexbenton/Developer/Soccer-Game/reports/engine
+```
+
+- Every report is then tied to an exact commit; put the commit hash in the report's label or in your summary.
+- If the worktree is missing, recreate it:
+  ```bash
+  git worktree add --detach .worktrees/measure HEAD
+  ln -s /Users/alexbenton/Developer/Soccer-Game/data/worlds .worktrees/measure/data/worlds
+  ```
+- The main checkout stays free for development while a batch runs.
+
+## Commands
+
+The examples below show the harness flags. Run them from `.worktrees/measure/backend` (see above).
+
+```bash
 # Real squads, one division (ENG1 Premier League … ENG4 League Two)
 uv run --frozen footsim calibrate-engine --division ENG1 --n 200 --seed 1 --workers 7
 # Synthetic teams (no world file needed; qualities drawn from 62-86)
@@ -32,7 +53,10 @@ uv run --frozen footsim calibrate-engine --division ENG4 --n 200 --seed 11 --wor
 - Reports are written as `<UTC stamp>-<label>.md` and `.json`:
   - development runs go to `reports/engine/` (the default, gitignored);
   - phase-acceptance runs go to `--out /Users/alexbenton/Developer/Soccer-Game/docs/calibration`, and are committed.
-- Time: about 6.7 s per match per worker. 200 matches on 7 workers take about 3–4 min; an A/B with 7 arms × 200 takes about 25–30 min.
+- **Time.** This Mac has 8 cores, but only 4 are performance cores; the other 4 are efficiency cores.
+  - A match takes about 6.7 s on a performance core, and 7 workers give roughly 5 performance cores' worth.
+  - Expect about 4–5 min for 200 matches, and 35–40 min for an A/B with 7 arms × 200.
+  - That's only true if nothing else heavy runs. Test suites, e2e runs or agents simulating matches alongside a batch can double its time: on 29 Sep the load average reached 75.
 
 ## Rules
 

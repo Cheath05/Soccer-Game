@@ -30,7 +30,9 @@ A local, single-player football (soccer) manager simulator. The core is a Python
 - `just lint` runs ruff and strict mypy.
 - `cd backend && uv run pytest` runs the tests.
 - `cd frontend && npm run build` builds the viewer.
-- `just calibrate-engine --n 200 --division ENG1` runs a calibration batch (see the `calibrate-engine` skill).
+- `footsim calibrate-engine --n 200 --division ENG1` runs a calibration batch.
+  - Run it from the measurement worktree `.worktrees/measure`, pinned to a commit, never from the checkout being edited (see the `calibrate-engine` skill).
+  - Don't run other heavy work alongside a batch: this Mac has only 4 performance cores.
 - The user's game runs on :8000. Automated browser checks use a throwaway server on :8765 with `FOOTSIM_SAVES_DIR` set to a temporary folder (see the `run-footsim` skill).
 
 ## Rules

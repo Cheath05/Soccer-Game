@@ -33,3 +33,6 @@ reports/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Measurement worktrees (calibration batches run from a pinned commit)
+.worktrees/

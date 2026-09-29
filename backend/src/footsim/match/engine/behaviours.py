@@ -88,6 +88,14 @@ def _team(eng: "MatchEngine", team: int) -> None:
         if kickoff:
             back, front = 22.0, 49.0
     stretch = (front - back) / (X_FRONT - X_BACK)
+    if eng.debug:
+        eng.shape_debug[team] = {
+            "phase": "set_piece" if restart is not None else phase.value,
+            "attacking": attacking, "width": round(width, 1),
+            "back": round(eng.to_pitch(team, back, MID_Y)[0], 1),
+            "front": round(eng.to_pitch(team, front, MID_Y)[0], 1),
+            "pressers": [], "offside": None,
+        }
 
     targets = np.zeros((len(idx), 2))
     for k, i in enumerate(idx):
@@ -163,6 +171,8 @@ def _react(eng: "MatchEngine", idx: np.ndarray, targets: np.ndarray, team: int) 
             ahead = eng.pos[i] + eng.vel[i] * 0.8
             targets[k] = eng.att_points(team, ahead[None, :])[0]
             eng.urgent[i] = False
+            if eng.debug and int(i) in eng.shape_debug[team].get("pressers", []):
+                eng.shape_debug[team]["pressers"].remove(int(i))
 
 
 def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
@@ -221,6 +231,8 @@ def offside_line(opp_pts: np.ndarray, ball_x: float) -> float:
 def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             opp_pts: np.ndarray, bx: float, by: float) -> None:
     line = offside_line(opp_pts, bx)
+    if eng.debug:
+        eng.shape_debug[team]["offside"] = round(eng.to_pitch(team, line, MID_Y)[0], 1)
     carrier = eng.owner if eng.owner >= 0 and int(eng.team_of[eng.owner]) == team else None
     # Just won the ball: runners break forward straight away, even from deep.
     countering = (eng.t - eng.turnover_at < eng.defs.tactics.transition.counter_window
@@ -299,6 +311,8 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             else:
                 targets[k] = ball + to_goal * 5.0  # cover: block the route to goal
             eng.urgent[idx[k]] = True
+            if eng.debug:
+                eng.shape_debug[team]["pressers"].append(int(idx[k]))
 
     # Recovering players sprint: anyone well out of position, and everyone when the ball
     # is near our goal.

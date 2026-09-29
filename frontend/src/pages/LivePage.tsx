@@ -20,6 +20,8 @@ export default function LivePage() {
   const match = useLiveMatch(fixtureId)
   const { live, error, notice, ended, send } = match
   const [showNames, setShowNames] = useState(true)
+  const [debug, setDebug] = useState(false)
+  const debugAvailable = new URLSearchParams(window.location.search).get('debug') === '1'
   const [selected, setSelected] = useState<number | null>(null)
 
   if (error) {
@@ -45,7 +47,7 @@ export default function LivePage() {
       <Group align="start" gap="sm" wrap="wrap">
         <Stack gap="xs" style={{ flex: '3 1 560px', minWidth: 320 }}>
           <Box pos="relative">
-            <PitchView match={match} showNames={showNames} selected={selected} onSelect={setSelected} />
+            <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} />
             {selectedStatus && (
               <Box pos="absolute" top={8} left={8}>
                 <PlayerCard player={selectedStatus} onClose={() => setSelected(null)} />
@@ -58,6 +60,18 @@ export default function LivePage() {
             )}
           </Box>
           <PlaybackControls match={match} showNames={showNames} onShowNames={setShowNames} />
+          {debugAvailable && (
+            <Checkbox
+              size="xs"
+              label="Debug overlay: team lines, targets, pressers and the ball carrier's options"
+              checked={debug}
+              onChange={(e) => {
+                const on = e.currentTarget.checked
+                setDebug(on)
+                send({ type: 'debug', value: on })
+              }}
+            />
+          )}
           {notice && (
             <Text size="sm" c="orange">
               {notice}

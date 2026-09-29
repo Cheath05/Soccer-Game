@@ -1,6 +1,8 @@
 // Canvas drawing for the 2D match viewer. The viewer contains no football logic: it only
 // draws the positions the engine produced (see backend/src/footsim/match/engine).
 
+import type { DebugSnapshot } from './protocol'
+
 export const PITCH_LENGTH = 105
 export const PITCH_WIDTH = 68
 
@@ -145,5 +147,135 @@ export function drawFrame(
   ctx.strokeStyle = '#222'
   ctx.lineWidth = 1
   ctx.stroke()
+  ctx.restore()
+}
+
+// --- debug overlay (?debug=1) -----------------------------------------------------------
+
+/** The latest debug snapshot at or before match time ``t`` (the engine runs a little ahead
+ * of the picture, so newer snapshots wait until the playhead reaches them). */
+export function debugAt(buffer: DebugSnapshot[], t: number): DebugSnapshot | null {
+  let found: DebugSnapshot | null = null
+  for (const snap of buffer) {
+    if (snap.t > t) break
+    found = snap
+  }
+  return found
+}
+
+/** What the engine intends: team lines, each player's target, pressers, and the ball
+ * carrier's options with their scores. */
+export function drawDebug(
+  ctx: CanvasRenderingContext2D,
+  scale: number,
+  pad: number,
+  snap: Snapshot,
+  dbg: DebugSnapshot,
+  lineup: PlayerInfo[],
+) {
+  ctx.save()
+  ctx.translate(pad, pad)
+  const h = PITCH_WIDTH * scale
+  const vertical = (x: number) => {
+    ctx.beginPath()
+    ctx.moveTo(x * scale, 0)
+    ctx.lineTo(x * scale, h)
+    ctx.stroke()
+  }
+  dbg.teams.forEach((team, t) => {
+    if (team.back === undefined || team.front === undefined) return
+    ctx.setLineDash([6, 4])
+    ctx.lineWidth = 1.5
+    ctx.strokeStyle = TEAM_COLORS[t].shirt
+    vertical(team.back)
+    vertical(team.front)
+    if (team.offside != null) {
+      ctx.setLineDash([2, 3])
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'
+      vertical(team.offside)
+    }
+  })
+  ctx.setLineDash([])
+
+  // Where each player is heading: red when he's sprinting.
+  for (const p of lineup) {
+    if (!p.active) continue
+    const x = snap.players[p.index * 2] * scale
+    const y = snap.players[p.index * 2 + 1] * scale
+    const tx = dbg.targets[p.index * 2] * scale
+    const ty = dbg.targets[p.index * 2 + 1] * scale
+    if (x < 0 || Number.isNaN(tx)) continue
+    const urgent = dbg.urgent.includes(p.index)
+    ctx.strokeStyle = urgent ? 'rgba(255,90,90,0.95)' : 'rgba(255,255,255,0.5)'
+    ctx.lineWidth = urgent ? 1.8 : 1
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(tx, ty)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(tx, ty, 2, 0, Math.PI * 2)
+    ctx.fillStyle = ctx.strokeStyle
+    ctx.fill()
+    if (dbg.running.includes(p.index)) {
+      ctx.fillStyle = '#ffe066'
+      ctx.font = `bold ${Math.max(9, Math.round(scale * 1.1))}px system-ui, sans-serif`
+      ctx.fillText('run', tx + 4, ty - 4)
+    }
+  }
+  // Pressers: a yellow ring.
+  for (const team of dbg.teams) {
+    for (const i of team.pressers ?? []) {
+      const x = snap.players[i * 2] * scale
+      const y = snap.players[i * 2 + 1] * scale
+      ctx.beginPath()
+      ctx.arc(x, y, Math.max(8, scale * 2), 0, Math.PI * 2)
+      ctx.strokeStyle = '#ffd43b'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+  }
+  // The ball carrier's best options and the one he took.
+  const decision = dbg.decision && dbg.decision.player === dbg.owner ? dbg.decision : null
+  if (decision && decision.player >= 0) {
+    const cx = snap.players[decision.player * 2] * scale
+    const cy = snap.players[decision.player * 2 + 1] * scale
+    ctx.font = `${Math.max(9, Math.round(scale * 1.05))}px ui-monospace, monospace`
+    for (const option of decision.options) {
+      if (!option.target) continue
+      const [ox, oy] = [option.target[0] * scale, option.target[1] * scale]
+      ctx.strokeStyle = option.chosen ? '#66d9e8' : 'rgba(102,217,232,0.4)'
+      ctx.lineWidth = option.chosen ? 2 : 1
+      ctx.beginPath()
+      ctx.moveTo(cx, cy)
+      ctx.lineTo(ox, oy)
+      ctx.stroke()
+      ctx.fillStyle = option.chosen ? '#66d9e8' : 'rgba(102,217,232,0.75)'
+      const estimate = option.estimate != null ? ` ${Math.round(option.estimate * 100)}%` : ''
+      ctx.fillText(`${option.kind} ${option.utility.toFixed(3)}${estimate}`, ox + 4, oy + 10)
+    }
+  }
+  // Text panel.
+  const byIndex = new Map(lineup.map((p) => [p.index, p]))
+  const chosen = decision?.options.find((o) => o.chosen)
+  const lines = [
+    `${dbg.clock}  tick ${dbg.tick}  ${dbg.state}` +
+      (dbg.restart ? `  ${dbg.restart.kind}${dbg.restart.variant ? `/${dbg.restart.variant}` : ''} ${dbg.restart.wait}s` : ''),
+    ...dbg.teams.map(
+      (team, t) =>
+        `${t === 0 ? 'Home' : 'Away'} ${team.phase ?? '-'}  lines ${team.back?.toFixed(0) ?? '-'}-${team.front?.toFixed(0) ?? '-'}  ` +
+        `width ${team.width?.toFixed(0) ?? '-'}  pressing ${team.pressers?.length ?? 0}`,
+    ),
+    decision && chosen
+      ? `On the ball #${byIndex.get(decision.player)?.number ?? '?'}: ${chosen.kind} (${chosen.utility.toFixed(3)})`
+      : 'On the ball: -',
+  ]
+  ctx.font = '11px ui-monospace, monospace'
+  const width = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 12
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'
+  ctx.fillRect(4, 4, width, lines.length * 14 + 8)
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  lines.forEach((line, k) => ctx.fillText(line, 10, 9 + k * 14))
   ctx.restore()
 }

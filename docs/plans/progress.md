@@ -58,7 +58,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
 
 ## Step 3: Phase D, dynamic movement
 
-- [ ] D0 Debug overlay (`?debug=1`)
+- [x] D0 Debug overlay (`?debug=1`): team phase and lines, offside line, targets (red when sprinting), pressers, the ball carrier's five best options with scores, and a text panel. Built early, while the Step 2.3 batches ran; `frontend/e2e/debug.mjs` checks it
 - [ ] D1 `phases.py`: team phases with hysteresis
 - [ ] D2 `shape.py`: TeamShape (line heights, compactness, width, ball-side shift, cover depth)
 - [ ] D3 `intents.py`: MovementIntent; role runs; `press_bias`, `hold_line`, `track_runners`

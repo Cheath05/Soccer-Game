@@ -11,7 +11,7 @@ skill and pressure, and the ball then has to beat interceptors, blocks and the k
 
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -168,6 +168,8 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     utilities = np.array([u for u, _, _ in options])
     weights = np.exp((utilities - utilities.max()) / temperature)
     choice = options[int(eng.rng.choice(len(options), p=weights / weights.sum()))]
+    if eng.debug:
+        eng.decision_debug = _decision_debug(eng, i, team, options, utilities, choice)
     _, kind, payload = choice
     if kind == "shot":
         start_shot(eng, i)
@@ -184,6 +186,22 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
         eng.target[i] = carry
         eng.urgent[i] = payload.urgent
         eng.decide_at = eng.t + (0.9 if payload.urgent else 1.1)
+
+
+def _decision_debug(eng: "MatchEngine", i: int, team: int, options: list[Option],
+                    utilities: np.ndarray, choice: Option) -> dict[str, Any]:
+    """The ball carrier's five best options and his pick, for the debug overlay."""
+    top = []
+    for k in np.argsort(-utilities)[:5]:
+        utility, kind, payload = options[int(k)]
+        target = estimate = None
+        if isinstance(payload, (PassOption, CarryOption)):
+            target = [round(v, 1) for v in eng.to_pitch(team, *payload.target)]
+        if isinstance(payload, PassOption):
+            estimate = round(payload.estimate, 2)
+        top.append({"kind": kind, "utility": round(float(utility), 4), "target": target,
+                    "estimate": estimate, "chosen": options[int(k)] is choice})
+    return {"t": round(eng.t, 1), "player": i, "options": top}
 
 
 def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: np.ndarray,

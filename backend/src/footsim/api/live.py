@@ -112,6 +112,7 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
         return
     playback = live.session
     playback.paused = True
+    playback.debug = playback.engine.debug = False  # a reloaded viewer starts without it
     await ws.send_json(playback.init_message(live.names))
 
     inbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()

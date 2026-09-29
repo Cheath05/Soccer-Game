@@ -84,6 +84,7 @@ class LiveSession:
         self.speed = float(presentation.default_speed)
         self.paused = True
         self.mode = "full"  # full | highlights
+        self.debug = False  # send the engine's debug snapshot with each update
         self.anchor_sim = engine.t
         self.anchor_wall = 0.0
         self.replay_until = -1.0  # highlights: play at normal speed until this match time
@@ -129,6 +130,10 @@ class LiveSession:
                     return f"speed must be one of {self.p.speeds}"
                 self._reanchor(now)
                 self.speed = value
+            elif kind == "debug":  # the viewer's overlay: doesn't change the match
+                self.debug = engine.debug = bool(cmd.get("value"))
+                engine.shape_debug = [{}, {}]
+                engine.decision_debug = None
             elif kind == "mode":
                 self.mode = "highlights" if cmd.get("value") == "highlights" else "full"
                 self.replay_until = -1.0
@@ -152,6 +157,7 @@ class LiveSession:
         """Play the rest of the match straight away (Instant)."""
         self.engine.hold_at_breaks = False
         self.engine.record = False
+        self.debug = self.engine.debug = False
         self.engine.run()
 
     # --- playback --------------------------------------------------------------------------
@@ -336,4 +342,6 @@ class LiveSession:
         message["instructions"] = [dict(e.instructions[0]), dict(e.instructions[1])]
         message["auto_subs"] = list(e.auto_subs)
         message["ai_manager"] = list(e.ai_manager)
+        if self.debug:
+            message["debug"] = e.debug_snapshot()
         return message

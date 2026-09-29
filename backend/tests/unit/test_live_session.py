@@ -1,5 +1,7 @@
 """Watching a match: playback speed and pauses change how fast you see it, never the match."""
 
+import json
+
 import pytest
 
 from footsim.core.rng import derive_rng
@@ -116,3 +118,26 @@ def test_the_assistant_can_take_over_the_users_tactics(world: World) -> None:
     assert session.apply({"type": "assistant", "value": False}, 1.0) is None
     assert engine.ai_manager == [False, True]
     assert [cmd["type"] for _, cmd in session.log] == ["assistant", "assistant"]
+
+
+def test_the_debug_overlay_shows_intentions_without_changing_the_match(world: World) -> None:
+    watched, plain = _session(world), _session(world)
+    assert watched.apply({"type": "debug", "value": True}, 0.0) is None
+    snapshots = []
+    for session in (watched, plain):
+        session.apply({"type": "resume"}, 0.0)
+        now = 0.0
+        while now < 5.0:  # an update per pump, as the WebSocket loop sends them
+            message = session.update_message(session.pump(now), now)
+            json.dumps(message, allow_nan=False)  # what the socket sends must be valid JSON
+            if "debug" in message:
+                snapshots.append(message["debug"])
+            now += TICK
+    assert snapshots and len(snapshots[-1]["targets"]) == 44
+    assert snapshots[-1]["decision"] is not None
+    assert all({"phase", "back", "front", "pressers"} <= set(team)
+               for team in snapshots[-1]["teams"])
+    assert [s["t"] for s in snapshots] == sorted(s["t"] for s in snapshots)
+    assert watched.engine.tick_count == plain.engine.tick_count
+    assert watched.engine.pos.tobytes() == plain.engine.pos.tobytes()  # nothing read back
+    assert (watched.engine.rng.bit_generator.state == plain.engine.rng.bit_generator.state)

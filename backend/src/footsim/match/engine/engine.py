@@ -169,6 +169,11 @@ class MatchEngine:
         # Touchline decisions for computer-controlled sides (off for the user's side unless
         # he hands it to the assistant).
         self.ai_manager = list(ai_manager)
+        # Debug overlay (a watched match's viewer can ask for it): the teams' shapes and the
+        # ball carrier's options, recorded only while ``debug`` is on and never read back.
+        self.debug = False
+        self.shape_debug: list[dict[str, Any]] = [{}, {}]
+        self.decision_debug: dict[str, Any] | None = None
         self.managers = [ManagerAI(self, 0), ManagerAI(self, 1)]
 
         self._kickoff(team=0, teleport=True)
@@ -682,6 +687,25 @@ class MatchEngine:
         if on and not self.ai_manager[team]:
             self.managers[team].adopt(self)
         self.ai_manager[team] = on
+
+    def debug_snapshot(self) -> dict[str, Any]:
+        """What the debug overlay draws: the engine's intentions at this tick, in pitch
+        coordinates."""
+        restart = self.restart
+        return {
+            "t": round(self.t, 1), "tick": self.tick_count, "clock": self.clock.display(),
+            "state": self.state, "owner": self.owner,
+            "restart": None if restart is None else {
+                "kind": restart.kind, "variant": restart.variant, "team": restart.team,
+                "taker": restart.taker, "wait": round(max(0.0, restart.ready_at - self.t), 1)},
+            "teams": [dict(shape) for shape in self.shape_debug],
+            "targets": np.round(self.target, 1).ravel().tolist(),
+            "urgent": [int(i) for i in np.flatnonzero(self.urgent)],
+            "running": [int(i) for i in np.flatnonzero(self.running)],
+            "stamina": [round(float(s), 2) for s in self.stamina],
+            "decision": self.decision_debug,
+            "instructions": [dict(self.instructions[0]), dict(self.instructions[1])],
+        }
 
     def announce_tactics(self, team: int, text: str) -> None:
         self._announce("tactics", team, text)

@@ -98,3 +98,39 @@ export interface LiveState {
   feed: FeedItem[]
   status: Status
 }
+
+// The engine's debug snapshot (sent only while the viewer asks for it; see
+// MatchEngine.debug_snapshot). Positions are pitch metres; players by engine index.
+export interface DebugTeam {
+  phase?: string
+  attacking?: boolean
+  width?: number
+  back?: number // x of the back line
+  front?: number // x of the front line
+  pressers?: number[]
+  offside?: number | null // x of the offside line this team attacks against
+}
+
+export interface DebugOption {
+  kind: string
+  utility: number
+  target: [number, number] | null
+  estimate: number | null // the passer's estimated chance of success
+  chosen: boolean
+}
+
+export interface DebugSnapshot {
+  t: number
+  tick: number
+  clock: string
+  state: string
+  owner: number
+  restart: { kind: string; variant: string; team: number; taker: number | null; wait: number } | null
+  teams: DebugTeam[]
+  targets: number[] // x0, y0, x1, y1, ...
+  urgent: number[]
+  running: number[]
+  stamina: number[]
+  decision: { t: number; player: number; options: DebugOption[] } | null
+  instructions: Record<string, string>[]
+}

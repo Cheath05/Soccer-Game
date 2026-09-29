@@ -5,13 +5,14 @@ import { Box } from '@mantine/core'
 import { useEffect, useRef } from 'react'
 import type { MouseEvent } from 'react'
 
-import { PITCH_LENGTH, PITCH_WIDTH, drawFrame, drawPitch, interpolate } from './draw'
+import { PITCH_LENGTH, PITCH_WIDTH, debugAt, drawDebug, drawFrame, drawPitch, interpolate } from './draw'
 import type { Snapshot } from './draw'
 import type { LiveMatch } from './useLiveMatch'
 
 interface Props {
   match: LiveMatch
   showNames: boolean
+  debug?: boolean // draw the engine's intentions on top (?debug=1)
   selected: number | null
   onSelect: (index: number | null) => void
 }
@@ -19,18 +20,20 @@ interface Props {
 const PAD = 16
 const HIGHLIGHT_RATE = 18 // match seconds per real second while replaying a highlight
 
-export default function PitchView({ match, showNames, selected, onSelect }: Props) {
+export default function PitchView({ match, showNames, debug = false, selected, onSelect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const scaleRef = useRef(1)
   const snapRef = useRef<Snapshot | null>(null)
   const namesRef = useRef(showNames)
   const selectedRef = useRef(selected)
+  const debugRef = useRef(debug)
 
   useEffect(() => {
     namesRef.current = showNames
     selectedRef.current = selected
-  }, [showNames, selected])
+    debugRef.current = debug
+  }, [showNames, selected, debug])
 
   useEffect(() => {
     let raf = 0
@@ -70,6 +73,10 @@ export default function PitchView({ match, showNames, selected, onSelect }: Prop
           if (k > 60) match.buffer.current = frames.slice(k - 20) // keep a little history
           drawPitch(ctx, scale, PAD)
           drawFrame(ctx, scale, PAD, snap, state.lineup, namesRef.current, selectedRef.current)
+          if (debugRef.current) {
+            const dbg = debugAt(match.debugBuffer.current, pt)
+            if (dbg) drawDebug(ctx, scale, PAD, snap, dbg, state.lineup)
+          }
         } else if (ctx) {
           drawPitch(ctx, scale, PAD)
         }

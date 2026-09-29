@@ -7,12 +7,13 @@ import type { MutableRefObject } from 'react'
 
 import { toSnapshot } from './draw'
 import type { Snapshot } from './draw'
-import type { LiveState } from './protocol'
+import type { DebugSnapshot, LiveState } from './protocol'
 
 export interface LiveMatch {
   live: LiveState | null
   liveRef: MutableRefObject<LiveState | null>
   buffer: MutableRefObject<Snapshot[]>
+  debugBuffer: MutableRefObject<DebugSnapshot[]> // only while the debug overlay is on
   playhead: MutableRefObject<number | null>
   error: string | null // the match can't be shown
   notice: string | null // a command was refused
@@ -58,6 +59,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
   const wsRef = useRef<WebSocket | null>(null)
   const liveRef = useRef<LiveState | null>(null)
   const buffer = useRef<Snapshot[]>([])
+  const debugBuffer = useRef<DebugSnapshot[]>([])
   const playhead = useRef<number | null>(null)
   const nextId = useRef(1)
   const [live, setLive] = useState<LiveState | null>(null)
@@ -112,6 +114,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
       if (msg.type === 'init') {
         const state = fromInit(msg)
         buffer.current = (msg.frames as number[][]).map(toSnapshot)
+        debugBuffer.current = []
         playhead.current = buffer.current.length ? buffer.current[buffer.current.length - 1].t : null
         commit(state)
         return
@@ -144,6 +147,13 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
       if (msg.lineup_stamina) {
         next.lineup = next.lineup.map((p) => ({ ...p, stamina: msg.lineup_stamina[p.index] }))
       }
+      if (msg.debug) {
+        // Updates keep coming while paused: keep a snapshot only when the match has moved on.
+        const snapshot = msg.debug as DebugSnapshot
+        const newest = debugBuffer.current[debugBuffer.current.length - 1]
+        if (!newest || snapshot.t > newest.t) debugBuffer.current.push(snapshot)
+        if (debugBuffer.current.length > 400) debugBuffer.current.splice(0, debugBuffer.current.length - 400)
+      }
       const frames = (msg.frames as number[][]).map(toSnapshot)
       if (frames.length) {
         const last = buffer.current[buffer.current.length - 1]
@@ -151,6 +161,8 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         if (msg.highlight || (last && fresh.length && fresh[0].t - last.t > 3)) {
           buffer.current = fresh // a highlight or a jump: play on from it
           playhead.current = fresh.length ? fresh[0].t : playhead.current
+          const from = fresh.length ? fresh[0].t : Infinity
+          debugBuffer.current = debugBuffer.current.filter((d) => d.t >= from)
         } else {
           buffer.current.push(...fresh)
         }
@@ -161,5 +173,5 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
     return () => ws.close()
   }, [fixtureId, queryClient])
 
-  return { live, liveRef, buffer, playhead, error, notice, ended, send }
+  return { live, liveRef, buffer, debugBuffer, playhead, error, notice, ended, send }
 }

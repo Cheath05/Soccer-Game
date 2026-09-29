@@ -25,6 +25,9 @@ control:
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)
+intercept_scale: 1.0         # how readily an opponent in a pass's path cuts it out. It scales
+                             # both the physics and the passer's reading of the lane, so his
+                             # estimate stays honest. 1.0 is the original model
 target_area: 3.0             # m around a pass's target. An opponent who takes the ball while
                              # it's still on course for this area intercepts it; one it comes to
                              # (overhit or off target) recovers it. Stats and commentary only.

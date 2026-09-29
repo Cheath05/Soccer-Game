@@ -248,7 +248,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     risk = np.where(valid, _sigmoid((t_ball - t_opp) * 4.0), 0.0)
     landing = along > length[:, None] - 4.0
     risk = np.where(lofted[:, None] & ~landing, risk * 0.25, risk)
-    p_lane = np.prod(1 - 0.82 * risk, axis=1)
+    p_lane = np.prod(1 - 0.82 * eng.defs.passing.intercept_scale * risk, axis=1)
     marker = np.linalg.norm(target[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1) \
         if len(opp_pts) else np.full(len(target), 20.0)
     touch = np.array([eng.a(j, "first_touch") for j in receivers])
@@ -460,6 +460,7 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
                 else:
                     p = (0.18 + 0.4 * eng.a(c, "interceptions") / 100
                          + 0.1 * eng.a(c, "anticipation") / 100) * closeness
+                    p *= eng.defs.passing.intercept_scale
                     p *= float(np.clip(1.2 - speed / 25, 0.4, 1.0))
                     if info.lofted:
                         p *= 0.7

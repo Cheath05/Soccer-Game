@@ -79,7 +79,7 @@ In this order. Each sub-step ends as `progress.md` says (reviewer, lint and test
 2. **Step 1.4.** Record the golden values if 1.3 changed costs; commit and push; restart the :8000 game (`run-footsim` skill).
 3. **Step 2.3,** now ahead of fitting 2.1, because home advantage depends on the passing physics.
    - Baseline: `footsim calibrate-engine --division ENG4 --n 200 --seed 21` and `--division ENG1 --n 200 --seed 21`, from the measurement worktree.
-   - Lower `intercept_scale` (the cloud began at 0.35; its results, if any, are in `progress.md` and `docs/calibration/`) until interceptions land in 14–26.
+   - Lower `intercept_scale` until interceptions land in 14–26. The cloud measured 0.35 on synthetic sides: interceptions 68→29, high regains 57→36, throw-ins 19→26, ball in play 73→69 min, fast-break shots up; but goals 2.43→2.14 and offsides 19→39 (see `docs/calibration/20260929T202538-step2.3-intercept0.35-synthetic-n200.md`). Start at about 0.3 and watch offsides.
    - Then raise pass execution error (`passing.yaml` `execution`, mainly `per_metre` and `length_*`, so long balls miss more than short ones) until pass accuracy and throw-ins land.
    - Watch `high_regains`, `ball_in_play_min`, `goals` and `shots`. Every decision needs 200 paired fixtures on the same seed.
 4. **Step 2.1, fit home advantage.**

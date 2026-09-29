@@ -537,7 +537,7 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
             how = "pass"
         elif passer_team != team:
             won_at, _ = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
-            if cut_out(eng, info):
+            if info.kind != "clearance" and cut_out(eng, info):  # a clearance isn't a pass
                 eng.lines[eng.players[c].player_id].interceptions += 1
                 eng.emit("pass_result", passer_team, info.passer, result="intercepted",
                          kind=info.kind, by=c, by_xa=round(won_at, 1))

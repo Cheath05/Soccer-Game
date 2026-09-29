@@ -18,6 +18,7 @@ Event kinds and their data:
   save           how (catch|tip|parry), teleported
   block          how (cleared|corner|loose)
   goal           own_goal, penalty, assist
+  instruction    key, value, by (user|manager)
   offside, sub, injury, period
 Positions (x, y) are pitch coordinates in metres; ``team`` is 0 (home) or 1 (away).
 """

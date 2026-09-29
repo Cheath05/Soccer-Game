@@ -36,6 +36,7 @@ from footsim.world.context import AI_FORMATIONS, World, get_world
 
 MATCH_DAY = date(2026, 8, 22)  # ages and availability are taken on this day
 TARGETS = config_dir() / "calibration" / "match_targets.yaml"
+BOOTSTRAP_REPS = 200  # resamples behind each ±95% interval in a report
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,7 @@ class MatchTask:
     arm: Arm = BASELINE
     home_quality: float | None = None  # synthetic teams only
     away_quality: float | None = None
+    managers: tuple[bool, bool] = (True, True)  # which sides have an in-match AI manager
 
 
 def parse_arm(spec: str) -> Arm:
@@ -123,7 +125,7 @@ def play_task(task: MatchTask) -> dict[str, Any]:
     target = home if focus_home else away
     target.instructions.update(task.arm.instructions)
     engine = MatchEngine(_WORLD.defs, home, away, derive_rng(task.seed, "calibrate", task.index),
-                         record=False)
+                         record=False, ai_manager=task.managers)
     engine.run()
     engine.report()
     summary = summarize(engine)
@@ -164,9 +166,13 @@ def division_clubs(world: Path, division: str) -> list[int]:
 
 def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | None,
                focus_club: int | None = None,
-               quality: tuple[float, float] = (62.0, 86.0)) -> list[MatchTask]:
+               quality: tuple[float, float] = (62.0, 86.0),
+               ai_manager: bool = True) -> list[MatchTask]:
     """``n`` fixtures, each played once per arm with the same seed. With ``clubs`` the teams
-    are real; otherwise synthetic with qualities drawn from ``quality``."""
+    are real; otherwise synthetic with qualities drawn from ``quality``.
+
+    In-match AI managers (``ai_manager``) run for every side, except that in an A/B run the
+    focus side keeps the arm's instructions all match, as the user's side does."""
     rng = np.random.default_rng(seed)
     tasks = []
     for k in range(n):
@@ -184,9 +190,12 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
             pair = (1000 + 2 * k, 1001 + 2 * k)
             low, high = quality
             qualities = (float(rng.uniform(low, high)), float(rng.uniform(low, high)))
+        managers = (ai_manager, ai_manager)
+        if len(arms) > 1:
+            managers = (False, ai_manager) if focus == 0 else (ai_manager, False)
         for arm in arms:
             tasks.append(MatchTask(k, seed, pair[0], pair[1], focus, arm,
-                                   qualities[0], qualities[1]))
+                                   qualities[0], qualities[1], managers))
     return tasks
 
 
@@ -208,46 +217,94 @@ def _fmt(value: float) -> str:
     return f"{value:.3f}" if abs(value) < 1 else f"{value:.2f}"
 
 
-def compare(agg: dict[str, float], targets: dict[str, dict[str, Any]]) -> list[tuple[str, ...]]:
+def compare(agg: dict[str, float], targets: dict[str, dict[str, Any]],
+            ci: dict[str, float] | None = None) -> list[tuple[str, ...]]:
     rows: list[tuple[str, ...]] = []
     for metric, value in agg.items():
+        spread = f"±{_fmt(ci[metric])}" if ci and metric in ci else ""
         target = targets.get(metric)
         if target is None:
-            rows.append((metric, _fmt(value), "", "", ""))
+            rows.append((metric, _fmt(value), spread, "", "", ""))
             continue
         low, high = target["range"]
         ok = not math.isnan(value) and low - 1e-9 <= value <= high + 1e-9
-        rows.append((metric, _fmt(value), f"{_fmt(low)}–{_fmt(high)}", "ok" if ok else "OFF",
-                     str(target.get("ref", ""))))
+        rows.append((metric, _fmt(value), spread, f"{_fmt(low)}–{_fmt(high)}",
+                     "ok" if ok else "OFF", str(target.get("ref", ""))))
     return rows
 
 
-def focus_view(results: Sequence[dict[str, Any]]) -> dict[str, float]:
-    """A/B view from the focus side: its results, what it created and what it conceded."""
-    def mean(values: list[float]) -> float:
-        clean = [v for v in values if not math.isnan(v)]
-        return float(np.mean(clean)) if clean else float("nan")
+def focus_values(r: dict[str, Any]) -> dict[str, float]:
+    """One match seen from the focus side: its result, what it created and what it conceded."""
+    f, o = r["focus"], 1 - r["focus"]
+    mine, theirs = r["teams"][f], r["teams"][o]
+    return {
+        "win": float(r["score"][f] > r["score"][o]),
+        "draw": float(r["score"][f] == r["score"][o]),
+        "goals_for": float(r["score"][f]), "goals_against": float(r["score"][o]),
+        "goal_diff": float(r["score"][f] - r["score"][o]),
+        "xg_for": mine["xg"], "xg_against": theirs["xg"],
+        "shots_for": float(mine["shots"]), "shots_against": float(theirs["shots"]),
+        "possession": mine["possession"], "ppda": mine["ppda"],
+        "high_regains": float(mine["high_regains"]),
+        "fast_break_shots_against": float(theirs["fast_break_shots"]),
+        "pass_accuracy": mine["passes_completed"] / max(1, mine["passes"]),
+        "distance_km": mine["distance_km"], "end_stamina": mine["end_stamina"],
+        "fouls": float(mine["fouls"]), "reds": float(mine["reds"]),
+    }
 
+
+def focus_view(results: Sequence[dict[str, Any]]) -> dict[str, float]:
+    """A/B view from the focus side, averaged over matches."""
     rows: dict[str, list[float]] = {}
     for r in results:
-        f, o = r["focus"], 1 - r["focus"]
-        mine, theirs = r["teams"][f], r["teams"][o]
-        values = {
-            "win": float(r["score"][f] > r["score"][o]),
-            "draw": float(r["score"][f] == r["score"][o]),
-            "goals_for": float(r["score"][f]), "goals_against": float(r["score"][o]),
-            "xg_for": mine["xg"], "xg_against": theirs["xg"],
-            "shots_for": float(mine["shots"]), "shots_against": float(theirs["shots"]),
-            "possession": mine["possession"], "ppda": mine["ppda"],
-            "high_regains": float(mine["high_regains"]),
-            "fast_break_shots_against": float(theirs["fast_break_shots"]),
-            "pass_accuracy": mine["passes_completed"] / max(1, mine["passes"]),
-            "distance_km": mine["distance_km"], "end_stamina": mine["end_stamina"],
-            "fouls": float(mine["fouls"]), "reds": float(mine["reds"]),
-        }
-        for key, value in values.items():
+        for key, value in focus_values(r).items():
             rows.setdefault(key, []).append(value)
-    return {key: mean(values) for key, values in rows.items()}
+    return {key: _nanmean(values) for key, values in rows.items()}
+
+
+def _nanmean(values: Sequence[float]) -> float:
+    clean = [v for v in values if not math.isnan(v)]
+    return float(np.mean(clean)) if clean else float("nan")
+
+
+def paired_deltas(results: Sequence[dict[str, Any]], base_arm: str,
+                  arm: str) -> dict[str, tuple[float, float]]:
+    """Mean difference (arm minus baseline) in each focus-side metric over the fixtures both
+    arms played, with the half-width of its 95% confidence interval. The arms replay the same
+    fixtures and seeds, so pairing removes most of the match-to-match noise."""
+    base = {r["index"]: r for r in results if r["arm"] == base_arm}
+    other = {r["index"]: r for r in results if r["arm"] == arm}
+    diffs: dict[str, list[float]] = {}
+    for index in sorted(base.keys() & other.keys()):
+        before, after = focus_values(base[index]), focus_values(other[index])
+        for key, value in after.items():
+            if not (math.isnan(value) or math.isnan(before[key])):
+                diffs.setdefault(key, []).append(value - before[key])
+    out: dict[str, tuple[float, float]] = {}
+    for key, values in diffs.items():
+        d = np.asarray(values)
+        half = 1.96 * float(d.std(ddof=1)) / math.sqrt(len(d)) if len(d) > 1 else float("nan")
+        out[key] = (float(d.mean()), half)
+    return out
+
+
+def bootstrap_ci(matches: Sequence[dict[str, Any]], reps: int = BOOTSTRAP_REPS,
+                 seed: int = 0) -> dict[str, float]:
+    """Half-width of the 95% interval of every aggregate metric, from resampling matches
+    (which handles pooled rates such as pass accuracy and conversion correctly)."""
+    n = len(matches)
+    if n < 2:
+        return {}
+    rng = np.random.default_rng(seed)
+    samples: dict[str, list[float]] = {}
+    for _ in range(reps):
+        picked = rng.integers(0, n, n)
+        for key, value in aggregate([matches[i] for i in picked]).items():
+            if not math.isnan(value):
+                samples.setdefault(key, []).append(value)
+    return {key: float(np.percentile(v, 97.5) - np.percentile(v, 2.5)) / 2
+            for key, v in samples.items()
+            if key not in ("matches", "goals_sd") and len(v) >= reps // 2}
 
 
 def write_report(out: Path, label: str, division: str, synthetic: bool,
@@ -261,39 +318,62 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
              f"{elapsed:.0f} s, {stamp} UTC.", ""]
     baseline = [r for r in results if r["arm"] == arms[0].name]
     agg = aggregate(baseline)
+    ci = bootstrap_ci(baseline)
     lines += ["## Baseline vs real football", "",
-              "| Metric | Engine | Target | | Reference |", "|---|---|---|---|---|"]
-    lines += [f"| {' | '.join(row)} |" for row in compare(agg, targets)]
+              f"±: half-width of the 95% interval ({BOOTSTRAP_REPS} bootstrap resamples of the "
+              "matches).", "",
+              "| Metric | Engine | ±95% | Target | | Reference |", "|---|---|---|---|---|---|"]
+    lines += [f"| {' | '.join(row)} |" for row in compare(agg, targets, ci)]
+    deltas: dict[str, dict[str, tuple[float, float]]] = {}
     if len(arms) > 1:
+        base_name = arms[0].name
         views = {arm.name: focus_view([r for r in results if r["arm"] == arm.name])
                  for arm in arms}
-        keys = list(next(iter(views.values())))
+        deltas = {arm.name: paired_deltas(results, base_name, arm.name) for arm in arms[1:]}
+        keys = list(views[base_name])
         lines += ["", "## A/B arms (focus side)", "",
+                  f"Each arm replays the same fixtures and seeds as {base_name}. Cells show the "
+                  f"arm's mean, then its paired difference from {base_name} with the 95% "
+                  "interval; * marks a difference whose interval excludes zero.", "",
                   "| Metric | " + " | ".join(views) + " |",
                   "|---|" + "---|" * len(views)]
         for key in keys:
-            lines.append(f"| {key} | " + " | ".join(_fmt(v[key]) for v in views.values()) + " |")
+            cells = [_fmt(views[base_name][key])]
+            for arm in arms[1:]:
+                mean, half = deltas[arm.name].get(key, (float("nan"), float("nan")))
+                star = "*" if not math.isnan(half) and abs(mean) > half else ""
+                cells.append(f"{_fmt(views[arm.name][key])} ({mean:+.3g} ±{half:.2g}){star}")
+            lines.append(f"| {key} | " + " | ".join(cells) + " |")
     path = out / f"{stamp}-{label}.md"
     path.write_text("\n".join(lines) + "\n", "utf-8")
     (out / f"{stamp}-{label}.json").write_text(json.dumps(
         {"label": label, "division": division, "synthetic": synthetic, "aggregate": agg,
+         "ci95": ci,
          "arms": {arm.name: aggregate([r for r in results if r["arm"] == arm.name])
-                  for arm in arms}},
+                  for arm in arms},
+         "focus": {arm.name: focus_view([r for r in results if r["arm"] == arm.name])
+                   for arm in arms} if len(arms) > 1 else {},
+         "paired_deltas": {arm: {k: {"mean": m, "ci95": h} for k, (m, h) in d.items()}
+                           for arm, d in deltas.items()}},
         indent=1, default=float), "utf-8")
     return path
 
 
 def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path | None,
               synthetic: bool, workers: int | None = None, focus_club: int | None = None,
-              out: Path | None = None) -> Path:
+              out: Path | None = None, ai_manager: bool = True) -> Path:
+    if len({arm.name for arm in arms}) < len(arms):
+        raise ValueError("A/B arm names must be unique")
     workers = workers or max(1, (os.cpu_count() or 2) - 1)
     clubs = None if synthetic or world is None else division_clubs(world, division)
-    tasks = make_tasks(n, seed, arms, clubs, focus_club)
+    tasks = make_tasks(n, seed, arms, clubs, focus_club, ai_manager=ai_manager)
     started = time.perf_counter()
     results = run_tasks(tasks, None if synthetic else world, workers)
     elapsed = time.perf_counter() - started
     label = f"{'synthetic' if synthetic else division}-n{n}"
     if len(arms) > 1:
         label += "-ab"
+    if not ai_manager:
+        label += "-nomanager"
     return write_report(out or REPO_ROOT / "reports" / "engine", label, division, synthetic,
                         results, arms, elapsed)

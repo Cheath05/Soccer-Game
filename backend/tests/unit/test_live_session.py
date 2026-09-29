@@ -100,3 +100,19 @@ def test_speed_changes_and_half_time_changes_replay_exactly(world: World) -> Non
     assert replayed.pos.tobytes() == watched.engine.pos.tobytes()
     assert [(s.shots, s.passes, s.fouls) for s in replayed.stats] == \
         [(s.shots, s.passes, s.fouls) for s in watched.engine.stats]
+
+
+def test_the_assistant_can_take_over_the_users_tactics(world: World) -> None:
+    home = synthetic_sheet(world.defs, world.picker, 1, 73)
+    away = synthetic_sheet(world.defs, world.picker, 2, 71, formation="4-4-2")
+    engine = MatchEngine(world.defs, home, away, derive_rng(21, "live"), record=False,
+                         ai_manager=(False, True))  # as in a career: the user manages his side
+    session = LiveSession(engine, world, world.defs.presentation, user_team=0)
+    assert session.init_message(("Home", "Away"))["ai_manager"] == [False, True]
+    assert session.apply({"type": "assistant", "value": True}, 0.0) is None
+    session.apply({"type": "resume"}, 0.0)
+    pump = session.pump(0.5)
+    assert session.update_message(pump, 0.5)["ai_manager"] == [True, True]
+    assert session.apply({"type": "assistant", "value": False}, 1.0) is None
+    assert engine.ai_manager == [False, True]
+    assert [cmd["type"] for _, cmd in session.log] == ["assistant", "assistant"]

@@ -27,6 +27,7 @@ from footsim.domain.attributes import ATTR_INDEX
 from footsim.match.engine import actions, behaviours, restarts
 from footsim.match.engine.clock import ClockState, MatchClock
 from footsim.match.engine.log import EngineEvent, Possession
+from footsim.match.engine.manager import ManagerAI
 from footsim.match.engine.pitch import (
     GOAL_HALF,
     GOAL_HEIGHT,
@@ -58,7 +59,8 @@ class MatchEngine:
     def __init__(self, defs: GameDefinitions, home: TeamSheet, away: TeamSheet,
                  rng: np.random.Generator, *, neutral: bool = False,
                  decider: Decider | None = None, record: bool = True,
-                 auto_subs: tuple[bool, bool] = (True, True)) -> None:
+                 auto_subs: tuple[bool, bool] = (True, True),
+                 ai_manager: tuple[bool, bool] = (True, True)) -> None:
         self.defs = defs
         self.rng = rng
         self.neutral = neutral
@@ -159,6 +161,10 @@ class MatchEngine:
         # Per-player figures the match report doesn't keep, shown while watching.
         self.player_fouls: dict[int, int] = {}
         self.player_xg: dict[int, float] = {}
+        # Touchline decisions for computer-controlled sides (off for the user's side unless
+        # he hands it to the assistant).
+        self.ai_manager = list(ai_manager)
+        self.managers = [ManagerAI(self, 0), ManagerAI(self, 1)]
 
         self._kickoff(team=0, teleport=True)
 
@@ -294,6 +300,10 @@ class MatchEngine:
                            f"{minutes} minute{'' if minutes == 1 else 's'} of added time")
         if clock.due_to_end() and (self._can_stop() or clock.overrun()):
             self._end_period()
+        if not self.finished and not self.at_break:
+            for team in (0, 1):
+                if self.ai_manager[team]:
+                    self.managers[team].tick(self)
         if self.t - self.last_possession_note >= 300 and not self.finished:
             self.last_possession_note = self.t
             total = sum(self.possession_ticks) or 1
@@ -639,12 +649,28 @@ class MatchEngine:
 
     # --- commands -----------------------------------------------------------------------
 
-    def set_instruction(self, team: int, key: str, value: str) -> None:
+    def set_instruction(self, team: int, key: str, value: str, *,
+                        by_manager: bool = False) -> None:
+        """Change one team instruction: the user's command, or the AI manager's decision
+        (which announces itself). A user's change also becomes the AI manager's plan."""
         options = self.defs.instructions.get(key)
         if options is None or value not in options.options:
             raise ValueError(f"invalid instruction {key}={value}")
         self.instructions[team][key] = value
-        self._announce("tactics", team, f"{key.title()} set to {value}")
+        self.emit("instruction", team, key=key, value=value,
+                  by="manager" if by_manager else "user")
+        if not by_manager:
+            self.managers[team].planned(key, value)
+            self._announce("tactics", team, f"{key.title()} set to {value}")
+
+    def set_ai_manager(self, team: int, on: bool) -> None:
+        """Hand ``team``'s touchline decisions to the AI manager, or take them back."""
+        if on and not self.ai_manager[team]:
+            self.managers[team].adopt(self)
+        self.ai_manager[team] = on
+
+    def announce_tactics(self, team: int, text: str) -> None:
+        self._announce("tactics", team, text)
 
     def set_formation(self, team: int, key: str) -> None:
         """Re-deploy the players on the pitch into a new shape, keeping everyone on."""

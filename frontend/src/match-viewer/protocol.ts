@@ -93,6 +93,7 @@ export interface LiveState {
   instructions: Record<string, string>[]
   instructionOptions: { key: string; label: string; options: string[] }[]
   autoSubs: boolean[]
+  aiManager: boolean[] // the AI manager adjusts that side's tactics during the match
   stats: Record<string, number[]>
   feed: FeedItem[]
   status: Status

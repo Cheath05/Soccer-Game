@@ -183,6 +183,22 @@ class TransitionDef(DefModel):
     counter_window: float = Field(gt=0)
 
 
+class ManagerDef(DefModel):
+    """How a computer-controlled side's manager reads the match (match/engine/manager.py)."""
+
+    review_every: float = Field(gt=0)
+    sample_every: float = Field(gt=0)
+    memory: float = Field(gt=0)
+    min_samples: int = Field(ge=1)
+    late: int = Field(ge=1)
+    very_late: int = Field(ge=1)
+    protect_from: int = Field(ge=1)
+    high_line: float = Field(gt=0)
+    press_zone: float = Field(gt=0)
+    press_radius: float = Field(gt=0)
+    high_press: float = Field(gt=0)
+
+
 class TacticsDef(DefModel):
     """What each team instruction does in the agent engine (data/config/match/tactics.yaml).
     Keys are the instruction levels in match/instructions/team.yaml."""
@@ -194,6 +210,7 @@ class TacticsDef(DefModel):
     tempo: dict[str, TempoEffect]
     passing: dict[str, PassingEffect]
     transition: TransitionDef
+    manager: ManagerDef
 
 
 class InstructionEffect(DefModel):

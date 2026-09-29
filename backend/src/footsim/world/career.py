@@ -97,8 +97,12 @@ def agent_match(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], 
     home = team_sheet(conn, world, fx.home_club_id, day)
     away = team_sheet(conn, world, fx.away_club_id, day)
     rng = derive_rng(meta.seed, "live-match", fx.id)
+    # Computer-controlled sides adjust their tactics during the match; the user's side is
+    # the user's to manage (he can hand it to the assistant while watching).
+    ai_manager = (fx.home_club_id != meta.user_club_id, fx.away_club_id != meta.user_club_id)
     return MatchEngine(world.defs, home, away, rng, neutral=bool(fx.neutral),
-                       decider=decider_for(conn, world, fx), record=record)
+                       decider=decider_for(conn, world, fx), record=record,
+                       ai_manager=ai_manager)
 
 
 def play_user_instant(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],

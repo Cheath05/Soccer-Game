@@ -23,7 +23,8 @@ from footsim.ratings.overall import familiarity_factor
 from footsim.world.context import World
 
 HIGHLIGHT_TYPES = frozenset({"goal", "shot", "penalty", "red"})
-MATCH_COMMANDS = frozenset({"formation", "instruction", "sub", "auto_subs", "start_period"})
+MATCH_COMMANDS = frozenset({"formation", "instruction", "sub", "auto_subs", "assistant",
+                            "start_period"})
 MAX_TICKS_PER_PUMP = 3000  # never hold the event loop for long, even after falling behind
 SKIP_TICKS = 600  # highlights mode: most match time skipped in one go (60 s)
 STATUS_EVERY = 1.0  # real seconds between player status updates
@@ -43,6 +44,8 @@ def apply_command(engine: MatchEngine, team: int, cmd: Command) -> None:
         engine.substitute(team, int(cmd["out"]), int(cmd["in"]))
     elif kind == "auto_subs":
         engine.auto_subs[team] = bool(cmd.get("value"))
+    elif kind == "assistant":
+        engine.set_ai_manager(team, bool(cmd.get("value")))
     elif kind == "start_period":
         engine.start_next_period()
     else:
@@ -302,6 +305,7 @@ class LiveSession:
             "instruction_options": [{"key": d.key, "label": d.label, "options": d.options}
                                     for d in e.defs.instructions.values()],
             "auto_subs": list(e.auto_subs),
+            "ai_manager": list(e.ai_manager),
             "stats": e.live_stats(),
             "feed": e.feed[-30:],
             "frames": list(e.frames)[-5:],
@@ -331,4 +335,5 @@ class LiveSession:
             message["status"] = self.status()
         message["instructions"] = [dict(e.instructions[0]), dict(e.instructions[1])]
         message["auto_subs"] = list(e.auto_subs)
+        message["ai_manager"] = list(e.ai_manager)
         return message

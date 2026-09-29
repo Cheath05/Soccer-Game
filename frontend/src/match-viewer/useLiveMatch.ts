@@ -46,6 +46,7 @@ function fromInit(msg: Message): LiveState {
     instructions: msg.instructions,
     instructionOptions: msg.instruction_options,
     autoSubs: msg.auto_subs,
+    aiManager: msg.ai_manager ?? [false, false], // older servers don't send it
     stats: msg.stats,
     feed: [...msg.feed].reverse(),
     status: msg.status,
@@ -139,6 +140,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
       if (msg.status) next.status = msg.status
       if (msg.instructions) next.instructions = msg.instructions
       if (msg.auto_subs) next.autoSubs = msg.auto_subs
+      if (msg.ai_manager) next.aiManager = msg.ai_manager
       if (msg.lineup_stamina) {
         next.lineup = next.lineup.map((p) => ({ ...p, stamina: msg.lineup_stamina[p.index] }))
       }

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Card, Group, ScrollArea, SegmentedControl, Select, Stack, Tabs, Text } from '@mantine/core'
+import { Alert, Box, Button, Card, Checkbox, Group, ScrollArea, SegmentedControl, Select, Stack, Tabs, Text } from '@mantine/core'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -114,6 +114,12 @@ export default function LivePage() {
             <Tabs.Panel value="tactics" pt="xs">
               {live && (
                 <Stack gap="xs">
+                  <Checkbox
+                    size="xs"
+                    label="Assistant adjusts tactics to the score and the opponent"
+                    checked={live.aiManager?.[user] ?? false}
+                    onChange={(e) => send({ type: 'assistant', value: e.currentTarget.checked })}
+                  />
                   <Select
                     label="Formation"
                     data={live.formations.map((f) => ({ value: f.key, label: f.name }))}
@@ -136,7 +142,8 @@ export default function LivePage() {
                     </div>
                   ))}
                   <Text size="xs" c="dimmed">
-                    Changes apply straight away: watch the shape change on the pitch.
+                    Changes apply straight away: watch the shape change on the pitch. With the assistant on, your
+                    choices become its plan and it adjusts from there.
                   </Text>
                 </Stack>
               )}

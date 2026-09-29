@@ -10,7 +10,8 @@ Protocol v2 (JSON).
   Server -> client: init | frames | ack | end | error.
   Client -> server: pause | resume | speed {value} | mode {value: full|highlights} |
     formation {key} | instruction {key, value} | sub {out, in} | auto_subs {value} |
-    start_period | finish. Any command may carry a cmd_id, echoed back in its ack.
+    assistant {value} (the AI manager adjusts the user's tactics) | start_period | finish.
+    Any command may carry a cmd_id, echoed back in its ack.
 """
 
 import asyncio

@@ -38,6 +38,21 @@ await shot('12-live-half-time')
 await page.getByRole('tab', { name: 'Tactics' }).click()
 await page.getByRole('combobox', { name: 'Formation' }).click()
 await page.getByRole('option', { name: /4-2-3-1/ }).click()
+// Hand the tactics to the assistant. The box shows the server's state, so wait for it to
+// confirm rather than expecting it to flip on the click itself.
+const assistant = page.getByRole('checkbox', { name: /Assistant adjusts tactics/ })
+const settles = async (want) => {
+  for (let i = 0; i < 30; i++) {
+    if ((await assistant.isChecked()) === want) return
+    await page.waitForTimeout(100)
+  }
+  throw new Error(`assistant toggle did not become ${want ? 'on' : 'off'}`)
+}
+await assistant.click()
+await settles(true)
+await shot('13a-live-tactics-assistant')
+await assistant.click()
+await settles(false)
 await page.getByRole('tab', { name: 'Subs' }).click()
 await page.waitForTimeout(500)
 await shot('13-live-subs-at-half-time')

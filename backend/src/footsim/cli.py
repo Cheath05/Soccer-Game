@@ -139,6 +139,19 @@ def _sim_season(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fit_synthetic(args: argparse.Namespace) -> int:
+    from footsim.calibration.synthetic import fit_synthetic_attributes, write_fits
+    from footsim.world.context import get_world
+
+    if not args.world.exists():
+        print(f"No world at {args.world}: build one with `just build-world`.")
+        return 1
+    fits, counts = fit_synthetic_attributes(args.world, get_world())
+    write_fits(args.out, fits, counts)
+    print(f"Fitted {sum(counts.values())} players by position group; wrote {args.out}")
+    return 0
+
+
 def _calibrate_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.engine_batch import BASELINE, calibrate, parse_arm
 
@@ -189,6 +202,13 @@ def main(argv: list[str] | None = None) -> int:
     sim.add_argument("--seasons", type=int, default=1)
     sim.add_argument("--seed", type=int, default=2026)
     sim.set_defaults(func=_sim_season)
+
+    syn = sub.add_parser("fit-synthetic",
+                         help="fit synthetic players' attributes to a built world's players")
+    syn.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    syn.add_argument("--out", type=Path,
+                     default=config_dir() / "calibration" / "synthetic_attributes.yaml")
+    syn.set_defaults(func=_fit_synthetic)
 
     eng = sub.add_parser("calibrate-engine",
                          help="play a batch of agent-engine matches and compare with real football")

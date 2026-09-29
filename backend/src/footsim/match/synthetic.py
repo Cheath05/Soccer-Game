@@ -1,17 +1,21 @@
 """Synthetic squads for tests and engine calibration.
 
-Players are built from the position groups' attribute weightings: the attributes that matter
-for a position sit around the requested quality, the rest lower, with a little noise. That
-makes believable teams of any strength without the EA ratings file, so the match engine can
-be tested and calibrated anywhere.
+Each attribute is drawn around the value real players of that position have at the requested
+overall, with their spread (data/config/calibration/synthetic_attributes.yaml, fitted from the
+real players of a built world by `footsim fit-synthetic`). A centre-back's aggression sits near
+his overall, a striker's tackling far below it. That gives teams that play like real ones at any
+strength without the EA ratings file, so the engine can be tested and calibrated anywhere.
 """
 
-import numpy as np
+from functools import cache
 
+import numpy as np
+import yaml
+
+from footsim.core.paths import config_dir
 from footsim.defs.formations import FormationDef
 from footsim.defs.loader import GameDefinitions
-from footsim.defs.positions import PositionGroup
-from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES, AttrGroup
+from footsim.domain.attributes import ATTRIBUTES
 from footsim.match.teams import LineupPicker, SquadPlayer, TeamSheet
 
 # A 24-player squad: primary position and head count.
@@ -23,31 +27,20 @@ _HEIGHT = {"GK": 190, "CB": 188, "LB": 177, "RB": 177, "DM": 182, "CM": 179, "AM
            "LW": 175, "RW": 175, "ST": 184}
 
 
+@cache
+def _fits() -> dict[str, dict[str, list[float]]]:
+    path = config_dir() / "calibration" / "synthetic_attributes.yaml"
+    fits: dict[str, dict[str, list[float]]] = yaml.safe_load(path.read_text("utf-8"))
+    return fits
+
+
 def synthetic_player(defs: GameDefinitions, player_id: int, position: str, quality: float,
                      rng: np.random.Generator) -> SquadPlayer:
-    group = defs.positions[position].group
-    weights = defs.group_weights[group]
-    top = max(weights.values())
-    level = quality - 7  # the overall scaling lifts weighted attributes by about this much
+    fit = _fits()[defs.positions[position].group.value]
     values = np.empty(len(ATTRIBUTES))
     for i, name in enumerate(ATTRIBUTES):
-        kind = ATTRIBUTE_GROUP[name]
-        if group is PositionGroup.GK:
-            if kind is AttrGroup.GOALKEEPING:
-                base = level + 2
-            elif name in weights:
-                base = level - 5
-            elif kind in (AttrGroup.TECHNICAL, AttrGroup.DEFENSIVE):
-                base = level - 30
-            else:
-                base = level - 15
-        elif kind is AttrGroup.GOALKEEPING:
-            base = 12
-        elif name in weights:
-            base = level + 2 + 8 * weights[name] / top
-        else:
-            base = level - 10
-        values[i] = base + rng.normal(0, 4)
+        a, b, spread = fit[name]
+        values[i] = a + b * quality + rng.normal(0, spread)
     attrs = np.clip(np.round(values), 1, 99)
     familiarity = {position: 20}
     for adj in defs.adjacency:

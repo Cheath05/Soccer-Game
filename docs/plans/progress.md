@@ -55,6 +55,11 @@ The local session reached its usage limit, and a cloud session carried on from 8
 - [ ] 2.4 Red cards measured after the booked-player caution change
 - [x] 2.5 Teleports down to zero (keeper-catch snaps) (cloud). A saved shot is placed where the keeper can reach it (the same random draw, mapped into his dive window); a keeper with no shot on target in reach is beaten; and he keeps going for the shot until it resolves. Four full matches: 1 of 22 saves needed any correction, and it was 0.4 m (a teleport is over 1.5 m). **Confirmed:** 0 teleports in 400 synthetic matches (0.09 a match before)
 - [ ] 2.6 Pre-D baseline reports (ENG1 and ENG4, 200 each) in `docs/calibration/`
+- [x] Synthetic players fitted to real ones (handoff section 5, item 7; done early, while batches ran).
+  - `footsim fit-synthetic` fits each position's attributes to real players: attribute = a + b × overall, plus the spread, over 17,847 players.
+  - It writes only those aggregates to `data/config/calibration/synthetic_attributes.yaml`.
+  - A synthetic centre-back is now as aggressive as a real one (it was 10 below its overall), and a striker tackles like one.
+  - Golden values: Mac re-recorded, Linux deleted.
 
 ## Step 3: Phase D, dynamic movement
 

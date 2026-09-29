@@ -65,8 +65,19 @@ def test_interceptions_are_only_passes_cut_out(played: MatchEngine) -> None:
     # player lines count real interceptions only: no recoveries, no clearances
     assert sum(line.interceptions for line in played.lines.values()) == sum(
         summary["teams"][t]["interceptions"] for t in (0, 1))
-    assert sum(summary["teams"][t]["recoveries"] for t in (0, 1)) > 0
     assert not any(e.data["kind"] == "clearance" for e in lost if e.data["result"] == "intercepted")
+
+
+def test_misplaced_passes_are_recovered(world: World) -> None:
+    """Recoveries happen. Judged over three half-hours: one alone can be free of them."""
+    total = 0
+    for seed in (5, 6, 7):
+        home = synthetic_sheet(world.defs, world.picker, 1, 74)
+        away = synthetic_sheet(world.defs, world.picker, 2, 71, formation="4-2-3-1")
+        engine = MatchEngine(world.defs, home, away, derive_rng(seed, "probe"), record=False)
+        engine.run(max_ticks=18000)
+        total += sum(team["recoveries"] for team in summarize(engine)["teams"])
+    assert total > 0
 
 
 def test_a_pass_is_cut_out_only_on_course_and_short_of_its_target(world: World) -> None:

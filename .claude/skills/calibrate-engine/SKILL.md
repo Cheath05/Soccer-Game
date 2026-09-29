@@ -24,6 +24,15 @@ uv run --frozen footsim calibrate-engine ... --out /Users/alexbenton/Developer/S
 ```
 
 - Every report is then tied to an exact commit; put the commit hash in the report's label or in your summary.
+- **Name the commit or the branch, never `HEAD`.** Inside the worktree, `HEAD` means the worktree's own head. `git -C .worktrees/measure checkout -q --detach phase-1-match-believability` pins it to the branch.
+- **Parameter sweeps without a commit per value:** copy the config and change the one value, then point the batch at the copy. The code stays pinned; only the named value differs.
+  ```bash
+  cp -R .worktrees/measure/data/config /private/tmp/claude-502/cfg-VARIANT
+  # edit one value in /private/tmp/claude-502/cfg-VARIANT/match/<file>.yaml
+  FOOTSIM_CONFIG_DIR=/private/tmp/claude-502/cfg-VARIANT uv run --frozen footsim calibrate-engine ... \
+    --out /Users/alexbenton/Developer/Soccer-Game/reports/engine/<step>/<variant>
+  ```
+  Keep `--seed`, `--n` and the division the same across variants so they pair up, and commit only the value you settle on.
 - If the worktree is missing, recreate it:
   ```bash
   git worktree add --detach .worktrees/measure HEAD

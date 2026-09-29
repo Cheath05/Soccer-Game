@@ -67,21 +67,22 @@ Later cloud commits, if any, are listed at the top of `progress.md`.
 
 In this order. Each sub-step ends as `progress.md` says (reviewer, lint and tests, golden values, tick, commit and push).
 
-1. **Step 1.3, C1 (what the last local session was doing when it hit the limit).**
+1. **Step 1.3, C1: read where it stands (what the last local session was doing when it hit the limit). Don't tune yet.**
    - **First look for reports you already have.** The last local session ran the C1 A/B batches on Grimsby while it built the club pages. Check `reports/engine/` for `ENG4-n200-ab` reports from 29 Sep, before running anything new.
    - Then read the cloud's C1 report and verdict, `docs/calibration/20260929T195539-synthetic-n200-q58-66-equal-ab.md`. **It fails section S:** aggressive +1.07 goal difference; direct alone +0.91; fast, press and high line too costly. Much of direct play's edge comes from the opponent's leaky build-up, so do Step 2.3 before tuning any tactic costs.
    - Its setup: equal synthetic sides (quality 58–66) at 94d5de3, with the aggressive arm plus the six single-instruction arms, managers on. The manager-off comparison was dropped to save time.
    - Judge against section S:
      - one instruction moves goal difference by at most ±0.35 and win rate by at most 10 points;
      - all-aggressive gains at most +0.6 goal difference and +15 points of win rate, concedes at least 10% more xG, and ends at least 5 points lower in stamina.
-   - A setting over the line gets extra costs in `tactics.yaml`, `duels.yaml` or `passing.yaml`, never less ability.
-   - The engine has changed since those runs (home advantage, saves). Before ticking 1.3, run the Grimsby A/B once at the current head (about 40 min). The command is in the `calibrate-engine` skill; run it from `.worktrees/measure` pinned to the head.
-2. **Step 1.4.** Record the golden values if 1.3 changed costs; commit and push; restart the :8000 game (`run-footsim` skill).
-3. **Step 2.3,** now ahead of fitting 2.1, because home advantage depends on the passing physics.
+2. **Step 2.3,** ahead of the C1 tuning and of fitting 2.1: both depend on the passing physics.
    - Baseline: `footsim calibrate-engine --division ENG4 --n 200 --seed 21` and `--division ENG1 --n 200 --seed 21`, from the measurement worktree.
    - Lower `intercept_scale` until interceptions land in 14–26. The cloud measured 0.35 on synthetic sides: interceptions 68→29, high regains 57→36, throw-ins 19→26, ball in play 73→69 min, fast-break shots up; but goals 2.43→2.14 and offsides 19→39 (see `docs/calibration/20260929T202538-step2.3-intercept0.35-synthetic-n200.md`). Start at about 0.3 and watch offsides.
    - Then raise pass execution error (`passing.yaml` `execution`, mainly `per_metre` and `length_*`, so long balls miss more than short ones) until pass accuracy and throw-ins land.
    - Watch `high_regains`, `ball_in_play_min`, `goals` and `shots`. Every decision needs 200 paired fixtures on the same seed.
+3. **Back to Steps 1.3 and 1.4, C1.**
+   - Run the Grimsby A/B at the new head (about 40 min). The command is in the `calibrate-engine` skill; run it from `.worktrees/measure` pinned to the head.
+   - A setting still over the line gets extra costs in `tactics.yaml`, `duels.yaml` or `passing.yaml`, never less ability.
+   - Then tick 1.3 and 1.4: golden values, commit and push, and restart the :8000 game (`run-footsim` skill).
 4. **Step 2.1, fit home advantage.**
    - `--division ENG4 --n 400 --seed 31` and ENG1 the same, real squads, no focus club.
    - Fit `home_advantage.yaml` to `home_win`, `draw`, `away_win`, `home_goal_diff` (about +0.3) and `away_card_gap` (0.1–0.4).

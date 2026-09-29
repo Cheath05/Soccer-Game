@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from footsim.defs.positions import PositionGroup
-from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH
+from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH, norm
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -74,7 +74,7 @@ def _kickoff(eng: "MatchEngine", team: int, targets: Array, outfield: list[int],
         centre = np.array([MID_X, MID_Y])
         for k in outfield:
             gap = targets[k] - centre
-            distance = float(np.linalg.norm(gap))
+            distance = float(norm(gap))
             if distance < KICK_DISTANCE + 0.5:
                 direction = gap / distance if distance > 1e-6 else np.array([-1.0, 0.0])
                 targets[k] = centre + direction * (KICK_DISTANCE + 0.5)
@@ -159,7 +159,7 @@ def _throw_in(eng: "MatchEngine", team: int, idx: np.ndarray, targets: Array,
         options = [(spot[0] + 10.0, spot[1] - toward * 4.0),    # up the line
                    (spot[0] - 9.0, spot[1] - toward * 5.0),     # back down the line
                    (spot[0] + 1.0, spot[1] - toward * 13.0)]    # infield
-        nearest = sorted(outfield, key=lambda k: float(np.linalg.norm(
+        nearest = sorted(outfield, key=lambda k: float(norm(
             eng.att_points(team, eng.pos[[int(idx[k])]])[0] - spot)))
         for k, target in zip(nearest, options, strict=False):
             targets[k] = target
@@ -169,7 +169,7 @@ def _throw_in(eng: "MatchEngine", team: int, idx: np.ndarray, targets: Array,
                   if eng.group[int(j)] is not PositionGroup.GK]
         rival_pts = eng.att_points(team, eng.pos[rivals]) if rivals else np.zeros((0, 2))
         close = sorted(rival_pts.tolist(), key=lambda p: float(np.hypot(*(np.array(p) - spot))))
-        nearest = sorted(outfield, key=lambda k: float(np.linalg.norm(targets[k] - spot)))
+        nearest = sorted(outfield, key=lambda k: float(norm(targets[k] - spot)))
         for k, point in zip(nearest[:3], close[:3], strict=False):
             targets[k] = (point[0] - 1.5, point[1])
 
@@ -216,7 +216,7 @@ def _wall_and_box(eng: "MatchEngine", team: int, idx: np.ndarray, targets: Array
     """A free kick near our goal: a wall on the line to goal, the rest guarding the box."""
     goal = np.array([0.0, MID_Y])
     to_goal = goal - spot
-    distance = float(np.linalg.norm(to_goal))
+    distance = float(norm(to_goal))
     central = abs(spot[1] - MID_Y) < 20
     size = (4 if distance < 24 else 3 if distance < 30 else 2) if central else 1
     direction = to_goal / max(distance, 1e-6)
@@ -246,7 +246,7 @@ def _keep_distance(targets: Array, outfield: list[int], spot: Array, variant: st
         return
     for k in outfield:
         gap = targets[k] - spot
-        distance = float(np.linalg.norm(gap))
+        distance = float(norm(gap))
         if distance < radius:
             direction = gap / distance if distance > 1e-6 else np.array([-1.0, 0.0])
             targets[k] = spot + direction * radius

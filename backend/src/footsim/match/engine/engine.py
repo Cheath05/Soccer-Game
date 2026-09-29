@@ -36,6 +36,8 @@ from footsim.match.engine.pitch import (
     MID_Y,
     WIDTH,
     in_box,
+    norm,
+    norms,
 )
 from footsim.match.engine.state import MAX_SUBS, PassInfo, Restart, ShotInfo
 from footsim.match.penalties import shootout
@@ -275,7 +277,7 @@ class MatchEngine:
             behaviours.update_targets(self)
         self._move_players()
         self._fatigue()
-        self.distance += np.linalg.norm(self.vel, axis=1) * DT
+        self.distance += norms(self.vel, axis=1) * DT
         if live:
             self.live_ticks += 1
             self._track_possession()
@@ -395,13 +397,13 @@ class MatchEngine:
 
     def _move_players(self) -> None:
         delta = self.target - self.pos
-        dist = np.linalg.norm(delta, axis=1)
+        dist = norms(delta, axis=1)
         fatigue = 0.7 + 0.3 * self.stamina
         top = self.max_speed * fatigue
         if self.owner >= 0:
             top[self.owner] *= DRIBBLE_SPEED
             rivals = self.team_indices(1 - int(self.team_of[self.owner]))
-            if len(rivals) and float(np.min(np.linalg.norm(self.pos[rivals] - self.pos[self.owner],
+            if len(rivals) and float(np.min(norms(self.pos[rivals] - self.pos[self.owner],
                                                             axis=1))) < 2.5:
                 top[self.owner] *= 0.75  # tight control under pressure
         cruise = np.where(dist > 6, 0.62 * top, np.where(dist > 1.5, 0.4 * top, 0.9 * dist))
@@ -410,7 +412,7 @@ class MatchEngine:
                               where=dist[:, None] > 1e-6)
         desired = direction * speed[:, None]
         change = desired - self.vel
-        change_norm = np.linalg.norm(change, axis=1)
+        change_norm = norms(change, axis=1)
         limit = self.accel * DT
         scale = np.minimum(1.0, np.divide(limit, change_norm, out=np.ones_like(limit),
                                           where=change_norm > 1e-6))
@@ -435,7 +437,7 @@ class MatchEngine:
         if self.state == "owned":
             i = self.owner
             v = self.vel[i]
-            speed = float(np.linalg.norm(v))
+            speed = float(norm(v))
             if speed > 0.3:
                 ahead = v / speed * 0.7
             else:
@@ -464,14 +466,14 @@ class MatchEngine:
                 self.ball_vz = -self.ball_vz * 0.3 if self.ball_vz < -3 else 0.0
                 self.ball_v *= 0.75
         else:
-            speed = float(np.linalg.norm(self.ball_v))
+            speed = float(norm(self.ball_v))
             if speed > 0:
                 self.ball_v *= max(0.0, speed - ROLL_FRICTION * DT) / speed
         step = self.ball_v * DT
         self.prev_ball = self.ball.copy()
         self.ball = self.ball + step
         if self.state == "shot" and self.shot_info is not None:
-            self.shot_info.travelled += float(np.linalg.norm(step))
+            self.shot_info.travelled += float(norm(step))
             actions.shot_tick(self)
             if self.state != "shot":
                 return

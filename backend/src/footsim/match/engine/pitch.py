@@ -63,3 +63,17 @@ def in_box(x: float, y: float) -> bool:
 
 def in_own_box(x: float, y: float) -> bool:
     return x <= BOX_DEPTH and abs(y - MID_Y) <= BOX_HALF
+
+
+def norm(v: Array) -> float:
+    """A vector's length, computed exactly as np.linalg.norm computes it (the square root of
+    v·v) but without its argument handling, which was the engine's biggest single cost."""
+    if v.ndim != 1:
+        raise ValueError("norm takes one vector; use norms for rows")
+    return math.sqrt(float(v.dot(v)))
+
+
+def norms(m: Array, axis: int) -> Array:
+    """Lengths along ``axis``, computed exactly as np.linalg.norm(m, axis=axis) computes them."""
+    result: Array = np.sqrt(np.add.reduce(m * m, axis=axis))
+    return result

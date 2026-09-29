@@ -25,6 +25,8 @@ from footsim.match.engine.pitch import (
     expected_goal,
     in_own_box,
     loss_cost,
+    norm,
+    norms,
     threat,
 )
 from footsim.match.engine.state import MAX_SUBS, PassInfo, ShotInfo
@@ -111,7 +113,7 @@ def owner_tick(eng: "MatchEngine") -> None:
         return
     team = int(eng.team_of[i])
     opp = eng.team_indices(1 - team)
-    pressed = len(opp) and float(np.min(np.linalg.norm(eng.pos[opp] - eng.pos[i], axis=1))) < 1.8
+    pressed = len(opp) and float(np.min(norms(eng.pos[opp] - eng.pos[i], axis=1))) < 1.8
     if eng.t >= eng.decide_at or (pressed and eng.t >= eng.decide_at - 0.25):
         decide(eng, i)
 
@@ -130,7 +132,7 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     mates = [int(j) for j in eng.team_indices(team) if j != i]
     opps = eng.team_indices(1 - team)
     opp_pts = pts[opps]
-    nearest = float(np.min(np.linalg.norm(opp_pts - ball, axis=1))) if len(opps) else 99.0
+    nearest = float(np.min(norms(opp_pts - ball, axis=1))) if len(opps) else 99.0
     pressure = float(np.clip((3.2 - nearest) / 3.2, 0, 1))
     line = offside_line(opp_pts, bx)
     options: list[Option] = []
@@ -232,7 +234,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
 
     target = np.array(points)
     delta = target - ball
-    length = np.maximum(np.linalg.norm(delta, axis=1), 1e-6)
+    length = np.maximum(norms(delta, axis=1), 1e-6)
     to_keeper = np.array([eng.group[j] is PositionGroup.GK for j in receivers])
     lofted = (np.array([k == "cross" for k in kinds]) | (length > 32)) & ~to_keeper
     unit = delta / length[:, None]
@@ -241,7 +243,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     speed = np.where(lofted, length / flight, ground_speed)
     rel = opp_pts[None, :, :] - ball[None, None, :]
     along = np.einsum("pkd,pd->pk", rel, unit)
-    perp = np.linalg.norm(rel - along[..., None] * unit[:, None, :], axis=2)
+    perp = norms(rel - along[..., None] * unit[:, None, :], axis=2)
     t_ball = np.maximum(along, 0) / speed[:, None]
     t_opp = np.maximum(perp - 1.0, 0) / 6.5 + 0.35
     valid = (along > 1.0) & (along < length[:, None] + 1.5)
@@ -249,7 +251,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     landing = along > length[:, None] - 4.0
     risk = np.where(lofted[:, None] & ~landing, risk * 0.25, risk)
     p_lane = np.prod(1 - 0.82 * eng.defs.passing.intercept_scale * risk, axis=1)
-    marker = np.linalg.norm(target[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1) \
+    marker = norms(target[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1) \
         if len(opp_pts) else np.full(len(target), 20.0)
     touch = np.array([eng.a(j, "first_touch") for j in receivers])
     p_receive = (0.55 + 0.45 * _sigmoid((marker - 1.8) * 1.3)) * (0.82 + 0.18 * touch / 100)
@@ -262,7 +264,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     recv_pts = np.array([pts[j] for j in receivers])
     recv_speed = np.array([eng.max_speed[j] for j in receivers]) * 0.9
     arrival = np.where(lofted, flight, length / ground_speed)
-    recv_gap = np.linalg.norm(recv_pts - target, axis=1)
+    recv_gap = norms(recv_pts - target, axis=1)
     p_reach = np.exp(-np.maximum(0.0, recv_gap - recv_speed * arrival) / 2.5)
     contest = _sigmoid((marker - recv_gap + 1.0) * 0.8)
     success = np.clip(p_lane * p_receive * p_exec * p_reach * (0.5 + 0.5 * contest), 0.02, 0.98)
@@ -293,8 +295,8 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     # A clearance is the last resort: heavy pressure close to our own goal.
     if mode is None and bx < 25 and pressure > 0.6:
         clear_to = (min(bx + 45, 80.0), float(np.clip(by + eng.rng.normal(0, 12), 4, 64)))
-        utility = 0.005 + 0.12 * pressure**2 * loss
-        options.append((utility, "clearance", PassOption(-1, clear_to, True, 0.3)))
+        clear_utility = 0.005 + 0.12 * pressure**2 * loss
+        options.append((clear_utility, "clearance", PassOption(-1, clear_to, True, 0.3)))
     return options
 
 
@@ -308,9 +310,9 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
     for dy in (-6.0, 0.0, 6.0):
         aim = np.array([min(bx + 8.0, LENGTH - 2), float(np.clip(toward_goal + dy, 3, 65))])
         step = aim - ball
-        step /= max(np.linalg.norm(step), 1e-6)
+        step /= max(norm(step), 1e-6)
         probe = ball + step * 4.0
-        blocker = float(np.min(np.linalg.norm(opp_pts - probe, axis=1))) if len(opp_pts) else 20.0
+        blocker = float(np.min(norms(opp_pts - probe, axis=1))) if len(opp_pts) else 20.0
         free = blocker > 7.0
         # Taking a defender on succeeds about half the time; open grass is almost free.
         p_keep = 0.97 if free else float(_sigmoid((skill - 70) / 15 + (blocker - 4.0) * 0.7))
@@ -356,7 +358,7 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     ax, ay = bx + math.cos(angle) * reach, by + math.sin(angle) * reach
     aim = np.array(eng.to_pitch(team, ax, ay))
     direction = aim - eng.ball
-    direction /= max(float(np.linalg.norm(direction)), 1e-6)
+    direction /= max(float(norm(direction)), 1e-6)
     if lofted:
         flight = float(np.clip(0.9 + reach / 25, 1.1, 2.8))
         eng.ball_v = direction * reach / flight
@@ -428,7 +430,7 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
     near = np.flatnonzero(eng.active & (path < reach))
     if len(near):
         order = near[np.argsort(path[near])]
-        speed = float(np.linalg.norm(eng.ball_v))
+        speed = float(norm(eng.ball_v))
         for c in (int(x) for x in order):
             closeness = float(np.sqrt(max(0.0, 1 - path[c] / reach[c])))
             if info is not None and c in info.tried:
@@ -472,7 +474,7 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
             if eng.rng.random() < max(0.05, p):
                 _take(eng, c, info)
                 return
-    if eng.state == "pass" and float(np.linalg.norm(eng.ball_v)) < 1.0 and eng.ball_z <= 0:
+    if eng.state == "pass" and float(norm(eng.ball_v)) < 1.0 and eng.ball_z <= 0:
         eng.state = "loose"
         eng.stopped_pass = (info, eng.t) if info is not None else None
         eng.pass_info = None
@@ -485,7 +487,7 @@ def _touch_pressure(eng: "MatchEngine", c: int) -> float:
     opps = eng.team_indices(1 - int(eng.team_of[c]))
     if not len(opps):
         return 0.0
-    nearest = float(np.min(np.linalg.norm(eng.pos[opps] - eng.pos[c], axis=1)))
+    nearest = float(np.min(norms(eng.pos[opps] - eng.pos[c], axis=1)))
     closeness = max(0.0, (control.pressure_radius - nearest) / control.pressure_radius)
     return control.pressure_penalty * closeness
 
@@ -511,11 +513,11 @@ def _path_distance(eng: "MatchEngine") -> np.ndarray:
     seg = end - start
     length_sq = float(seg @ seg)
     if length_sq < 1e-9:
-        result: np.ndarray = np.linalg.norm(eng.pos - end, axis=1)
+        result: np.ndarray = norms(eng.pos - end, axis=1)
         return result
     t = np.clip(((eng.pos - start) @ seg) / length_sq, 0, 1)
     closest = start + t[:, None] * seg[None, :]
-    result = np.linalg.norm(eng.pos - closest, axis=1)
+    result = norms(eng.pos - closest, axis=1)
     return result
 
 
@@ -554,7 +556,7 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
 def cut_out(eng: "MatchEngine", info: PassInfo) -> bool:
     """Was the ball still on course for the pass's target area, and not yet past it, when an
     opponent took it? Then he got into its path: an interception."""
-    speed = float(np.linalg.norm(eng.ball_v))
+    speed = float(norm(eng.ball_v))
     if speed < 1e-6:
         return False
     radius = eng.defs.passing.target_area
@@ -567,19 +569,19 @@ def cut_out(eng: "MatchEngine", info: PassInfo) -> bool:
 def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
     """A cross arriving in the box: keeper claim, then a heading duel."""
     landing = np.array(info.target)
-    if float(np.linalg.norm(eng.ball - landing)) > 2.5 or eng.ball_z > 2.8:
+    if float(norm(eng.ball - landing)) > 2.5 or eng.ball_z > 2.8:
         return False
     team = int(eng.team_of[info.passer])
     keeper = eng.keeper(1 - team)
     dx, _ = eng.to_att(1 - team, float(eng.ball[0]), float(eng.ball[1]))
-    if keeper is not None and dx < 7 and float(np.linalg.norm(eng.pos[keeper] - eng.ball)) < 5:
+    if keeper is not None and dx < 7 and float(norm(eng.pos[keeper] - eng.ball)) < 5:
         claim = 0.3 + 0.45 * eng.a(keeper, "gk_command_of_area") / 100
         if eng.rng.random() < claim:
             eng.emit("aerial", 1 - team, keeper, won="keeper")
             eng._announce("claim", 1 - team, f"{eng.players[keeper].player.name} claims the cross")
             gain_possession(eng, keeper, delay=2.0, how="claim")
             return True
-    near = np.flatnonzero(eng.active & (np.linalg.norm(eng.pos - eng.ball, axis=1) < 3.0))
+    near = np.flatnonzero(eng.active & (norms(eng.pos - eng.ball, axis=1) < 3.0))
     outfield = [int(k) for k in near if eng.group[k] is not PositionGroup.GK]
     attackers = [k for k in outfield if eng.team_of[k] == team]
     defenders = [k for k in outfield if eng.team_of[k] != team]
@@ -640,14 +642,14 @@ def _long_ball_contest(eng: "MatchEngine", info: PassInfo) -> bool:
     """A long ball dropping near an opponent: a header decides who gets it. The receiver
     may head it down to himself; an opponent who wins it heads it away as a second ball."""
     landing = np.array(info.target)
-    if float(np.linalg.norm(eng.ball - landing)) > 2.5 or eng.ball_z > 2.8 or info.receiver < 0:
+    if float(norm(eng.ball - landing)) > 2.5 or eng.ball_z > 2.8 or info.receiver < 0:
         return False
     team = int(eng.team_of[info.passer])
     radius = eng.defs.passing.aerial_contest_radius
     rivals = [int(k) for k in eng.team_indices(1 - team) if eng.group[k] is not PositionGroup.GK
-              and float(np.linalg.norm(eng.pos[k] - eng.ball)) < radius]
+              and float(norm(eng.pos[k] - eng.ball)) < radius]
     receiver = info.receiver
-    if not rivals or float(np.linalg.norm(eng.pos[receiver] - eng.ball)) > radius:
+    if not rivals or float(norm(eng.pos[receiver] - eng.ball)) > radius:
         return False
     rival = max(rivals, key=lambda k: _aerial_strength(eng, k))
     if eng.rng.random() < eng.defs.duels.aerial_foul_chance:
@@ -696,7 +698,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     distance = math.hypot(LENGTH - bx, MID_Y - by)
     opps = eng.team_indices(1 - team)
     opp_pts = eng.att_points(team, eng.pos[opps])
-    nearest = (float(np.min(np.linalg.norm(opp_pts - np.array([bx, by]), axis=1)))
+    nearest = (float(np.min(norms(opp_pts - np.array([bx, by]), axis=1)))
                if len(opps) else 9.0)
     pressure = 0.0 if (penalty or free_kick) else float(np.clip((5.0 - nearest) / 5.0, 0, 1))
     pressure *= 1.2 - eng.a(i, "composure") / 100
@@ -767,7 +769,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     speed = 22.0 if penalty else (13.0 if header else 17.0 + 13.0 * eng.a(i, "shot_power") / 100)
     aim = np.array(eng.to_pitch(team, LENGTH + 0.5, ty))
     direction = aim - eng.ball
-    travel = max(float(np.linalg.norm(direction)), 0.5)
+    travel = max(float(norm(direction)), 0.5)
     direction /= travel
     flight = travel / speed
     eng.ball_v = direction * speed
@@ -798,7 +800,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
         free_kick=free_kick, distance=round(distance, 1), xa=round(bx, 1), ya=round(by, 1),
         blockers=blockers,
         goal_side=int(np.sum(opp_pts[outfield, 0] > bx)) if outfield else 0,
-        nearest=round(float(np.min(np.linalg.norm(opp_pts[outfield] - ball, axis=1))), 1)
+        nearest=round(float(np.min(norms(opp_pts[outfield] - ball, axis=1))), 1)
         if outfield else 99.0,
     )
     if eng.possessions and eng.possessions[-1].team == team:
@@ -863,7 +865,7 @@ def shot_tick(eng: "MatchEngine") -> None:
     if info.outcome == "blocked":
         eng.shot_info = None
         blockers = eng.team_indices(1 - team)
-        blocker = int(blockers[np.argmin(np.linalg.norm(eng.pos[blockers] - eng.ball, axis=1))])
+        blocker = int(blockers[np.argmin(norms(eng.pos[blockers] - eng.ball, axis=1))])
         roll = eng.rng.random()
         eng.emit("block", 1 - team, blocker,
                  how="cleared" if roll < 0.45 else "corner" if roll < 0.75 else "loose")
@@ -896,7 +898,7 @@ def shot_tick(eng: "MatchEngine") -> None:
     if eng.rng.random() < 0.5 + 0.4 * eng.a(keeper, "gk_handling") / 100:
         # The keeper dives (at most KEEPER_DIVE metres) and the ball ends up in his hands.
         reach = eng.ball - eng.pos[keeper]
-        distance = float(np.linalg.norm(reach))
+        distance = float(norm(reach))
         if distance > 1e-6:
             eng.pos[keeper] = eng.pos[keeper] + reach / distance * min(distance, KEEPER_DIVE)
         eng.emit("save", 1 - team, keeper, how="catch",

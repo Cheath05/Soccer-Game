@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from footsim.defs.positions import PositionGroup
-from footsim.match.engine.pitch import MID_X
+from footsim.match.engine.pitch import MID_X, norms
 
 if TYPE_CHECKING:
     from footsim.defs.match import ManagerDef
@@ -197,7 +197,7 @@ class ManagerAI:
         theirs = eng.att_points(rival, eng.pos[outfield])
         self.line_seen.append((eng.t, float(np.mean(np.sort(theirs[:, 0])[:4]))))
         if bx < p.press_zone and eng.owner >= 0 and int(eng.team_of[eng.owner]) == self.team:
-            gaps = np.linalg.norm(eng.pos[outfield] - eng.pos[eng.owner], axis=1)
+            gaps = norms(eng.pos[outfield] - eng.pos[eng.owner], axis=1)
             self.press_seen.append((eng.t, float(np.sum(gaps < p.press_radius))))
 
 

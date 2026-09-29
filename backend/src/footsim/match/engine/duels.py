@@ -15,7 +15,16 @@ import numpy as np
 
 from footsim.defs.positions import PositionGroup
 from footsim.match.engine import actions
-from footsim.match.engine.pitch import LENGTH, MID_Y, PENALTY_SPOT, WIDTH, in_box, in_own_box
+from footsim.match.engine.pitch import (
+    LENGTH,
+    MID_Y,
+    PENALTY_SPOT,
+    WIDTH,
+    in_box,
+    in_own_box,
+    norm,
+    norms,
+)
 from footsim.match.quick import INJURIES, INJURY_WEIGHTS
 from footsim.match.report import Injury
 
@@ -38,7 +47,7 @@ def contest(eng: "MatchEngine", i: int) -> bool:
     opps = [int(k) for k in eng.team_indices(1 - team) if eng.group[k] is not PositionGroup.GK]
     if not opps:
         return False
-    gaps = np.linalg.norm(eng.pos[opps] - eng.pos[i], axis=1)
+    gaps = norms(eng.pos[opps] - eng.pos[i], axis=1)
     nearest = int(np.argmin(gaps))
     k, gap = opps[nearest], float(gaps[nearest])
     if gap > p.engage_radius or eng.t < eng.tackle_ready[k]:
@@ -51,7 +60,7 @@ def contest(eng: "MatchEngine", i: int) -> bool:
 
     # A carrier running with the ball into a defender who blocks his path either tries to
     # take him on or checks back and looks for a pass.
-    speed = float(np.linalg.norm(eng.vel[i]))
+    speed = float(norm(eng.vel[i]))
     if (eng.carry_target is not None and speed > p.take_on_speed and gap < p.contact_radius
             and eng.t >= eng.take_on_ready.get((i, k), 0.0)):
         heading = eng.vel[i] / speed
@@ -135,7 +144,7 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
             near_line = min(y, WIDTH - y) < 12
             if near_line and eng.rng.random() < p.touchline_knock_out:
                 direction = np.array([float(eng.rng.normal(0, 0.3)), -1.0 if y < MID_Y else 1.0])
-                direction /= float(np.linalg.norm(direction))
+                direction /= float(norm(direction))
             else:
                 angle = float(eng.rng.normal(0, 1.0))
                 direction = np.array([math.cos(angle) * eng.attack_dir[defending],

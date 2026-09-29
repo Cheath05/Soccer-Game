@@ -19,7 +19,7 @@ from footsim.defs.formations import Phase
 from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RunType
 from footsim.match.engine import set_pieces
-from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH
+from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH, norm, norms
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -139,7 +139,7 @@ def _team(eng: "MatchEngine", team: int) -> None:
     if eng.state == "loose" and attacking:
         # Our loose ball: the nearest player goes to get it.
         chaser = min((int(i) for i in idx if eng.group[i] is not PositionGroup.GK),
-                     key=lambda i: float(np.linalg.norm(eng.pos[i] - eng.ball)), default=None)
+                     key=lambda i: float(norm(eng.pos[i] - eng.ball)), default=None)
         if chaser is not None:
             eng.target[chaser] = eng.ball + eng.ball_v * 0.4
             eng.urgent[chaser] = True
@@ -154,7 +154,7 @@ def _react(eng: "MatchEngine", idx: np.ndarray, targets: np.ndarray, team: int) 
     if since >= high:
         return
     nearest = sorted(range(len(idx)), key=lambda k: float(
-        np.linalg.norm(eng.pos[idx[k]] - eng.ball)))[:2]
+        norm(eng.pos[idx[k]] - eng.ball)))[:2]
     for k, i in enumerate(idx):
         if k in nearest or eng.group[i] is PositionGroup.GK:
             continue
@@ -171,7 +171,7 @@ def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     assert info is not None
     if info.lofted and eng.ball_z > 1.0:
         return np.array(info.target)
-    speed = float(np.linalg.norm(eng.ball_v))
+    speed = float(norm(eng.ball_v))
     if speed < 0.5:
         return eng.ball.copy()
     direction = eng.ball_v / speed
@@ -240,7 +240,7 @@ def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         return
     ball = np.array([bx, by])
     near = [k for k, i in enumerate(idx) if i != carrier and eng.group[i] is not PositionGroup.GK
-            and np.linalg.norm(targets[k] - ball) < 28 and not eng.running[i]]
+            and norm(targets[k] - ball) < 28 and not eng.running[i]]
     for k in near:
         i = idx[k]
         radius = 3.0 + eng.role[i].movement.freedom * 40
@@ -249,9 +249,9 @@ def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         candidates = np.vstack([targets[k], candidates])
         candidates[:, 0] = np.clip(candidates[:, 0], 2, min(line - 0.5, LENGTH - 2))
         candidates[:, 1] = np.clip(candidates[:, 1], 2, WIDTH - 2)
-        gaps = np.linalg.norm(candidates[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1)
+        gaps = norms(candidates[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1)
         lane = _lane_clearance(ball, candidates, opp_pts)
-        drift = np.linalg.norm(candidates - targets[k], axis=1)
+        drift = norms(candidates - targets[k], axis=1)
         score = np.minimum(gaps, 8.0) + 0.6 * np.minimum(lane, 5.0) - 0.25 * drift
         targets[k] = candidates[int(np.argmax(score))]
 
@@ -259,12 +259,12 @@ def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
 def _lane_clearance(ball: np.ndarray, points: np.ndarray, opp_pts: np.ndarray) -> np.ndarray:
     """Distance of the nearest opponent to each passing lane from the ball."""
     d = points - ball
-    length = np.maximum(np.linalg.norm(d, axis=1), 1e-6)
+    length = np.maximum(norms(d, axis=1), 1e-6)
     u = d / length[:, None]
     rel = opp_pts[None, :, :] - ball[None, None, :]
     s = np.clip(np.einsum("pkd,pd->pk", rel, u), 0, length[:, None])
     closest = ball[None, None, :] + s[..., None] * u[:, None, :]
-    perp = np.linalg.norm(opp_pts[None, :, :] - closest, axis=2)
+    perp = norms(opp_pts[None, :, :] - closest, axis=2)
     result: np.ndarray = perp.min(axis=1)
     return result
 
@@ -288,10 +288,10 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         # We just lost it: the nearest players hunt the ball straight away.
         trigger, pressers = max(trigger, 18.0), max(pressers, 2)
     outfield = [k for k, i in enumerate(idx) if eng.group[i] is not PositionGroup.GK]
-    distance = {k: float(np.linalg.norm(own[k] - ball)) for k in outfield}
+    distance = {k: float(norm(own[k] - ball)) for k in outfield}
     chasers = sorted(outfield, key=lambda k: distance[k])[:pressers]
     goal = np.array([0.0, MID_Y])
-    to_goal = (goal - ball) / max(float(np.linalg.norm(goal - ball)), 1e-6)
+    to_goal = (goal - ball) / max(float(norm(goal - ball)), 1e-6)
     for rank, k in enumerate(chasers):
         if distance[k] <= trigger or (loose and rank == 0):
             if rank == 0:
@@ -304,7 +304,7 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
     # is near our goal.
     recover_at = 3.0 if ball[0] < DANGER_ZONE else 9.0
     for k in outfield:
-        if float(np.linalg.norm(own[k] - targets[k])) > recover_at:
+        if float(norm(own[k] - targets[k])) > recover_at:
             eng.urgent[idx[k]] = True
 
     # Everyone else marks the nearest attacker in his zone, goal-side.
@@ -316,7 +316,7 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             continue
         if eng.group[idx[k]] not in markers_from:
             continue  # forwards screen and press rather than man-mark
-        gaps = np.linalg.norm(opp_pts - targets[k], axis=1)
+        gaps = norms(opp_pts - targets[k], axis=1)
         nearest = int(np.argmin(gaps))
         if gaps[nearest] < 12.0:
             mark = opp_pts[nearest] - np.array([1.8, 0.0])

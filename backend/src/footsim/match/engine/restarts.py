@@ -18,7 +18,7 @@ import numpy as np
 
 from footsim.defs.positions import PositionGroup
 from footsim.match.engine import actions
-from footsim.match.engine.pitch import LENGTH, MID_Y, WIDTH, in_box
+from footsim.match.engine.pitch import LENGTH, MID_Y, WIDTH, in_box, norm
 from footsim.match.engine.state import Restart
 
 if TYPE_CHECKING:
@@ -100,7 +100,7 @@ def pick_taker(eng: "MatchEngine", restart: Restart) -> int | None:
     spot = np.array(restart.spot)
 
     def nearest(pool: list[int]) -> int:
-        return min(pool, key=lambda i: float(np.linalg.norm(eng.pos[i] - spot)))
+        return min(pool, key=lambda i: float(norm(eng.pos[i] - spot)))
 
     if restart.kind == "goal_kick":
         keeper = eng.keeper(restart.team)
@@ -134,11 +134,11 @@ def tick(eng: "MatchEngine") -> None:
     if taker is None or eng.t < restart.ready_at:
         return
     spot = np.array(restart.spot)
-    if float(np.linalg.norm(eng.pos[taker] - spot)) > TAKER_REACH:
+    if float(norm(eng.pos[taker] - spot)) > TAKER_REACH:
         if eng.t >= restart.deadline:
             # The chosen taker is still on his way: whoever is closest takes it instead.
             closest = min((int(i) for i in eng.team_indices(restart.team)),
-                          key=lambda i: float(np.linalg.norm(eng.pos[i] - spot)))
+                          key=lambda i: float(norm(eng.pos[i] - spot)))
             restart.taker = closest
         return
     if eng.t < restart.deadline and not _ready(eng, restart):
@@ -206,7 +206,7 @@ def _play(eng: "MatchEngine", restart: Restart, taker: int) -> None:
         # Nothing on: just play it to the nearest teammate.
         mates = [int(j) for j in eng.team_indices(restart.team) if j != taker]
         if mates:
-            j = min(mates, key=lambda m: float(np.linalg.norm(eng.pos[m] - eng.pos[taker])))
+            j = min(mates, key=lambda m: float(norm(eng.pos[m] - eng.pos[taker])))
             target = eng.to_att(restart.team, float(eng.pos[j, 0]), float(eng.pos[j, 1]))
             actions.start_pass(eng, taker, j, target, False,
                                "throw" if kind == "throw_in" else "pass")

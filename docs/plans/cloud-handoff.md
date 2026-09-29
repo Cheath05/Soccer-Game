@@ -69,7 +69,8 @@ In this order. Each sub-step ends as `progress.md` says (reviewer, lint and test
 
 1. **Step 1.3, C1 (what the last local session was doing when it hit the limit).**
    - **First look for reports you already have.** The last local session ran the C1 A/B batches on Grimsby while it built the club pages. Check `reports/engine/` for `ENG4-n200-ab` reports from 29 Sep, before running anything new.
-   - Then check `docs/calibration/` for the cloud's C1 report. It uses equal synthetic sides (quality 58–66) at 94d5de3, with the aggressive arm plus the six single-instruction arms, managers on. The manager-off comparison was dropped to save time.
+   - Then read the cloud's C1 report and verdict, `docs/calibration/20260929T195539-synthetic-n200-q58-66-equal-ab.md`. **It fails section S:** aggressive +1.07 goal difference; direct alone +0.91; fast, press and high line too costly. Much of direct play's edge comes from the opponent's leaky build-up, so do Step 2.3 before tuning any tactic costs.
+   - Its setup: equal synthetic sides (quality 58–66) at 94d5de3, with the aggressive arm plus the six single-instruction arms, managers on. The manager-off comparison was dropped to save time.
    - Judge against section S:
      - one instruction moves goal difference by at most ±0.35 and win rate by at most 10 points;
      - all-aggressive gains at most +0.6 goal difference and +15 points of win rate, concedes at least 10% more xG, and ends at least 5 points lower in stamina.
@@ -88,4 +89,5 @@ In this order. Each sub-step ends as `progress.md` says (reviewer, lint and test
 5. **Step 2.4.** Read `reds` (target 0.08–0.18) from the same batches.
 6. **Step 2.6.** Pre-D baselines, ENG1 and ENG4 at 200 each, saved to `docs/calibration/`. These need the real world, so they're local only.
 7. **The `_counter_on` fix** (section 4).
-8. **Step 3, Phase D,** starting with D0 (debug overlay), as `recovery-and-continuation.md` describes. The rest of the order is in `progress.md`.
+8. **Make synthetic teams realistic** (recommended, local only because it needs the EA data). Synthetic players' secondary attributes sit 10 below their quality, so synthetic sides foul about a quarter as often as real ones and stray offside five times as often. Fit per-position attribute offsets from the FC 27 data, and store only the aggregated offsets, never player rows. Cloud and test calibration would then match real squads. Golden values change.
+9. **Step 3, Phase D,** starting with D0 (debug overlay), as `recovery-and-continuation.md` describes. The rest of the order is in `progress.md`.

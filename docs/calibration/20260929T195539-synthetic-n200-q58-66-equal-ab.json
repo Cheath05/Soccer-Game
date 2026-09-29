@@ -1,0 +1,1348 @@
+{
+ "label": "synthetic-n200-q58-66-equal-ab",
+ "division": "ENG4",
+ "synthetic": true,
+ "teams": "synthetic teams, quality 58\u201366, equal sides",
+ "aggregate": {
+  "matches": 200,
+  "goals": 2.105,
+  "goals_sd": 1.3091886800610522,
+  "home_win": 0.36,
+  "draw": 0.31,
+  "away_win": 0.33,
+  "nil_nil": 0.115,
+  "six_plus_goals": 0.0,
+  "margin_4_plus": 0.025,
+  "shots": 24.725,
+  "shots_on_target": 6.12,
+  "xg": 1.6987999999999999,
+  "conversion": 0.08513650151668352,
+  "xg_per_shot": 0.06872,
+  "shots_outside_box": 0.29022988505747127,
+  "shot_distance": 15.60940065681445,
+  "headers": 0.044129720853858787,
+  "passes": 900.735,
+  "pass_accuracy": 0.8259865554241813,
+  "corners": 5.87,
+  "fouls": 5.855,
+  "offsides": 18.34,
+  "yellows": 1.0,
+  "reds": 0.01,
+  "penalties": 0.08,
+  "saves": 4.27,
+  "save_rate": 0.6977124183006536,
+  "tackles": 20.12,
+  "tackles_won": 10.865,
+  "take_ons": 20.12,
+  "take_on_success": 0.4599900596421471,
+  "interceptions": 76.085,
+  "clearances": 7.335,
+  "throw_ins": 18.76,
+  "goal_kicks": 17.635,
+  "free_kicks": 24.115,
+  "ball_in_play_min": 73.66198333333334,
+  "duration_min": 98.39833333339911,
+  "possession_spread": 0.03985243732115269,
+  "distance_km_per_team": 114.43245059647523,
+  "end_stamina": 0.7722380204016812,
+  "possessions_per_team": 110.62,
+  "possession_seconds": 26.673906165268246,
+  "passes_per_possession": 4.071302657747243,
+  "final_third_entries_per_team": 49.875,
+  "box_entries_per_team": 20.0825,
+  "shots_per_box_entry": 0.6123490601269762,
+  "high_regains": 58.72,
+  "ppda": 10.900440526242987,
+  "fast_break_shot_share": 0.019211324570273004,
+  "set_piece_goal_share": 0.1187648456057007,
+  "fast_break_goal_share": 0.021377672209026127,
+  "own_goal_share": 0.05938242280285035,
+  "rebound_shot_share": 0.02264914054600607,
+  "corner_attackers_in_box": 4.999134948096886,
+  "corner_defenders_in_box": 9.9939446366782,
+  "corners_with_4_plus_attackers": 1.0,
+  "teleports": 0.09,
+  "wait_throw_in": 16.234074470934903,
+  "wait_goal_kick": 28.263472022955522,
+  "wait_corner": 31.996366782006923,
+  "wait_free_kick": 15.635140771637122,
+  "wait_kickoff": 28.81019656019656,
+  "wait_penalty": 55.76875
+ },
+ "ci95": {
+  "goals": 0.1676875,
+  "home_win": 0.07018750000000004,
+  "draw": 0.05762500000000001,
+  "away_win": 0.06756250000000003,
+  "nil_nil": 0.0475625,
+  "six_plus_goals": 0.0,
+  "margin_4_plus": 0.017499999999999998,
+  "shots": 0.6866875000000014,
+  "shots_on_target": 0.37781249999999966,
+  "xg": 0.081125,
+  "conversion": 0.006317567362107805,
+  "xg_per_shot": 0.0027069914512443255,
+  "shots_outside_box": 0.012377512102511257,
+  "shot_distance": 0.17592117224643022,
+  "headers": 0.005745361298739857,
+  "passes": 4.4532500000000255,
+  "pass_accuracy": 0.0019319189558283933,
+  "corners": 0.3503750000000001,
+  "fouls": 0.3105000000000002,
+  "offsides": 0.532937500000001,
+  "yellows": 0.1551875000000001,
+  "reds": 0.012562500000000015,
+  "penalties": 0.03506250000000002,
+  "saves": 0.29531249999999987,
+  "save_rate": 0.02145588447200597,
+  "tackles": 0.709125000000002,
+  "tackles_won": 0.4681874999999991,
+  "take_ons": 0.709125000000002,
+  "take_on_success": 0.014610272212507047,
+  "interceptions": 1.5259999999999962,
+  "clearances": 0.3728125000000002,
+  "throw_ins": 0.6658124999999995,
+  "goal_kicks": 0.5274999999999999,
+  "free_kicks": 0.5700625000000006,
+  "ball_in_play_min": 0.3293646875000036,
+  "duration_min": 0.1301875000004742,
+  "possession_spread": 0.003997985261292976,
+  "distance_km_per_team": 0.4375689272066907,
+  "end_stamina": 0.0018510272802411132,
+  "possessions_per_team": 0.9617187500000028,
+  "possession_seconds": 0.23890514818430653,
+  "passes_per_possession": 0.0411570652115838,
+  "final_third_entries_per_team": 0.5591249999999981,
+  "box_entries_per_team": 0.3909374999999997,
+  "shots_per_box_entry": 0.012301125988025685,
+  "high_regains": 0.790499999999998,
+  "ppda": 0.22636312282552673,
+  "fast_break_shot_share": 0.004001197271443769,
+  "set_piece_goal_share": 0.03307556415703541,
+  "fast_break_goal_share": 0.012987768476905717,
+  "own_goal_share": 0.02171370077584793,
+  "rebound_shot_share": 0.0038455595403070406,
+  "corner_attackers_in_box": 0.0012982363782958473,
+  "corner_defenders_in_box": 0.005558214870565514,
+  "corners_with_4_plus_attackers": 0.0,
+  "teleports": 0.04756250000000001,
+  "wait_throw_in": 0.08266824776697312,
+  "wait_goal_kick": 0.13505124036009697,
+  "wait_corner": 0.2776952478431767,
+  "wait_free_kick": 0.16595622058623594,
+  "wait_kickoff": 1.0971391332169862,
+  "wait_penalty": 2.6065625000000026
+ },
+ "arms": {
+  "baseline": {
+   "matches": 200,
+   "goals": 2.105,
+   "goals_sd": 1.3091886800610522,
+   "home_win": 0.36,
+   "draw": 0.31,
+   "away_win": 0.33,
+   "nil_nil": 0.115,
+   "six_plus_goals": 0.0,
+   "margin_4_plus": 0.025,
+   "shots": 24.725,
+   "shots_on_target": 6.12,
+   "xg": 1.6987999999999999,
+   "conversion": 0.08513650151668352,
+   "xg_per_shot": 0.06872,
+   "shots_outside_box": 0.29022988505747127,
+   "shot_distance": 15.60940065681445,
+   "headers": 0.044129720853858787,
+   "passes": 900.735,
+   "pass_accuracy": 0.8259865554241813,
+   "corners": 5.87,
+   "fouls": 5.855,
+   "offsides": 18.34,
+   "yellows": 1.0,
+   "reds": 0.01,
+   "penalties": 0.08,
+   "saves": 4.27,
+   "save_rate": 0.6977124183006536,
+   "tackles": 20.12,
+   "tackles_won": 10.865,
+   "take_ons": 20.12,
+   "take_on_success": 0.4599900596421471,
+   "interceptions": 76.085,
+   "clearances": 7.335,
+   "throw_ins": 18.76,
+   "goal_kicks": 17.635,
+   "free_kicks": 24.115,
+   "ball_in_play_min": 73.66198333333334,
+   "duration_min": 98.39833333339911,
+   "possession_spread": 0.03985243732115269,
+   "distance_km_per_team": 114.43245059647523,
+   "end_stamina": 0.7722380204016812,
+   "possessions_per_team": 110.62,
+   "possession_seconds": 26.673906165268246,
+   "passes_per_possession": 4.071302657747243,
+   "final_third_entries_per_team": 49.875,
+   "box_entries_per_team": 20.0825,
+   "shots_per_box_entry": 0.6123490601269762,
+   "high_regains": 58.72,
+   "ppda": 10.900440526242987,
+   "fast_break_shot_share": 0.019211324570273004,
+   "set_piece_goal_share": 0.1187648456057007,
+   "fast_break_goal_share": 0.021377672209026127,
+   "own_goal_share": 0.05938242280285035,
+   "rebound_shot_share": 0.02264914054600607,
+   "corner_attackers_in_box": 4.999134948096886,
+   "corner_defenders_in_box": 9.9939446366782,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.09,
+   "wait_throw_in": 16.234074470934903,
+   "wait_goal_kick": 28.263472022955522,
+   "wait_corner": 31.996366782006923,
+   "wait_free_kick": 15.635140771637122,
+   "wait_kickoff": 28.81019656019656,
+   "wait_penalty": 55.76875
+  },
+  "aggressive": {
+   "matches": 200,
+   "goals": 3.315,
+   "goals_sd": 1.8883259782145667,
+   "home_win": 0.42,
+   "draw": 0.23,
+   "away_win": 0.35,
+   "nil_nil": 0.045,
+   "six_plus_goals": 0.125,
+   "margin_4_plus": 0.085,
+   "shots": 35.16,
+   "shots_on_target": 9.25,
+   "xg": 2.9479999999999995,
+   "conversion": 0.09428327645051195,
+   "xg_per_shot": 0.08383976109215018,
+   "shots_outside_box": 0.24362483791960812,
+   "shot_distance": 14.917101282235988,
+   "headers": 0.0527301541564616,
+   "passes": 838.645,
+   "pass_accuracy": 0.7431869265302959,
+   "corners": 7.125,
+   "fouls": 8.285,
+   "offsides": 36.845,
+   "yellows": 1.495,
+   "reds": 0.025,
+   "penalties": 0.115,
+   "saves": 6.22,
+   "save_rate": 0.6724324324324324,
+   "tackles": 26.69,
+   "tackles_won": 15.625,
+   "take_ons": 26.69,
+   "take_on_success": 0.4145747470962907,
+   "interceptions": 90.14,
+   "clearances": 11.175,
+   "throw_ins": 38.515,
+   "goal_kicks": 25.08,
+   "free_kicks": 45.015,
+   "ball_in_play_min": 59.815650000000005,
+   "duration_min": 100.13333333340543,
+   "possession_spread": 0.056101896385058546,
+   "distance_km_per_team": 125.27289056998487,
+   "end_stamina": 0.7068409115166348,
+   "possessions_per_team": 148.2175,
+   "possession_seconds": 20.258859446436237,
+   "passes_per_possession": 2.829102501391536,
+   "final_third_entries_per_team": 65.6875,
+   "box_entries_per_team": 29.4475,
+   "shots_per_box_entry": 0.5941930554376432,
+   "high_regains": 62.385,
+   "ppda": 8.347461164496115,
+   "fast_break_shot_share": 0.02901023890784983,
+   "set_piece_goal_share": 0.12066365007541478,
+   "fast_break_goal_share": 0.015082956259426848,
+   "own_goal_share": 0.03167420814479638,
+   "rebound_shot_share": 0.02431740614334471,
+   "corner_attackers_in_box": 4.997879858657244,
+   "corner_defenders_in_box": 9.99363957597173,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.285,
+   "wait_throw_in": 16.190977934456196,
+   "wait_goal_kick": 28.05773175145787,
+   "wait_corner": 32.36904593639576,
+   "wait_free_kick": 15.090406522224704,
+   "wait_kickoff": 34.38954372623574,
+   "wait_penalty": 53.713043478260865
+  },
+  "fast": {
+   "matches": 200,
+   "goals": 2.63,
+   "goals_sd": 1.7530259553126988,
+   "home_win": 0.395,
+   "draw": 0.27,
+   "away_win": 0.335,
+   "nil_nil": 0.085,
+   "six_plus_goals": 0.07,
+   "margin_4_plus": 0.045,
+   "shots": 27.715,
+   "shots_on_target": 6.965,
+   "xg": 2.0707999999999998,
+   "conversion": 0.09489446148295147,
+   "xg_per_shot": 0.0746979613927476,
+   "shots_outside_box": 0.2684576023391813,
+   "shot_distance": 15.363358918128657,
+   "headers": 0.043859649122807015,
+   "passes": 924.915,
+   "pass_accuracy": 0.8129233497132169,
+   "corners": 6.83,
+   "fouls": 5.775,
+   "offsides": 17.435,
+   "yellows": 0.87,
+   "reds": 0.005,
+   "penalties": 0.105,
+   "saves": 4.695,
+   "save_rate": 0.6740847092605886,
+   "tackles": 20.4,
+   "tackles_won": 11.34,
+   "take_ons": 20.4,
+   "take_on_success": 0.4441176470588235,
+   "interceptions": 80.425,
+   "clearances": 8.405,
+   "throw_ins": 23.07,
+   "goal_kicks": 19.44,
+   "free_kicks": 23.105,
+   "ball_in_play_min": 71.16114999999999,
+   "duration_min": 98.70338333340024,
+   "possession_spread": 0.046568999447807694,
+   "distance_km_per_team": 116.90849721878138,
+   "end_stamina": 0.764261939499425,
+   "possessions_per_team": 120.1575,
+   "possession_seconds": 24.6328277469322,
+   "passes_per_possession": 3.8487610011859434,
+   "final_third_entries_per_team": 53.6825,
+   "box_entries_per_team": 22.33,
+   "shots_per_box_entry": 0.6173309449171518,
+   "high_regains": 64.57,
+   "ppda": 10.849527408931511,
+   "fast_break_shot_share": 0.018040772145047807,
+   "set_piece_goal_share": 0.10646387832699619,
+   "fast_break_goal_share": 0.013307984790874524,
+   "own_goal_share": 0.0817490494296578,
+   "rebound_shot_share": 0.021829334295507846,
+   "corner_attackers_in_box": 4.998518518518519,
+   "corner_defenders_in_box": 9.997777777777777,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.155,
+   "wait_throw_in": 16.22647315582715,
+   "wait_goal_kick": 28.291696938245977,
+   "wait_corner": 32.175703703703704,
+   "wait_free_kick": 15.592906875543951,
+   "wait_kickoff": 32.036126224156696,
+   "wait_penalty": 51.49047619047619
+  },
+  "direct": {
+   "matches": 200,
+   "goals": 2.15,
+   "goals_sd": 1.4585952145814822,
+   "home_win": 0.35,
+   "draw": 0.28,
+   "away_win": 0.37,
+   "nil_nil": 0.135,
+   "six_plus_goals": 0.03,
+   "margin_4_plus": 0.055,
+   "shots": 26.59,
+   "shots_on_target": 6.455,
+   "xg": 1.8467999999999998,
+   "conversion": 0.0808574652124859,
+   "xg_per_shot": 0.06944622038360286,
+   "shots_outside_box": 0.2824091778202677,
+   "shot_distance": 15.474187380497131,
+   "headers": 0.04340344168260038,
+   "passes": 877.925,
+   "pass_accuracy": 0.8006036962155082,
+   "corners": 5.765,
+   "fouls": 6.265,
+   "offsides": 29.31,
+   "yellows": 1.015,
+   "reds": 0.025,
+   "penalties": 0.115,
+   "saves": 4.585,
+   "save_rate": 0.710302091402014,
+   "tackles": 21.82,
+   "tackles_won": 11.94,
+   "take_ons": 21.82,
+   "take_on_success": 0.45279560036663613,
+   "interceptions": 77.71,
+   "clearances": 8.595,
+   "throw_ins": 22.465,
+   "goal_kicks": 18.555,
+   "free_kicks": 35.46,
+   "ball_in_play_min": 69.54793333333333,
+   "duration_min": 98.45833333339934,
+   "possession_spread": 0.12398889605845533,
+   "distance_km_per_team": 118.68563915298895,
+   "end_stamina": 0.7523838857731201,
+   "possessions_per_team": 119.17,
+   "possession_seconds": 24.7752580347569,
+   "passes_per_possession": 3.683498363682135,
+   "final_third_entries_per_team": 53.7525,
+   "box_entries_per_team": 21.7625,
+   "shots_per_box_entry": 0.6066628374497415,
+   "high_regains": 54.06,
+   "ppda": 10.390353398998082,
+   "fast_break_shot_share": 0.03253102670176758,
+   "set_piece_goal_share": 0.12325581395348838,
+   "fast_break_goal_share": 0.023255813953488372,
+   "own_goal_share": 0.06976744186046512,
+   "rebound_shot_share": 0.024445280180518992,
+   "corner_attackers_in_box": 5.0,
+   "corner_defenders_in_box": 9.985126859142607,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.09,
+   "wait_throw_in": 16.275212909009415,
+   "wait_goal_kick": 28.10750611911885,
+   "wait_corner": 32.284514435695534,
+   "wait_free_kick": 15.20127569099929,
+   "wait_kickoff": 29.287424425634825,
+   "wait_penalty": 52.239130434782616
+  },
+  "press": {
+   "matches": 200,
+   "goals": 2.38,
+   "goals_sd": 1.66,
+   "home_win": 0.38,
+   "draw": 0.275,
+   "away_win": 0.345,
+   "nil_nil": 0.11,
+   "six_plus_goals": 0.035,
+   "margin_4_plus": 0.01,
+   "shots": 28.465,
+   "shots_on_target": 7.09,
+   "xg": 1.9933499999999997,
+   "conversion": 0.08361145266116284,
+   "xg_per_shot": 0.07003154751449148,
+   "shots_outside_box": 0.26851025869759143,
+   "shot_distance": 15.440178412132024,
+   "headers": 0.046743978590544154,
+   "passes": 870.825,
+   "pass_accuracy": 0.8123446157379497,
+   "corners": 6.22,
+   "fouls": 6.395,
+   "offsides": 23.67,
+   "yellows": 1.17,
+   "reds": 0.05,
+   "penalties": 0.125,
+   "saves": 5.025,
+   "save_rate": 0.7087447108603667,
+   "tackles": 23.045,
+   "tackles_won": 13.145,
+   "take_ons": 23.045,
+   "take_on_success": 0.4295942720763723,
+   "interceptions": 76.665,
+   "clearances": 8.445,
+   "throw_ins": 22.685,
+   "goal_kicks": 20.045,
+   "free_kicks": 29.94,
+   "ball_in_play_min": 70.102425,
+   "duration_min": 98.93347500006774,
+   "possession_spread": 0.13291501887926802,
+   "distance_km_per_team": 118.01033021520772,
+   "end_stamina": 0.7363240069656607,
+   "possessions_per_team": 117.95,
+   "possession_seconds": 25.152367528631046,
+   "passes_per_possession": 3.6915006358626536,
+   "final_third_entries_per_team": 53.46,
+   "box_entries_per_team": 23.05,
+   "shots_per_box_entry": 0.6140997830802603,
+   "high_regains": 58.855,
+   "ppda": 9.967077049406042,
+   "fast_break_shot_share": 0.021781134726857544,
+   "set_piece_goal_share": 0.1323529411764706,
+   "fast_break_goal_share": 0.01050420168067227,
+   "own_goal_share": 0.052521008403361345,
+   "rebound_shot_share": 0.024942912348498155,
+   "corner_attackers_in_box": 4.995938261575954,
+   "corner_defenders_in_box": 9.984565393988627,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.1,
+   "wait_throw_in": 16.203613389492354,
+   "wait_goal_kick": 28.321187720181175,
+   "wait_corner": 32.37026807473599,
+   "wait_free_kick": 15.342031905961376,
+   "wait_kickoff": 30.374741676234216,
+   "wait_penalty": 52.687999999999995
+  },
+  "high_line": {
+   "matches": 200,
+   "goals": 2.335,
+   "goals_sd": 1.470637616817957,
+   "home_win": 0.42,
+   "draw": 0.23,
+   "away_win": 0.35,
+   "nil_nil": 0.075,
+   "six_plus_goals": 0.025,
+   "margin_4_plus": 0.025,
+   "shots": 27.965,
+   "shots_on_target": 6.91,
+   "xg": 2.0589,
+   "conversion": 0.08349722867870553,
+   "xg_per_shot": 0.0736116395494368,
+   "shots_outside_box": 0.2463321861981525,
+   "shot_distance": 15.207317514942947,
+   "headers": 0.04673066473464952,
+   "passes": 863.255,
+   "pass_accuracy": 0.8060712072330887,
+   "corners": 5.93,
+   "fouls": 6.605,
+   "offsides": 29.55,
+   "yellows": 1.17,
+   "reds": 0.03,
+   "penalties": 0.065,
+   "saves": 4.835,
+   "save_rate": 0.6997105643994211,
+   "tackles": 22.855,
+   "tackles_won": 13.115,
+   "take_ons": 22.855,
+   "take_on_success": 0.4261649529643404,
+   "interceptions": 77.78,
+   "clearances": 8.12,
+   "throw_ins": 20.71,
+   "goal_kicks": 18.96,
+   "free_kicks": 36.09,
+   "ball_in_play_min": 69.60200833333334,
+   "duration_min": 98.56391666673306,
+   "possession_spread": 0.12961580990128863,
+   "distance_km_per_team": 116.55060511434381,
+   "end_stamina": 0.76265936411236,
+   "possessions_per_team": 119.075,
+   "possession_seconds": 24.821625026260687,
+   "passes_per_possession": 3.6248372874238926,
+   "final_third_entries_per_team": 51.74,
+   "box_entries_per_team": 22.3825,
+   "shots_per_box_entry": 0.6201273316206858,
+   "high_regains": 57.715,
+   "ppda": 9.61595828554908,
+   "fast_break_shot_share": 0.021812980511353476,
+   "set_piece_goal_share": 0.09635974304068523,
+   "fast_break_goal_share": 0.019271948608137045,
+   "own_goal_share": 0.05139186295503212,
+   "rebound_shot_share": 0.019488646522438764,
+   "corner_attackers_in_box": 4.998293515358362,
+   "corner_defenders_in_box": 9.988054607508532,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.125,
+   "wait_throw_in": 16.355717407137654,
+   "wait_goal_kick": 28.176966142362033,
+   "wait_corner": 32.200085324232084,
+   "wait_free_kick": 15.113479710950527,
+   "wait_kickoff": 30.25817757009346,
+   "wait_penalty": 54.15384615384616
+  },
+  "wide": {
+   "matches": 200,
+   "goals": 2.005,
+   "goals_sd": 1.391033788230897,
+   "home_win": 0.32,
+   "draw": 0.295,
+   "away_win": 0.385,
+   "nil_nil": 0.15,
+   "six_plus_goals": 0.015,
+   "margin_4_plus": 0.01,
+   "shots": 23.63,
+   "shots_on_target": 5.855,
+   "xg": 1.75525,
+   "conversion": 0.0848497672450275,
+   "xg_per_shot": 0.07428766398645789,
+   "shots_outside_box": 0.27030511388053285,
+   "shot_distance": 15.339944134078214,
+   "headers": 0.052213149978513104,
+   "passes": 880.48,
+   "pass_accuracy": 0.8186386970743231,
+   "corners": 5.845,
+   "fouls": 5.83,
+   "offsides": 18.345,
+   "yellows": 0.99,
+   "reds": 0.01,
+   "penalties": 0.08,
+   "saves": 4.095,
+   "save_rate": 0.6994022203245089,
+   "tackles": 19.98,
+   "tackles_won": 11.015,
+   "take_ons": 19.98,
+   "take_on_success": 0.4486986986986987,
+   "interceptions": 75.175,
+   "clearances": 7.165,
+   "throw_ins": 26.035,
+   "goal_kicks": 16.99,
+   "free_kicks": 24.095,
+   "ball_in_play_min": 71.99319166666668,
+   "duration_min": 98.36833333339901,
+   "possession_spread": 0.03847097017459152,
+   "distance_km_per_team": 115.23757615247487,
+   "end_stamina": 0.7681843270676552,
+   "possessions_per_team": 112.48,
+   "possession_seconds": 26.22481774539447,
+   "passes_per_possession": 3.913940256045519,
+   "final_third_entries_per_team": 50.1025,
+   "box_entries_per_team": 19.455,
+   "shots_per_box_entry": 0.6047288614751992,
+   "high_regains": 57.2,
+   "ppda": 10.73611533840406,
+   "fast_break_shot_share": 0.015658061785865426,
+   "set_piece_goal_share": 0.12718204488778054,
+   "fast_break_goal_share": 0.017456359102244388,
+   "own_goal_share": 0.0798004987531172,
+   "rebound_shot_share": 0.01946677951756242,
+   "corner_attackers_in_box": 5.0,
+   "corner_defenders_in_box": 9.989628349178911,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.085,
+   "wait_throw_in": 16.258602046727166,
+   "wait_goal_kick": 28.49991087344029,
+   "wait_corner": 31.99939498703544,
+   "wait_free_kick": 15.508623203499269,
+   "wait_kickoff": 28.385157232704398,
+   "wait_penalty": 55.756249999999994
+  },
+  "attacking": {
+   "matches": 200,
+   "goals": 2.12,
+   "goals_sd": 1.4019985734657507,
+   "home_win": 0.34,
+   "draw": 0.37,
+   "away_win": 0.29,
+   "nil_nil": 0.115,
+   "six_plus_goals": 0.025,
+   "margin_4_plus": 0.01,
+   "shots": 25.24,
+   "shots_on_target": 6.345,
+   "xg": 1.8267000000000002,
+   "conversion": 0.08399366085578447,
+   "xg_per_shot": 0.07238252773375595,
+   "shots_outside_box": 0.27920513849859496,
+   "shot_distance": 15.510337213970294,
+   "headers": 0.04616619831393015,
+   "passes": 903.49,
+   "pass_accuracy": 0.827967105335975,
+   "corners": 5.635,
+   "fouls": 5.635,
+   "offsides": 18.775,
+   "yellows": 1.1,
+   "reds": 0.005,
+   "penalties": 0.07,
+   "saves": 4.45,
+   "save_rate": 0.7013396375098503,
+   "tackles": 19.235,
+   "tackles_won": 10.375,
+   "take_ons": 19.235,
+   "take_on_success": 0.46061866389394335,
+   "interceptions": 76.165,
+   "clearances": 7.025,
+   "throw_ins": 19.09,
+   "goal_kicks": 18.22,
+   "free_kicks": 24.34,
+   "ball_in_play_min": 73.32306666666668,
+   "duration_min": 98.3583666667323,
+   "possession_spread": 0.040545802507529725,
+   "distance_km_per_team": 115.17780567095282,
+   "end_stamina": 0.7704733820871688,
+   "possessions_per_team": 110.5775,
+   "possession_seconds": 26.673315095765133,
+   "passes_per_possession": 4.08532477221858,
+   "final_third_entries_per_team": 49.0625,
+   "box_entries_per_team": 20.1475,
+   "shots_per_box_entry": 0.6227819828762874,
+   "high_regains": 56.785,
+   "ppda": 10.94095544558122,
+   "fast_break_shot_share": 0.017432646592709985,
+   "set_piece_goal_share": 0.08962264150943396,
+   "fast_break_goal_share": 0.007075471698113208,
+   "own_goal_share": 0.06367924528301887,
+   "rebound_shot_share": 0.020404120443740095,
+   "corner_attackers_in_box": 5.0,
+   "corner_defenders_in_box": 9.997323818019625,
+   "corners_with_4_plus_attackers": 1.0,
+   "teleports": 0.125,
+   "wait_throw_in": 16.286159535129425,
+   "wait_goal_kick": 28.239555555555555,
+   "wait_corner": 32.102943800178416,
+   "wait_free_kick": 15.495604622368967,
+   "wait_kickoff": 29.168826405867975,
+   "wait_penalty": 54.02142857142858
+  }
+ },
+ "focus": {
+  "baseline": {
+   "win": 0.365,
+   "draw": 0.31,
+   "goals_for": 1.075,
+   "goals_against": 1.03,
+   "goal_diff": 0.045,
+   "xg_for": 0.78215,
+   "xg_against": 0.9166500000000001,
+   "shots_for": 11.39,
+   "shots_against": 13.335,
+   "possession": 0.5158925312549097,
+   "ppda": 10.949224253291522,
+   "high_regains": 27.885,
+   "fast_break_shots_against": 0.25,
+   "pass_accuracy": 0.8311134407576053,
+   "distance_km": 113.98111027705177,
+   "end_stamina": 0.7770974069987734,
+   "fouls": 2.87,
+   "reds": 0.005
+  },
+  "aggressive": {
+   "win": 0.595,
+   "draw": 0.23,
+   "goals_for": 2.215,
+   "goals_against": 1.1,
+   "goal_diff": 1.115,
+   "xg_for": 1.9639499999999999,
+   "xg_against": 0.98405,
+   "shots_for": 22.555,
+   "shots_against": 12.605,
+   "possession": 0.44430070092934976,
+   "ppda": 6.704666801852275,
+   "high_regains": 39.37,
+   "fast_break_shots_against": 0.37,
+   "pass_accuracy": 0.7138969598492696,
+   "distance_km": 127.7117183218434,
+   "end_stamina": 0.6806278478650291,
+   "fouls": 5.315,
+   "reds": 0.02
+  },
+  "fast": {
+   "win": 0.22,
+   "draw": 0.27,
+   "goals_for": 1.03,
+   "goals_against": 1.6,
+   "goal_diff": -0.57,
+   "xg_for": 0.9153999999999999,
+   "xg_against": 1.1554,
+   "shots_for": 11.665,
+   "shots_against": 16.05,
+   "possession": 0.47175673594384276,
+   "ppda": 10.741970780005454,
+   "high_regains": 28.355,
+   "fast_break_shots_against": 0.225,
+   "pass_accuracy": 0.8080914203826822,
+   "distance_km": 116.81291348242517,
+   "end_stamina": 0.7667027101401364,
+   "fouls": 3.06,
+   "reds": 0.0
+  },
+  "direct": {
+   "win": 0.59,
+   "draw": 0.28,
+   "goals_for": 1.55,
+   "goals_against": 0.6,
+   "goal_diff": 0.95,
+   "xg_for": 1.2993999999999999,
+   "xg_against": 0.5474,
+   "shots_for": 18.975,
+   "shots_against": 7.615,
+   "possession": 0.3760111039415447,
+   "ppda": 11.362104575020574,
+   "high_regains": 37.965,
+   "fast_break_shots_against": 0.305,
+   "pass_accuracy": 0.7346615705396872,
+   "distance_km": 120.98181596575301,
+   "end_stamina": 0.7493895483834863,
+   "fouls": 2.945,
+   "reds": 0.005
+  },
+  "press": {
+   "win": 0.255,
+   "draw": 0.275,
+   "goals_for": 0.995,
+   "goals_against": 1.385,
+   "goal_diff": -0.39,
+   "xg_for": 0.7739500000000001,
+   "xg_against": 1.2194,
+   "shots_for": 10.335,
+   "shots_against": 18.13,
+   "possession": 0.632915018879268,
+   "ppda": 8.326808303800401,
+   "high_regains": 22.225,
+   "fast_break_shots_against": 0.49,
+   "pass_accuracy": 0.8490311372760757,
+   "distance_km": 117.3191641390757,
+   "end_stamina": 0.7192330720231829,
+   "fouls": 3.595,
+   "reds": 0.02
+  },
+  "high_line": {
+   "win": 0.235,
+   "draw": 0.23,
+   "goals_for": 0.9,
+   "goals_against": 1.435,
+   "goal_diff": -0.535,
+   "xg_for": 0.7818,
+   "xg_against": 1.2771,
+   "shots_for": 10.07,
+   "shots_against": 17.895,
+   "possession": 0.6296158099012886,
+   "ppda": 7.671371800043861,
+   "high_regains": 21.255,
+   "fast_break_shots_against": 0.375,
+   "pass_accuracy": 0.8436525314999593,
+   "distance_km": 116.2546060568559,
+   "end_stamina": 0.7641369930576982,
+   "fouls": 3.495,
+   "reds": 0.015
+  },
+  "wide": {
+   "win": 0.375,
+   "draw": 0.295,
+   "goals_for": 1.015,
+   "goals_against": 0.99,
+   "goal_diff": 0.025,
+   "xg_for": 0.8675,
+   "xg_against": 0.88775,
+   "shots_for": 11.77,
+   "shots_against": 11.86,
+   "possession": 0.48015328690741316,
+   "ppda": 10.985794727921327,
+   "high_regains": 30.58,
+   "fast_break_shots_against": 0.19,
+   "pass_accuracy": 0.8084330597767942,
+   "distance_km": 115.24202991217874,
+   "end_stamina": 0.7723513726599991,
+   "fouls": 2.8,
+   "reds": 0.005
+  },
+  "attacking": {
+   "win": 0.31,
+   "draw": 0.37,
+   "goals_for": 1.03,
+   "goals_against": 1.09,
+   "goal_diff": -0.06,
+   "xg_for": 0.8441,
+   "xg_against": 0.9825999999999999,
+   "shots_for": 11.785,
+   "shots_against": 13.455,
+   "possession": 0.513202007444328,
+   "ppda": 10.840376883707,
+   "high_regains": 28.49,
+   "fast_break_shots_against": 0.285,
+   "pass_accuracy": 0.8319927658908316,
+   "distance_km": 115.80042533157061,
+   "end_stamina": 0.771113535817556,
+   "fouls": 2.88,
+   "reds": 0.005
+  }
+ },
+ "paired_deltas": {
+  "aggressive": {
+   "win": {
+    "mean": 0.23,
+    "ci95": 0.09290345558859212
+   },
+   "draw": {
+    "mean": -0.08,
+    "ci95": 0.0826200895423135
+   },
+   "goals_for": {
+    "mean": 1.14,
+    "ci95": 0.2617991158988646
+   },
+   "goals_against": {
+    "mean": 0.07,
+    "ci95": 0.20349479466877382
+   },
+   "goal_diff": {
+    "mean": 1.07,
+    "ci95": 0.33820293750154407
+   },
+   "xg_for": {
+    "mean": 1.1818,
+    "ci95": 0.1269780383420138
+   },
+   "xg_against": {
+    "mean": 0.06739999999999999,
+    "ci95": 0.0987961544727985
+   },
+   "shots_for": {
+    "mean": 11.165,
+    "ci95": 0.9502750208631088
+   },
+   "shots_against": {
+    "mean": -0.73,
+    "ci95": 0.7661556953699024
+   },
+   "possession": {
+    "mean": -0.07159183032555996,
+    "ci95": 0.0075707256787000965
+   },
+   "ppda": {
+    "mean": -4.244557451439249,
+    "ci95": 0.3158620696945748
+   },
+   "high_regains": {
+    "mean": 11.485,
+    "ci95": 1.255933198540424
+   },
+   "fast_break_shots_against": {
+    "mean": 0.12,
+    "ci95": 0.10901313737620351
+   },
+   "pass_accuracy": {
+    "mean": -0.1172164809083357,
+    "ci95": 0.004004044655851293
+   },
+   "distance_km": {
+    "mean": 13.730608044791651,
+    "ci95": 0.5791828288719884
+   },
+   "end_stamina": {
+    "mean": -0.09646955913374441,
+    "ci95": 0.002522537864055598
+   },
+   "fouls": {
+    "mean": 2.445,
+    "ci95": 0.4102158468477603
+   },
+   "reds": {
+    "mean": 0.015,
+    "ci95": 0.02186937465358105
+   }
+  },
+  "fast": {
+   "win": {
+    "mean": -0.145,
+    "ci95": 0.08496710448297685
+   },
+   "draw": {
+    "mean": -0.04,
+    "ci95": 0.0898721996020267
+   },
+   "goals_for": {
+    "mean": -0.045,
+    "ci95": 0.20386798319712762
+   },
+   "goals_against": {
+    "mean": 0.57,
+    "ci95": 0.23353202528597836
+   },
+   "goal_diff": {
+    "mean": -0.615,
+    "ci95": 0.3071430586753709
+   },
+   "xg_for": {
+    "mean": 0.13324999999999998,
+    "ci95": 0.09189160596996165
+   },
+   "xg_against": {
+    "mean": 0.23875,
+    "ci95": 0.10577075333382106
+   },
+   "shots_for": {
+    "mean": 0.275,
+    "ci95": 0.7528404336862924
+   },
+   "shots_against": {
+    "mean": 2.715,
+    "ci95": 0.8554029936866249
+   },
+   "possession": {
+    "mean": -0.04413579531106697,
+    "ci95": 0.009650196768500732
+   },
+   "ppda": {
+    "mean": -0.20725347328606766,
+    "ci95": 0.40408715145617397
+   },
+   "high_regains": {
+    "mean": 0.47,
+    "ci95": 1.2727235042977558
+   },
+   "fast_break_shots_against": {
+    "mean": -0.025,
+    "ci95": 0.09569526066933964
+   },
+   "pass_accuracy": {
+    "mean": -0.02302202037492285,
+    "ci95": 0.003901033146644094
+   },
+   "distance_km": {
+    "mean": 2.8318032053734097,
+    "ci95": 0.6676432189033632
+   },
+   "end_stamina": {
+    "mean": -0.010394696858637023,
+    "ci95": 0.002530428771009802
+   },
+   "fouls": {
+    "mean": 0.19,
+    "ci95": 0.36665346722092457
+   },
+   "reds": {
+    "mean": -0.005,
+    "ci95": 0.009800000000000005
+   }
+  },
+  "direct": {
+   "win": {
+    "mean": 0.225,
+    "ci95": 0.09365624625358183
+   },
+   "draw": {
+    "mean": -0.03,
+    "ci95": 0.08994734808284054
+   },
+   "goals_for": {
+    "mean": 0.475,
+    "ci95": 0.20274754706086084
+   },
+   "goals_against": {
+    "mean": -0.43,
+    "ci95": 0.18089526329179278
+   },
+   "goal_diff": {
+    "mean": 0.905,
+    "ci95": 0.2784357739246252
+   },
+   "xg_for": {
+    "mean": 0.51725,
+    "ci95": 0.08997802684028113
+   },
+   "xg_against": {
+    "mean": -0.36925,
+    "ci95": 0.08760748592127979
+   },
+   "shots_for": {
+    "mean": 7.585,
+    "ci95": 0.8015660188737204
+   },
+   "shots_against": {
+    "mean": -5.72,
+    "ci95": 0.7160719292356013
+   },
+   "possession": {
+    "mean": -0.13988142731336503,
+    "ci95": 0.008136488348248977
+   },
+   "ppda": {
+    "mean": 0.41288032172905,
+    "ci95": 0.35773796793399704
+   },
+   "high_regains": {
+    "mean": 10.08,
+    "ci95": 1.2369906865425322
+   },
+   "fast_break_shots_against": {
+    "mean": 0.055,
+    "ci95": 0.10228669827116368
+   },
+   "pass_accuracy": {
+    "mean": -0.09645187021791805,
+    "ci95": 0.004249284788668471
+   },
+   "distance_km": {
+    "mean": 7.000705688701255,
+    "ci95": 0.661478378339025
+   },
+   "end_stamina": {
+    "mean": -0.027707858615287285,
+    "ci95": 0.0024023031998359175
+   },
+   "fouls": {
+    "mean": 0.075,
+    "ci95": 0.34342185113821166
+   },
+   "reds": {
+    "mean": 0.0,
+    "ci95": 0.013894071618163382
+   }
+  },
+  "press": {
+   "win": {
+    "mean": -0.11,
+    "ci95": 0.08873733585064038
+   },
+   "draw": {
+    "mean": -0.035,
+    "ci95": 0.09255735801443915
+   },
+   "goals_for": {
+    "mean": -0.08,
+    "ci95": 0.19169791142897502
+   },
+   "goals_against": {
+    "mean": 0.355,
+    "ci95": 0.21919962173976087
+   },
+   "goal_diff": {
+    "mean": -0.435,
+    "ci95": 0.27738688436566433
+   },
+   "xg_for": {
+    "mean": -0.008199999999999995,
+    "ci95": 0.09124171983953601
+   },
+   "xg_against": {
+    "mean": 0.30275,
+    "ci95": 0.10070249599188182
+   },
+   "shots_for": {
+    "mean": -1.055,
+    "ci95": 0.7819286141253174
+   },
+   "shots_against": {
+    "mean": 4.795,
+    "ci95": 0.8298492348389639
+   },
+   "possession": {
+    "mean": 0.1170224876243583,
+    "ci95": 0.007764618792990631
+   },
+   "ppda": {
+    "mean": -2.6224159494911214,
+    "ci95": 0.36395795468655495
+   },
+   "high_regains": {
+    "mean": -5.66,
+    "ci95": 1.136467114664374
+   },
+   "fast_break_shots_against": {
+    "mean": 0.24,
+    "ci95": 0.11561337058180786
+   },
+   "pass_accuracy": {
+    "mean": 0.017917696518470482,
+    "ci95": 0.0035108502029043724
+   },
+   "distance_km": {
+    "mean": 3.338053862023928,
+    "ci95": 0.6955100945562097
+   },
+   "end_stamina": {
+    "mean": -0.05786433497559061,
+    "ci95": 0.0031950879016462426
+   },
+   "fouls": {
+    "mean": 0.725,
+    "ci95": 0.37409320178010513
+   },
+   "reds": {
+    "mean": 0.015,
+    "ci95": 0.02186937465358105
+   }
+  },
+  "high_line": {
+   "win": {
+    "mean": -0.13,
+    "ci95": 0.08138416128794787
+   },
+   "draw": {
+    "mean": -0.08,
+    "ci95": 0.08826837104327441
+   },
+   "goals_for": {
+    "mean": -0.175,
+    "ci95": 0.17433461443139947
+   },
+   "goals_against": {
+    "mean": 0.405,
+    "ci95": 0.21484094338550525
+   },
+   "goal_diff": {
+    "mean": -0.58,
+    "ci95": 0.2709735821275854
+   },
+   "xg_for": {
+    "mean": -0.0003499999999999992,
+    "ci95": 0.08209096517790002
+   },
+   "xg_against": {
+    "mean": 0.36045,
+    "ci95": 0.09797628974984575
+   },
+   "shots_for": {
+    "mean": -1.32,
+    "ci95": 0.6936969207726436
+   },
+   "shots_against": {
+    "mean": 4.56,
+    "ci95": 0.8178216261883189
+   },
+   "possession": {
+    "mean": 0.11372327864637889,
+    "ci95": 0.007693887161882512
+   },
+   "ppda": {
+    "mean": -3.2778524532476627,
+    "ci95": 0.3357630049370466
+   },
+   "high_regains": {
+    "mean": -6.63,
+    "ci95": 1.1347561422224415
+   },
+   "fast_break_shots_against": {
+    "mean": 0.125,
+    "ci95": 0.10756694771725202
+   },
+   "pass_accuracy": {
+    "mean": 0.012539090742354384,
+    "ci95": 0.003321854513956146
+   },
+   "distance_km": {
+    "mean": 2.2734957798041324,
+    "ci95": 0.5632970717079371
+   },
+   "end_stamina": {
+    "mean": -0.01296041394107511,
+    "ci95": 0.0021387677089647677
+   },
+   "fouls": {
+    "mean": 0.625,
+    "ci95": 0.3551661441491133
+   },
+   "reds": {
+    "mean": 0.01,
+    "ci95": 0.0196
+   }
+  },
+  "wide": {
+   "win": {
+    "mean": 0.01,
+    "ci95": 0.09724857648387818
+   },
+   "draw": {
+    "mean": -0.015,
+    "ci95": 0.09369746139227456
+   },
+   "goals_for": {
+    "mean": -0.06,
+    "ci95": 0.19082990189508148
+   },
+   "goals_against": {
+    "mean": -0.04,
+    "ci95": 0.19690404570775177
+   },
+   "goal_diff": {
+    "mean": -0.02,
+    "ci95": 0.28843503714574326
+   },
+   "xg_for": {
+    "mean": 0.08535,
+    "ci95": 0.09175294776812734
+   },
+   "xg_against": {
+    "mean": -0.028900000000000016,
+    "ci95": 0.09576974941407213
+   },
+   "shots_for": {
+    "mean": 0.38,
+    "ci95": 0.7552242735218346
+   },
+   "shots_against": {
+    "mean": -1.475,
+    "ci95": 0.7188671678586563
+   },
+   "possession": {
+    "mean": -0.03573924434749662,
+    "ci95": 0.008852564955837342
+   },
+   "ppda": {
+    "mean": 0.036570474629804756,
+    "ci95": 0.41394745828117574
+   },
+   "high_regains": {
+    "mean": 2.695,
+    "ci95": 1.1773286924433002
+   },
+   "fast_break_shots_against": {
+    "mean": -0.06,
+    "ci95": 0.08857402548123093
+   },
+   "pass_accuracy": {
+    "mean": -0.022680380980810995,
+    "ci95": 0.003734827527350773
+   },
+   "distance_km": {
+    "mean": 1.2609196351269765,
+    "ci95": 0.5710362567691657
+   },
+   "end_stamina": {
+    "mean": -0.0047460343387742635,
+    "ci95": 0.002127530362587634
+   },
+   "fouls": {
+    "mean": -0.07,
+    "ci95": 0.3289434293286498
+   },
+   "reds": {
+    "mean": 0.0,
+    "ci95": 0.013894071618163382
+   }
+  },
+  "attacking": {
+   "win": {
+    "mean": -0.055,
+    "ci95": 0.08917948588951154
+   },
+   "draw": {
+    "mean": 0.06,
+    "ci95": 0.09178504054769332
+   },
+   "goals_for": {
+    "mean": -0.045,
+    "ci95": 0.17971083361498538
+   },
+   "goals_against": {
+    "mean": 0.06,
+    "ci95": 0.19483432260854774
+   },
+   "goal_diff": {
+    "mean": -0.105,
+    "ci95": 0.2648625163416184
+   },
+   "xg_for": {
+    "mean": 0.061950000000000005,
+    "ci95": 0.08318902907458325
+   },
+   "xg_against": {
+    "mean": 0.06595000000000001,
+    "ci95": 0.0985218123377334
+   },
+   "shots_for": {
+    "mean": 0.395,
+    "ci95": 0.7765651932043326
+   },
+   "shots_against": {
+    "mean": 0.12,
+    "ci95": 0.7904444680592225
+   },
+   "possession": {
+    "mean": -0.002690523810581731,
+    "ci95": 0.009218765099427241
+   },
+   "ppda": {
+    "mean": -0.10884736958452607,
+    "ci95": 0.3788811667323556
+   },
+   "high_regains": {
+    "mean": 0.605,
+    "ci95": 1.2064581293561112
+   },
+   "fast_break_shots_against": {
+    "mean": 0.035,
+    "ci95": 0.10432356989760705
+   },
+   "pass_accuracy": {
+    "mean": 0.0008793251332263469,
+    "ci95": 0.003660188709545377
+   },
+   "distance_km": {
+    "mean": 1.8193150545188472,
+    "ci95": 0.6222831495495412
+   },
+   "end_stamina": {
+    "mean": -0.005983871181217282,
+    "ci95": 0.0021658709849551533
+   },
+   "fouls": {
+    "mean": 0.01,
+    "ci95": 0.32166801325865274
+   },
+   "reds": {
+    "mean": 0.0,
+    "ci95": 0.013894071618163382
+   }
+  }
+ }
+}

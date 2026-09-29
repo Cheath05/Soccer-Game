@@ -38,7 +38,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
 
 - [x] 1.1 Harness CIs: a ±95% CI column, and paired CIs for A/B differences
 - [x] 1.2 `ManagerAI`: reads the opponent from observed behaviour; an assistant toggle; events and commentary; tests
-- [ ] 1.3 C1 A/B at 200 paired fixtures per arm, against section S (costs tuned if needed). **Started in the cloud at 94d5de3** on equal synthetic sides (`reports/c1-run.sh` there: `--synthetic --division ENG4 --quality 58-66 --equal --n 200 --seed 11`, the aggressive arm plus the six single instructions with managers on, then baseline and aggressive with `--ai-manager off`). If no C1 report is in `docs/calibration/`, it didn't finish: run the Grimsby version locally (the `calibrate-engine` skill's A/B command, about 40 min on the Mac)
+- [ ] 1.3 C1 A/B at 200 paired fixtures per arm, against section S (costs tuned if needed). **Measured in the cloud (synthetic equal sides, 94d5de3): fails section S.** Aggressive +1.07 goal difference and +23 points of win rate; direct passing alone +0.91; fast, press and high line now too costly (−0.44 to −0.62). The report and its verdict are in `docs/calibration/20260929T195539-synthetic-n200-q58-66-equal-ab.md`. Much of direct play's edge comes from the opponent's leaky build-up, so **fix 2.3 first**, then re-run C1 on Grimsby at the head and tune costs from there. Check `reports/engine/` for the Grimsby runs from before the limit
 - [ ] 1.4 Golden values re-captured; commit and push; restart the :8000 game
 
 ## Step 2: close the B1 gaps

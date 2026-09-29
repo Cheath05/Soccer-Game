@@ -215,6 +215,14 @@ class MatchEngine:
         level = self.instructions[team].get(key, self.defs.instructions[key].default)
         return levels.get(level) or levels[self.defs.instructions[key].default]
 
+    def venue_bias(self, team: int, gap: float) -> float:
+        """Home advantage as a multiplier on one of ``team``'s rates that hurt it (fouls given,
+        pass error): the away side's rises by half of ``gap`` and the home side's falls by half,
+        so totals stay put. 1 at a neutral venue (home_advantage.yaml)."""
+        if self.neutral:
+            return 1.0
+        return 1 + gap / 2 if team == 1 else 1 - gap / 2
+
     def team_indices(self, team: int) -> npt.NDArray[np.int64]:
         idx: npt.NDArray[np.int64] = np.flatnonzero(self.active & (self.team_of == team))
         return idx

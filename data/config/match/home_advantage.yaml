@@ -1,0 +1,18 @@
+# Home advantage in the agent engine, built from the mechanisms the evidence points to rather
+# than a strength bonus. A neutral venue skips all of it.
+#
+# Referee: studies of the 2020-21 matches played behind closed doors found that crowds mainly
+# sway referees' decisions, cards above all, against the away side (Reade, Singleton et al.;
+# Economics Letters' "ghost matches" study). Crowd: away players decide and execute a little
+# worse when they're under pressure.
+#
+# Each number is a relative gap between the sides, split evenly: the away side's rate rises by
+# half of it and the home side's falls by half, so match totals (fouls, cards, pass accuracy)
+# keep their calibration. Fitted to the home/draw/away split and the home goal difference in
+# calibration/match_targets.yaml.
+referee:
+  foul: 0.05       # challenges by the away side are called fouls this much more often
+  card: 0.15       # the away side's fouls draw a card this much more often
+crowd:             # both scale with pressure: nothing unchallenged, all of it with a man on him
+  decisions: 0.3   # extra decision noise for the away side's player on the ball
+  execution: 0.3   # extra error in the away side's passes

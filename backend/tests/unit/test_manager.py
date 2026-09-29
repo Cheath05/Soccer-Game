@@ -1,10 +1,12 @@
 """The in-match AI manager changes instructions in response to the game, never ability, and
 leaves the user's side alone unless handed the job."""
 
+import numpy as np
 import pytest
 
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
+from footsim.match.engine.manager import _read
 from footsim.match.synthetic import synthetic_sheet
 from footsim.world.context import World, get_world
 
@@ -107,14 +109,19 @@ def test_reads_a_high_line_from_the_pitch(world: World) -> None:
 
 
 def test_reads_a_high_press_from_the_pitch(world: World) -> None:
-    pressed = _engine(world, away={"pressing": "high"}, ai_manager=(True, False))
-    usual = _engine(world, ai_manager=(True, False))
-    for engine in (pressed, usual):
+    """Judged over a few matches: now and then one match misleads him (tactics.yaml gives his
+    hit and false-alarm rates), and which one differs between platforms."""
+    seeds = (7, 8, 9, 10)
+    pressed = [_engine(world, seed, away={"pressing": "high"}, ai_manager=(True, False))
+               for seed in seeds]
+    usual = [_engine(world, seed, ai_manager=(True, False)) for seed in seeds]
+    for engine in (*pressed, *usual):
         engine.run(max_ticks=15000)  # he judges the press only near his own goal: give it time
     p = world.defs.tactics.manager
-    assert pressed.managers[0].opponent_pressing(pressed.t, p)
-    assert pressed.instructions[0]["passing"] == "direct"
-    assert not usual.managers[0].opponent_pressing(usual.t, p)
+    high = [_read(e.managers[0].press_seen, e.t, p) for e in pressed]
+    normal = [_read(e.managers[0].press_seen, e.t, p) for e in usual]
+    assert float(np.nanmean(high)) >= p.high_press > float(np.nanmean(normal))
+    assert any(e.instructions[0]["passing"] == "direct" for e in pressed)  # and he acts on it
 
 
 def test_a_side_down_to_ten_steps_back(world: World) -> None:

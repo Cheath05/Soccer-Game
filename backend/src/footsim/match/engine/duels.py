@@ -104,6 +104,7 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
         foul *= p.box_foul_scale
     if eng.yellows[k]:
         foul *= p.booked_caution
+    foul *= eng.venue_bias(defending, eng.defs.home_advantage.referee.foul)
     kind = "take_on" if take_on else "tackle"
     if eng.rng.random() < foul:
         eng.emit("duel", defending, k, outcome="foul", carrier=i, xa=round(tackler_x, 1),
@@ -149,7 +150,8 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
     eng.commentate(team, f"{eng.players[i].player.short_name} skips past "
                          f"{eng.players[k].player.short_name}")
     if _counter_on(eng, i) and eng.rng.random() < p.tactical_foul_chance * (
-            eng.a(k, "aggression") / 70) * (p.booked_caution if eng.yellows[k] else 1.0):
+            eng.a(k, "aggression") / 70) * (p.booked_caution if eng.yellows[k] else 1.0) * (
+            eng.venue_bias(defending, eng.defs.home_advantage.referee.foul)):
         commit_foul(eng, k, i, tactical=True)
         return True
     return False
@@ -186,6 +188,8 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
         yellow = (p.yellow.base + p.yellow.sliding * sliding + p.yellow.aggressive * aggressive
                   + p.yellow.from_behind * from_behind)
         red = p.red.base + p.red.reckless * (sliding and aggressive)
+    bias = eng.venue_bias(team, eng.defs.home_advantage.referee.card)
+    yellow, red = yellow * bias, red * bias
     roll = eng.rng.random()
     card = "none"
     at = (float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))

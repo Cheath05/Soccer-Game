@@ -250,3 +250,21 @@ class QuickEngineParams(DefModel):
     easing_own_goals: float = Field(gt=0, le=1)  # ...scoring at this fraction of its rate
     subs_per_team: int = Field(ge=0, le=5)
     instructions: dict[str, dict[str, InstructionEffect]] = {}
+
+
+class RefereeBiasDef(DefModel):
+    foul: float = Field(ge=0, le=1)
+    card: float = Field(ge=0, le=1)
+
+
+class CrowdEffectDef(DefModel):
+    decisions: float = Field(ge=0, le=1)
+    execution: float = Field(ge=0, le=1)
+
+
+class HomeAdvantageDef(DefModel):
+    """How the crowd tilts a match towards the home side (data/config/match/home_advantage.yaml).
+    Each value is a relative gap between the sides, split evenly between them."""
+
+    referee: RefereeBiasDef
+    crowd: CrowdEffectDef

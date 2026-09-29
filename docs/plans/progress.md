@@ -17,7 +17,8 @@ The local session reached its usage limit, and a cloud session carried on from 8
 - **Branch.** Cloud sessions can push only to their own branch, `claude/eloquent-ramanujan-ho29ch`. It is `phase-1-match-believability` plus the cloud commits, so to pick up locally: `git switch phase-1-match-believability && git fetch origin && git merge --ff-only origin/claude/eloquent-ramanujan-ho29ch && git push`.
 - **No EA data or built world in the cloud,** so batches there use synthetic teams. `--synthetic --division ENG4 --quality 58-66 --equal` stands in for Grimsby in League Two: equal sides, as section S asks, in a League Two-like band. Re-run a result on Grimsby locally before treating it as accepted.
 - **Speed.** The cloud machine has 4 cores and takes about 17.8 s per match (the Mac: 6.7 s), so the 8 s budget can only be checked on the Mac.
-- **Golden values are pinned per platform** (`darwin-arm64`, `linux-x86_64`). The Mac and Linux round some floating-point operations differently, and a match amplifies the difference. A cloud commit that changes behaviour can re-capture only the Linux values, and removes the Mac's. `uv run pytest -rs tests/unit/test_engine_golden.py` then skips on the Mac and prints its values to paste back in.
+- **Golden values are pinned per platform** in `backend/tests/unit/engine_golden.json`. The Mac and Linux round some floating-point operations differently, and a match amplifies the difference. A cloud commit that changes behaviour can record only the Linux values, and deletes the Mac's, so the golden tests skip on the Mac. **The only local follow-up:** `cd backend && FOOTSIM_UPDATE_GOLDEN=1 uv run pytest tests/unit/test_engine_golden.py`, then commit `engine_golden.json`.
+- **Tests must hold on both platforms.** The same seed plays out differently on the Mac and on Linux, so a test must never depend on one match's chaotic outcome (as `test_reads_a_high_press_from_the_pitch` did: it now judges the manager's average reading over four seeds).
 
 ## Before the 29 Sep crash (checkpoint commit 24207eb)
 
@@ -41,7 +42,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
 
 ## Step 2: close the B1 gaps
 
-- [ ] 2.1 Home advantage (referee and crowd mechanisms), fitted to the real home, draw and away split
+- [ ] 2.1 Home advantage (referee and crowd mechanisms), fitted to the real home, draw and away split. **Mechanisms in (cloud), values provisional:** `home_advantage.yaml` (referee foul and card bias, crowd decision noise and pass error under pressure, each split evenly between the sides so totals stay put), `MatchEngine.venue_bias`, and the `home_goal_diff` and `away_card_gap` metrics and targets. Still to do: fit the values with 400-match batches on unequal synthetic sides (`--quality 58-66`, no `--equal`). The manager still reads a press correctly with it on: 15/15 high presses spotted and 1/18 false alarms (20 seeds, 25-minute reads)
 - [x] 2.2 Interceptions separated from recoveries in stats, ratings and commentary (cloud). **Finding:** the counting was only a small part of the problem. Two full 64 v 64 matches had 82 interceptions, 4.5 recoveries and 5 clearances a match (real interceptions: 14–26). The engine really does cut out about 80 passes a match, so the excess is behaviour, not labels, and goes to 2.3 and D
 - [ ] 2.3 Build-up leak: high regains broken down by cause; decision-level causes fixed. Start with passes played into covered lanes: the pass-option scores in `actions.decide` barely weigh an opponent near the lane
 - [ ] 2.4 Red cards measured after the booked-player caution change

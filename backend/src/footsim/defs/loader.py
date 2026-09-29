@@ -19,6 +19,7 @@ from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
 from footsim.defs.match import (
     DuelsDef,
+    HomeAdvantageDef,
     InstructionDef,
     PassingDef,
     PresentationDef,
@@ -56,6 +57,7 @@ class GameDefinitions:
     duels: DuelsDef
     passing: PassingDef
     tactics: TacticsDef
+    home_advantage: HomeAdvantageDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -112,6 +114,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         duels=_parse(DuelsDef, root / "match" / "duels.yaml"),
         passing=_parse(PassingDef, root / "match" / "passing.yaml"),
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
+        home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
     )
     _cross_validate(defs)
     return defs

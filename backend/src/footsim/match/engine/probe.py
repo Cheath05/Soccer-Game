@@ -281,6 +281,9 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
         "home_win": _mean(float(m["score"][0] > m["score"][1]) for m in matches),
         "draw": _mean(float(m["score"][0] == m["score"][1]) for m in matches),
         "away_win": _mean(float(m["score"][0] < m["score"][1]) for m in matches),
+        "home_goal_diff": _mean(float(m["score"][0] - m["score"][1]) for m in matches),
+        "away_card_gap": _mean(float(m["teams"][1]["yellows"] - m["teams"][0]["yellows"])
+                               for m in matches),
         "nil_nil": _mean(float(g == 0) for g in goals),
         "six_plus_goals": _mean(float(g >= 6) for g in goals),
         "margin_4_plus": _mean(float(mg >= 4) for mg in margins),

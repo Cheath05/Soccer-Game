@@ -162,6 +162,7 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     decisions = eng.a(i, "decisions")
     temperature = (0.004 + 0.010 * (1 - decisions / 100) + 0.004 * (1 - float(eng.stamina[i]))
                    + max(0.0, eng.effect(team, "tempo").care))
+    temperature *= eng.venue_bias(team, eng.defs.home_advantage.crowd.decisions * pressure)
     utilities = np.array([u for u, _, _ in options])
     weights = np.exp((utilities - utilities.max()) / temperature)
     choice = options[int(eng.rng.choice(len(options), p=weights / weights.sum()))]
@@ -346,6 +347,7 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
               + ex.fatigue * fatigue + ex.per_metre * max(0.0, distance - 15)
               + (ex.lofted if lofted else 0.0))
     spread *= 1 + eng.effect(team, "tempo").hurry  # hurried passes go astray more often
+    spread *= eng.venue_bias(team, eng.defs.home_advantage.crowd.execution * pressure)
     angle_error = eng.rng.normal(0, spread)
     length_error = float(np.clip(eng.rng.normal(1.0, ex.length_skill * (1.2 - skill / 100)
                                                 + ex.length_per_metre * distance), 0.5, 1.6))

@@ -1,0 +1,8 @@
+{
+  "include": ["backend/src", "backend/tests"],
+  "exclude": ["**/__pycache__", "**/node_modules", "backend/.venv", "Soccer-Game"],
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic"
+}

@@ -167,9 +167,10 @@ def division_clubs(world: Path, division: str) -> list[int]:
 def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | None,
                focus_club: int | None = None,
                quality: tuple[float, float] = (62.0, 86.0),
-               ai_manager: bool = True) -> list[MatchTask]:
+               ai_manager: bool = True, equal: bool = False) -> list[MatchTask]:
     """``n`` fixtures, each played once per arm with the same seed. With ``clubs`` the teams
-    are real; otherwise synthetic with qualities drawn from ``quality``.
+    are real; otherwise synthetic with qualities drawn from ``quality``, the same for both
+    sides of a fixture when ``equal`` (section S judges tactics between equal teams).
 
     In-match AI managers (``ai_manager``) run for every side, except that in an A/B run the
     focus side keeps the arm's instructions all match, as the user's side does."""
@@ -189,7 +190,8 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
         else:
             pair = (1000 + 2 * k, 1001 + 2 * k)
             low, high = quality
-            qualities = (float(rng.uniform(low, high)), float(rng.uniform(low, high)))
+            first, second = float(rng.uniform(low, high)), float(rng.uniform(low, high))
+            qualities = (first, first if equal else second)
         managers = (ai_manager, ai_manager)
         if len(arms) > 1:
             managers = (False, ai_manager) if focus == 0 else (ai_manager, False)
@@ -309,13 +311,13 @@ def bootstrap_ci(matches: Sequence[dict[str, Any]], reps: int = BOOTSTRAP_REPS,
 
 def write_report(out: Path, label: str, division: str, synthetic: bool,
                  results: Sequence[dict[str, Any]], arms: Sequence[Arm],
-                 elapsed: float) -> Path:
+                 elapsed: float, teams: str | None = None) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     targets = load_targets(division)
+    teams = teams or ("synthetic teams" if synthetic else division)
     lines = [f"# Engine calibration: {label}", "",
-             f"{len(results)} matches ({'synthetic teams' if synthetic else division}) in "
-             f"{elapsed:.0f} s, {stamp} UTC.", ""]
+             f"{len(results)} matches ({teams}) in {elapsed:.0f} s, {stamp} UTC.", ""]
     baseline = [r for r in results if r["arm"] == arms[0].name]
     agg = aggregate(baseline)
     ci = bootstrap_ci(baseline)
@@ -347,7 +349,8 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
     path = out / f"{stamp}-{label}.md"
     path.write_text("\n".join(lines) + "\n", "utf-8")
     (out / f"{stamp}-{label}.json").write_text(json.dumps(
-        {"label": label, "division": division, "synthetic": synthetic, "aggregate": agg,
+        {"label": label, "division": division, "synthetic": synthetic, "teams": teams,
+         "aggregate": agg,
          "ci95": ci,
          "arms": {arm.name: aggregate([r for r in results if r["arm"] == arm.name])
                   for arm in arms},
@@ -361,19 +364,26 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
 
 def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path | None,
               synthetic: bool, workers: int | None = None, focus_club: int | None = None,
-              out: Path | None = None, ai_manager: bool = True) -> Path:
+              out: Path | None = None, ai_manager: bool = True,
+              quality: tuple[float, float] = (62.0, 86.0), equal: bool = False) -> Path:
     if len({arm.name for arm in arms}) < len(arms):
         raise ValueError("A/B arm names must be unique")
     workers = workers or max(1, (os.cpu_count() or 2) - 1)
     clubs = None if synthetic or world is None else division_clubs(world, division)
-    tasks = make_tasks(n, seed, arms, clubs, focus_club, ai_manager=ai_manager)
+    tasks = make_tasks(n, seed, arms, clubs, focus_club, quality, ai_manager, equal)
     started = time.perf_counter()
     results = run_tasks(tasks, None if synthetic else world, workers)
     elapsed = time.perf_counter() - started
     label = f"{'synthetic' if synthetic else division}-n{n}"
+    teams = None
+    if clubs is None:
+        low, high = quality
+        label += f"-q{low:g}-{high:g}" + ("-equal" if equal else "")
+        teams = (f"synthetic teams, quality {low:g}–{high:g}"
+                 + (", equal sides" if equal else ""))
     if len(arms) > 1:
         label += "-ab"
     if not ai_manager:
         label += "-nomanager"
     return write_report(out or REPO_ROOT / "reports" / "engine", label, division, synthetic,
-                        results, arms, elapsed)
+                        results, arms, elapsed, teams)

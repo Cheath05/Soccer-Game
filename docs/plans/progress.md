@@ -11,6 +11,14 @@ Every sub-step ends the same way:
 4. this file is ticked;
 5. commit and push to `phase-1-match-believability`.
 
+## Cloud session (29 Sep, claude.ai/code)
+
+The local session reached its usage limit, and a cloud session carried on from 8a5d319.
+- **Branch.** Cloud sessions can push only to their own branch, `claude/eloquent-ramanujan-ho29ch`. It is `phase-1-match-believability` plus the cloud commits, so to pick up locally: `git switch phase-1-match-believability && git fetch origin && git merge --ff-only origin/claude/eloquent-ramanujan-ho29ch && git push`.
+- **No EA data or built world in the cloud,** so batches there use synthetic teams. `--synthetic --division ENG4 --quality 58-66 --equal` stands in for Grimsby in League Two: equal sides, as section S asks, in a League Two-like band. Re-run a result on Grimsby locally before treating it as accepted.
+- **Speed.** The cloud machine has 4 cores and takes about 17.8 s per match (the Mac: 6.7 s), so the 8 s budget can only be checked on the Mac.
+- **Golden values are pinned per platform** (`darwin-arm64`, `linux-x86_64`). The Mac and Linux round some floating-point operations differently, and a match amplifies the difference. A cloud commit that changes behaviour can re-capture only the Linux values, and removes the Mac's. `uv run pytest -rs tests/unit/test_engine_golden.py` then skips on the Mac and prints its values to paste back in.
+
 ## Before the 29 Sep crash (checkpoint commit 24207eb)
 
 - [x] Phase 0: measurement and safety (probe, harness, targets, synthetic teams, golden and determinism tests, live-match safety, migrations)

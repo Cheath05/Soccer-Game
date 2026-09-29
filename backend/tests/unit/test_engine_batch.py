@@ -1,11 +1,11 @@
-"""Confidence intervals in calibration reports: paired A/B differences and bootstrap spreads."""
+"""Calibration batches: synthetic fixtures, paired A/B differences and bootstrap spreads."""
 
 import math
 from typing import Any
 
 import pytest
 
-from footsim.calibration.engine_batch import bootstrap_ci, paired_deltas
+from footsim.calibration.engine_batch import BASELINE, Arm, bootstrap_ci, make_tasks, paired_deltas
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
 from footsim.match.engine.probe import summarize
@@ -64,3 +64,20 @@ def test_bootstrap_intervals_cover_every_metric(world: World) -> None:
     assert ci["passes"] > 0 and ci["pass_accuracy"] >= 0
     assert bootstrap_ci(summaries, reps=50) == ci  # reports are reproducible
     assert bootstrap_ci(summaries[:1]) == {}
+
+
+def test_equal_synthetic_sides_share_a_quality() -> None:
+    arms = [BASELINE, Arm("press", {"pressing": "high"})]
+    equal = make_tasks(20, 5, arms, None, quality=(58.0, 66.0), equal=True)
+    unequal = make_tasks(20, 5, arms, None, quality=(58.0, 66.0))
+    for task in equal:
+        assert task.home_quality is not None and 58.0 <= task.home_quality <= 66.0
+        assert task.away_quality == task.home_quality
+    assert any(task.away_quality != task.home_quality for task in unequal)
+    # the same draws either way, so a run without --equal is reproduced exactly
+    assert [t.home_quality for t in equal] == [t.home_quality for t in unequal]
+    # every arm replays each fixture with the same teams and seed
+    for index in range(20):
+        replays = {(t.seed, t.home, t.away, t.home_quality, t.away_quality)
+                   for t in equal if t.index == index}
+        assert len(replays) == 1

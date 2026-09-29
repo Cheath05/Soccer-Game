@@ -40,6 +40,10 @@ The examples below show the harness flags. Run them from `.worktrees/measure/bac
 uv run --frozen footsim calibrate-engine --division ENG1 --n 200 --seed 1 --workers 7
 # Synthetic teams (no world file needed; qualities drawn from 62-86)
 uv run --frozen footsim calibrate-engine --synthetic --n 200 --seed 1 --workers 7
+# Equal synthetic sides in a League Two-like band: the stand-in for Grimsby where there's no
+# world file (the cloud). --quality sets the band, --equal gives both sides one draw.
+uv run --frozen footsim calibrate-engine --synthetic --division ENG4 --quality 58-66 --equal \
+  --n 200 --seed 11 --workers 4 --ab "aggressive:mentality=attacking,pressing=high,line=high,width=wide,tempo=fast,passing=direct"
 # Paired A/B on the user's club: every arm replays the same fixtures and seeds
 uv run --frozen footsim calibrate-engine --division ENG4 --n 200 --seed 11 --workers 7 --focus-club 218 \
   --ab "aggressive:mentality=attacking,pressing=high,line=high,width=wide,tempo=fast,passing=direct" \

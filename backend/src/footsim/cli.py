@@ -147,9 +147,11 @@ def _calibrate_engine(args: argparse.Namespace) -> int:
     if world is not None and not world.exists():
         print(f"No world at {world}: build one with `just build-world`, or use --synthetic.")
         return 1
+    low, _, high = args.quality.partition("-")
     path = calibrate(args.division, args.n, args.seed, arms, world, args.synthetic,
                      args.workers, args.focus_club, args.out,
-                     ai_manager=args.ai_manager == "on")
+                     ai_manager=args.ai_manager == "on",
+                     quality=(float(low), float(high or low)), equal=args.equal)
     print(path.read_text(encoding="utf-8"))
     print(f"Report written to {path}")
     return 0
@@ -195,6 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     eng.add_argument("--seed", type=int, default=1)
     eng.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     eng.add_argument("--synthetic", action="store_true", help="synthetic teams, no world needed")
+    eng.add_argument("--quality", default="62-86", metavar="LOW-HIGH",
+                     help="synthetic teams' quality (roughly their overall), drawn per side")
+    eng.add_argument("--equal", action="store_true",
+                     help="synthetic: both sides of a fixture get the same quality")
     eng.add_argument("--workers", type=int, default=None)
     eng.add_argument("--ab", action="append", default=[], metavar="NAME:KEY=VALUE,...",
                      help="an A/B arm for the focus side, e.g. aggressive:mentality=attacking")

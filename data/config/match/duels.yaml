@@ -1,0 +1,33 @@
+# Duels in the agent engine: tackles, take-ons, fouls and cards.
+#
+# Only the defender closest to the ball carrier challenges him. He first sizes the carrier
+# up (reaction), then commits to a tackle at a rate per second that depends on his
+# instructions, aggression, whether he's booked and how tired he is, or he simply jockeys and
+# keeps the carrier under pressure. A carrier who runs straight at a defender tries to take
+# him on, once. Real references (Premier League, per match, both teams): about 30-40 tackles,
+# 35-45 take-ons (roughly half succeed), 22 fouls, 3.8-4.2 yellow cards, 0.10-0.15 red cards.
+
+engage_radius: 1.8        # metres: a defender this close is challenging for the ball
+reaction: [0.3, 0.8]      # seconds to size up the carrier (better anticipation, quicker)
+tackle_rate: 0.4          # tackle attempts per second by an engaged defender
+pressing_commitment: {low: 0.7, normal: 1.0, high: 1.3}
+careful_in_own_box: 0.35  # tackle rate in his own box (defenders stay on their feet)
+box_foul_scale: 0.15      # fouls in his own box (a penalty) are that much rarer
+touchline_knock_out: 0.5  # a ball poked loose near the touchline is put out of play
+tackle_cooldown: 1.3      # seconds before the same defender can tackle again
+beaten_recovery: 1.6      # seconds a defender who has been beaten needs to recover
+take_on_cooldown: 2.0     # a carrier can't take on the same defender again for this long
+contact_radius: 1.3       # metres: a carrier running into a defender this close must act
+take_on_speed: 2.0        # m/s: only a carrier running with the ball takes a man on
+take_on_appetite: 0.35    # chance he tries it (scaled by dribbling, flair, role); else checks back
+tackle_edge: 0.35         # a set defender who picks his moment starts with this edge
+take_on_edge: -0.25       # a take-on is the attacker's choice: he starts ahead
+keep_after_tackle: [0.6, 0.75]   # chance the tackler keeps the ball: in midfield, near own goal
+
+foul_chance: 0.27         # of a challenge, before aggression, sliding and position
+aerial_foul_chance: 0.08  # of a contested header (mostly pushing by attackers)
+tactical_foul_chance: 0.3 # a beaten defender stopping a counter-attack
+booked_caution: 0.3       # a booked player's tackle rate and foul chance scale by this
+
+yellow: {base: 0.13, sliding: 0.08, aggressive: 0.06, from_behind: 0.05, tactical: 0.75}
+red: {base: 0.0015, reckless: 0.005}

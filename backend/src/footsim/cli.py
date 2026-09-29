@@ -88,6 +88,7 @@ def _sim_season(args: argparse.Namespace) -> int:
     from sqlalchemy import select, text
 
     from footsim.persistence.database import open_database
+    from footsim.persistence.migrations import migrate
     from footsim.persistence.schema import competition, league_final
     from footsim.world.career import advance, initialize_career
     from footsim.world.context import get_world
@@ -98,6 +99,7 @@ def _sim_season(args: argparse.Namespace) -> int:
         path = Path(tmp) / "sim.sqlite"
         shutil.copy(args.world, path)
         engine = open_database(path)
+        migrate(engine)
         with engine.begin() as conn:
             initialize_career(conn, world, None, None, seed=args.seed)
         for number in range(1, args.seasons + 1):
@@ -137,6 +139,21 @@ def _sim_season(args: argparse.Namespace) -> int:
     return 0
 
 
+def _calibrate_engine(args: argparse.Namespace) -> int:
+    from footsim.calibration.engine_batch import BASELINE, calibrate, parse_arm
+
+    arms = [BASELINE, *(parse_arm(spec) for spec in args.ab)]
+    world = None if args.synthetic else args.world
+    if world is not None and not world.exists():
+        print(f"No world at {world}: build one with `just build-world`, or use --synthetic.")
+        return 1
+    path = calibrate(args.division, args.n, args.seed, arms, world, args.synthetic,
+                     args.workers, args.focus_club, args.out)
+    print(path.read_text(encoding="utf-8"))
+    print(f"Report written to {path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="footsim")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -169,6 +186,21 @@ def main(argv: list[str] | None = None) -> int:
     sim.add_argument("--seasons", type=int, default=1)
     sim.add_argument("--seed", type=int, default=2026)
     sim.set_defaults(func=_sim_season)
+
+    eng = sub.add_parser("calibrate-engine",
+                         help="play a batch of agent-engine matches and compare with real football")
+    eng.add_argument("--division", default="ENG1", help="ENG1-ENG4 (sets clubs and targets)")
+    eng.add_argument("--n", type=int, default=200, help="fixtures (each played once per arm)")
+    eng.add_argument("--seed", type=int, default=1)
+    eng.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    eng.add_argument("--synthetic", action="store_true", help="synthetic teams, no world needed")
+    eng.add_argument("--workers", type=int, default=None)
+    eng.add_argument("--ab", action="append", default=[], metavar="NAME:KEY=VALUE,...",
+                     help="an A/B arm for the focus side, e.g. aggressive:mentality=attacking")
+    eng.add_argument("--focus-club", type=int, default=None,
+                     help="club that A/B arms apply to (default: random clubs)")
+    eng.add_argument("--out", type=Path, default=None)
+    eng.set_defaults(func=_calibrate_engine)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

@@ -1,0 +1,39 @@
+# Dead-ball restarts in the agent engine (match seconds).
+#
+# When the ball goes out or the referee stops play, the ball stays dead while players walk
+# or jog into position for the restart: the taker goes to the ball, attackers take up their
+# set-piece spots, defenders mark and keep their distance. A restart is taken once its
+# setup time has passed and the taker is on the ball (for a corner, once enough attackers
+# are in the box), and at the latest at max_setup.
+#
+# Real references (Opta, Premier League 2024/25 and 2025/26, ball out to restart): throw-ins
+# 15.6-17.9 s, goal kicks 28.3-30.3 s, corners 33.6-36.9 s, free kicks about 30 s, goal to
+# kick-off about 72 s. Ball in play: 55-58 minutes a match. The setup ranges below are a
+# little shorter because the ball is also out for `ball_out` first; calibration
+# (`just calibrate-engine`) tunes them until the ball is in play for 55-60 minutes.
+
+ball_out: 2.0                 # the ball stays where it went out before it's placed
+timing:
+  throw_in:          {setup: [10, 17], max_setup: 26}
+  long_throw:        {setup: [16, 22], max_setup: 30}
+  goal_kick:         {setup: [20, 30], max_setup: 40}
+  corner:            {setup: [25, 34], max_setup: 45}
+  free_kick:         {setup: [12, 22], max_setup: 32}
+  dangerous_free_kick: {setup: [24, 36], max_setup: 50}   # within shooting or crossing range
+  quick_free_kick:   {setup: [2, 4], max_setup: 8}
+  offside:           {setup: [8, 14], max_setup: 22}
+  penalty:           {setup: [40, 60], max_setup: 90}
+  kickoff:           {setup: [2, 3], max_setup: 10}       # start of a half
+  kickoff_after_goal: {setup: [45, 60], max_setup: 80}
+
+quick_free_kick_chance: 0.2   # a side fouled away from goal restarts before the defence sets
+corner_attackers: 5           # attackers who go into the box for a corner
+min_corner_attackers: 4       # a corner waits for this many in the box (until max_setup)
+long_throw_range: 32          # metres from goal within which a long throw is aimed at the box
+long_throw_strength: 75       # strength needed to throw it that far
+
+# Game management: late on, a side that's ahead takes its time; one behind hurries.
+late_minute: 75
+time_wasting: 1.35            # setup time factor for the side ahead
+hurry: 0.75                   # setup time factor for the side behind
+time_wasting_allowance: 0.5   # share of the wasted time the referee adds back on

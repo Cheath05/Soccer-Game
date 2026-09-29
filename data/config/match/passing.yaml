@@ -1,0 +1,27 @@
+# Passing, first touch and clearances in the agent engine.
+#
+# A pass leaves the passer's foot with an error in direction and length that grows with the
+# distance and the pressure on him, and shrinks with his passing skill. The receiver gets one
+# touch to control it: a poor first touch, especially with an opponent close, knocks the ball
+# loose. Clearances under pressure are often simply put out of play.
+# Real references (Premier League): pass accuracy about 82-84% overall, about 90% short,
+# 50-60% long; 33-38 throw-ins a match.
+
+execution:
+  base: 0.015            # radians of direction error for anyone
+  skill: 0.10            # extra error for a passer with no skill at all (scaled by 1 - skill)
+  pressure: 0.07         # extra error with an opponent right on him
+  fatigue: 0.03          # extra error when exhausted
+  per_metre: 0.0015      # extra error per metre beyond 15 m
+  lofted: 0.015          # a ball in the air is harder to place
+  length_skill: 0.07     # spread of how far the pass goes (fraction of its length)
+  length_per_metre: 0.008  # grows with distance: long balls are often over- or under-hit
+control:
+  receiver: 0.95         # the intended receiver, before first touch and pressure
+  teammate: 0.85         # another teammate getting to it
+  pressure_radius: 2.5   # an opponent this close pressures the first touch
+  pressure_penalty: 0.3  # worst-case drop in control chance with an opponent on top of him
+  heavy_touch_speed: [2.5, 5.5]  # m/s a miscontrolled ball runs away at
+clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
+aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
+header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)

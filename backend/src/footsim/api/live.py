@@ -1,18 +1,21 @@
-"""Live matches over a WebSocket.
+"""Watching a match live over a WebSocket.
 
-The server runs the agent engine in step with the viewer: every 100 ms it advances the
-match by ``speed`` ticks (1 tick = 0.1 s of match time) and sends the new frames, so a
-tactical change the user makes applies from the moment they see. Matches live in memory
-until they finish, so a page reload reconnects to the same match (paused).
+The match is played by match.live.session.LiveSession, which keeps the engine just ahead of
+what the viewer sees. This module only moves messages: about 20 times a second it applies
+the viewer's commands, lets the session advance the match, and sends the new frames and
+state. Matches live in memory until they finish, so a page reload reconnects to the same
+match (paused). A match belongs to the career loaded when it started (see CareerSession).
 
-Protocol (JSON). Server -> client: init | frames | end | error. Client -> server:
-pause | resume | speed {value} | mode {value: full|highlights} | formation {key} |
-instruction {key, value} | sub {out, in} | auto_subs {value} | finish.
+Protocol v2 (JSON).
+  Server -> client: init | frames | ack | end | error.
+  Client -> server: pause | resume | speed {value} | mode {value: full|highlights} |
+    formation {key} | instruction {key, value} | sub {out, in} | auto_subs {value} |
+    start_period | finish. Any command may carry a cmd_id, echoed back in its ack.
 """
 
 import asyncio
 import contextlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -20,7 +23,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from footsim.api.session import CareerSession
-from footsim.match.engine.engine import MatchEngine
+from footsim.match.live.session import LiveSession
 from footsim.persistence.schema import club, fixture
 from footsim.world.career import agent_match
 from footsim.world.context import get_world
@@ -29,32 +32,17 @@ from footsim.world.results import record_result
 
 router = APIRouter()
 
-TICK_INTERVAL = 0.1  # seconds of wall time per loop
-MAX_SPEED = 64
-HIGHLIGHT_TYPES = {"goal", "shot", "penalty", "red"}
-HIGHLIGHT_BEFORE = 150  # frames (15 s) shown before a highlight
-HIGHLIGHT_AFTER = 5.0  # match seconds shown after it
-SKIP_TICKS = 300  # ticks simulated per loop while skipping between highlights
+LOOP_SECONDS = 0.05  # real seconds between updates while playing
+PAUSED_SECONDS = 0.25
 
 
 @dataclass
 class LiveMatch:
-    engine: MatchEngine
+    session: LiveSession
     fixture_id: int
-    user_team: int
     day: date
     names: tuple[str, str]
-    speed: int = 1
-    paused: bool = True
-    mode: str = "full"
-    replay_until: float = -1.0
-    feed_sent: int = 0
-    lineup_sent: int = -1
-    last_stats: float = -99.0
-    commands: list[dict[str, Any]] = field(default_factory=list)
-
-
-_matches: dict[int, LiveMatch] = {}
+    generation: int  # the career it belongs to (CareerSession.generation)
 
 
 def _session(ws: WebSocket) -> CareerSession:
@@ -63,10 +51,11 @@ def _session(ws: WebSocket) -> CareerSession:
 
 
 def _open(session: CareerSession, fixture_id: int) -> LiveMatch:
-    live = _matches.get(fixture_id)
+    live: LiveMatch | None = session.live_matches.get(fixture_id)
     if live is not None:
         return live
     world = get_world()
+    generation = session.generation
     with session.read() as conn:
         meta = read_meta(conn)
         fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
@@ -80,134 +69,34 @@ def _open(session: CareerSession, fixture_id: int) -> LiveMatch:
         names = {r.id: r.name for r in conn.execute(select(club.c.id, club.c.name).where(
             club.c.id.in_([fx.home_club_id, fx.away_club_id])))}
     user_team = 0 if fx.home_club_id == meta.user_club_id else 1
-    live = LiveMatch(engine, fixture_id, user_team, meta.current_date,
-                     (names[fx.home_club_id], names[fx.away_club_id]))
-    _matches[fixture_id] = live
+    playback = LiveSession(engine, world, world.defs.presentation, user_team)
+    live = LiveMatch(playback, fixture_id, meta.current_date,
+                     (names[fx.home_club_id], names[fx.away_club_id]), generation)
+    with session.lock:
+        if session.generation != generation:
+            raise ValueError("the career changed while the match was being set up")
+        session.live_matches[fixture_id] = live
     return live
 
 
-def _state(live: LiveMatch) -> dict[str, Any]:
-    e = live.engine
-    return {"score": list(e.score), "minute": e.minute, "period": e.period,
-            "paused": live.paused, "speed": live.speed, "mode": live.mode,
-            "finished": e.finished, "subs_left": [5 - e.subs_used[0], 5 - e.subs_used[1]]}
+def _belongs(session: CareerSession, live: LiveMatch) -> bool:
+    return (session.generation == live.generation
+            and session.live_matches.get(live.fixture_id) is live)
 
 
-def _init_message(live: LiveMatch) -> dict[str, Any]:
-    e = live.engine
-    defs = e.defs
-    live.feed_sent = len(e.feed)
-    live.lineup_sent = e.lineup_version
-    return {
-        "type": "init", **_state(live),
-        "teams": [{"name": live.names[0], "club_id": e.sheets[0].club_id},
-                  {"name": live.names[1], "club_id": e.sheets[1].club_id}],
-        "user_team": live.user_team,
-        "lineup": e.lineup(),
-        "bench": [e.bench_info(0), e.bench_info(1)],
-        "formation": [e.formation[0].key, e.formation[1].key],
-        "formations": [{"key": f.key, "name": f.name} for f in defs.formations.values()],
-        "instructions": [dict(e.instructions[0]), dict(e.instructions[1])],
-        "instruction_options": [{"key": d.key, "label": d.label, "options": d.options}
-                                for d in defs.instructions.values()],
-        "auto_subs": list(e.auto_subs),
-        "stats": e.live_stats(),
-        "feed": e.feed[-30:],
-        "frames": list(e.frames)[-5:],
-    }
-
-
-def _apply(live: LiveMatch, cmd: dict[str, Any]) -> str | None:
-    """Apply a client command; returns an error message or None."""
-    e = live.engine
-    kind = cmd.get("type")
-    team = live.user_team
-    try:
-        if kind == "pause":
-            live.paused = True
-        elif kind == "resume":
-            live.paused = False
-        elif kind == "speed":
-            live.speed = max(1, min(MAX_SPEED, int(cmd.get("value", 1))))
-        elif kind == "mode":
-            live.mode = "highlights" if cmd.get("value") == "highlights" else "full"
-            live.replay_until = -1.0
-        elif kind == "formation":
-            e.set_formation(team, str(cmd["key"]))
-        elif kind == "instruction":
-            e.set_instruction(team, str(cmd["key"]), str(cmd["value"]))
-        elif kind == "sub":
-            e.substitute(team, int(cmd["out"]), int(cmd["in"]))
-        elif kind == "auto_subs":
-            e.auto_subs[team] = bool(cmd.get("value"))
-        elif kind == "finish":
-            live.mode = "finish"
-        else:
-            return f"unknown command {kind!r}"
-    except (ValueError, KeyError) as exc:
-        return str(exc)
-    return None
-
-
-def _advance(live: LiveMatch) -> tuple[list[list[float]], bool]:
-    """Step the engine for one loop. Returns frames to show and whether a highlight began."""
-    e = live.engine
-    if live.mode == "full":
-        for _ in range(live.speed):
-            e.step()
-        frames = list(e.frames)
-        e.frames.clear()
-        return frames, False
-    if live.mode == "highlights":
-        if e.t < live.replay_until:  # showing a highlight's aftermath at the chosen speed
-            for _ in range(max(1, live.speed)):
-                e.step()
-            frames = list(e.frames)
-            e.frames.clear()
-            return frames, False
-        start = len(e.feed)
-        for _ in range(SKIP_TICKS):
-            e.step()
-            if e.finished or any(f["type"] in HIGHLIGHT_TYPES for f in e.feed[start:]):
-                break
-        if any(f["type"] in HIGHLIGHT_TYPES for f in e.feed[start:]):
-            live.replay_until = e.t + HIGHLIGHT_AFTER
-            frames = list(e.frames)[-HIGHLIGHT_BEFORE:]
-            e.frames.clear()
-            return frames, True
-        return [], False
-    return [], False
-
-
-def _finish(session: CareerSession, live: LiveMatch) -> None:
-    if not live.engine.finished:
-        live.engine.record = False
-        live.engine.run()
-    report = live.engine.report()
-    with session.write() as conn:
-        record_result(conn, live.fixture_id, report, live.day, "live")
-    _matches.pop(live.fixture_id, None)
-
-
-def _update(live: LiveMatch, frames: list[list[float]], highlight: bool) -> dict[str, Any]:
-    e = live.engine
-    message: dict[str, Any] = {"type": "frames", **_state(live), "frames": frames,
-                               "highlight": highlight}
-    if len(e.feed) > live.feed_sent:
-        message["feed"] = e.feed[live.feed_sent:]
-        live.feed_sent = len(e.feed)
-    if e.lineup_version != live.lineup_sent:
-        live.lineup_sent = e.lineup_version
-        message["lineup"] = e.lineup()
-        message["bench"] = [e.bench_info(0), e.bench_info(1)]
-        message["formation"] = [e.formation[0].key, e.formation[1].key]
-    if e.t - live.last_stats >= 1.0 or highlight:
-        live.last_stats = e.t
-        message["stats"] = e.live_stats()
-        message["lineup_stamina"] = [round(float(s) * 100) for s in e.stamina]
-    message["instructions"] = [dict(e.instructions[0]), dict(e.instructions[1])]
-    message["auto_subs"] = list(e.auto_subs)
-    return message
+def _finish(session: CareerSession, live: LiveMatch) -> bool:
+    """Play out the rest, record the result and autosave. False if the career has changed
+    since the match started (another save was loaded), in which case nothing is written."""
+    live.session.finish()
+    report = live.session.engine.report()
+    with session.lock:
+        if not _belongs(session, live):
+            return False
+        with session.write() as conn:
+            record_result(conn, live.fixture_id, report, live.day, "live")
+        session.live_matches.pop(live.fixture_id, None)
+        session.autosave()
+    return True
 
 
 @router.websocket("/api/fixtures/{fixture_id}/live")
@@ -220,8 +109,9 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
         await ws.send_json({"type": "error", "message": str(exc)})
         await ws.close()
         return
-    live.paused = True
-    await ws.send_json(_init_message(live))
+    playback = live.session
+    playback.paused = True
+    await ws.send_json(playback.init_message(live.names))
 
     inbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
@@ -234,32 +124,49 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
 
     task = asyncio.create_task(reader())
     loop = asyncio.get_running_loop()
+    finishing = False
+    pending: list[dict[str, Any]] = []  # a command that arrived while we were waiting
     try:
         while True:
             started = loop.time()
-            while not inbox.empty():
-                cmd = inbox.get_nowait()
-                if cmd.get("type") == "_disconnected":
+            while pending or not inbox.empty():
+                cmd = pending.pop(0) if pending else inbox.get_nowait()
+                kind = cmd.get("type")
+                if kind == "_disconnected":
                     return
-                error = _apply(live, cmd)
+                if kind in ("finish", "instant"):
+                    finishing = True
+                    continue
+                error = playback.apply(cmd, loop.time())
                 if error:
-                    await ws.send_json({"type": "error", "message": error})
-            if live.mode == "finish" or live.engine.finished:
-                await asyncio.to_thread(_finish, session, live)
-                await ws.send_json({"type": "end", "score": list(live.engine.score),
-                                    "stats": live.engine.live_stats(),
-                                    "fixture_id": fixture_id})
+                    await ws.send_json({"type": "error", "message": error,
+                                        "cmd_id": cmd.get("cmd_id")})
+                elif cmd.get("cmd_id") is not None:
+                    await ws.send_json({"type": "ack", "cmd_id": cmd["cmd_id"],
+                                        "tick": playback.engine.tick_count})
+            if not _belongs(session, live):
+                await ws.send_json({"type": "error", "message": (
+                    "Another career was loaded, so this match was abandoned and not recorded.")})
                 return
-            if live.paused:
-                await ws.send_json({"type": "frames", **_state(live), "frames": []})
-                await asyncio.sleep(0.25)
-                continue
-            frames, highlight = _advance(live)
-            await ws.send_json(_update(live, frames, highlight))
-            elapsed = loop.time() - started
-            await asyncio.sleep(max(0.0, TICK_INTERVAL - elapsed))
+            if finishing or playback.engine.finished:
+                if not await asyncio.to_thread(_finish, session, live):
+                    await ws.send_json({"type": "error", "message": (
+                        "Another career was loaded, so this match was not recorded.")})
+                    return
+                engine = playback.engine
+                await ws.send_json({"type": "end", "score": list(engine.score),
+                                    "stats": engine.live_stats(), "clock": playback.clock(),
+                                    "status": playback.status(), "fixture_id": fixture_id})
+                return
+            update = playback.pump(loop.time())
+            await ws.send_json(playback.update_message(update, loop.time()))
+            pause = PAUSED_SECONDS if playback.paused else LOOP_SECONDS
+            # Wait for the next update, but act on a command the moment it arrives.
+            with contextlib.suppress(TimeoutError):
+                pending.append(await asyncio.wait_for(
+                    inbox.get(), max(0.0, pause - (loop.time() - started))))
     finally:
-        live.paused = True
+        playback.paused = True
         task.cancel()
         with contextlib.suppress(Exception):
             await ws.close()

@@ -36,6 +36,7 @@ from footsim.api.schemas import (
 from footsim.defs.competitions import MovementKind
 from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES
 from footsim.importers.generate import age_on
+from footsim.match.engine.clock import event_label
 from footsim.match.teams import TeamSheet
 from footsim.persistence.database import open_database
 from footsim.persistence.schema import (
@@ -378,11 +379,15 @@ def match_detail(conn: Connection, fixture_id: int) -> MatchOut:
                      OR p.id IN (SELECT player_id FROM match_event WHERE fixture_id = :f)
                      OR p.id IN (SELECT other_player_id FROM match_event WHERE fixture_id = :f)
               """), {"f": fixture_id})}
-    events = [MatchEventOut(minute=e.minute, type=e.type, club_id=e.club_id,
+    events = [MatchEventOut(minute=e.minute, label=(event_label(e.period, e.second)
+                                                    if e.period and e.second is not None
+                                                    else f"{e.minute}'"),
+                            period=e.period, second=e.second, type=e.type, club_id=e.club_id,
                             player=people.get(e.player_id), other_player=people.get(
                                 e.other_player_id), detail=e.detail)
               for e in conn.execute(text(
-                  "SELECT * FROM match_event WHERE fixture_id = :f ORDER BY minute, id"),
+                  "SELECT * FROM match_event WHERE fixture_id = :f "
+                  "ORDER BY COALESCE(period, 0), minute, COALESCE(second, 0), id"),
                   {"f": fixture_id})]
     lines: dict[int, list[PlayerLineOut]] = defaultdict(list)
     for ln in conn.execute(text(
@@ -391,8 +396,10 @@ def match_detail(conn: Connection, fixture_id: int) -> MatchOut:
         lines[ln.club_id].append(PlayerLineOut(
             player_id=ln.player_id, name=people.get(ln.player_id, "?"),
             started=bool(ln.started), minutes=ln.minutes, goals=ln.goals, assists=ln.assists,
-            shots=ln.shots, passes=ln.passes, passes_completed=ln.passes_completed,
-            tackles=ln.tackles, saves=ln.saves, yellow=ln.yellow, red=ln.red, rating=ln.rating))
+            shots=ln.shots, shots_on_target=ln.shots_on_target, passes=ln.passes,
+            passes_completed=ln.passes_completed, tackles=ln.tackles,
+            interceptions=ln.interceptions, saves=ln.saves, yellow=ln.yellow, red=ln.red,
+            rating=ln.rating))
     stats = json.loads(row.stats) if row.stats else None
     return MatchOut(fixture=fixture_out(row, names, comps), events=events,
                     home_lines=lines[row.home_club_id], away_lines=lines[row.away_club_id],

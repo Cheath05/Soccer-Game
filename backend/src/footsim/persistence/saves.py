@@ -49,13 +49,25 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _remove_sidecars(path: Path) -> None:
+    """Delete a database's -wal/-shm files. Only call this when nothing has it open: a stale
+    WAL file next to a replaced database could be replayed into it."""
+    for suffix in ("-wal", "-shm", "-journal"):
+        Path(f"{path}{suffix}").unlink(missing_ok=True)
+
+
 def _copy_database(src: Path, dst: Path) -> None:
-    """Consistent copy of a (possibly open, WAL-mode) SQLite database."""
+    """Consistent copy of a (possibly open, WAL-mode) SQLite database.
+
+    The copy uses a rollback journal, so reading or checking it later never leaves -wal/-shm
+    files behind. The game switches its working copy back to WAL when it opens it."""
     dst.unlink(missing_ok=True)
+    _remove_sidecars(dst)
     source = sqlite3.connect(src)
     target = sqlite3.connect(dst)
     try:
         source.backup(target)
+        target.execute("PRAGMA journal_mode=DELETE")
     finally:
         target.close()
         source.close()
@@ -135,7 +147,9 @@ class SaveManager:
         _fsync(tmp)
         if keep_backup and target.exists():
             self._backup(directory, target)
+        _remove_sidecars(target)
         os.replace(tmp, target)
+        _remove_sidecars(tmp)
         self._record(directory, name, target)
 
     def _backup(self, directory: Path, current: Path) -> None:

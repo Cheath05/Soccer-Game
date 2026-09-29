@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 2  # bump on any schema change; older databases need migrating
+SCHEMA_VERSION = 3  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -246,6 +246,8 @@ match_event = Table(
     Column("player_id", ForeignKey("player.person_id")),
     Column("other_player_id", ForeignKey("player.person_id")),  # assist, or player coming on
     Column("detail", Text),
+    Column("period", Integer),  # 1-4 (v3); NULL when the engine only knew the minute
+    Column("second", Integer),  # seconds into the period (v3)
     Index("ix_match_event_fixture", "fixture_id"),
 )
 

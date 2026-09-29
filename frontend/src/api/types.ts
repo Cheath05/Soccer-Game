@@ -136,6 +136,9 @@ export interface PlayerDetail extends SquadPlayer {
 
 export interface MatchEvent {
   minute: number
+  label: string
+  period: number | null
+  second: number | null
   type: string
   club_id: number
   player: string | null
@@ -151,9 +154,11 @@ export interface PlayerLine {
   goals: number
   assists: number
   shots: number
+  shots_on_target: number
   passes: number
   passes_completed: number
   tackles: number
+  interceptions: number
   saves: number
   yellow: number
   red: number

@@ -39,6 +39,11 @@ demo:
 sim-season *args:
     cd {{backend}} && uv run footsim sim-season {{args}}
 
+# Play a batch of agent-engine matches and compare with real football (reports/engine/)
+# e.g. just calibrate-engine --n 200 --division ENG4 --ab aggressive:mentality=attacking
+calibrate-engine *args:
+    cd {{backend}} && uv run footsim calibrate-engine {{args}}
+
 # Browser smoke test against a running server (default: the demo on port 8000)
 e2e url="http://127.0.0.1:8000":
     cd {{frontend}} && node e2e/smoke.mjs {{url}} /tmp && node e2e/live.mjs {{url}} /tmp

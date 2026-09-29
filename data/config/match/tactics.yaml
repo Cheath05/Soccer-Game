@@ -1,0 +1,47 @@
+# What each team instruction does in the agent engine.
+#
+# Instructions change what players do (where they stand, what they choose, how hard they run),
+# never how good they are. Every setting that helps in one way costs in another:
+#   mentality   pushes the whole team up and makes shooting more tempting, leaving fewer men
+#               behind the ball when it's lost
+#   pressing    closes the ball down sooner and with more players, and they commit to tackles,
+#               at the cost of running (fatigue) and gaps behind the press
+#   line        a higher line squeezes the space in midfield but leaves room in behind
+#   width       stretches the opponent, but puts longer distances between our players
+#   tempo       faster play moves the ball before the defence is set, but hurried passes are
+#               less accurate and decisions sloppier
+#   passing     direct play gets the ball forward quickly, but long balls are contested in the
+#               air and are lost more often
+# The quick engine gets the same effects through its fitted surrogate (docs/design.md).
+
+mentality:
+  defensive: {push: -6.0, shoot_preference: -0.1}
+  balanced:  {push: 0.0,  shoot_preference: 0.0}
+  attacking: {push: 6.0,  shoot_preference: 0.08}
+pressing:     # trigger: how close (m) the ball must be before the nearest players go to it
+  low:    {trigger: 7.0,  pressers: 1, fatigue: 0.9}
+  normal: {trigger: 13.0, pressers: 1, fatigue: 1.0}
+  high:   {trigger: 21.0, pressers: 2, fatigue: 1.3}
+line:         # height: defensive line (m from our goal) when set; span: back line to forwards
+  deep:   {height: 24.0, span: 26.0}
+  normal: {height: 33.0, span: 30.0}
+  high:   {height: 42.0, span: 34.0}
+width:
+  narrow: {width: 46.0}
+  normal: {width: 54.0}
+  wide:   {width: 62.0}
+tempo:        # hold: seconds on the ball before acting; hurry: extra pass error; care: noise
+  slow:   {hold: 2.0,  hurry: -0.1, care: -0.002}
+  normal: {hold: 1.6,  hurry: 0.0,  care: 0.0}
+  fast:   {hold: 1.15, hurry: 0.35, care: 0.004}
+passing:      # directness: preference for balls forward over keeping possession
+  short:  {directness: -1.0}
+  mixed:  {directness: 0.0}
+  direct: {directness: 1.0}
+
+# Transitions: when the ball changes hands, players need a moment to react.
+transition:
+  reaction: [0.3, 1.1]    # s before a player switches to recovering (quicker with better
+                          # anticipation and work rate); until then he carries on
+  counter_hold: 0.6       # s on the ball for a player who has just won it in his own half
+  counter_window: 6.0     # s after winning the ball that runners break forward

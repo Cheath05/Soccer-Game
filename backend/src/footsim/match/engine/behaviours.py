@@ -8,7 +8,7 @@ Every few ticks each team recomputes its players' targets:
      on the last defender's shoulder, and players near the ball move into open space.
   3. Out of possession: the nearest players press the ball (more of them with high
      pressing), the rest mark the nearest attacker goal-side, and the keeper sets his angle.
-  4. Set pieces put players in their restart positions.
+  4. While a restart is set up, set_pieces.py says where everyone goes.
 """
 
 from typing import TYPE_CHECKING
@@ -18,16 +18,12 @@ import numpy as np
 from footsim.defs.formations import Phase
 from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RunType
-from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH
+from footsim.match.engine import set_pieces
+from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
 
-LINE_HEIGHT = {"deep": 24.0, "normal": 33.0, "high": 42.0}
-BLOCK_SPAN = {"deep": 26.0, "normal": 30.0, "high": 34.0}
-WIDTH_IN = {"narrow": 46.0, "normal": 54.0, "wide": 62.0}
-MENTALITY_PUSH = {"defensive": -6.0, "balanced": 0.0, "attacking": 6.0}
-PRESS = {"low": (7.0, 1), "normal": (13.0, 1), "high": (21.0, 2)}  # trigger m, pressers
 DANGER_ZONE = 38.0  # ball this close to our goal line: always engage it
 COUNTER_PRESS_SECONDS = 4.0
 MARKING_GROUPS = {PositionGroup.CB, PositionGroup.FB, PositionGroup.DM, PositionGroup.CM}
@@ -65,26 +61,29 @@ def _team(eng: "MatchEngine", team: int) -> None:
     if len(idx) == 0:
         return
     ins = eng.instructions[team]
-    bx, by = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
     restart = eng.restart
+    # While a restart is set up, shape up around where the ball will be put back into play.
+    ref = restart.spot if restart is not None else (float(eng.ball[0]), float(eng.ball[1]))
+    bx, by = eng.to_att(team, *ref)
     attacking = eng.possession_team() == team
     kickoff = restart is not None and restart.kind == "kickoff"
     phase = _phase(bx, attacking)
     slots = {s.id: s for s in eng.formation[team].slots}
 
     if attacking and not kickoff:
-        push = MENTALITY_PUSH.get(ins.get("mentality", ""), 0.0)
+        push = eng.effect(team, "mentality").push
         back = float(np.clip(bx - 32 + push, 14, 52))
         front = min(back + 42 + push * 0.5, 96.0)
-        width = WIDTH_IN.get(ins.get("width", ""), 54.0)
+        width = eng.effect(team, "width").width
         shift = 0.22
     else:
-        line = LINE_HEIGHT.get(ins.get("line", ""), 33.0)
+        line_effect = eng.effect(team, "line")
+        line = line_effect.height
         back = float(np.clip(min(line, bx - 9), 6, line))
         if ins.get("pressing") == "high" and bx > 60 and not kickoff:
             back = line + 4
-        front = back + BLOCK_SPAN.get(ins.get("line", ""), 30.0)
-        width = 0.72 * WIDTH_IN.get(ins.get("width", ""), 54.0)
+        front = back + line_effect.span
+        width = 0.72 * eng.effect(team, "width").width
         shift = 0.42
         if kickoff:
             back, front = 22.0, 49.0
@@ -104,6 +103,10 @@ def _team(eng: "MatchEngine", team: int) -> None:
             yn += role_offset.d_out * side
         if eng.group[i] is PositionGroup.GK:
             targets[k] = _keeper_spot(bx, by, attacking and not kickoff, back)
+            sweep = _ball_to_goal(eng, team)
+            if sweep is not None:  # a ball rolling towards our goal: go and meet it
+                targets[k] = sweep
+                eng.urgent[i] = True
             continue
         x = back + (xn - X_BACK) * stretch
         y = MID_Y + (yn - 0.5) * width + (by - MID_Y) * shift
@@ -111,17 +114,17 @@ def _team(eng: "MatchEngine", team: int) -> None:
 
     targets[:, 0] = np.clip(targets[:, 0], 1.0, LENGTH - 1.0)
     targets[:, 1] = np.clip(targets[:, 1], 1.5, WIDTH - 1.5)
-    if kickoff:
-        targets[:, 0] = np.minimum(targets[:, 0], MID_X - 1.0)
 
     opp_pts = eng.att_points(team, eng.pos[eng.team_indices(1 - team)])
-    if restart is not None and restart.kind in ("corner", "penalty"):
-        _set_piece(eng, team, idx, targets, attacking)
-    elif attacking and restart is None:
+    if restart is not None:
+        set_pieces.arrange(eng, team, idx, targets, attacking)
+    elif attacking:
         _attack(eng, team, idx, targets, opp_pts, bx, by)
-    elif not attacking:
+    else:
         _defend(eng, team, idx, targets, opp_pts, bx, by, ins)
 
+    if not attacking and restart is None:
+        _react(eng, idx, targets, team)
     pitch = eng.att_points(team, targets)
     for k, i in enumerate(idx):
         if i == eng.owner:
@@ -140,6 +143,26 @@ def _team(eng: "MatchEngine", team: int) -> None:
             eng.urgent[chaser] = True
 
 
+def _react(eng: "MatchEngine", idx: np.ndarray, targets: np.ndarray, team: int) -> None:
+    """Just after losing the ball players need a moment to react: until then they carry on
+    with what they were doing (a full-back caught upfield really is caught). The two nearest
+    the ball counter-press at once."""
+    since = eng.t - eng.turnover_at
+    low, high = eng.defs.tactics.transition.reaction
+    if since >= high:
+        return
+    nearest = sorted(range(len(idx)), key=lambda k: float(
+        np.linalg.norm(eng.pos[idx[k]] - eng.ball)))[:2]
+    for k, i in enumerate(idx):
+        if k in nearest or eng.group[i] is PositionGroup.GK:
+            continue
+        alertness = (eng.a(i, "anticipation") + eng.a(i, "work_rate")) / 200
+        if since < low + (high - low) * (1 - alertness):
+            ahead = eng.pos[i] + eng.vel[i] * 0.8
+            targets[k] = eng.att_points(team, ahead[None, :])[0]
+            eng.urgent[i] = False
+
+
 def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     """Where a pass receiver should go: into the ball's path, not just the aimed point."""
     info = eng.pass_info
@@ -156,6 +179,24 @@ def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     t = float(np.clip((eng.pos[i] - eng.ball) @ segment / length_sq, 0, 1))
     result: np.ndarray = eng.ball + t * segment
     return result
+
+
+def _ball_to_goal(eng: "MatchEngine", team: int) -> tuple[float, float] | None:
+    """Where a moving ball will cross our goal line inside the goal area, if it will, while
+    it isn't a shot (keepers deal with shots in the shot model)."""
+    if eng.state not in ("pass", "loose") or eng.restart is not None:
+        return None
+    x, y = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
+    vx = float(eng.ball_v[0]) * eng.attack_dir[team]
+    vy = float(eng.ball_v[1]) * eng.attack_dir[team]
+    if vx > -1.0 or x > 30:
+        return None
+    time_to_line = x / -vx
+    cross_y = y + vy * time_to_line
+    if abs(cross_y - MID_Y) > 9.0:
+        return None
+    meet = min(time_to_line, 0.6)  # meet it a little before it gets there
+    return max(0.6, x + vx * (time_to_line - meet)), y + vy * (time_to_line - meet)
 
 
 def _keeper_spot(bx: float, by: float, attacking: bool, back: float) -> tuple[float, float]:
@@ -179,11 +220,14 @@ def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             opp_pts: np.ndarray, bx: float, by: float) -> None:
     line = offside_line(opp_pts, bx)
     carrier = eng.owner if eng.owner >= 0 and int(eng.team_of[eng.owner]) == team else None
+    # Just won the ball: runners break forward straight away, even from deep.
+    countering = (eng.t - eng.turnover_at < eng.defs.tactics.transition.counter_window
+                  and bx > 15)
     for k, i in enumerate(idx):
         if eng.group[i] is PositionGroup.GK or i == carrier:
             continue
         runs = eng.role[i].movement.runs.get(RunType.IN_BEHIND, 0.0)
-        if runs >= 0.3 and bx > 38 and carrier is not None:
+        if runs >= 0.3 and carrier is not None and (bx > 38 or countering):
             targets[k, 0] = line - 1.0
             eng.running[i] = True
             eng.urgent[i] = True
@@ -225,7 +269,8 @@ def _lane_clearance(ball: np.ndarray, points: np.ndarray, opp_pts: np.ndarray) -
 
 def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             opp_pts: np.ndarray, bx: float, by: float, ins: dict[str, str]) -> None:
-    trigger, pressers = PRESS.get(ins.get("pressing", ""), (13.0, 1))
+    press = eng.effect(team, "pressing")
+    trigger, pressers = press.trigger, press.pressers
     ball = np.array([bx, by])
     own = eng.att_points(team, eng.pos[idx])
     loose = eng.owner < 0
@@ -278,37 +323,3 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             targets[k] = weight * mark + (1 - weight) * targets[k]
             if opp_pts[nearest, 0] < targets[k, 0] - 3:
                 eng.urgent[idx[k]] = True  # an attacker is getting in behind: recover
-
-
-def _set_piece(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
-               attacking: bool) -> None:
-    restart = eng.restart
-    assert restart is not None
-    outfield = [k for k, i in enumerate(idx) if eng.group[i] is not PositionGroup.GK
-                and i != restart.taker]
-    if restart.kind == "penalty":
-        for k in outfield:
-            if attacking:
-                targets[k, 0] = min(targets[k, 0], LENGTH - BOX_DEPTH - 1.5)
-            else:
-                targets[k, 0] = max(targets[k, 0], BOX_DEPTH + 1.5)
-        return
-    # Corner: aerial threats attack the box; defenders pack it.
-    heading = {k: eng.a(idx[k], "heading_accuracy") + eng.a(idx[k], "jumping") for k in outfield}
-    ranked = sorted(outfield, key=lambda k: -heading[k])
-    if attacking:
-        spots = [(100.5, 30.5), (101.0, 38.5), (94.0, 34.0), (97.5, 26.0), (97.5, 42.0)]
-        for k, spot in zip(ranked[:5], spots, strict=False):
-            targets[k] = spot
-        for k in ranked[5:]:
-            targets[k] = (58.0, MID_Y + (targets[k, 1] - MID_Y) * 0.6)
-    else:
-        spots = [(2.5, 30.0), (2.5, 38.0), (5.0, 34.0), (6.0, 28.0), (6.0, 40.0), (9.0, 31.0),
-                 (9.0, 37.0), (11.5, 34.0), (14.0, 28.0), (14.0, 40.0)]
-        for k, spot in zip(ranked, spots, strict=False):
-            targets[k] = spot
-        if ranked:
-            targets[ranked[-1]] = (35.0, MID_Y)  # an outlet for the counter
-    for k in range(len(targets)):
-        if abs(targets[k, 1] - MID_Y) > BOX_HALF + 8 and attacking:
-            targets[k, 1] = MID_Y + np.sign(targets[k, 1] - MID_Y) * (BOX_HALF + 8)

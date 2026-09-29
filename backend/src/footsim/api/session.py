@@ -4,11 +4,13 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import Connection, Engine
 
 from footsim.core.paths import data_dir, saves_dir
 from footsim.persistence.database import check_schema, open_database
+from footsim.persistence.migrations import migrate
 from footsim.persistence.saves import SaveManager
 from footsim.world.career import initialize_career
 from footsim.world.context import get_world
@@ -26,6 +28,11 @@ class CareerSession:
         self._engine: Engine | None = None
         # Writes (advance, play, tactics) are serialised; SQLite has one writer anyway.
         self.lock = threading.RLock()
+        # Matches being watched, by fixture id. They belong to the career that was loaded
+        # when they started: loading or starting a career discards them, and ``generation``
+        # lets a match that finishes afterwards see it no longer belongs to this career.
+        self.live_matches: dict[int, Any] = {}
+        self.generation = 0
 
     @property
     def active(self) -> bool:
@@ -41,6 +48,7 @@ class CareerSession:
         self.close()
         engine = open_database(working)
         try:
+            migrate(engine)  # the working copy only; the save file changes on the next save
             check_schema(engine)
         except Exception:
             engine.dispose()
@@ -79,6 +87,8 @@ class CareerSession:
             self._engine.dispose()
         self._engine = None
         self.slot = None
+        self.live_matches.clear()
+        self.generation += 1
 
     @contextmanager
     def read(self) -> Iterator[Connection]:

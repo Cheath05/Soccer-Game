@@ -1,4 +1,6 @@
-// Starts a career, goes to match day and watches the live match. Usage: node e2e/live.mjs <url> <dir>
+// Starts a career, goes to match day and watches the live match: speed controls, half-time
+// changes, the subs panel, a player card, then an instant finish and the report.
+// Usage: node e2e/live.mjs <url> <dir>
 import { chromium } from 'playwright'
 
 const base = process.argv[2] ?? 'http://127.0.0.1:8765'
@@ -19,23 +21,43 @@ await page.getByRole('button', { name: 'Continue' }).click()
 await page.getByText('Your starting XI').waitFor({ timeout: 60000 })
 await page.getByRole('button', { name: 'Watch match' }).click()
 await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })
-await page.waitForTimeout(1500)
+await page.waitForTimeout(1000)
 await shot('10-live-kickoff')
+
+// 1x: about 9 match seconds per real second.
 await page.getByRole('button', { name: 'Play' }).click()
+await page.waitForTimeout(5000)
+const clockAt1x = await page.getByLabel('Match clock').innerText()
+console.log(`clock after 5 s at 1x: ${clockAt1x}`)
+await shot('11-live-1x')
+
 await page.getByText('8×').click()
-await page.waitForTimeout(12000)
-await shot('11-live-playing')
+await page.getByRole('button', { name: 'Start second half' }).waitFor({ timeout: 90000 })
+await shot('12-live-half-time')
+
 await page.getByRole('tab', { name: 'Tactics' }).click()
+await page.getByRole('combobox', { name: 'Formation' }).click()
+await page.getByRole('option', { name: /4-2-3-1/ }).click()
+await page.getByRole('tab', { name: 'Subs' }).click()
 await page.waitForTimeout(500)
-await shot('12-live-tactics')
-await page.getByRole('tab', { name: 'Stats' }).click()
-await page.waitForTimeout(8000)
-await shot('13-live-stats')
-await page.getByRole('button', { name: 'Skip to result' }).click()
-await page.getByText('Full time').waitFor({ timeout: 60000 })
-await shot('14-live-end')
+await shot('13-live-subs-at-half-time')
+await page.getByRole('button', { name: 'Start second half' }).click()
+await page.waitForTimeout(4000)
+
+// Click around the middle of the pitch until a player card opens.
+const canvas = page.locator('canvas')
+const box = await canvas.boundingBox()
+for (const [fx, fy] of [[0.5, 0.5], [0.4, 0.4], [0.6, 0.6], [0.3, 0.5], [0.7, 0.5], [0.45, 0.3], [0.55, 0.7]]) {
+  await canvas.click({ position: { x: box.width * fx, y: box.height * fy } })
+  if (await page.getByText(/Fitness at kick-off/).count()) break
+}
+await shot('14-live-player-card')
+
+await page.getByRole('button', { name: 'Instant result' }).click()
+await page.getByRole('button', { name: 'Match report' }).waitFor({ timeout: 60000 })
+await shot('15-live-end')
 await page.getByRole('button', { name: 'Match report' }).click()
 await page.getByText('Statistics').waitFor({ timeout: 30000 })
-await page.screenshot({ path: `${out}/15-live-report.png`, fullPage: true })
+await page.screenshot({ path: `${out}/16-live-report.png`, fullPage: true })
 console.log(errors.length ? `ERRORS:\n${errors.join('\n')}` : 'no browser errors')
 await browser.close()

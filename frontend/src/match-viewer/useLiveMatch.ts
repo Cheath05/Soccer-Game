@@ -1,0 +1,163 @@
+// Connection to a live match: keeps the latest state and a buffer of engine frames that the
+// pitch view plays back at the match's rate (see PitchView).
+
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
+
+import { toSnapshot } from './draw'
+import type { Snapshot } from './draw'
+import type { LiveState } from './protocol'
+
+export interface LiveMatch {
+  live: LiveState | null
+  liveRef: MutableRefObject<LiveState | null>
+  buffer: MutableRefObject<Snapshot[]>
+  playhead: MutableRefObject<number | null>
+  error: string | null // the match can't be shown
+  notice: string | null // a command was refused
+  ended: [number, number] | null
+  send: (message: Record<string, unknown>) => void
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Message = Record<string, any>
+
+function fromInit(msg: Message): LiveState {
+  return {
+    teams: msg.teams,
+    userTeam: msg.user_team,
+    score: msg.score,
+    t: msg.t,
+    clock: msg.clock,
+    paused: msg.paused,
+    speed: msg.speed,
+    speeds: msg.speeds,
+    rate: msg.rate,
+    mode: msg.mode,
+    finished: msg.finished,
+    atBreak: msg.at_break,
+    restart: msg.restart,
+    pendingSubs: msg.pending_subs,
+    subsLeft: msg.subs_left,
+    lineup: msg.lineup,
+    formation: msg.formation,
+    formations: msg.formations,
+    instructions: msg.instructions,
+    instructionOptions: msg.instruction_options,
+    autoSubs: msg.auto_subs,
+    stats: msg.stats,
+    feed: [...msg.feed].reverse(),
+    status: msg.status,
+  }
+}
+
+export function useLiveMatch(fixtureId: string): LiveMatch {
+  const queryClient = useQueryClient()
+  const wsRef = useRef<WebSocket | null>(null)
+  const liveRef = useRef<LiveState | null>(null)
+  const buffer = useRef<Snapshot[]>([])
+  const playhead = useRef<number | null>(null)
+  const nextId = useRef(1)
+  const [live, setLive] = useState<LiveState | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [ended, setEnded] = useState<[number, number] | null>(null)
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  const send = useCallback((message: Record<string, unknown>) => {
+    wsRef.current?.send(JSON.stringify({ ...message, cmd_id: nextId.current++ }))
+  }, [])
+
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const ws = new WebSocket(`${protocol}://${window.location.host}/api/fixtures/${fixtureId}/live`)
+    wsRef.current = ws
+    const commit = (next: LiveState) => {
+      liveRef.current = next
+      setLive(next)
+    }
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data as string) as Message
+      if (msg.type === 'ack') return
+      if (msg.type === 'error') {
+        // A refused command is shown briefly; a failure without a command ends the view.
+        if (msg.cmd_id == null) setError(msg.message)
+        else setNotice(msg.message)
+        return
+      }
+      if (msg.type === 'end') {
+        setEnded(msg.score)
+        const previous = liveRef.current
+        if (previous) {
+          commit({
+            ...previous,
+            score: msg.score,
+            stats: msg.stats ?? previous.stats,
+            clock: msg.clock ?? previous.clock,
+            status: msg.status ?? previous.status,
+            finished: true,
+            paused: true,
+          })
+        }
+        void queryClient.invalidateQueries()
+        return
+      }
+      if (msg.type === 'init') {
+        const state = fromInit(msg)
+        buffer.current = (msg.frames as number[][]).map(toSnapshot)
+        playhead.current = buffer.current.length ? buffer.current[buffer.current.length - 1].t : null
+        commit(state)
+        return
+      }
+      const previous = liveRef.current
+      if (!previous) return
+      const next: LiveState = {
+        ...previous,
+        score: msg.score,
+        t: msg.t,
+        clock: msg.clock,
+        paused: msg.paused,
+        speed: msg.speed,
+        rate: msg.rate,
+        mode: msg.mode,
+        finished: msg.finished,
+        atBreak: msg.at_break,
+        restart: msg.restart,
+        pendingSubs: msg.pending_subs,
+        subsLeft: msg.subs_left,
+      }
+      if (msg.feed) next.feed = [...[...msg.feed].reverse(), ...previous.feed].slice(0, 250)
+      if (msg.lineup) next.lineup = msg.lineup
+      if (msg.formation) next.formation = msg.formation
+      if (msg.stats) next.stats = msg.stats
+      if (msg.status) next.status = msg.status
+      if (msg.instructions) next.instructions = msg.instructions
+      if (msg.auto_subs) next.autoSubs = msg.auto_subs
+      if (msg.lineup_stamina) {
+        next.lineup = next.lineup.map((p) => ({ ...p, stamina: msg.lineup_stamina[p.index] }))
+      }
+      const frames = (msg.frames as number[][]).map(toSnapshot)
+      if (frames.length) {
+        const last = buffer.current[buffer.current.length - 1]
+        const fresh = last ? frames.filter((f) => f.t > last.t) : frames
+        if (msg.highlight || (last && fresh.length && fresh[0].t - last.t > 3)) {
+          buffer.current = fresh // a highlight or a jump: play on from it
+          playhead.current = fresh.length ? fresh[0].t : playhead.current
+        } else {
+          buffer.current.push(...fresh)
+        }
+      }
+      commit(next)
+    }
+    ws.onerror = () => setError('Lost connection to the match.')
+    return () => ws.close()
+  }, [fixtureId, queryClient])
+
+  return { live, liveRef, buffer, playhead, error, notice, ended, send }
+}

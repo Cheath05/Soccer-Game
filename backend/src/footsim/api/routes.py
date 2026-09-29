@@ -171,6 +171,8 @@ def match(fixture_id: int, session: Session) -> MatchOut:
 def play_now(fixture_id: int, session: Session) -> MatchOut:
     """Instant result for the user's match of the day."""
     world = get_world()
+    if fixture_id in session.live_matches:
+        raise HTTPException(409, "this match is being played live: finish it in the match view")
     with session.write() as conn:
         meta = read_meta(conn)
         fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
@@ -181,6 +183,7 @@ def play_now(fixture_id: int, session: Session) -> MatchOut:
         if fx.date != meta.current_date.isoformat():
             raise HTTPException(400, "this match isn't today")
         play_user_instant(conn, world, meta, fx, meta.current_date)
+    session.autosave()
     with session.read() as conn:
         return queries.match_detail(conn, fixture_id)
 

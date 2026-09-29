@@ -27,7 +27,8 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
     if report.events:
         conn.execute(match_event.insert(), [
             {"fixture_id": fixture_id, "minute": e.minute, "type": e.type, "club_id": e.club_id,
-             "player_id": e.player_id, "other_player_id": e.other_player_id, "detail": e.detail}
+             "player_id": e.player_id, "other_player_id": e.other_player_id, "detail": e.detail,
+             "period": e.period, "second": e.second}
             for e in report.events
         ])
     lines = list(report.players.values())

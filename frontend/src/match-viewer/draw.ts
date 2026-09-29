@@ -96,6 +96,7 @@ export function drawFrame(
   snap: Snapshot,
   lineup: PlayerInfo[],
   showNames: boolean,
+  selected: number | null = null,
 ) {
   ctx.save()
   ctx.translate(pad, pad)
@@ -106,6 +107,13 @@ export function drawFrame(
     const y = snap.players[p.index * 2 + 1] * scale
     if (x < 0) continue
     const colors = TEAM_COLORS[p.team]
+    if (p.index === selected) {
+      ctx.beginPath()
+      ctx.arc(x, y, radius * 1.8, 0, Math.PI * 2)
+      ctx.strokeStyle = '#ffe066'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
     ctx.beginPath()
     ctx.arc(x, y, radius, 0, Math.PI * 2)
     ctx.fillStyle = p.position === 'GK' ? colors.keeper : colors.shirt

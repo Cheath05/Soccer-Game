@@ -162,6 +162,9 @@ class PlayerDetailOut(SquadPlayerOut):
 
 class MatchEventOut(BaseModel):
     minute: int
+    label: str  # how the time is written: 23' or 45+2'
+    period: int | None
+    second: int | None
     type: str
     club_id: int
     player: str | None
@@ -177,9 +180,11 @@ class PlayerLineOut(BaseModel):
     goals: int
     assists: int
     shots: int
+    shots_on_target: int
     passes: int
     passes_completed: int
     tackles: int
+    interceptions: int
     saves: int
     yellow: int
     red: int

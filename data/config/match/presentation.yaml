@@ -1,0 +1,11 @@
+# Playback of a watched match. This only changes how fast you see it: the engine always
+# plays the full 90 minutes (plus added time) second by second, and the result is the same
+# at any speed.
+
+real_seconds_per_half: 300    # at 1x a 45-minute half takes about 5 real minutes (9 match s per s)
+speeds: [0.5, 1, 2, 4, 8]
+default_speed: 1
+max_frames_per_second: 30     # positions sent to the viewer, which interpolates between them
+lookahead_seconds: 0.25       # the engine runs this far (real time) ahead of what's on screen
+highlight_before: 12          # match seconds shown before a highlight
+highlight_after: 6

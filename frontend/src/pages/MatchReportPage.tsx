@@ -83,11 +83,11 @@ function EventRow({ event, homeId }: { event: MatchEvent; homeId: number }) {
   if (event.type === 'injury' || (event.type === 'red' && event.detail)) text += ` – ${event.detail}`
   return (
     <Group gap="xs" wrap="nowrap" justify={home ? 'flex-start' : 'flex-end'}>
-      {home && <Badge variant="light" w={42} px={0}>{`${event.minute}'`}</Badge>}
+      {home && <Badge variant="light" miw={46} px={4}>{event.label}</Badge>}
       <Text size="sm" ta={home ? 'left' : 'right'}>
         <b>{EVENT_LABEL[event.type] ?? event.type}</b> {text}
       </Text>
-      {!home && <Badge variant="light" color="red" w={42} px={0}>{`${event.minute}'`}</Badge>}
+      {!home && <Badge variant="light" color="red" miw={46} px={4}>{event.label}</Badge>}
     </Group>
   )
 }
@@ -105,8 +105,10 @@ function Lineup({ title, lines }: { title: string; lines: PlayerLine[] }) {
             <Table.Th ta="right">Min</Table.Th>
             <Table.Th ta="right">G</Table.Th>
             <Table.Th ta="right">A</Table.Th>
-            <Table.Th ta="right">Sh</Table.Th>
+            <Table.Th ta="right">Sh (OT)</Table.Th>
             <Table.Th ta="right">Pass</Table.Th>
+            <Table.Th ta="right">Tkl</Table.Th>
+            <Table.Th ta="right">Int</Table.Th>
             <Table.Th ta="right">Rating</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -121,10 +123,14 @@ function Lineup({ title, lines }: { title: string; lines: PlayerLine[] }) {
               <Table.Td ta="right">{l.minutes}</Table.Td>
               <Table.Td ta="right">{l.goals || ''}</Table.Td>
               <Table.Td ta="right">{l.assists || ''}</Table.Td>
-              <Table.Td ta="right">{l.shots}</Table.Td>
+              <Table.Td ta="right">
+                {l.shots} ({l.shots_on_target})
+              </Table.Td>
               <Table.Td ta="right">
                 {l.passes_completed}/{l.passes}
               </Table.Td>
+              <Table.Td ta="right">{l.tackles}</Table.Td>
+              <Table.Td ta="right">{l.interceptions}</Table.Td>
               <Table.Td ta="right">
                 <Text span fw={700} c={matchRatingColor(l.rating)}>
                   {l.rating.toFixed(1)}

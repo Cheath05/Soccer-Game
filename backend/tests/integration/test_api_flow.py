@@ -75,14 +75,30 @@ def test_live_match_over_websocket(client: TestClient) -> None:
 
     with client.websocket_connect(f"/api/fixtures/{stop['fixture_id']}/live") as ws:
         init = ws.receive_json()
-        assert init["type"] == "init" and len(init["lineup"]) == 22 and init["paused"]
-        ws.send_json({"type": "speed", "value": 64})
-        ws.send_json({"type": "resume"})
-        frames = 0
-        for _ in range(6):
+        assert init["type"] == "init" and init["protocol"] == 2
+        assert len(init["lineup"]) == 22 and init["paused"]
+        assert init["clock"]["display"] == "00:00" and init["compression"] == 9
+        assert {"ovr", "rating", "energy", "condition"} <= set(init["status"]["players"][0])
+        assert all("fit" in b for b in init["status"]["bench"][init["user_team"]])
+        ws.send_json({"type": "speed", "value": 64, "cmd_id": 1})
+        refused = ws.receive_json()
+        while refused["type"] == "frames":  # periodic state while paused
+            refused = ws.receive_json()
+        assert refused["type"] == "error" and refused["cmd_id"] == 1  # not an offered speed
+        ws.send_json({"type": "speed", "value": 8, "cmd_id": 2})
+        ws.send_json({"type": "resume", "cmd_id": 3})
+        acks: set[int] = set()
+        while acks != {2, 3}:
+            msg = ws.receive_json()
+            if msg["type"] == "ack":
+                acks.add(msg["cmd_id"])
+        frames, clock = 0, 0.0
+        while clock < 30:  # 30 match seconds: about 0.4 real seconds at 8x
             msg = ws.receive_json()
             frames += len(msg.get("frames", []))
-        assert frames > 100  # 64 ticks per message once running
+            clock = msg["clock"]["elapsed"]
+            assert msg["rate"] == 72  # 9 match seconds per real second, times 8
+        assert frames > 5
         ws.send_json({"type": "formation", "key": "4-4-2"})
         ws.send_json({"type": "instruction", "key": "mentality", "value": "attacking"})
         changed = ws.receive_json()
@@ -93,6 +109,7 @@ def test_live_match_over_websocket(client: TestClient) -> None:
         msg = ws.receive_json()
         while msg["type"] != "end":
             msg = ws.receive_json()
+        assert msg["clock"]["state"] == "finished"
 
     report = client.get(f"/api/fixtures/{stop['fixture_id']}").json()
     assert report["fixture"]["status"] == "played"

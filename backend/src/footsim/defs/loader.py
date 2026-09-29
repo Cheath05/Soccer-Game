@@ -17,7 +17,15 @@ from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
-from footsim.defs.match import InstructionDef, QuickEngineParams
+from footsim.defs.match import (
+    DuelsDef,
+    InstructionDef,
+    PassingDef,
+    PresentationDef,
+    QuickEngineParams,
+    RestartsDef,
+    TacticsDef,
+)
 from footsim.defs.nations import NationDef, NationsFile
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
 from footsim.defs.roles import RoleDef
@@ -43,6 +51,11 @@ class GameDefinitions:
     wage_levels: WageLevelsFile
     quick_engine: QuickEngineParams
     instructions: dict[str, InstructionDef]
+    presentation: PresentationDef
+    restarts: RestartsDef
+    duels: DuelsDef
+    passing: PassingDef
+    tactics: TacticsDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -94,6 +107,11 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         wage_levels=_parse(WageLevelsFile, root / "finance" / "wage_levels.yaml"),
         quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
         instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
+        presentation=_parse(PresentationDef, root / "match" / "presentation.yaml"),
+        restarts=_parse(RestartsDef, root / "match" / "restarts.yaml"),
+        duels=_parse(DuelsDef, root / "match" / "duels.yaml"),
+        passing=_parse(PassingDef, root / "match" / "passing.yaml"),
+        tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
     )
     _cross_validate(defs)
     return defs
@@ -132,6 +150,14 @@ def _cross_validate(defs: GameDefinitions) -> None:
         PERSONALITY_TRAITS
     ):
         errors.append(f"world_build personality rule for unknown trait {trait}")
+
+    for key in ("mentality", "pressing", "line", "width", "tempo", "passing"):
+        known = defs.instructions.get(key)
+        levels = getattr(defs.tactics, key)
+        if known is None:
+            errors.append(f"tactics.yaml: no instruction {key!r} in match/instructions")
+        elif set(levels) != set(known.options):
+            errors.append(f"tactics.yaml {key}: levels {sorted(levels)} != {sorted(known.options)}")
 
     quick = defs.quick_engine
     for name in ("attack_weights", "defence_weights", "midfield_weights", "scorer_weights",

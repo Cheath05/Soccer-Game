@@ -25,12 +25,14 @@ class PlayerLine:
 
 @dataclass
 class MatchEvent:
-    minute: int
+    minute: int  # the football minute, counting on through added time (45+2 is 47)
     type: str  # goal | own_goal | penalty_goal | penalty_miss | yellow | red | sub | injury
     club_id: int
     player_id: int | None = None
     other_player_id: int | None = None  # assist provider, or the player coming on
     detail: str | None = None
+    period: int | None = None  # 1-4, when the engine knows it to the second
+    second: int | None = None  # seconds into ``period``
 
 
 @dataclass

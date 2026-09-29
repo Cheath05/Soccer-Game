@@ -168,8 +168,8 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
 def _counter_on(eng: "MatchEngine", i: int) -> bool:
     """Is carrier ``i`` running at a thin defence on a counter-attack?"""
     team = int(eng.team_of[i])
-    poss = eng.possessions[-1] if eng.possessions else None
-    if poss is None or poss.team != team or eng.t - poss.start_t > 12 or poss.start_x > LENGTH / 2:
+    start = eng.possession_start  # (team, time, x where it was won)
+    if start is None or start[0] != team or eng.t - start[1] > 12 or start[2] > LENGTH / 2:
         return False
     x, _ = eng.to_att(team, float(eng.pos[i, 0]), float(eng.pos[i, 1]))
     if not 35 < x < 80:

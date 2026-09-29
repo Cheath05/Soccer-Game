@@ -119,6 +119,9 @@ class MatchEngine:
         self.last_touch = -1
         self.decide_at = 0.0
         self.turnover_at = -99.0  # when the ball last changed teams (counter-press window)
+        # Who has the ball, since when, and how far up (his attacking frame) it was won. The
+        # counter-attack rules read this; self.possessions records the same for measurement.
+        self.possession_start: tuple[int, float, float] | None = None
         self.carry_target: Array | None = None
         self.carry_urgent = False
         self.restart: Restart | None = None
@@ -600,6 +603,7 @@ class MatchEngine:
         if self.possessions and self.possessions[-1].end_t is None:
             self.possessions[-1].end_t = self.t
         bx, _ = self.to_att(team, float(self.ball[0]), float(self.ball[1]))
+        self.possession_start = (team, self.t, bx)
         self.possessions.append(Possession(team, self.t, bx, source, max_x=bx))
 
     def _track_possession(self) -> None:

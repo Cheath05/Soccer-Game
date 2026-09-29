@@ -61,7 +61,7 @@ Later cloud commits, if any, are listed at the top of `progress.md`.
   - The plan had left throw-ins and ball in play for Phase D. This suggests they respond to Step 2.3's calibration: lower `intercept_scale`, then raise pass execution error until accuracy and throw-ins land.
 - **Home advantage** must be fitted after 2.3. It acts through pass error and decision noise, so a change to the passing physics moves it.
 - **The AI manager still reads a press correctly with home advantage on:** 15 of 15 high presses spotted, and 1 of 18 false alarms (20 seeds, 25-minute reads).
-- **Known issue** (older, found by `engine-reviewer`): `duels._counter_on` reads `eng.possessions`, which is measurement state, against rule 7. Replace it with engine state such as `eng.turnover_at`, in a commit that records the golden values.
+- **Fixed:** `duels._counter_on` read `eng.possessions` (rule 7). It and `gain_possession` now read `eng.possession_start`, simulation state set at the same moment, so behaviour is unchanged.
 
 ## 5. Carry on with the plan
 
@@ -88,6 +88,5 @@ In this order. Each sub-step ends as `progress.md` says (reviewer, lint and test
    - Referee values stay small; the crowd carries most of it.
 5. **Step 2.4.** Read `reds` (target 0.08–0.18) from the same batches.
 6. **Step 2.6.** Pre-D baselines, ENG1 and ENG4 at 200 each, saved to `docs/calibration/`. These need the real world, so they're local only.
-7. **The `_counter_on` fix** (section 4).
-8. **Make synthetic teams realistic** (recommended, local only because it needs the EA data). Synthetic players' secondary attributes sit 10 below their quality, so synthetic sides foul about a quarter as often as real ones and stray offside five times as often. Fit per-position attribute offsets from the FC 27 data, and store only the aggregated offsets, never player rows. Cloud and test calibration would then match real squads. Golden values change.
-9. **Step 3, Phase D,** starting with D0 (debug overlay), as `recovery-and-continuation.md` describes. The rest of the order is in `progress.md`.
+7. **Make synthetic teams realistic** (recommended, local only because it needs the EA data). Synthetic players' secondary attributes sit 10 below their quality, so synthetic sides foul about a quarter as often as real ones and stray offside five times as often. Fit per-position attribute offsets from the FC 27 data, and store only the aggregated offsets, never player rows. Cloud and test calibration would then match real squads. Golden values change.
+8. **Step 3, Phase D,** starting with D0 (debug overlay), as `recovery-and-continuation.md` describes. The rest of the order is in `progress.md`.

@@ -77,7 +77,7 @@ def gain_possession(eng: "MatchEngine", i: int, delay: float | None = None,
     if eng.last_touch < 0 or int(eng.team_of[eng.last_touch]) != int(eng.team_of[i]):
         eng.turnover_at = eng.t
     team = int(eng.team_of[i])
-    if not eng.possessions or eng.possessions[-1].team != team:
+    if eng.possession_start is None or eng.possession_start[0] != team:
         eng.start_possession(team, how)
     eng.owner = i
     eng.state = "owned"

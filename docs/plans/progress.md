@@ -46,7 +46,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
 - [x] 2.2 Interceptions separated from recoveries in stats, ratings and commentary (cloud). **Finding:** the counting was only a small part of the problem. Two full 64 v 64 matches had 82 interceptions, 4.5 recoveries and 5 clearances a match (real interceptions: 14–26). The engine really does cut out about 80 passes a match, so the excess is behaviour, not labels, and goes to 2.3 and D
 - [ ] 2.3 Build-up leak: high regains broken down by cause; decision-level causes fixed. Start with passes played into covered lanes: the pass-option scores in `actions.decide` barely weigh an opponent near the lane
 - [ ] 2.4 Red cards measured after the booked-player caution change
-- [ ] 2.5 Teleports down to zero (keeper-catch snaps)
+- [x] 2.5 Teleports down to zero (keeper-catch snaps) (cloud). A saved shot is placed where the keeper can reach it (the same random draw, mapped into his dive window); a keeper with no shot on target in reach is beaten; and he keeps going for the shot until it resolves. Four full matches: 1 of 22 saves needed any correction, and it was 0.4 m (a teleport is over 1.5 m). Confirm with the next 200-match batch's `teleports` row
 - [ ] 2.6 Pre-D baseline reports (ENG1 and ENG4, 200 each) in `docs/calibration/`
 
 ## Step 3: Phase D, dynamic movement

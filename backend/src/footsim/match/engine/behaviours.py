@@ -103,6 +103,8 @@ def _team(eng: "MatchEngine", team: int) -> None:
             yn += role_offset.d_out * side
         if eng.group[i] is PositionGroup.GK:
             targets[k] = _keeper_spot(bx, by, attacking and not kickoff, back)
+            if eng.state == "shot" and eng.shot_info is not None and eng.shot_info.keeper == i:
+                targets[k] = eng.target[i]  # going for the shot (actions.start_shot)
             sweep = _ball_to_goal(eng, team)
             if sweep is not None:  # a ball rolling towards our goal: go and meet it
                 targets[k] = sweep

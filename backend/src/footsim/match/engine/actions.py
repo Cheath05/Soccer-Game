@@ -756,6 +756,13 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     else:
         ty = MID_Y + float(eng.rng.uniform(-GOAL_HALF + 0.3, GOAL_HALF - 0.3))
         tz = float(eng.rng.uniform(0.2, 2.1))
+        if outcome == "saved":
+            window = _save_window(eng, team, keeper, bx, by)
+            if window is None:  # no shot on target passes within his reach: he's beaten
+                outcome = "goal"
+            else:  # a saved shot is one he can reach: the same draw, placed in his window
+                low, high = window
+                ty = low + (ty - (MID_Y - GOAL_HALF + 0.3)) / (2 * GOAL_HALF - 0.6) * (high - low)
     speed = 22.0 if penalty else (13.0 if header else 17.0 + 13.0 * eng.a(i, "shot_power") / 100)
     aim = np.array(eng.to_pitch(team, LENGTH + 0.5, ty))
     direction = aim - eng.ball
@@ -770,7 +777,11 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
         kx, ky = eng.to_att(team, float(eng.pos[keeper, 0]), float(eng.pos[keeper, 1]))
         # The save happens in front of the goal line, never behind it.
         resolve = max(0.5, min(math.hypot(kx - bx, ky - by) - 0.5, travel - 1.5))
-        eng.target[keeper] = aim
+        # He goes for the point where the shot will pass him, and keeps going until it does.
+        path = aim - eng.ball
+        along = float(np.clip((eng.pos[keeper] - eng.ball) @ path / max(float(path @ path), 1e-9),
+                              0.0, 1.0))
+        eng.target[keeper] = eng.ball + along * path
     elif outcome == "blocked":
         resolve = float(eng.rng.uniform(min(1.5, travel / 2), max(min(8.0, travel), 1.5)))
         resolve = min(resolve, max(0.3, travel - 1.5))  # blocked in front of the goal line
@@ -805,6 +816,23 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
         eng._announce("shot", team, f"{name} steps up...")
     else:
         eng._announce("shot", team, f"{name} {what} from {distance:.0f} m")
+
+
+def _save_window(eng: "MatchEngine", team: int, keeper: int | None, bx: float,
+                 by: float) -> tuple[float, float] | None:
+    """The stretch of the goal mouth (attacking frame) a shot from (bx, by) can be aimed at and
+    still pass within the keeper's dive, or None if no shot on target does."""
+    if keeper is None:
+        return None
+    kx, ky = eng.to_att(team, float(eng.pos[keeper, 0]), float(eng.pos[keeper, 1]))
+    depth = kx - bx
+    if depth < 0.5:  # he's level with the shooter, or behind him
+        return None
+    scale = (LENGTH + 0.5 - bx) / depth  # his depth to the goal line, along lines from the ball
+    centre = by + (ky - by) * scale
+    low = max(MID_Y - GOAL_HALF + 0.3, centre - KEEPER_DIVE * scale)
+    high = min(MID_Y + GOAL_HALF - 0.3, centre + KEEPER_DIVE * scale)
+    return (low, high) if low <= high else None
 
 
 def _defenders_in_cone(eng: "MatchEngine", team: int, bx: float, by: float,

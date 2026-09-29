@@ -18,7 +18,8 @@ restarts became a state machine with real setup time (restart work); one-challen
 pass execution error and first touch, and instruction costs from tactics.yaml (calibration
 and tactical guardrails); computer-controlled sides' in-match managers (tactical guardrails);
 values pinned per platform once a Linux run showed the Mac's values don't carry over; home
-advantage from the referee and the crowd (Step 2.1, recorded on Linux only).
+advantage from the referee and the crowd (Step 2.1, recorded on Linux only); saved shots placed
+within the keeper's reach, and the keeper going for them (Step 2.5, Linux only).
 """
 
 import json

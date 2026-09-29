@@ -2,6 +2,7 @@ import { Badge, Group, SegmentedControl, Stack, Table, Text, Title } from '@mant
 import { useState } from 'react'
 
 import { useCareer, useCompetitions, useTable } from '../api/hooks'
+import ClubLink from '../components/ClubLink'
 
 const ZONE_COLOR: Record<string, string> = {
   champion: 'var(--mantine-color-yellow-light)',
@@ -46,7 +47,9 @@ export default function LeaguePage() {
             {(table.data?.rows ?? []).map((r) => (
               <Table.Tr key={r.club.id} bg={r.zone ? ZONE_COLOR[r.zone] : undefined} fw={r.club.id === career?.club.id ? 700 : undefined}>
                 <Table.Td>{r.position}</Table.Td>
-                <Table.Td>{r.club.name}</Table.Td>
+                <Table.Td>
+                  <ClubLink club={r.club} />
+                </Table.Td>
                 <Table.Td ta="right">{r.played}</Table.Td>
                 <Table.Td ta="right">{r.won}</Table.Td>
                 <Table.Td ta="right">{r.drawn}</Table.Td>

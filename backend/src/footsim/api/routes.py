@@ -12,6 +12,8 @@ from footsim.api import queries
 from footsim.api.schemas import (
     AdvanceOut,
     CareerOut,
+    ClubOverviewOut,
+    ClubPlayerOut,
     CompetitionOut,
     FixtureOut,
     LeagueOption,
@@ -140,9 +142,31 @@ def competition_fixtures(key: str, session: Session) -> list[FixtureOut]:
         return queries.fixtures(conn, competition_key=key)
 
 
+@router.get("/clubs/{club_id}")
+def club_profile(club_id: int, session: Session) -> ClubOverviewOut:
+    with session.read() as conn:
+        try:
+            return queries.club_overview(conn, get_world(), club_id)
+        except queries.ClubNotFound as exc:
+            raise HTTPException(404, "club not found") from exc
+
+
+@router.get("/clubs/{club_id}/players")
+def club_players(club_id: int, session: Session) -> list[ClubPlayerOut]:
+    """Any club's squad, as seen from outside it."""
+    with session.read() as conn:
+        try:
+            return queries.club_players(conn, get_world(), club_id)
+        except queries.ClubNotFound as exc:
+            raise HTTPException(404, "club not found") from exc
+
+
 @router.get("/clubs/{club_id}/squad")
 def club_squad(club_id: int, session: Session) -> list[SquadPlayerOut]:
+    """The user's own squad in full (fitness, wages): other clubs are browsed via /players."""
     with session.read() as conn:
+        if club_id != read_meta(conn).user_club_id:
+            raise HTTPException(403, "only your own club's squad details are available")
         return queries.squad(conn, get_world(), club_id)
 
 

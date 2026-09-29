@@ -128,6 +128,51 @@ class SquadPlayerOut(BaseModel):
     average_rating: float | None
 
 
+class ClubPlayerOut(BaseModel):
+    """A player as seen from outside his club: ability and availability, without the fitness
+    and wage detail only his own club knows. The transfer fields stay empty until the
+    transfer market exists."""
+
+    id: int
+    name: str
+    position: str
+    positions: list[str]
+    age: int
+    nationality: str | None
+    overall: int
+    status: str  # available | injured | suspended
+    value_eur: int
+    contract_end: str
+    form: float
+    appearances: int
+    goals: int
+    transfer_status: str | None = None
+    interested_clubs: list[ClubRef] = []
+
+
+class ClubOverviewOut(BaseModel):
+    club: ClubRef
+    own_club: bool
+    nation: str | None
+    competition: CompetitionOut | None
+    position: int | None  # None before the season starts
+    points: int | None
+    played: int
+    reputation: int
+    stadium_name: str | None
+    stadium_capacity: int | None
+    manager: str | None  # None until computer managers exist
+    wage_bill_weekly_eur: int
+    budget_estimate_eur: int  # a rough guess from the wage bill and reputation
+    squad_size: int
+    average_age: float
+    average_overall: float
+    top_players: list[ClubPlayerOut]
+    recent: list[FixtureOut]  # latest first
+    upcoming: list[FixtureOut]
+    recent_transfers: list[str]  # always empty until the transfer market exists
+
+
 class AttributeOut(BaseModel):
     key: str
     value: int
@@ -147,6 +192,9 @@ class PotentialOut(BaseModel):
 
 
 class PlayerDetailOut(SquadPlayerOut):
+    # Only a player's own club knows his fitness and wage: None for everyone else's.
+    condition: int | None  # type: ignore[assignment]
+    wage_weekly_eur: int | None  # type: ignore[assignment]
     club: ClubRef | None
     weight_kg: int | None
     weak_foot: int

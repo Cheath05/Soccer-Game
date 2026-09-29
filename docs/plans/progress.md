@@ -63,7 +63,7 @@ Every sub-step ends the same way:
 - [ ] F2 Set-piece routines, marking schemes, long throws, goal-kick patterns, and set-piece UI
 - [ ] B2 1,000-match acceptance, the fast engine as a surrogate, cross-engine tests
 - [ ] G Substitution windows and the queued-substitution UI
-- [ ] H Other-club pages
+- [x] H Other-club pages (done early, while the C1 batches used the CPU)
 - [ ] I Sim-to-date
 - [ ] J Match analytics
 - [ ] K Full validation (10,000 matches); then reassess before transfers and other management systems

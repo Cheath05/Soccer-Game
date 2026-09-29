@@ -2,6 +2,7 @@ import { Alert, Badge, Button, Card, Group, Stack, Table, Text, Title } from '@m
 import { useNavigate } from '@tanstack/react-router'
 
 import { useCareer, usePlayInstant, useTactics } from '../api/hooks'
+import ClubLink from '../components/ClubLink'
 import { longDate, positionColor, stageLabel } from '../lib/format'
 
 export default function MatchdayPage() {
@@ -26,7 +27,7 @@ export default function MatchdayPage() {
             {fixture.competition_name} · {stageLabel(fixture.stage, fixture.round, fixture.tie, fixture.leg)} · {longDate(fixture.date)}
           </Text>
           <Title order={2}>
-            {fixture.home.name} v {fixture.away.name}
+            <ClubLink club={fixture.home} /> v <ClubLink club={fixture.away} />
           </Title>
           <Text size="sm">{fixture.neutral ? 'Neutral venue' : home ? 'Home' : `Away at ${opponent.name}`}</Text>
           <Group mt="md">

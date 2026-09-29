@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 
 import Layout from './components/Layout'
+import ClubPage from './pages/ClubPage'
 import DashboardPage from './pages/DashboardPage'
 import FixturesPage from './pages/FixturesPage'
 import LeaguePage from './pages/LeaguePage'
@@ -18,6 +19,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/start', component: () => null }),
   createRoute({ getParentRoute: () => rootRoute, path: '/squad', component: SquadPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/players/$playerId', component: PlayerPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/clubs/$clubId', component: ClubPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/tactics', component: TacticsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/fixtures', component: FixturesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/league', component: LeaguePage }),

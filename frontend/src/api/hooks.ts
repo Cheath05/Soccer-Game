@@ -4,6 +4,8 @@ import { ApiError, api } from './client'
 import type {
   AdvanceResult,
   Career,
+  ClubOverview,
+  ClubPlayer,
   Competition,
   Fixture,
   LeagueOption,
@@ -36,6 +38,12 @@ export const useTable = (key: string | undefined) =>
 
 export const useSquad = (clubId: number | undefined) =>
   useQuery({ queryKey: ['squad', clubId], queryFn: () => api.get<SquadPlayer[]>(`/clubs/${clubId}/squad`), enabled: !!clubId })
+
+export const useClub = (clubId: number) =>
+  useQuery({ queryKey: ['club', clubId], queryFn: () => api.get<ClubOverview>(`/clubs/${clubId}`) })
+
+export const useClubPlayers = (clubId: number) =>
+  useQuery({ queryKey: ['club-players', clubId], queryFn: () => api.get<ClubPlayer[]>(`/clubs/${clubId}/players`) })
 
 export const useClubFixtures = (clubId: number | undefined) =>
   useQuery({ queryKey: ['fixtures', clubId], queryFn: () => api.get<Fixture[]>(`/clubs/${clubId}/fixtures`), enabled: !!clubId })

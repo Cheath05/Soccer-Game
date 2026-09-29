@@ -120,7 +120,51 @@ export interface SquadPlayer {
   average_rating: number | null
 }
 
-export interface PlayerDetail extends SquadPlayer {
+/** Another club's player, seen from outside: no fitness or wage detail. */
+export interface ClubPlayer {
+  id: number
+  name: string
+  position: string
+  positions: string[]
+  age: number
+  nationality: string | null
+  overall: number
+  status: 'available' | 'injured' | 'suspended'
+  value_eur: number
+  contract_end: string
+  form: number
+  appearances: number
+  goals: number
+  transfer_status: string | null // for the transfer market (not yet in the game)
+  interested_clubs: ClubRef[]
+}
+
+export interface ClubOverview {
+  club: ClubRef
+  own_club: boolean
+  nation: string | null
+  competition: Competition | null
+  position: number | null
+  points: number | null
+  played: number
+  reputation: number
+  stadium_name: string | null
+  stadium_capacity: number | null
+  manager: string | null
+  wage_bill_weekly_eur: number
+  budget_estimate_eur: number
+  squad_size: number
+  average_age: number
+  average_overall: number
+  top_players: ClubPlayer[]
+  recent: Fixture[]
+  upcoming: Fixture[]
+  recent_transfers: string[]
+}
+
+export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_weekly_eur'> {
+  condition: number | null // only for the user's own players
+  wage_weekly_eur: number | null // only for the user's own players
   club: ClubRef | null
   weight_kg: number | null
   weak_foot: number

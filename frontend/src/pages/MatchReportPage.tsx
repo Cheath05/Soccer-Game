@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router'
 
 import { useMatch } from '../api/hooks'
 import type { MatchEvent, PlayerLine } from '../api/types'
+import ClubLink from '../components/ClubLink'
 import MatchStats from '../components/MatchStats'
 import { longDate, matchRatingColor, score, stageLabel } from '../lib/format'
 
@@ -33,11 +34,11 @@ export default function MatchReportPage() {
           </Text>
           <Group gap="xl" wrap="nowrap">
             <Title order={3} ta="right" style={{ flex: 1 }}>
-              {fixture.home.name}
+              <ClubLink club={fixture.home} />
             </Title>
             <Title order={1}>{score(fixture)}</Title>
             <Title order={3} style={{ flex: 1 }}>
-              {fixture.away.name}
+              <ClubLink club={fixture.away} />
             </Title>
           </Group>
         </Stack>

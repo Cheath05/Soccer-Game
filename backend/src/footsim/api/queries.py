@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sqlalchemy import Connection, Row, bindparam, or_, select, text
+from sqlalchemy import Connection, Row, bindparam, func, or_, select, text
 
 from footsim.api.schemas import (
     AttributeOut,
     CareerOut,
     ClubOption,
+    ClubOverviewOut,
+    ClubPlayerOut,
     ClubRef,
     CompetitionOut,
     FixtureOut,
@@ -44,6 +46,7 @@ from footsim.persistence.schema import (
     club_league_membership,
     competition,
     fixture,
+    nation,
     player_attr,
     player_position,
     player_trait,
@@ -325,6 +328,101 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
     return sorted(entries, key=lambda e: (order.index(e.position), -e.overall))
 
 
+# --- other clubs ----------------------------------------------------------------------
+
+# Until clubs have finances, the budget shown for a club is a rough guess: this share of its
+# annual wage bill, rising with reputation (relative to the most famous club in the world).
+BUDGET_SHARE_BASE = 0.1
+BUDGET_SHARE_REPUTATION = 0.3
+
+
+class ClubNotFound(LookupError):
+    pass
+
+
+def require_club(conn: Connection, club_id: int) -> None:
+    if conn.execute(select(club.c.id).where(club.c.id == club_id)).first() is None:
+        raise ClubNotFound(club_id)
+
+
+def _rough(value: float) -> int:
+    """Two significant figures: what another club's accounts reveal from the outside."""
+    if value <= 0:
+        return 0
+    digits = int(np.floor(np.log10(value))) - 1
+    return int(round(value, -digits))
+
+
+def _status(entry: SquadPlayerOut) -> str:
+    if entry.injury:
+        return "injured"
+    return "suspended" if entry.suspended else "available"
+
+
+def _outside_view(entry: SquadPlayerOut) -> ClubPlayerOut:
+    return ClubPlayerOut(
+        id=entry.id, name=entry.name, position=entry.position, positions=entry.positions,
+        age=entry.age, nationality=entry.nationality, overall=entry.overall,
+        status=_status(entry), value_eur=entry.value_eur, contract_end=entry.contract_end,
+        form=entry.form, appearances=entry.appearances, goals=entry.goals,
+    )
+
+
+def club_players(conn: Connection, world: World, club_id: int) -> list[ClubPlayerOut]:
+    """Any club's squad as another club sees it (the user's own squad page shows more)."""
+    require_club(conn, club_id)
+    return [_outside_view(e) for e in squad(conn, world, club_id)]
+
+
+def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewOut:
+    """A club's profile. Money is rounded for clubs other than the user's own."""
+    meta = read_meta(conn)
+    row = conn.execute(
+        select(club, nation.c.name.label("nation_name"))
+        .outerjoin(nation, nation.c.id == club.c.nation_id)
+        .where(club.c.id == club_id)).first()
+    if row is None:
+        raise ClubNotFound(club_id)
+    names = _club_names(conn)
+    comps = _competitions(conn)
+    comp = _club_competition(conn, club_id, meta.season_id)
+    position = points = None
+    played = 0
+    if comp is not None:
+        table = standings(conn, world, meta, comp.id, meta.season_id)
+        mine = next((r for r in table if r.club_id == club_id), None)
+        if mine is not None and any(r.played for r in table):
+            position, points, played = mine.position, mine.points, mine.played
+    players = squad(conn, world, club_id)
+    wage_bill = sum(p.wage_weekly_eur for p in players)
+    top_reputation = conn.execute(select(func.max(club.c.reputation))).scalar() or 1
+    share = BUDGET_SHARE_BASE + BUDGET_SHARE_REPUTATION * row.reputation / top_reputation
+    involved = or_(fixture.c.home_club_id == club_id, fixture.c.away_club_id == club_id)
+    recent = conn.execute(select(fixture).where(fixture.c.status == "played", involved)
+                          .order_by(fixture.c.date.desc(), fixture.c.id.desc()).limit(5)).all()
+    upcoming = conn.execute(select(fixture).where(fixture.c.status == "scheduled", involved)
+                            .order_by(fixture.c.date, fixture.c.id).limit(5)).all()
+    own = club_id == meta.user_club_id
+    budget = wage_bill * 52 * share
+    if not own:
+        wage_bill, budget = _rough(wage_bill), _rough(budget)
+    return ClubOverviewOut(
+        club=ClubRef(id=club_id, name=row.name), own_club=own, nation=row.nation_name,
+        competition=CompetitionOut(key=comp.key, name=comp.name, tier=comp.tier) if comp else None,
+        position=position, points=points, played=played, reputation=row.reputation,
+        stadium_name=row.stadium_name, stadium_capacity=row.stadium_capacity,
+        manager=meta.manager_name if own else None,
+        wage_bill_weekly_eur=int(wage_bill), budget_estimate_eur=int(budget),
+        squad_size=len(players),
+        average_age=round(float(np.mean([p.age for p in players])), 1) if players else 0.0,
+        average_overall=round(float(np.mean([p.overall for p in players])), 1) if players else 0.0,
+        top_players=[_outside_view(p) for p in sorted(players, key=lambda p: -p.overall)[:5]],
+        recent=[fixture_out(r, names, comps) for r in recent],
+        upcoming=[fixture_out(r, names, comps) for r in upcoming],
+        recent_transfers=[],
+    )
+
+
 def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetailOut:
     meta = read_meta(conn)
     rows = _player_rows(conn, "p.id = :pid", {"pid": player_id})
@@ -354,8 +452,9 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     names = _club_names(conn)
     traits = [t.trait for t in conn.execute(
         select(player_trait.c.trait).where(player_trait.c.player_id == player_id))]
+    private = {} if own else {"condition": None, "wage_weekly_eur": None}
     return PlayerDetailOut(
-        **entry.model_dump(),
+        **{**entry.model_dump(), **private},
         club=ClubRef(id=r.club_id, name=names[r.club_id]) if r.club_id else None,
         weight_kg=r.weight_kg, weak_foot=r.weak_foot, skill_moves=r.skill_moves,
         attributes=dict(grouped), face=face_stats(values, goalkeeper=entry.position == "GK"),

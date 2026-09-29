@@ -2,6 +2,7 @@ import { Badge, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, Title
 import { useParams } from '@tanstack/react-router'
 
 import { usePlayer } from '../api/hooks'
+import ClubLink from '../components/ClubLink'
 import { attributeLabel, money, positionColor, ratingColor, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
@@ -29,7 +30,7 @@ export default function PlayerPage() {
         <div>
           <Title order={2}>{p.name}</Title>
           <Text c="dimmed">
-            {p.age} years · {p.nationality ?? 'Unknown'} · {p.club?.name ?? 'Free agent'}
+            {p.age} years · {p.nationality ?? 'Unknown'} · {p.club ? <ClubLink club={p.club} /> : 'Free agent'}
           </Text>
           <Group gap={6} mt={6}>
             {Object.entries(p.familiarity)
@@ -122,9 +123,9 @@ export default function PlayerPage() {
                   <Row label="Foot" value={`${p.preferred_foot} (weak foot ${p.weak_foot}★)`} />
                   <Row label="Skill moves" value={`${p.skill_moves}★`} />
                   <Row label="Value" value={money(p.value_eur)} />
-                  <Row label="Wage" value={wage(p.wage_weekly_eur)} />
+                  {p.wage_weekly_eur !== null && <Row label="Wage" value={wage(p.wage_weekly_eur)} />}
                   <Row label="Contract" value={`until ${p.contract_end}`} />
-                  <Row label="Condition" value={`${p.condition}%`} />
+                  {p.condition !== null && <Row label="Condition" value={`${p.condition}%`} />}
                   <Row label="Season" value={`${p.appearances} apps · ${p.goals} goals · ${p.assists} assists`} />
                   {p.average_rating !== null && <Row label="Avg rating" value={p.average_rating.toFixed(2)} />}
                 </Table.Tbody>

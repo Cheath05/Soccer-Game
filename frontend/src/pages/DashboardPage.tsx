@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { useCareer, useSquad, useTable } from '../api/hooks'
 import type { Fixture } from '../api/types'
+import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
 import { longDate, score, shortDate, stageLabel } from '../lib/format'
 
@@ -33,7 +34,7 @@ export default function DashboardPage() {
             {next ? (
               <Stack gap="xs" mt="xs">
                 <Text fw={700} size="lg">
-                  {next.home.name} v {next.away.name}
+                  <ClubLink club={next.home} /> v <ClubLink club={next.away} />
                 </Text>
                 <Text size="sm">
                   {longDate(next.date)} · {next.competition_name} · {stageLabel(next.stage, next.round, next.tie, next.leg)}
@@ -66,7 +67,9 @@ export default function DashboardPage() {
                 {window.map((r) => (
                   <Table.Tr key={r.club.id} fw={r.club.id === career.club.id ? 700 : undefined}>
                     <Table.Td w={30}>{r.position}</Table.Td>
-                    <Table.Td>{r.club.name}</Table.Td>
+                    <Table.Td>
+                      <ClubLink club={r.club} />
+                    </Table.Td>
                     <Table.Td ta="right">{r.played}</Table.Td>
                     <Table.Td ta="right">{r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}</Table.Td>
                     <Table.Td ta="right" fw={700}>

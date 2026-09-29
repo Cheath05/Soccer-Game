@@ -2,6 +2,7 @@ import { Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
 import { useCareer, useClubFixtures } from '../api/hooks'
+import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
 import { longDate, score, stageLabel } from '../lib/format'
 
@@ -44,7 +45,9 @@ export default function FixturesPage() {
                     </Text>
                   </Table.Td>
                   <Table.Td>{f.neutral ? 'N' : home ? 'H' : 'A'}</Table.Td>
-                  <Table.Td fw={500}>{opponent.name}</Table.Td>
+                  <Table.Td fw={500}>
+                    <ClubLink club={opponent} />
+                  </Table.Td>
                   <Table.Td>{played ? score(f) : '–'}</Table.Td>
                   <Table.Td>
                     <ResultBadge fixture={f} clubId={career.club.id} />

@@ -143,6 +143,7 @@ class PassingDef(DefModel):
     execution: PassExecutionDef
     control: ControlDef
     clearance_wide_share: float = Field(ge=0, le=1)
+    target_area: float = Field(gt=0)
     aerial_contest_radius: float = Field(gt=0)
     header_to_feet: float = Field(ge=0, le=1)
 

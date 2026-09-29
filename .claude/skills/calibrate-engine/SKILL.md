@@ -81,8 +81,9 @@ All values are per match with both teams combined, unless the name says `per_tea
 | `high_regains` | open-play possession won within 40 m of the opponent's goal (Opta's high turnover) | |
 | `fast_break_shot_share` | shot within 15 s of winning the ball in own half, in open play | |
 | set-piece shots and goals | shot within 10 s of a restart, in the same possession | |
-| `interceptions` | **currently every pass collected by an opponent**, misplaced ones included | over-counts until Step 2.2 separates recoveries |
-| `ppda` | opponent passes in their own 60% per defensive action in that zone | per team |
+| `interceptions` | passes an opponent took while they were still on course for their target area (`passing.yaml` `target_area`) | real 14–26 (approx.); before Step 2.2 every pass an opponent collected counted |
+| `recoveries` | passes an opponent collected after they went astray: overhit or off target (Opta's ball recovery) | no target yet |
+| `ppda` | opponent passes in their own 60% per defensive action in that zone (tackles, interceptions, fouls; not recoveries) | per team; read higher from Step 2.2 on, when recoveries stopped counting |
 | `teleports` | keeper saves made more than 1.5 m from the ball (the catch snaps him to it), plus restarts flagged `teleported` | must be 0; this is not a general per-tick check (see the `repro-match` skill for that) |
 | `ball_in_play_min` | ticks with the ball live | real 55–58 |
 | `corner_attackers_in_box` | attackers in the box when a corner is taken | real 4–5 |

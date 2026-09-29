@@ -8,7 +8,7 @@ Event kinds and their data:
   restart        kind, spot                       a restart is awarded
   restart_taken  kind, wait, teleported, box_attackers, box_defenders (corners)
   pass           kind, lofted, estimate, length, xa  (xa: passer's x in his attacking frame)
-  pass_result    result (complete|intercepted), kind, xa
+  pass_result    result (complete|intercepted|recovered), kind, xa
   aerial         won (attack|defence|keeper)
   clearance
   duel           outcome (won|beaten|foul), carrier, xa (tackler's attacking frame)
@@ -45,7 +45,7 @@ class Possession:
     team: int
     start_t: float
     start_x: float  # where it was won, in the team's attacking frame
-    source: str  # tackle | interception | loose | save | claim | kickoff | throw_in | ...
+    source: str  # tackle | interception | recovery | loose | save | claim | kickoff | ...
     end_t: float | None = None
     max_x: float = 0.0
     final_third: bool = False

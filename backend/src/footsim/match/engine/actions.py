@@ -70,8 +70,8 @@ def _sigmoid(x: float | np.ndarray) -> float | np.ndarray:
 
 def gain_possession(eng: "MatchEngine", i: int, delay: float | None = None,
                     how: str = "loose") -> None:
-    """``how`` says how the ball was won (for the match log): pass, interception, tackle,
-    loose, save, claim, or the restart kind."""
+    """``how`` says how the ball was won (for the match log): pass, interception, recovery,
+    tackle, loose, save, claim, or the restart kind."""
     if eng.last_touch < 0 or int(eng.team_of[eng.last_touch]) != int(eng.team_of[i]):
         eng.turnover_at = eng.t
     team = int(eng.team_of[i])
@@ -87,7 +87,7 @@ def gain_possession(eng: "MatchEngine", i: int, delay: float | None = None,
     eng.carry_urgent = False
     if delay is None:
         hold = eng.effect(team, "tempo").hold
-        if how in ("tackle", "interception", "loose") and _counter_chance(eng, i):
+        if how in ("tackle", "interception", "recovery", "loose") and _counter_chance(eng, i):
             hold = eng.defs.tactics.transition.counter_hold  # win it and go
         delay = hold + 0.35 * (1 - eng.a(i, "first_touch") / 100) + float(eng.rng.uniform(0, 0.2))
     eng.decide_at = eng.t + delay
@@ -534,13 +534,31 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
             eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind)
             how = "pass"
         elif passer_team != team:
-            eng.lines[eng.players[c].player_id].interceptions += 1
             won_at, _ = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
-            eng.emit("pass_result", passer_team, info.passer, result="intercepted",
-                     kind=info.kind, by=c, by_xa=round(won_at, 1))
-            eng.commentate(team, f"{eng.players[c].player.short_name} reads it and intercepts")
-            how = "interception"
+            if cut_out(eng, info):
+                eng.lines[eng.players[c].player_id].interceptions += 1
+                eng.emit("pass_result", passer_team, info.passer, result="intercepted",
+                         kind=info.kind, by=c, by_xa=round(won_at, 1))
+                eng.commentate(team, f"{eng.players[c].player.short_name} reads it and intercepts")
+                how = "interception"
+            else:  # overhit or off target, so it came to him: Opta's ball recovery
+                eng.emit("pass_result", passer_team, info.passer, result="recovered",
+                         kind=info.kind, by=c, by_xa=round(won_at, 1))
+                how = "recovery"
     gain_possession(eng, c, how=how)
+
+
+def cut_out(eng: "MatchEngine", info: PassInfo) -> bool:
+    """Was the ball still on course for the pass's target area, and not yet past it, when an
+    opponent took it? Then he got into its path: an interception."""
+    speed = float(np.linalg.norm(eng.ball_v))
+    if speed < 1e-6:
+        return False
+    radius = eng.defs.passing.target_area
+    ahead = np.asarray(info.target, dtype=float) - eng.ball
+    along = float(ahead @ eng.ball_v) / speed
+    across = math.sqrt(max(0.0, float(ahead @ ahead) - along * along))
+    return along > -radius and across <= radius
 
 
 def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
@@ -662,7 +680,6 @@ def _clear(eng: "MatchEngine", k: int, headed: bool = False) -> None:
     eng.state = "loose"
     eng.pass_info = None
     eng.last_touch = k
-    eng.lines[eng.players[k].player_id].interceptions += 1
     eng.emit("clearance", team, k)
 
 

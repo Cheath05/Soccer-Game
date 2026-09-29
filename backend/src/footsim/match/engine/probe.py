@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
 
 DT = 0.1
-OPEN_PLAY_SOURCES = {"tackle", "interception", "loose", "save", "claim", "pass"}
+OPEN_PLAY_SOURCES = {"tackle", "interception", "recovery", "loose", "save", "claim", "pass"}
 SET_PIECE_WINDOW = 10.0  # s after a restart that a shot still counts as coming from it
 FAST_BREAK_WINDOW = 15.0  # s from winning the ball in our own half to the shot
 REBOUND_WINDOW = 5.0
@@ -99,10 +99,12 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
                 pass_cmp[d["kind"]] += 1
                 if ev.player is not None and ev.player in pass_zone:
                     zone_cmp[pass_zone[ev.player]] += 1
-            else:
+            elif d["result"] == "intercepted":
                 counts["interceptions"][1 - team] += 1
-                if d.get("by_xa", 0.0) > 42:
+                if d.get("by_xa", 0.0) > 42:  # PPDA counts interceptions, not recoveries
                     defensive_actions_high[1 - team] += 1
+            else:
+                counts["recoveries"][1 - team] += 1
         elif ev.kind == "duel":
             assert team is not None
             counts["duel_" + d["outcome"]][team] += 1
@@ -194,6 +196,7 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
         row["take_ons_won"] = counts["duel_beaten"][opp]
         row["take_ons"] = counts["duel_beaten"][opp] + counts["duel_won"][opp]
         row["interceptions"] = counts["interceptions"][t]
+        row["recoveries"] = counts["recoveries"][t]
         row["clearances"] = counts["clearances"][t]
         row["blocks"] = counts["blocks"][t]
         row["aerials_won"] = counts["aerials_won"][t]
@@ -304,6 +307,7 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
         "take_ons": both("take_ons"),
         "take_on_success": duels_beaten / max(1, duels_won + duels_beaten),
         "interceptions": both("interceptions"),
+        "recoveries": both("recoveries"),
         "clearances": both("clearances"),
         "throw_ins": restarts["throw_in"] / n,
         "goal_kicks": restarts["goal_kick"] / n,

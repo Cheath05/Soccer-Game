@@ -61,3 +61,21 @@ def test_different_seeds_differ(world: World) -> None:
     first.run(max_ticks=TICKS)
     second.run(max_ticks=TICKS)
     assert _state(first) != _state(second)
+
+
+def test_a_runner_holding_the_line_stops_on_his_mark(world: World) -> None:
+    """A sprinting forward runner eases off in time to stop on his target instead of
+    overrunning it (overrunning the offside line gives the offside away)."""
+    engine = _engine(world)
+    runner = 9  # a home forward
+    engine.pos[runner] = (40.0, 34.0)
+    engine.vel[runner] = (8.0, 0.0)  # already at full tilt towards the line
+    mark = np.array([60.0, 34.0])
+    furthest = 0.0
+    for _ in range(60):  # six seconds: time to arrive and settle
+        engine.target[runner] = mark
+        engine.urgent[runner] = engine.running[runner] = True
+        engine._move_players()
+        furthest = max(furthest, float(engine.pos[runner, 0] - mark[0]))
+    assert furthest < 0.5
+    assert float(np.linalg.norm(engine.pos[runner] - mark)) < 0.3

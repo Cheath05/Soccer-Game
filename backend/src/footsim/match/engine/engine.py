@@ -415,7 +415,15 @@ class MatchEngine:
                                                             axis=1))) < 2.5:
                 top[self.owner] *= 0.75  # tight control under pressure
         cruise = np.where(dist > 6, 0.62 * top, np.where(dist > 1.5, 0.4 * top, 0.9 * dist))
-        speed = np.where(self.urgent, top, cruise)
+        # A forward runner holding the offside line eases off in time to stop on his mark (the
+        # speed from which his acceleration can still halt him in the distance left) instead
+        # of overrunning into an offside position. Players chasing a moving ball or man keep
+        # full speed: their targets move with what they chase.
+        holding = self.running.copy()
+        if self.owner >= 0:
+            holding[self.owner] = False
+        arrive = np.minimum(top, np.sqrt(2.0 * self.accel * dist))
+        speed = np.where(self.urgent, np.where(holding, arrive, top), cruise)
         direction = np.divide(delta, dist[:, None], out=np.zeros_like(delta),
                               where=dist[:, None] > 1e-6)
         desired = direction * speed[:, None]

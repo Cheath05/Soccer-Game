@@ -150,8 +150,7 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
     eng.commentate(team, f"{eng.players[i].player.short_name} skips past "
                          f"{eng.players[k].player.short_name}")
     if _counter_on(eng, i) and eng.rng.random() < p.tactical_foul_chance * (
-            eng.a(k, "aggression") / 70) * (p.booked_caution if eng.yellows[k] else 1.0) * (
-            eng.venue_bias(defending, eng.defs.home_advantage.referee.foul)):
+            eng.a(k, "aggression") / 70) * (p.booked_caution if eng.yellows[k] else 1.0):
         commit_foul(eng, k, i, tactical=True)
         return True
     return False

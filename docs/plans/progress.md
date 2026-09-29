@@ -36,7 +36,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
 
 - [x] 1.1 Harness CIs: a ±95% CI column, and paired CIs for A/B differences
 - [x] 1.2 `ManagerAI`: reads the opponent from observed behaviour; an assistant toggle; events and commentary; tests
-- [ ] 1.3 C1 A/B at 200 paired fixtures per arm, against section S (costs tuned if needed)
+- [ ] 1.3 C1 A/B at 200 paired fixtures per arm, against section S (costs tuned if needed). **Started in the cloud at 94d5de3** on equal synthetic sides (`reports/c1-run.sh` there: `--synthetic --division ENG4 --quality 58-66 --equal --n 200 --seed 11`, the aggressive arm plus the six single instructions with managers on, then baseline and aggressive with `--ai-manager off`). If no C1 report is in `docs/calibration/`, it didn't finish: run the Grimsby version locally (the `calibrate-engine` skill's A/B command, about 40 min on the Mac)
 - [ ] 1.4 Golden values re-captured; commit and push; restart the :8000 game
 
 ## Step 2: close the B1 gaps

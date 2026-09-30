@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 1 (probe metrics). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: quick fixes 0a 05fcd7d, 0b 4fb1b24 and 0c 2bb32e2.
+- **Checkpoint commit:** d361049, Step 2.3a part 1 (probe metrics). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: quick fixes 0a 05fcd7d, 0b 4fb1b24 and 0c 2bb32e2.
 - **Engine:** behaviour unchanged. This part only adds data to logged events, and the golden values are unchanged; the last change to them is 0c (2bb32e2).
 - **Completed at this checkpoint (2.3a part 1, 30 Sep):**
   - **Logged events carry more data** (for measurement only):

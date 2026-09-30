@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0b. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fix 0a is 05fcd7d.
+- **Checkpoint commit:** 4fb1b24, quick fix 0b. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fix 0a is 05fcd7d.
 - **Engine:** 0b changes behaviour only when a booked player is substituted, and no golden match does that. So the golden values are unchanged, and the last change to them is still 65b3b8f.
 - **Completed at this checkpoint (0b, 30 Sep):**
   - A substitute no longer inherits the booked player's yellow card.

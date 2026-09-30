@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 3 (refactors and the one-engine guard). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, 2.3a part 1 d361049, and part 2 555d2e4.
+- **Checkpoint commit:** d332f8b, Step 2.3a part 3 (refactors and the one-engine guard). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, 2.3a part 1 d361049, and part 2 555d2e4.
 - **Engine:** behaviour unchanged; the refactors are bit-identical. The golden values are unchanged; the last change to them is 0c (2bb32e2).
 - **Completed at this checkpoint (2.3a part 3, 30 Sep):**
   - **`actions.pass_error()`** returns the direction and length spreads that `start_pass` used inline, in the same arithmetic and draw order. 2.3c's honest estimate will use it.

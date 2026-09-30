@@ -453,6 +453,7 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
             closeness = float(np.sqrt(max(0.0, 1 - path[c] / reach[c])))
             if info is not None and c in info.tried:
                 continue
+            floor = 0.05  # everyone in reach has some chance of getting to the ball
             keeper_home = eng.group[c] is PositionGroup.GK and in_own_box(
                 *eng.to_att(int(eng.team_of[c]), float(eng.ball[0]), float(eng.ball[1])))
             if info is not None:
@@ -484,12 +485,13 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
                     p *= float(np.clip(1.2 - speed / 25, 0.4, 1.0))
                     if info.lofted:
                         p *= 0.7
+                    floor *= eng.defs.passing.intercept_scale  # the scale covers it too
             else:
                 same = False
                 p = 0.55 + 0.35 * eng.a(c, "first_touch") / 100
                 if keeper_home:
                     p = 0.95
-            if eng.rng.random() < max(0.05, p):
+            if eng.rng.random() < max(floor, p):
                 _take(eng, c, info)
                 return
     if eng.state == "pass" and float(norm(eng.ball_v)) < 1.0 and eng.ball_z <= 0:

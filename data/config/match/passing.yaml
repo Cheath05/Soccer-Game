@@ -21,6 +21,11 @@ control:
   teammate: 0.85         # another teammate getting to it
   touch_skill: 0.1       # how much his first touch matters: the chance is scaled by
                          # (1 - touch_skill) + touch_skill * first_touch / 100
+  read_delay: [0.2, 0.6]  # s before the receiver reads where a pass is really going: he first
+                          # moves to where it was meant to go (0.2 s with anticipation 100, 0.6 s
+                          # with 0)
+  retouch_lockout: 0.6   # s after a heavy touch before the same player can touch it again: the
+                          # ball has got away from him, and it's a contest
   pressure_radius: 2.5   # an opponent this close pressures the first touch
   pressure_penalty: 0.3  # worst-case drop in control chance with an opponent on top of him
   heavy_touch_speed: [2.5, 5.5]  # m/s a miscontrolled ball runs away at

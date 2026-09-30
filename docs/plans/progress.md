@@ -16,44 +16,49 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** a9a8ced, Step 2.3a complete (the part 4 measurements and the summary). The commit right after it only filled in this hash. Earlier:
+- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3b part 1 (reception; code, tested). The commit right after it only filled in this hash. Earlier:
   - quick fixes: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2;
-  - 2.3a parts 1–3: d361049, 555d2e4, d332f8b;
-  - the part 4 docs: ec0b7a8.
-- **Engine:** unchanged since d332f8b, with bit-identical refactors only. The last change to the golden values is 0c (2bb32e2).
-- **Completed: Step 2.3a.** The summary is in `docs/calibration/20260930-step2.3a-summary.md`; the reports are local, under `reports/engine/step2.3/ref-2.3a/` and `sweep-2.3a-q*/`.
-  - **The reference reproduces round 5 within noise:** ENG4 goals 2.28, pass accuracy .878; ENG1 goals 3.50, shots 37.0.
-  - **Per minute of ball in play:**
-    - ENG1 takes far too many shots (0.60 against 0.41–0.49);
-    - ENG4 scores too few goals (0.033 against 0.045–0.053);
-    - both divisions foul far too rarely (0.14 and 0.25 against about 0.35–0.45).
-  - **The quality sweep** (equal synthetic sides at 58, 66, 74 and 82):
-    - pass accuracy barely moves with rating (.833 to .838);
-    - heavy touches are gathered again by the receiver 85% of the time at every level;
-    - better sides play *more* long balls (12% to 17%);
-    - goals rise 3.1 to 4.5 and shots 28.5 to 41.2 with quality, so attack outgrows defence;
-    - fouls rise 4.9 to 16.8 with absolute ratings.
-  - **Real squads pooled by XI rating:** accuracy even falls with rating (.877 at 60–65, .851 at 80–85).
-  - **Estimates:** short and medium passes underrated by 6–10 points; crosses overrated by 17–23.
-  - **Pace:** engine passes are about 30% slower than Metrica's over short and medium distances.
-  - **Long balls in real squads:** ENG4 plays 3.6%, ENG1 9.8% (Opta PL 11.7%). Check club instructions and roles in 2.3c/2.3e.
-- **Tests:** unchanged since part 3 (134 pass). This checkpoint only adds docs.
-- **Next task:** Step 2.3b, the physics shortcuts (`continuation-plan.md`, 2.3b). A behaviour change; the golden values will change. Its parts:
-  1. **The receiver reads the pass.** At the kick he heads for the intended target, and switches to the ball's real path after a read delay set by his anticipation.
-  2. **A heavy touch is a real contest:** a short re-touch lockout for the player who miscontrolled.
-  3. **Crosses that land clear** follow the ground-pass completion rule.
-  4. **Pass pace from the physics.** `ROLL_FRICTION` and the arrival pace move to YAML and are set against Metrica's speeds per band.
-  - Measure against the 2.3a reference (seed 21, f020e2 config, 200 each), plus the sweep at 58 and 82 for the rating direction.
-  - Consider two checkpoints: parts 1–3 (reception), then part 4 (pace).
+  - 2.3a: parts 1–3 d361049, 555d2e4, d332f8b; complete at a9a8ced.
+- **Engine:** behaviour changed. The Mac's golden values were re-recorded in this commit, with a History note. One match takes 6.7 s (budget 8 s).
+- **Completed at this checkpoint (2.3b part 1, 30 Sep):**
+  - **The receiver reads the pass.**
+    - At the kick he heads for the *intended* point (`PassInfo.intended`).
+    - `behaviours._meet_ball` follows the ball's real path only after his read delay (`PassInfo.read_at`).
+    - The delay comes from anticipation: `passing.yaml` `control.read_delay` [0.2, 0.6] s.
+  - **A heavy touch is a contest.** The player who miscontrolled can't touch the ball for `control.retouch_lockout` (0.6 s). `engine.touch_ready` is per slot and is reset on substitution.
+  - **A cross landing clear** follows the ground-pass rule: a teammate gathering it within 3 s completes it.
+  - **A passer who gathers his own stopped ball** keeps it but completes no pass, and can't assist his own goal. This was pre-existing and found by the reviewer; the play is unchanged.
+  - **Tests:** four new ones in `tests/unit/test_passing.py` (read delay, lockout, cross, own re-gather).
+- **Tests:**
+  - `just lint` is clean;
+  - all 138 backend tests pass;
+  - the golden values were re-recorded (Mac).
+- **Reviewer:** no violations.
+  - No randomness was added.
+  - Targets remain the only way the receiver moves.
+  - `intended` is never None in play.
+  - The lockout can't strand a ball.
+  - It flagged the own re-gather stat issue, fixed here.
+- **Next task:** measure 2.3b part 1.
+  - Pin the worktree to this commit and rebuild `cfg-f020e2`.
+  - Run the reference (ENG4 and ENG1, seed 21, 200 each) into `reports/engine/step2.3/ref-2.3b1`, then the sweep at q58 and q82 into `sweep-2.3b1-q58` and `sweep-2.3b1-q82`. That's about 25 minutes, one at a time.
+  - Compare with the 2.3a reference and sweep. Expect:
+    - heavy-touch self re-gathers down from 85%;
+    - more loose failures;
+    - pass accuracy lower and more rating-dependent (the q58–q82 gap up from 0.5 points).
+  - Record in `progress.md` and commit.
+  - Then 2.3b part 2 (pace).
 - **Calibration:**
-  - Nothing is running.
-  - Pin `.worktrees/measure` by branch name before each batch, and rebuild the variant config with `.claude/skills/calibrate-engine/make_variant.sh f020e2 0.2 0.008 0.022` after pinning.
-- **Unresolved:** 2.3b–2.3e, 2.3f (new), C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
+  - Nothing is running yet.
+  - Always pin the worktree first: `git -C .worktrees/measure checkout -q --detach phase-1-match-believability`.
+  - Then run `.claude/skills/calibrate-engine/make_variant.sh f020e2 0.2 0.008 0.022`.
+- **Unresolved:** 2.3b part 2, 2.3c–2.3f, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
   - the card rules;
-  - stale duel engagements (2.4).
+  - stale duel engagements (2.4);
+  - loose-ball gains by the side already in possession can trigger a counter hold (`actions.gain_possession`). Noted while fixing the re-gather; left for E (transitions).
 - **Play-testing:**
   - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
@@ -151,7 +156,9 @@ The local session reached its usage limit, and a cloud session carried on from 8
     - `match_targets.yaml` tagged rate / volume / reference;
     - the refactors, and the no-league-names guard test (it checks keys, values and code, not comments citing real-world sources).
     - The f020e2 re-run must reproduce round 5 exactly.
-  - [ ] **2.3b Physics shortcuts:** the receiver's read delay (from anticipation), a re-touch lockout after a heavy touch, the cross completion rule, and pass pace from the Metrica reference.
+  - [ ] **2.3b Physics shortcuts,** in two checkpoints:
+    - [x] Part 1, reception (code): the read delay from anticipation, the re-touch lockout, crosses landing clear, and no completion for a passer's own re-gather. Tests pass; golden values re-recorded. Measurement pending (see the checkpoint)
+    - [ ] Part 2, pass pace: `ROLL_FRICTION` and the arrival pace moved to YAML and set against Metrica's speeds per band; `intercept_scale` rechecked
   - [ ] **2.3c Honest pass estimates:** P_path × p_reach × P_arrive × P_secure, a landing grid for lofted balls and crosses, and a slow honesty test.
   - [ ] **2.3d Offside decisions:**
     - through balls judged at the runner's position;

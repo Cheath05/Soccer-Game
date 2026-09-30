@@ -133,6 +133,8 @@ class ControlDef(DefModel):
     receiver: float = Field(ge=0, le=1)
     teammate: float = Field(ge=0, le=1)
     touch_skill: float = Field(ge=0, le=1)
+    read_delay: tuple[float, float]  # s to read a pass's real path: best to worst anticipation
+    retouch_lockout: float = Field(ge=0)  # s before a player can touch his own heavy touch again
     pressure_radius: float = Field(gt=0)
     pressure_penalty: float = Field(ge=0, le=1)
     heavy_touch_speed: tuple[float, float]

@@ -23,7 +23,9 @@ within the keeper's reach, and the keeper going for them (Step 2.5, Linux only);
 synthetic players' attributes fitted to real players' (recorded on the Mac only);
 forward runners easing off to stop on their mark (Step 2.3, Mac only); a substitute no
 longer inheriting the outgoing player's duel engagements, and a restart's taker chosen again
-if he goes off (quick fix 0c, Mac only).
+if he goes off (quick fix 0c, Mac only); a pass receiver reading the ball's real path only
+after his read delay, a heavy touch locking its player out briefly, and a cross landing
+clear completable like a ground pass (Step 2.3b, Mac only).
 """
 
 import json

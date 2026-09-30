@@ -179,6 +179,8 @@ def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     """Where a pass receiver should go: into the ball's path, not just the aimed point."""
     info = eng.pass_info
     assert info is not None
+    if info.intended is not None and eng.t < info.read_at:
+        return np.array(info.intended)  # still going where the pass was meant to go
     if info.lofted and eng.ball_z > 1.0:
         return np.array(info.target)
     speed = float(norm(eng.ball_v))

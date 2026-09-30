@@ -90,6 +90,7 @@ class MatchEngine:
         self.accel = np.zeros(n)
         self.stamina = np.ones(n)
         self.tackle_ready = np.zeros(n)  # time a player may next attempt a tackle
+        self.touch_ready = np.zeros(n)  # time a player may touch the ball again after a heavy touch
         self.engaged: dict[int, tuple[int, float]] = {}  # defender -> (carrier, since)
         self.take_on_ready: dict[tuple[int, int], float] = {}  # (carrier, defender) -> time
         self.players: list[SheetPlayer] = []
@@ -201,6 +202,7 @@ class MatchEngine:
         # own line.
         self.yellows[i] = 0
         self.tackle_ready[i] = 0.0
+        self.touch_ready[i] = 0.0
         self.engaged = {k: v for k, v in self.engaged.items() if k != i and v[0] != i}
         self.take_on_ready = {pair: t for pair, t in self.take_on_ready.items() if i not in pair}
 

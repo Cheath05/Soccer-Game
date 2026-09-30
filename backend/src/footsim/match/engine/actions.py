@@ -402,8 +402,11 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     eng.state = "pass"
     eng.last_touch = i
     eng.carry_target = None
+    intended = eng.to_pitch(team, tx, ty)
+    read_at = eng.t + (_read_delay(eng, j) if j >= 0 else 0.0)
     eng.pass_info = PassInfo(i, j, (float(aim[0]), float(aim[1])), lofted, kind, tried={i},
-                             estimate=estimate, restart=eng.taking_restart)
+                             estimate=estimate, restart=eng.taking_restart,
+                             intended=(float(intended[0]), float(intended[1])), read_at=read_at)
     eng.emit("pass", team, i, kind=kind, lofted=lofted, estimate=round(estimate, 3),
              length=round(distance, 1), xa=round(bx, 1), receiver=j, restart=eng.taking_restart)
     if kind != "clearance":
@@ -420,9 +423,18 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     elif kind == "clearance":
         eng.commentate(team, f"{passer} clears the danger", gap=4.0)
     if j >= 0:
-        eng.target[j] = aim
+        # He sets off for where the pass was meant to go; he reads its real path only after
+        # his read delay (behaviours._meet_ball).
+        eng.target[j] = intended
         eng.urgent[j] = True
         _check_offside(eng, i, j, team, bx)
+
+
+def _read_delay(eng: "MatchEngine", j: int) -> float:
+    """Seconds before receiver ``j`` has read where a pass is really going: quicker with better
+    anticipation (passing.yaml ``control.read_delay``, best to worst)."""
+    best, worst = eng.defs.passing.control.read_delay
+    return worst - (worst - best) * eng.a(j, "anticipation") / 100
 
 
 def _check_offside(eng: "MatchEngine", i: int, j: int, team: int, ball_x: float) -> None:
@@ -459,7 +471,8 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
         if keeper is not None and in_own_box(*eng.to_att(side, float(eng.ball[0]),
                                                           float(eng.ball[1]))):
             reach[keeper] = KEEPER_REACH
-    near = np.flatnonzero(eng.active & (path < reach))
+    # A player whose heavy touch has just got away from him can't touch it again yet.
+    near = np.flatnonzero(eng.active & (path < reach) & (eng.touch_ready <= eng.t))
     if len(near):
         order = near[np.argsort(path[near])]
         speed = float(norm(eng.ball_v))
@@ -535,6 +548,7 @@ def _heavy_touch(eng: "MatchEngine", c: int, info: PassInfo) -> None:
     eng.ball_z = 0.0
     eng.ball_vz = 0.0
     eng.last_touch = c
+    eng.touch_ready[c] = eng.t + eng.defs.passing.control.retouch_lockout
     eng.state = "loose"
     eng.stopped_pass = (info, eng.t)  # still a completed pass if a teammate gathers it
     eng.pass_info = None
@@ -568,10 +582,14 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
     if isinstance(info, PassInfo):
         passer_team = int(eng.team_of[info.passer])
         if passer_team == team and info.kind != "clearance":
-            eng.stats[team].passes_completed += 1
-            eng.lines[eng.players[info.passer].player_id].passes_completed += 1
-            eng.last_completed_pass = (info.passer, c, eng.t)
-            eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind, by=c)
+            # The passer running onto his own stopped ball keeps it for his side, but that
+            # completes no pass (and can't set up his own goal).
+            if c != info.passer:
+                eng.stats[team].passes_completed += 1
+                eng.lines[eng.players[info.passer].player_id].passes_completed += 1
+                eng.last_completed_pass = (info.passer, c, eng.t)
+                eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind,
+                         by=c)
             how = "pass"
         elif passer_team != team:
             won_at, _ = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
@@ -621,6 +639,9 @@ def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
     attackers = [k for k in outfield if eng.team_of[k] == team]
     defenders = [k for k in outfield if eng.team_of[k] != team]
     if not attackers and not defenders:
+        # Nobody there: it runs loose, and still counts as completed if a teammate gathers it
+        # in time, as a ground pass that stops short does.
+        eng.stopped_pass = (info, eng.t)
         eng.pass_info = None
         eng.state = "loose"
         return True

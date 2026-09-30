@@ -15,6 +15,8 @@ class PassInfo:
     tried: set[int] = field(default_factory=set)  # players who already tried to control it
     estimate: float = 1.0  # the passer's estimated success chance (for debugging/calibration)
     restart: str | None = None  # the restart this pass took (no offside from some, Law 11)
+    intended: tuple[float, float] | None = None  # pitch point the passer aimed for, before error
+    read_at: float = 0.0  # when the receiver has read where the ball is really going
 
 
 @dataclass

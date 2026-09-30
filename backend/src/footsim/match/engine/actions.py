@@ -351,6 +351,22 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
 # --- passes ----------------------------------------------------------------------------
 
 
+def pass_error(eng: "MatchEngine", team: int, skill: float, pressure: float, fatigue: float,
+               distance: float, lofted: bool) -> tuple[float, float]:
+    """How far a pass can go astray: the spread of its direction (radians) and of its length
+    (a fraction of it), from the passer's skill, pressure, fatigue, the distance, the ball's
+    flight, the tempo and the crowd (passing.yaml ``execution``). One model for the pass
+    itself and, later, for the passer's estimate of it."""
+    ex = eng.defs.passing.execution
+    spread = (ex.base + ex.skill * (1 - skill / 100) + ex.pressure * pressure
+              + ex.fatigue * fatigue + ex.per_metre * max(0.0, distance - 15)
+              + (ex.lofted if lofted else 0.0))
+    spread *= 1 + eng.effect(team, "tempo").hurry  # hurried passes go astray more often
+    spread *= eng.venue_bias(team, eng.defs.home_advantage.crowd.execution * pressure)
+    length_spread = ex.length_skill * (1.2 - skill / 100) + ex.length_per_metre * distance
+    return spread, length_spread
+
+
 def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], lofted: bool,
                kind: str, pressure: float = 0.0, estimate: float = 1.0) -> None:
     team = int(eng.team_of[i])
@@ -362,15 +378,9 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     if kind == "throw":
         skill = 85.0
     fatigue = 1 - float(eng.stamina[i])
-    ex = eng.defs.passing.execution
-    spread = (ex.base + ex.skill * (1 - skill / 100) + ex.pressure * pressure
-              + ex.fatigue * fatigue + ex.per_metre * max(0.0, distance - 15)
-              + (ex.lofted if lofted else 0.0))
-    spread *= 1 + eng.effect(team, "tempo").hurry  # hurried passes go astray more often
-    spread *= eng.venue_bias(team, eng.defs.home_advantage.crowd.execution * pressure)
+    spread, length_spread = pass_error(eng, team, skill, pressure, fatigue, distance, lofted)
     angle_error = eng.rng.normal(0, spread)
-    length_error = float(np.clip(eng.rng.normal(1.0, ex.length_skill * (1.2 - skill / 100)
-                                                + ex.length_per_metre * distance), 0.5, 1.6))
+    length_error = float(np.clip(eng.rng.normal(1.0, length_spread), 0.5, 1.6))
     angle = math.atan2(ty - by, tx - bx) + angle_error
     reach = distance * length_error
     ax, ay = bx + math.cos(angle) * reach, by + math.sin(angle) * reach
@@ -473,7 +483,8 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
                 if same:
                     control = eng.defs.passing.control
                     base = control.receiver if c == info.receiver else control.teammate
-                    p = base * (0.9 + 0.1 * eng.a(c, "first_touch") / 100)
+                    touch = control.touch_skill
+                    p = base * ((1 - touch) + touch * eng.a(c, "first_touch") / 100)
                     p *= 1 - max(0.0, speed - 15) / 30
                     p *= 1 - _touch_pressure(eng, c) * (1 - eng.a(c, "first_touch") / 100)
                     info.tried.add(c)  # one touch: a miscontrol leaves the ball loose
@@ -615,9 +626,7 @@ def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
         return True
 
     def aerial(k: int) -> float:
-        height = eng.players[k].player.height_cm
-        return (0.4 * eng.a(k, "heading_accuracy") + 0.3 * eng.a(k, "jumping")
-                + 0.15 * eng.a(k, "strength") + 0.15 * eng.a(k, "bravery") + 0.6 * (height - 180))
+        return _aerial_strength(eng, k)
 
     best_a = max(attackers, key=aerial) if attackers else None
     best_d = max(defenders, key=aerial) if defenders else None

@@ -16,51 +16,46 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** 555d2e4, Step 2.3a part 2 (targets and report). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, and 2.3a part 1 d361049.
-- **Engine:** behaviour unchanged (reporting only). The golden values are unchanged; the last change to them is 0c (2bb32e2).
-- **Completed at this checkpoint (2.3a part 2, 30 Sep):**
-  - **`match_targets.yaml`: every entry has a kind.**
-    - `rate` (the default) is judged as it is.
-    - `volume`: 16 per-match counts, including goals, shots, passes, fouls, throw-ins and high regains. Each is judged per minute of ball in play: the range is divided by the league's real ball-in-play time (`_exposure`: PL 56.7 min from Opta; EFL 54.0, approximate).
-    - `reference`: validation only. A new `ENG4` section holds League Two's throw-ins (50–62, "over 56", The Analyst) and ball in play (48–54, about 6 minutes below the PL).
-  - **The harness** (`engine_batch.py`):
-    - `load_targets` merges a division's section over the EFL's;
-    - `compare` sorts the rows into rates, volumes per minute of ball in play, references and other;
-    - `write_report` renders those sections, plus the pass-reliability table and a team-level table by starting XI rating (`by_rating`, both divisions on one scale);
-    - `play_task` records each side's `xi_rating`;
-    - the JSON report gains `reliability` and `by_rating`.
-  - **The probe** reports every volume metric per minute of ball in play.
-  - **The calibrate-engine skill** documents the report layout and the quality-sweep commands (equal synthetic sides at 58, 66, 74 and 82).
-  - **A 4-match ENG4 check** (committed settings; noisy) rendered every section. Per minute of ball in play, ENG4's shots come out too few (0.35 against 0.41–0.48), although per match they look slightly high (26.8 against 22–26). Ball in play is 77 minutes.
+- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 3 (refactors and the one-engine guard). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, 2.3a part 1 d361049, and part 2 555d2e4.
+- **Engine:** behaviour unchanged; the refactors are bit-identical. The golden values are unchanged; the last change to them is 0c (2bb32e2).
+- **Completed at this checkpoint (2.3a part 3, 30 Sep):**
+  - **`actions.pass_error()`** returns the direction and length spreads that `start_pass` used inline, in the same arithmetic and draw order. 2.3c's honest estimate will use it.
+  - **`_aerial`** uses the module's `_aerial_strength`, so there's one aerial score, not two copies.
+  - **`passing.yaml` gains `control.touch_skill: 0.1`**, with the model in `defs/match.py`. The receiver's control is `(1 - w) + w * first_touch / 100`, identical to the old hard-coded 0.9 + 0.1 because (1 − 0.1) == 0.9 in doubles. 2.3e can now tune how much first touch matters.
+  - **The one-engine guard, `tests/unit/test_one_engine.py`:**
+    - no league, division or competition name in engine identifiers or non-docstring strings (checked with the AST);
+    - none in `data/config/match` YAML keys or values (comments are dropped; `environment.yaml` is exempt);
+    - `MatchEngine` takes no league-like parameter;
+    - it catches league words in identifiers and imports (`league_rules`, `division_map`), and codes joined by `_` or `-` (`ENG2_PO`);
+    - it ignores builtins such as `ZeroDivisionError`, words such as "colleague", strings such as "competition for the ball", and docstrings or comments citing sources.
 - **Tests:**
   - `just lint` is clean (ruff, and mypy on 100 files);
-  - all 130 backend tests pass;
-  - new harness tests cover the target tags, League Two's references on top of the EFL, per-minute judging of volumes, and the XI-rating grouping.
-- **Reviewer:** no violations found.
-  - League names stay in `match_targets.yaml`: only the harness reads it, and nothing in the engine or its config names a league.
-  - Only the verdict changed (the rate, not the count), with no path to league-specific tuning.
-  - The volume conversion and its NaN handling are correct, the rating bins are right, and the JSON report serialises.
-  - Its note: ENG4 volumes use the EFL exposure (54.0), consistent with the EFL-wide counts they're compared with.
-- **Unresolved:** 2.3a parts 3–4, then 2.3b–2.3e, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
+  - all 134 backend tests pass;
+  - the golden, determinism and passing tests pass unchanged.
+- **Reviewer:** no violations in the change.
+  - It confirmed the refactors are bit-identical: golden values pinned and passing; the two spread multiplications kept separate and in order; `(1 - 0.1) == 0.9`, checked on a 100k-point grid.
+  - It found gaps in the guard test, all fixed here:
+    - league codes joined by `_` or `-` were missed (`ENG2_PO`, `EFL_BIAS`);
+    - imports weren't checked;
+    - `ZeroDivisionError`, "colleague" and "competition for the ball" were false positives.
+  - The guard now splits identifiers into words, checks imports and aliases, and checks strings for league codes and names only. `test_the_guard_itself` pins its verdicts.
+- **Unresolved:** 2.3a part 4, then 2.3b–2.3e, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
   - the card rules;
   - stale duel engagements (2.4).
-- **Next task:** 2.3a part 3, behaviour-neutral refactors (golden values must stay identical):
-  - a `pass_error()` helper that `start_pass` uses;
-  - one aerial-score helper, replacing the two copies (`actions.py` ~613 and ~655);
-  - `control.touch_skill: 0.1` written as (1 − w) + w·ft/100;
-  - the no-league-names guard test.
+- **Next task:** 2.3a part 4, the measurements (heavy batches one at a time):
+  1. **the ENG1–ENG4 ratings gap:** mean ratings of the starters by attribute, from the world database, aggregates only, written to `docs/calibration/`;
+  2. **the Metrica pass-pace reference:** pass travel times by distance band from the public sample data, method and figures in `docs/calibration/`;
+  3. **the 2.3a reference batch:** `make_variant.sh f020e2 0.2 0.008 0.022` from the worktree pinned at the part 4 commit, then ENG4 and ENG1 at 200 each, seed 21;
+  4. **the synthetic quality sweep** at 58, 66, 74 and 82, 200 each, seed 21.
+  - Then tick 2.3a.
 - **Calibration:**
   - Nothing is running.
-  - Part 4 runs, one at a time:
-    - the 2.3a reference batch (f020e2 config, seed 21, ENG4 and ENG1, 200 each, from `.worktrees/measure` pinned at the part 4 commit);
-    - the synthetic quality sweep;
-    - the Metrica pace reference and the ENG1–ENG4 ratings gap, which are light.
+  - Pin `.worktrees/measure` by branch name (`git -C .worktrees/measure checkout -q --detach phase-1-match-believability`); it's at 50e3cf1 now.
+  - Rebuild the variant configs with `.claude/skills/calibrate-engine/make_variant.sh`. It copies the worktree's config, so pin first; the new `touch_skill` key comes along.
   - The reference batch can't be an exact replay of round 5, because 0b and 0c changed substitutions slightly.
-  - `.worktrees/measure` is detached at 50e3cf1.
-  - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh`.
 - **Play-testing:**
   - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
@@ -149,7 +144,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
   - [ ] **2.3a Measure (behaviour-neutral).** Split into four checkpoints:
     - [x] Part 1, probe metrics: pass bands and outcomes, the reliability table, failure causes, travel times, heavy touches, offside kinds, rates per minute of ball in play, and possessions ending in a shot
     - [x] Part 2, targets and report: `kind` rate / volume / reference; volumes judged per minute of ball in play; references listed separately; the reliability table in the report; the synthetic quality sweep
-    - [ ] Part 3, refactors: the `pass_error()` helper, one aerial-score helper, `control.touch_skill` (bit-identical), and the no-league-names guard test
+    - [x] Part 3, refactors: the `pass_error()` helper, one aerial-score helper, `control.touch_skill` (bit-identical), and the no-league-names guard test
     - [ ] Part 4, measurements: the ENG1–ENG4 ratings gap, the Metrica pass-pace reference, and the 2.3a reference batch
   - The original 2.3a list:
     - pass bands, the reliability table, failure causes, travel times, heavy touches, offside tags;

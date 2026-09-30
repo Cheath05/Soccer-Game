@@ -132,6 +132,7 @@ class PassExecutionDef(DefModel):
 class ControlDef(DefModel):
     receiver: float = Field(ge=0, le=1)
     teammate: float = Field(ge=0, le=1)
+    touch_skill: float = Field(ge=0, le=1)
     pressure_radius: float = Field(gt=0)
     pressure_penalty: float = Field(ge=0, le=1)
     heavy_touch_speed: tuple[float, float]

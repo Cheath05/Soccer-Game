@@ -395,7 +395,7 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     eng.pass_info = PassInfo(i, j, (float(aim[0]), float(aim[1])), lofted, kind, tried={i},
                              estimate=estimate, restart=eng.taking_restart)
     eng.emit("pass", team, i, kind=kind, lofted=lofted, estimate=round(estimate, 3),
-             length=round(distance, 1), xa=round(bx, 1), receiver=j)
+             length=round(distance, 1), xa=round(bx, 1), receiver=j, restart=eng.taking_restart)
     if kind != "clearance":
         eng.stats[team].passes += 1
         eng.lines[eng.players[i].player_id].passes += 1
@@ -421,9 +421,13 @@ def _check_offside(eng: "MatchEngine", i: int, j: int, team: int, ball_x: float)
     info = eng.pass_info
     if info is not None and (info.kind == "throw" or info.restart in NO_OFFSIDE):
         return  # no offside from a throw-in, goal kick or corner (Law 11)
-    if rx > offside_line(opp_pts, ball_x) + 0.3 and rx > ball_x and rx > 52.5:
+    line = offside_line(opp_pts, ball_x)
+    if rx > line + 0.3 and rx > ball_x and rx > 52.5:
         eng.stats[team].offsides += 1
-        eng.emit("offside", team, j)
+        # Measurement only: which pass, from which restart, to a runner or a man standing there.
+        eng.emit("offside", team, j, pass_kind=info.kind if info is not None else None,
+                 restart=info.restart if info is not None else None,
+                 running=bool(eng.running[j]), margin=round(rx - line, 2))
         eng._announce("offside", team, f"Offside: {eng.players[j].player.name}")
         eng.award_restart("free_kick", 1 - team, (float(eng.pos[j, 0]), float(eng.pos[j, 1])),
                           "offside")
@@ -556,7 +560,7 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
             eng.stats[team].passes_completed += 1
             eng.lines[eng.players[info.passer].player_id].passes_completed += 1
             eng.last_completed_pass = (info.passer, c, eng.t)
-            eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind)
+            eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind, by=c)
             how = "pass"
         elif passer_team != team:
             won_at, _ = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
@@ -629,7 +633,8 @@ def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
         eng.stats[team].passes_completed += 1
         eng.lines[eng.players[info.passer].player_id].passes_completed += 1
         eng.emit("aerial", team, best_a, won="attack", contested=best_d is not None)
-        eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind)
+        eng.emit("pass_result", team, info.passer, result="complete", kind=info.kind,
+                 by=best_a)
         eng.ball_z = 0.0
         hx, hy = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
         if expected_goal(hx, hy, header=True) >= HEADER_ON_GOAL_XG:

@@ -6,7 +6,15 @@ import pytest
 from footsim.core.rng import derive_rng
 from footsim.match.engine.actions import cut_out
 from footsim.match.engine.engine import MatchEngine
-from footsim.match.engine.probe import aggregate, summarize
+from footsim.match.engine.log import EngineEvent
+from footsim.match.engine.probe import (
+    BANDS,
+    FAILURES,
+    _pass_outcomes,
+    aggregate,
+    reliability,
+    summarize,
+)
 from footsim.match.engine.state import PassInfo
 from footsim.match.synthetic import synthetic_sheet
 from footsim.world.context import World, get_world
@@ -93,3 +101,59 @@ def test_a_pass_is_cut_out_only_on_course_and_short_of_its_target(world: World) 
                            ((45.0, 30.0 + 2 * radius), False)):  # off target
         engine.ball = np.array(ball)
         assert cut_out(engine, info) is expected
+
+
+def test_every_pass_gets_one_outcome(played: MatchEngine) -> None:
+    # Each pass lands in exactly one band and either completes or fails once, so the probe's
+    # pairing agrees with the engine's own pass counts.
+    summary = summarize(played)
+    outcomes = summary["pass_outcomes"]
+    passes = sum(summary["teams"][t]["passes"] for t in (0, 1))
+    completed = sum(summary["teams"][t]["passes_completed"] for t in (0, 1))
+    assert sum(outcomes["bands"][b][0] for b in BANDS) == passes
+    assert sum(outcomes["bands"][b][1] for b in BANDS) == completed
+    assert sum(outcomes["failures"].values()) == passes - completed
+    assert set(outcomes["failures"]) <= set(FAILURES)
+    assert sum(outcomes["offsides"].get(k, 0) for k in ("open_play", "free_kick")) == sum(
+        summary["teams"][t]["offsides"] for t in (0, 1))
+    throw_ins = sum(1 for e in played.log if e.kind == "restart_taken"
+                    and e.data["kind"] == "throw_in")
+    assert outcomes["bands"]["throw"][0] == throw_ins  # long throws included
+
+
+def _ev(t: float, event: str, team: int, player: int, **data: object) -> EngineEvent:
+    return EngineEvent(t, event, team, player, 0.0, 0.0, dict(data))
+
+
+def test_outcomes_are_attributed_to_the_right_cause() -> None:
+    passing = {"kind": "pass", "length": 10.0, "estimate": 0.9}
+    # A pass lost as a loose ball: the opponent carries it before the ball goes out.
+    lost = _pass_outcomes([_ev(1.0, "pass", 0, 3, **passing), _ev(3.0, "carry", 1, 14),
+                           _ev(9.0, "restart", 1, 14, kind="goal_kick")])
+    assert lost["failures"] == {"loose": 1}
+    # A heavy touch gathered by someone else, then a one-two back to the fumbler: not a
+    # self re-gather.
+    one_two = _pass_outcomes([
+        _ev(1.0, "pass", 0, 3, **passing), _ev(2.0, "heavy_touch", 0, 7),
+        _ev(2.5, "pass_result", 0, 3, result="complete", kind="pass", by=9),
+        _ev(3.0, "pass", 0, 9, **passing),
+        _ev(4.0, "pass_result", 0, 9, result="complete", kind="pass", by=7)])
+    assert one_two["heavy_touches"] == [1, 0]
+    # A long throw is played as a cross but counts as a throw-in.
+    throw = _pass_outcomes([_ev(1.0, "pass", 0, 3, kind="cross", length=25.0, estimate=0.4,
+                                restart="throw_in")])
+    assert throw["bands"]["throw"][0] == 1 and throw["bands"]["cross"][0] == 0
+
+
+def test_pass_metrics_are_reported(played: MatchEngine) -> None:
+    result = aggregate([summarize(played)])
+    for band in ("short", "medium", "long"):
+        assert 0.0 <= result[f"pass_acc_{band}"] <= 1.0
+        assert result[f"pass_time_{band}"] > 0
+    assert result["pass_time_short"] < result["pass_time_long"]
+    assert 0.0 < result["long_ball_share"] < 0.5
+    assert result["passes_per_bip_min"] == pytest.approx(
+        result["passes"] / result["ball_in_play_min"])
+    assert 0.0 <= result["possession_shot_share"] <= 1.0
+    rows = reliability([summarize(played)], min_passes=5)
+    assert rows and all(0.0 <= r["completed"] <= 1.0 for r in rows)

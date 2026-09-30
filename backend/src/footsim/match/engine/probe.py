@@ -26,6 +26,17 @@ OPEN_PLAY_SOURCES = {"tackle", "interception", "recovery", "loose", "save", "cla
 SET_PIECE_WINDOW = 10.0  # s after a restart that a shot still counts as coming from it
 FAST_BREAK_WINDOW = 15.0  # s from winning the ball in our own half to the shot
 REBOUND_WINDOW = 5.0
+# Pass length bands in metres: short, medium, and long (Opta's long ball is 32 m or more).
+# Crosses and throw-ins get bands of their own.
+PASS_BANDS = (("short", 14.0), ("medium", 32.0))
+BANDS = ("short", "medium", "long", "cross", "throw")
+# Where a failed pass went: its first decisive event.
+FAILURES = ("intercepted", "recovered", "loose", "offside", "aerial_lost", "foul",
+            "out_throw_in", "out_goal_kick", "out_corner", "out_other")
+REGATHER_WINDOW = 3.0  # s: a completed pass may be gathered this long after it stopped
+# Volume metrics also reported per minute of ball in play (the calibration principles).
+PER_BIP_MINUTE = ("passes", "shots", "fouls", "offsides", "corners", "throw_ins", "goal_kicks",
+                  "interceptions", "high_regains", "tackles")
 
 
 def _zone(xa: float) -> str:
@@ -41,6 +52,101 @@ def _possession_at(possessions: Sequence[Possession], t: float, team: int) -> Po
         if poss.start_t <= t + 1e-6:
             return poss if poss.team == team else None
     return None
+
+
+def _band(kind: str, length: float, restart: str | None = None) -> str:
+    if restart == "throw_in":  # long throws are played as crosses, but they're throw-ins
+        return "throw"
+    if kind in ("cross", "throw"):
+        return kind
+    for name, upper in PASS_BANDS:
+        if length < upper:
+            return name
+    return "long"
+
+
+def _pass_outcomes(log: Sequence[EngineEvent]) -> dict[str, Any]:
+    """Pair every pass with its outcome, walking the log in order (one ball, so one pass at a
+    time). Returns per band ``[attempts, completed, sum of the passers' estimates]``, the cause
+    of each failure, travel times of completed passes, estimate-decile counts for a
+    reliability table, heavy touches and who gathered them, and the kind of each offside."""
+    bands = {b: [0, 0, 0.0] for b in BANDS}
+    failures: Counter[str] = Counter()
+    travel: dict[str, list[float]] = {b: [] for b in BANDS}
+    deciles = {b: [[0, 0, 0.0] for _ in range(10)] for b in BANDS}
+    heavy = [0, 0]  # heavy touches, and those the receiver gathered again himself
+    offsides: Counter[str] = Counter()
+    pending: dict[str, Any] | None = None
+    last_heavy: tuple[int, float] | None = None
+
+    def fail(cause: str) -> None:
+        nonlocal pending
+        if pending is not None:
+            failures[cause] += 1
+            pending = None
+
+    for ev in log:
+        d = ev.data
+        if ev.kind == "pass":
+            # A new pass means the previous one ended with nobody on its side claiming it.
+            fail("loose")
+            last_heavy = None
+            if d["kind"] == "clearance":
+                continue
+            band = _band(d["kind"], d["length"], d.get("restart"))
+            estimate = float(d["estimate"])
+            decile = min(int(estimate * 10), 9)
+            bands[band][0] += 1
+            bands[band][2] += estimate
+            deciles[band][decile][0] += 1
+            deciles[band][decile][2] += estimate
+            pending = {"passer": ev.player, "band": band, "decile": decile, "t": ev.t,
+                       "heavy": False}
+        elif ev.kind == "pass_result":
+            if d["result"] == "complete":
+                if last_heavy is not None and d.get("by") == last_heavy[0] \
+                        and ev.t - last_heavy[1] <= REGATHER_WINDOW:
+                    heavy[1] += 1
+                last_heavy = None
+            if pending is None or ev.player != pending["passer"]:
+                continue
+            if d["result"] == "complete":
+                band = pending["band"]
+                bands[band][1] += 1
+                deciles[band][pending["decile"]][1] += 1
+                if not pending["heavy"]:
+                    travel[band].append(ev.t - pending["t"])
+                pending = None
+            else:
+                fail(d["result"])
+        elif ev.kind == "heavy_touch":
+            heavy[0] += 1
+            last_heavy = (ev.player, ev.t) if ev.player is not None else None
+            if pending is not None:
+                pending["heavy"] = True
+        elif ev.kind in ("carry", "duel", "shot", "clearance"):
+            # Someone owns the ball again, and the pass never reached a teammate: it was lost
+            # as a loose ball (a completion would have been logged before any of these).
+            fail("loose")
+        elif ev.kind == "aerial" and d.get("won") != "attack":
+            fail("aerial_lost")
+        elif ev.kind == "offside":
+            fail("offside")
+            restart = d.get("restart")
+            offsides["free_kick" if restart else "open_play"] += 1
+            if d.get("pass_kind") == "through":
+                offsides["through"] += 1
+            if d.get("running"):
+                offsides["runner"] += 1
+        elif ev.kind == "foul":
+            fail("foul")
+        elif ev.kind == "restart":
+            kind = d["kind"]
+            fail("out_" + kind if kind in ("throw_in", "goal_kick", "corner") else "out_other")
+    fail("loose")
+    return {"bands": bands, "failures": dict(failures), "deciles": deciles,
+            "travel": {b: [round(x, 1) for x in v] for b, v in travel.items()},
+            "heavy_touches": heavy, "offsides": dict(offsides)}
 
 
 def summarize(eng: "MatchEngine") -> dict[str, Any]:
@@ -228,6 +334,7 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
         "corner_box": corner_box,
         "passes_by_kind": {k: [pass_att[k], pass_cmp[k]] for k in pass_att},
         "passes_by_zone": {z: [zone_att[z], zone_cmp[z]] for z in zone_att},
+        "pass_outcomes": _pass_outcomes(log),
         "teleports": teleports,
     }
 
@@ -344,4 +451,53 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
     }
     for kind in ("throw_in", "goal_kick", "corner", "free_kick", "kickoff", "penalty"):
         result[f"wait_{kind}"] = _mean(waits.get(kind, []))
+    result.update(_pass_metrics(matches))
+    result["possession_shot_share"] = _mean(float(p["shots"] > 0) for p in possessions)
+    bip = result["ball_in_play_min"]
+    for key in PER_BIP_MINUTE:
+        result[f"{key}_per_bip_min"] = result[key] / bip if bip else float("nan")
     return result
+
+
+def _pass_metrics(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
+    """Pass completion, share and estimate honesty by band; where failed passes went; travel
+    times; heavy touches; offsides by kind. Shares are of all passes except throw-ins."""
+    n = len(matches)
+    outcomes = [m["pass_outcomes"] for m in matches]
+    totals = {b: [sum(o["bands"][b][k] for o in outcomes) for k in range(3)] for b in BANDS}
+    played = sum(totals[b][0] for b in BANDS if b != "throw")
+    result: dict[str, float] = {}
+    for b in BANDS:
+        att, cmp_, est = totals[b]
+        result[f"pass_acc_{b}"] = cmp_ / att if att else float("nan")
+        result[f"estimate_gap_{b}"] = (est - cmp_) / att if att else float("nan")
+        times = [x for o in outcomes for x in o["travel"][b]]
+        result[f"pass_time_{b}"] = _mean(times)
+    result["long_ball_share"] = totals["long"][0] / played if played else float("nan")
+    result["cross_share"] = totals["cross"][0] / played if played else float("nan")
+    for cause in FAILURES:
+        result[f"pass_fail_{cause}"] = sum(o["failures"].get(cause, 0) for o in outcomes) / n
+    heavy = sum(o["heavy_touches"][0] for o in outcomes)
+    result["heavy_touches"] = heavy / n
+    result["heavy_touch_self_regather"] = (sum(o["heavy_touches"][1] for o in outcomes) / heavy
+                                           if heavy else float("nan"))
+    for kind in ("open_play", "free_kick", "through", "runner"):
+        result[f"offsides_{kind}"] = sum(o["offsides"].get(kind, 0) for o in outcomes) / n
+    return result
+
+
+def reliability(matches: Sequence[dict[str, Any]], min_passes: int = 30) -> list[dict[str, Any]]:
+    """Completion against the passer's own estimate, by band and estimate decile: the check
+    that estimates are honest. Deciles with fewer than ``min_passes`` passes are left out."""
+    rows: list[dict[str, Any]] = []
+    for b in BANDS:
+        for decile in range(10):
+            att = sum(m["pass_outcomes"]["deciles"][b][decile][0] for m in matches)
+            if att < min_passes:
+                continue
+            cmp_ = sum(m["pass_outcomes"]["deciles"][b][decile][1] for m in matches)
+            est = sum(m["pass_outcomes"]["deciles"][b][decile][2] for m in matches)
+            rows.append({"band": b, "estimate": f"{decile / 10:.1f}-{(decile + 1) / 10:.1f}",
+                         "passes": att, "mean_estimate": est / att, "completed": cmp_ / att,
+                         "gap": (est - cmp_) / att})
+    return rows

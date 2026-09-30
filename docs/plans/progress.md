@@ -1,15 +1,59 @@
 # Match believability: progress
 
-Resume from the first unticked item.
-- The order of work and its details are in `recovery-and-continuation.md`.
+**Start with the "Continuation checkpoint" below, then resume from the first unticked item.**
+- Since 30 Sep, the order of work and its details are in `continuation-plan.md`, which also holds the calibration principles.
+- It supersedes `recovery-and-continuation.md` from Step 2.3 on.
 - The design is in `match-believability.md`; section letters (for example "section S") refer to it.
 
-Every sub-step ends the same way:
+**Every major completed change is its own checkpoint** (behaviour change or finished sub-step):
 1. `engine-reviewer` checks the diff;
-2. lint and tests pass;
+2. lint and tests pass, plus the relevant calibration;
 3. the golden values are re-captured if behaviour changed on purpose;
-4. this file is ticked;
-5. commit and push to `phase-1-match-believability`.
+4. this file is updated: the checkpoint section below, and the ticks;
+5. commit and push to `phase-1-match-believability` before starting the next change.
+   - Unfinished work goes into a labelled WIP commit, never only into the working tree.
+
+## Continuation checkpoint (update at every checkpoint)
+
+- **Branch:** `phase-1-match-believability`.
+- **Code:** the last code change is 50e3cf1 (the interception floor, inert at the committed `intercept_scale` of 1.0). The last behaviour change, and the last change to the golden values, is 65b3b8f (runners stop on the offside line). f347e8c only edited `CLAUDE.md`.
+- **Checkpoint commit:** CHECKPOINT_HASH, the docs-only commit that added `continuation-plan.md`. This note was filled in by the commit after it.
+- **Completed (30 Sep: planning and diagnostics only, no engine change):**
+  - read round 5 of Step 2.3 (f020e2 and f020e3, ENG4 and ENG1, 200 each). The table and its reading are in `continuation-plan.md`, status section 5;
+  - ran a pass diagnostic: completion by length band and the passers' honesty (synthetic sides, 6 matches per cell);
+  - explored the code three times and had a design review. The verified bugs and physics shortcuts are listed in the plan's status section 4;
+  - revised the plan with the user into `continuation-plan.md`:
+    - the calibration principles and the league-environment layer;
+    - Step 2.3 split into 2.3a–2.3e;
+    - 2.4 moved before 2.1;
+    - Phase D starts by vectorising;
+  - added the checkpoint rule, the principles and a `just e2e` warning to `CLAUDE.md`;
+  - added rules 11 and 12 (one engine; ratings, not labels) to `engine-reviewer.md`.
+- **Tests:** 119 backend tests passed at f347e8c on 30 Sep. At this checkpoint (docs only): `just lint` is clean (ruff, and mypy on 100 files), and all 119 tests pass.
+- **Unresolved:** everything from quick fix 0 onward. None of the verified bugs is fixed yet:
+  - a substitute inherits a yellow card;
+  - onside through balls are dropped;
+  - offside awareness re-rolls every decision;
+  - slow tempo gets an accuracy bonus;
+  - the `just e2e` default points at :8000;
+  - the card rules;
+  - the metric gaps.
+- **Next task:** quick fix 0a, then 0b, each its own checkpoint. Then 2.3a.
+- **Calibration:**
+  - Nothing is running, and nothing is needed before 2.3a. 2.3a's first batch is the f020e2 identity check (seed 21, ENG4 and ENG1, 200 each, from the worktree pinned at the 2.3a commit).
+  - `.worktrees/measure` is detached at 50e3cf1.
+  - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh` (committed at this checkpoint).
+  - The reports are in `reports/engine/step2.3/` and the Grimsby C1 reports in `reports/engine/2026092*-ENG4-n200-ab*` (local only).
+- **Play-testing:**
+  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it doesn't show later work.
+  - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
+  - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`.
+- **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
+
+## Quick fixes (do first; each is its own checkpoint)
+
+- [ ] 0a `just e2e` defaults to :8765, and `frontend/e2e/*.mjs` refuse :8000 unless `FOOTSIM_E2E_ALLOW_8000=1` is set. Today a default run would overwrite the user's slot 1 (`justfile:48`, `api/session.py:62`)
+- [ ] 0b A substitute starts with no yellow card: `_load` resets the slot's `yellows` (`engine.py:100, 183-198`), with a test. Re-record the golden values if a golden match makes such a substitution
 
 ## Cloud session (29 Sep, claude.ai/code)
 
@@ -44,11 +88,15 @@ The local session reached its usage limit, and a cloud session carried on from 8
     - Direct: +0.79 / +23.5. High line −0.57, press −0.40, fast −0.35. Attacking, wide and all six cautious settings are within limits.
     - With every manager off, aggressive was +1.59 / +36.5: the opponent going long against the press halves the exploit.
     - Reports: `reports/engine/20260929T171031-ENG4-n200-ab-nomanager`, `…T181944-ENG4-n200-ab` (bold), `…T221425-ENG4-n200-ab` (cautious), local only.
+  - **Next for 1.3:** after 2.3, re-run both sets of Grimsby arms at the new head. Remove slow tempo's `hurry: -0.1` accuracy bonus, then tune costs mechanism-first (`continuation-plan.md`, "C1").
+    - Direct's edge today is almost all defensive: shots against −4.65, xG against −0.40.
 - [ ] 1.4 Golden values re-captured; commit and push; restart the :8000 game
 
 ## Step 2: close the B1 gaps
 
-- [ ] 2.1 Home advantage (referee and crowd mechanisms), fitted to the real home, draw and away split. **Mechanisms in (cloud), values provisional:** `home_advantage.yaml` (referee foul and card bias, crowd decision noise and pass error under pressure, each split evenly between the sides so totals stay put), `MatchEngine.venue_bias`, and the `home_goal_diff` and `away_card_gap` metrics and targets. Still to do: fit the values with 400-match batches on unequal synthetic sides (`--quality 58-66`, no `--equal`). The manager still reads a press correctly with it on: 15/15 high presses spotted and 1/18 false alarms (20 seeds, 25-minute reads)
+- [ ] 2.1 Home advantage (referee and crowd mechanisms), fitted to the real home, draw and away split. **Now done after 2.4:**
+  - one set of values for every league;
+  - 400 matches each in ENG4 and ENG1, seed 31, pooled for `home_goal_diff`. **Mechanisms in (cloud), values provisional:** `home_advantage.yaml` (referee foul and card bias, crowd decision noise and pass error under pressure, each split evenly between the sides so totals stay put), `MatchEngine.venue_bias`, and the `home_goal_diff` and `away_card_gap` metrics and targets. (The earlier cloud idea of fitting on unequal synthetic sides is replaced by the real-squad fit above.) The manager still reads a press correctly with it on: 15/15 high presses spotted and 1/18 false alarms (20 seeds, 25-minute reads)
 - [x] 2.2 Interceptions separated from recoveries in stats, ratings and commentary (cloud). **Finding:** the counting was only a small part of the problem. Two full 64 v 64 matches had 82 interceptions, 4.5 recoveries and 5 clearances a match (real interceptions: 14–26). The engine really does cut out about 80 passes a match, so the excess is behaviour, not labels, and goes to 2.3 and D
 - Fixed (cloud): `duels._counter_on` and `gain_possession` read `eng.possessions` (rule 7). They now read `eng.possession_start`, simulation state set at the same moment. Behaviour is unchanged (the golden values hold)
 - [ ] 2.3 Build-up leak: high regains broken down by cause; decision-level causes fixed. **Diagnosed and measured (cloud):** it's physics, not decisions. Passers' estimates are honest, but opponents cut out about 8% of passes (real about 2%). `passing.yaml` `intercept_scale` 0.35 against 1.0 (synthetic sides, 200 paired matches): interceptions 68→29, high regains 57→36, throw-ins 19→26, ball in play 73→69 min, fast-break shots 1.4→3.5%, but goals 2.43→2.14 and offsides 19→39. Not applied: tune it on real squads from about 0.3, then long-pass execution error. See `docs/calibration/20260929T202538-step2.3-intercept0.35-synthetic-n200.md`
@@ -61,8 +109,46 @@ The local session reached its usage limit, and a cloud session carried on from 8
     - 0.3 → ENG4: interceptions 36, high regains 37, offsides 6.0, goals 2.26, shots 24.4. ENG1: 32, 26, 4.6, 3.55, 40.
     - 0.2 cut interceptions only about 3 more (33 and 30), while ENG1 goals rose to 3.97.
   - **Why 0.2 barely helps:** an opponent near a pass took it with probability max(0.05, p), and intercept_scale never touched that 5% floor. Now it scales the floor for opponents too (inert at 1.0: golden values unchanged).
-  - **Next:** 0.3 with the floor fix, alone and with more long-pass execution error, on both divisions.
-- [ ] 2.4 Red cards measured after the booked-player caution change
+  - **Rounds 4–5** (local, 50e3cf1, seed 21, 200 each, both divisions). The variants:
+    - f030: 0.3 with the floor fix;
+    - f030e1: plus per_metre 0.004 and length_per_metre 0.014;
+    - f020e2: 0.2 with 0.008 / 0.022;
+    - f020e3: 0.2 with 0.012 / 0.032.
+  - **What they show:**
+    - 0.2 lands interceptions in both divisions (about 20 ±0.7).
+    - Long-ball error lands ENG1's accuracy and throw-ins only by overshooting its goal kicks (24–26), and it needs implausible length spreads.
+    - It can't make weaker passers less accurate: synthetic 62- and 78-rated sides both complete 94% of short passes.
+    - The table and its reading are in `continuation-plan.md`, status section 5.
+  - **Why (30 Sep diagnostics and design review): the passing physics hides the ratings.**
+    - The receiver is sent to the true landing point at the kick.
+    - Heavy touches are re-gathered at once and count as complete.
+    - Passes are slow, and the estimate misjudges their timing.
+    - The estimates ignore `passing.yaml`, and at 0.2 they overrate crosses (45–48% estimated against 20–23% completed).
+    - So 2.3 continues as 2.3a–2.3e, as the plan describes.
+  - [ ] **2.3a Measure (behaviour-neutral):**
+    - pass bands, the reliability table, failure causes, travel times, heavy touches, offside tags;
+    - rates per minute of ball in play, and rating responses (a synthetic quality sweep, 58/66/74/82);
+    - the ENG1–ENG4 ratings gap, and a pass-pace reference from Metrica's open data;
+    - `match_targets.yaml` tagged rate / volume / reference;
+    - the refactors, and the no-league-names guard test (it checks keys, values and code, not comments citing real-world sources).
+    - The f020e2 re-run must reproduce round 5 exactly.
+  - [ ] **2.3b Physics shortcuts:** the receiver's read delay (from anticipation), a re-touch lockout after a heavy touch, the cross completion rule, and pass pace from the Metrica reference.
+  - [ ] **2.3c Honest pass estimates:** P_path × p_reach × P_arrive × P_secure, a landing grid for lofted balls and crosses, and a slow honesty test.
+  - [ ] **2.3d Offside decisions:**
+    - through balls judged at the runner's position;
+    - awareness as a risk, not a per-decision re-roll;
+    - free-kick positions, if measured.
+  - [ ] **2.3e Ratings that matter:**
+    - sweep the rating terms (the same values for every league) and check the rating responses first;
+    - then measure the league residual. Only if it's justified and bounded, add the league-environment layer with its guard tests;
+    - league references are validated last, and conflicts are flagged.
+- [ ] **2.4 Discipline, now done before 2.1** (the card-gap fit depends on foul volume):
+  - measure fouls by source, and fix `take_ons`;
+  - duels come from situations, adding the missing foul sources (holding a runner, 50-50s, fouls on a shielding carrier, every contested header);
+  - DOGSO reds;
+  - `booked_caution` applied once, not twice;
+  - the aggression > 80 red-card cliff made smooth;
+  - fit to fouls per minute of ball in play, and cards per foul.
 - [x] 2.5 Teleports down to zero (keeper-catch snaps) (cloud). A saved shot is placed where the keeper can reach it (the same random draw, mapped into his dive window); a keeper with no shot on target in reach is beaten; and he keeps going for the shot until it resolves. Four full matches: 1 of 22 saves needed any correction, and it was 0.4 m (a teleport is over 1.5 m). **Confirmed:** 0 teleports in 400 synthetic matches (0.09 a match before)
 - [ ] 2.6 Pre-D baseline reports (ENG1 and ENG4, 200 each) in `docs/calibration/`
 - [x] Synthetic players fitted to real ones (handoff section 5, item 7; done early, while batches ran).
@@ -74,7 +160,8 @@ The local session reached its usage limit, and a cloud session carried on from 8
 ## Step 3: Phase D, dynamic movement
 
 - [x] D0 Debug overlay (`?debug=1`): team phase and lines, offside line, targets (red when sprinting), pressers, the ball carrier's five best options with scores, and a text panel. Built early, while the Step 2.3 batches ran; `frontend/e2e/debug.mjs` checks it
-- [ ] D1 `phases.py`: team phases with hysteresis
+- [ ] D-pre Vectorise `update_targets` in two behaviour-neutral commits (golden values unchanged). Today it takes 3.3 s of a 6.6 s match; the target is 1.5 s or less
+- [ ] D1 `phases.py`: team phases with hysteresis. D1a is behaviour-neutral: `PhaseState` and `movement.yaml` with today's thresholds, plus flicker metrics. D1b adds the margin, dwell and blending
 - [ ] D2 `shape.py`: TeamShape (line heights, compactness, width, ball-side shift, cover depth)
 - [ ] D3 `intents.py`: MovementIntent; role runs; `press_bias`, `hold_line`, `track_runners`
 - [ ] D4 Structural jobs in possession (width, depth, support, rest defence, box occupation)

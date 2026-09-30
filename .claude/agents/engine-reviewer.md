@@ -37,6 +37,18 @@ The project lives at `/Users/alexbenton/Developer/Soccer-Game`. Get the diff wit
    - Tests never write to the real `saves/` folder.
    - Live matches stay keyed to their save slot, career seed and fixture.
 10. **Tests.** New engine behaviour gets unit tests built on synthetic teams (`match/synthetic.synthetic_sheet`), so they run without the EA data file.
+11. **One engine for every league** (calibration principles in `docs/plans/continuation-plan.md`).
+    - There are no league-specific mechanics, formulas, thresholds, tuning values or engine paths. Flag any `if league == …` or division branch.
+    - Flag any league or division name (ENG1, EFL, League Two and so on) used as a key, value or condition in `backend/src/footsim/match/engine/` or `data/config/match/`. Comments citing real-world sources are fine, and so is the environment layer's own config, once it exists.
+    - The only way a competition may reach the engine is the league-environment layer:
+      - one bounded number per competition, resolved outside the engine into a `MatchEnvironment` of per-mechanic multipliers;
+      - a closed list of mechanics, each with a cap, and an evidence note once its sensitivity is non-zero;
+      - its guard tests.
+    - `MatchEngine` must never receive a league name.
+12. **Ratings drive execution; conflicts are flagged, not patched.**
+    - A new or changed mechanic reads the ratings of the players involved.
+    - A calibration change must not force an aggregate with a mechanic that ignores ratings. For example: a flat multiplier fitted to one league's number, or a raw per-match count forced where the rate is what should be matched.
+    - When a target conflicts with believable mechanics, the change should record the conflict, not work around it.
 
 ## What to return
 

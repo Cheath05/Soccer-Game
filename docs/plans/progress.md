@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 4 (first half: the two light measurements). The commit right after it only filled in this hash. Earlier:
+- **Checkpoint commit:** ec0b7a8, Step 2.3a part 4 (first half: the two light measurements). The commit right after it only filled in this hash. Earlier:
   - quick fixes: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2;
   - 2.3a parts 1–3: d361049, 555d2e4, d332f8b.
 - **Engine:** unchanged since 2.3a part 3 (d332f8b), with bit-identical refactors only. The last change to the golden values is 0c (2bb32e2).

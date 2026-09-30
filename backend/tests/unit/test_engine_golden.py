@@ -21,7 +21,9 @@ values pinned per platform once a Linux run showed the Mac's values don't carry 
 advantage from the referee and the crowd (Step 2.1, recorded on Linux only); saved shots placed
 within the keeper's reach, and the keeper going for them (Step 2.5, Linux only);
 synthetic players' attributes fitted to real players' (recorded on the Mac only);
-forward runners easing off to stop on their mark (Step 2.3, Mac only).
+forward runners easing off to stop on their mark (Step 2.3, Mac only); a substitute no
+longer inheriting the outgoing player's duel engagements, and a restart's taker chosen again
+if he goes off (quick fix 0c, Mac only).
 """
 
 import json

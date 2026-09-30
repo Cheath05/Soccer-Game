@@ -178,3 +178,40 @@ def test_a_substitute_starts_unbooked(world: World) -> None:
     assert engine.players[slot].player_id == on
     assert engine.yellows[slot] == 0 and engine.tackle_ready[slot] == 0.0
     assert engine.lines[out].yellow == 1
+
+
+def test_a_substitute_sizes_up_duels_afresh(world: World) -> None:
+    # Duel state is kept by player index, so the newcomer must not inherit the outgoing
+    # player's engagements or take-on cooldowns (he'd skip sizing up a duel). Others keep theirs.
+    engine = _live(_engine(world))
+    slot, rival = _outfield(engine, 0)[4], _outfield(engine, 1)[4]
+    other, carrier = _outfield(engine, 1)[5], _outfield(engine, 0)[5]
+    engine.engaged[slot] = (rival, engine.t)
+    engine.engaged[rival] = (slot, engine.t)
+    engine.engaged[other] = (carrier, engine.t)
+    engine.take_on_ready[(slot, rival)] = engine.take_on_ready[(rival, slot)] = engine.t + 5.0
+    engine.substitute(0, engine.players[slot].player_id, engine.bench[0][0].player_id)
+    engine.award_restart("throw_in", 1, (30.0, 0.0))
+    assert slot not in engine.engaged
+    assert all(c != slot for c, _ in engine.engaged.values())
+    assert not any(slot in pair for pair in engine.take_on_ready)
+    assert engine.engaged[other][0] == carrier
+
+
+def test_a_restart_taker_who_goes_off_is_replaced(world: World,
+                                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    # The taker is chosen when the restart is awarded. If his slot is substituted before he
+    # takes it, the choice is made again among the players now on the pitch.
+    from footsim.match.engine import restarts
+    engine = _live(_engine(world))
+    engine.award_restart("throw_in", 0, (30.0, 0.0))
+    assert engine.restart is not None and engine.ball_dead
+    slot, keep, other = (_outfield(engine, 0)[k] for k in (4, 6, 7))
+    engine.restart.taker = slot
+    monkeypatch.setattr(restarts, "pick_taker", lambda eng, restart: keep)
+    engine.substitute(0, engine.players[slot].player_id, engine.bench[0][0].player_id)
+    assert engine.restart.taker == keep
+    # Substituting anyone else leaves the taker alone.
+    monkeypatch.setattr(restarts, "pick_taker", lambda eng, restart: -1)
+    engine.substitute(0, engine.players[other].player_id, engine.bench[0][0].player_id)
+    assert engine.restart.taker == keep

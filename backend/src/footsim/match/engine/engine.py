@@ -196,10 +196,13 @@ class MatchEngine:
         self.accel[i] = 2.6 + 4.2 * a[ATTR_INDEX["acceleration"]] / 100
         self.stamina[i] = max(0.35, sp.player.condition / 100)
         self.active[i] = True
-        # Match state belongs to the player, not the slot: a substitute comes on unbooked and
-        # free to tackle. The outgoing player's booking stays on his own line.
+        # Match state belongs to the player, not the slot: a substitute comes on unbooked, free
+        # to tackle, and sizing up any duel afresh. The outgoing player's booking stays on his
+        # own line.
         self.yellows[i] = 0
         self.tackle_ready[i] = 0.0
+        self.engaged = {k: v for k, v in self.engaged.items() if k != i and v[0] != i}
+        self.take_on_ready = {pair: t for pair, t in self.take_on_ready.items() if i not in pair}
 
     def _club(self, i: int) -> int:
         return self.sheets[int(self.team_of[i])].club_id
@@ -793,6 +796,10 @@ class MatchEngine:
         # The replacement comes on at the halfway line and jogs to his position.
         self.pos[idx] = (MID_X, -0.8)
         self.vel[idx] = 0.0
+        # A pending restart's taker was chosen among the players then on the pitch. If he has
+        # just gone off, choose again rather than leave it to whoever took his place.
+        if self.restart is not None and self.restart.taker == idx:
+            self.restart.taker = restarts.pick_taker(self, self.restart)
         self.left[outgoing.player_id] = self.t
         self.entered[entering.player_id] = self.t
         self.lines[entering.player_id] = PlayerLine(entering.player_id,

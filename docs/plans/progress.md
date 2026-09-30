@@ -16,35 +16,35 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** 4fb1b24, quick fix 0b. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fix 0a is 05fcd7d.
-- **Engine:** 0b changes behaviour only when a booked player is substituted, and no golden match does that. So the golden values are unchanged, and the last change to them is still 65b3b8f.
-- **Completed at this checkpoint (0b, 30 Sep):**
-  - A substitute no longer inherits the booked player's yellow card.
-    - `MatchEngine._load` resets the slot's per-slot `yellows` and `tackle_ready` when a player loads into it.
-    - Before, the sub played under the booked-player caution, his first yellow sent him off, and the subs panel showed him booked.
-    - The outgoing player's booking stays on his own line (`eng.lines[pid].yellow`).
-  - The new test is `test_restarts.py::test_a_substitute_starts_unbooked`. It fails without the fix (`yellows[slot]` stays 1).
-  - Other per-slot state was checked:
-    - `player_fouls` and `player_xg` are keyed by player id;
-    - `distance` only feeds the team total;
-    - `target`, `urgent` and `running` are recomputed every re-plan.
-    - The reviewer found `engaged` and the restart taker; both go to 0c.
+- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0c. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fixes 0a and 0b are 05fcd7d and 4fb1b24.
+- **Engine:** 0c changes behaviour, so the Mac's golden values were re-recorded in the same commit, with a History note in `test_engine_golden.py`. It's the only pinned platform; there were no Linux values to delete.
+- **Completed at this checkpoint (0c, 30 Sep):** two more ways a substitute inherited the outgoing player's match state, both found by the reviewer of 0b.
+  - **Duel state.** `MatchEngine._load` drops any `engaged` entry where the slot is the defender or the carrier, and any `take_on_ready` pair that involves it.
+    - Before, the newcomer, or a defender facing him, skipped the 0.3–0.8 s sizing-up (`duels.py:56-59`).
+  - **Restart taker.** `MatchEngine._bring_on` re-picks a pending restart's taker (`restarts.pick_taker`) when the slot being substituted is the taker.
+    - Before, whoever took his place took the restart.
+  - **Tests:** `test_a_substitute_sizes_up_duels_afresh` and `test_a_restart_taker_who_goes_off_is_replaced` in `test_restarts.py`.
+  - **Deliberately left for 2.4:** `engaged` entries also go stale between engagements, not just across substitutions, which can skip the sizing-up delay. Fixing it changes duel volume, and 2.4 reworks and measures duels.
 - **Tests:**
   - `just lint` is clean (ruff, and mypy on 100 files);
-  - all 121 backend tests pass;
-  - the golden and determinism tests pass unchanged.
-- **Reviewer:** no violations found in the diff.
-  - It found two more pre-existing per-slot carry-overs, left for quick fix 0c:
-    - `engaged` (`engine.py:93`) survives substitutions, so the newcomer, or a defender facing him, skips the 0.3–0.8 s sizing-up (`duels.py:56-59`);
-    - a restart taker chosen before a substitution can be the newcomer (`restarts.py:58-60`, `engine.py:763-764`).
-- **Unresolved:** everything from 0c onward. The verified bugs still open:
-  - the substitute's `engaged` state and restart taker (0c);
+  - all 123 backend tests pass;
+  - the golden values were re-recorded (the seed-12 full match moved, as expected) and pass;
+  - the determinism tests pass.
+- **Reviewer:** no violations found. It confirmed:
+  - no randomness or clock is read;
+  - no new position writes; the new taker walks to the spot through his target;
+  - the dict rebuilds run only on load and substitution;
+  - the History note is present;
+  - both tests fail without the fix;
+  - a `None` taker is handled everywhere.
+- **Unresolved:** everything from 2.3a onward. The verified bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
   - the card rules (no DOGSO; booked caution applied twice; the aggression > 80 red-card cliff);
+  - stale duel engagements (2.4);
   - the metric gaps.
-- **Next task:** quick fix 0c (the substitute's `engaged` state and a re-picked restart taker; the golden values will change). Then Step 2.3a (`continuation-plan.md`, Step 2.3):
+- **Next task:** Step 2.3a (`continuation-plan.md`, Step 2.3):
   - measurement, and restructuring the targets into rate / volume / reference;
   - rating responses;
   - behaviour-neutral refactors;
@@ -52,11 +52,12 @@
   - then the f020e2 identity batch.
 - **Calibration:**
   - Nothing is running. 2.3a's first batch is the f020e2 identity check (seed 21, ENG4 and ENG1, 200 each, from the worktree pinned at the 2.3a commit), run one at a time.
+  - Batches at 2.3a's commit include 0b and 0c, so 2.3a's reference re-run must be compared with round 5 knowing that substitutions changed slightly (only matches that sub a booked player, or a player engaged in a duel or due to take a restart).
   - `.worktrees/measure` is detached at 50e3cf1.
   - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh`.
   - The reports are in `reports/engine/step2.3/` and the Grimsby C1 reports in `reports/engine/2026092*-ENG4-n200-ab*` (local only).
 - **Play-testing:**
-  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has neither 0a, 0b nor later engine work.
+  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of 0a–0c or later engine work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
@@ -65,7 +66,7 @@
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged
 - [x] 0b A substitute starts with no yellow card: `_load` resets the slot's `yellows` and `tackle_ready` (`engine.py:183-202`). Tested by `test_a_substitute_starts_unbooked`, which fails without the fix. The golden values are unchanged: no golden match makes such a substitution
-- [ ] 0c Two more per-slot carry-overs on a substitution, found by the reviewer.
+- [x] 0c Two more per-slot carry-overs on a substitution, found by the reviewer. Done: `_load` drops the slot's `engaged` and `take_on_ready` entries, and `_bring_on` re-picks a restart taker who goes off. Two tests; Mac golden values re-recorded with a History note
   - Clear the slot's `engaged` state (`engine.py:93`; `duels.py:56-59`); this moves the seed-12 golden, so re-record it with a History note.
   - Re-pick a pending restart's taker in `_bring_on` when the slot it named has been substituted (`restarts.py:58-60`, `engine.py:763-764`).
   - Both with tests.
@@ -163,7 +164,8 @@ The local session reached its usage limit, and a cloud session carried on from 8
   - DOGSO reds;
   - `booked_caution` applied once, not twice;
   - the aggression > 80 red-card cliff made smooth;
-  - fit to fouls per minute of ball in play, and cards per foul.
+  - fit to fouls per minute of ball in play, and cards per foul;
+  - **stale duel engagements** (from 0c's review): `engaged` entries survive between engagements, so a defender meeting the same carrier again skips the sizing-up delay (`duels.py:50-59`). Decide it here, measured, since fixing it changes duel volume.
 - [x] 2.5 Teleports down to zero (keeper-catch snaps) (cloud). A saved shot is placed where the keeper can reach it (the same random draw, mapped into his dive window); a keeper with no shot on target in reach is beaten; and he keeps going for the shot until it resolves. Four full matches: 1 of 22 saves needed any correction, and it was 0.4 m (a teleport is over 1.5 m). **Confirmed:** 0 teleports in 400 synthetic matches (0.09 a match before)
 - [ ] 2.6 Pre-D baseline reports (ENG1 and ENG4, 200 each) in `docs/calibration/`
 - [x] Synthetic players fitted to real ones (handoff section 5, item 7; done early, while batches ran).

@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0a. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
+- **Checkpoint commit:** 05fcd7d, quick fix 0a. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
 - **Engine:** the last behaviour change, and the last change to the golden values, is still 65b3b8f (runners stop on the offside line). 0a touches no engine code; the golden values are unchanged.
 - **Completed at this checkpoint (0a, 30 Sep):**
   - **The e2e scripts can no longer touch the user's saves.**

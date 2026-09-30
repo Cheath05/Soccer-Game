@@ -16,41 +16,47 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** 05fcd7d, quick fix 0a. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
-- **Engine:** the last behaviour change, and the last change to the golden values, is still 65b3b8f (runners stop on the offside line). 0a touches no engine code; the golden values are unchanged.
-- **Completed at this checkpoint (0a, 30 Sep):**
-  - **The e2e scripts can no longer touch the user's saves.**
-    - `just e2e` defaults to a throwaway server on :8765.
-    - `frontend/e2e/target.mjs` runs before any browser starts. It refuses :8000 outright, and refuses any server whose `GET /api/health` doesn't report `default_saves: false`. That covers the Vite dev and preview servers, which pass /api through to :8000, older builds that can't say, and a test server started without `FOOTSIM_SAVES_DIR`.
-    - `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` is the only override.
-  - **`/api/health`** now reports `saves_dir` and `default_saves`, with a test.
-  - **The scripts start from `/start`** and pick club tiles by button role, so `just e2e` can run `smoke.mjs` and `live.mjs` on one server.
-  - **App bug fixed** (`StartPage.tsx`): starting or loading a career from `/start` with no career open left the start page on screen.
-    - The career refetch unmounted the page, so mutate's `onSuccess` never ran.
-    - It now navigates home when the mutation's promise resolves.
-  - **Docs updated:** `CLAUDE.md`, `README.md`, the run-footsim skill, `match-believability.md` and `continuation-plan.md`.
+- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0b. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fix 0a is 05fcd7d.
+- **Engine:** 0b changes behaviour only when a booked player is substituted, and no golden match does that. So the golden values are unchanged, and the last change to them is still 65b3b8f.
+- **Completed at this checkpoint (0b, 30 Sep):**
+  - A substitute no longer inherits the booked player's yellow card.
+    - `MatchEngine._load` resets the slot's per-slot `yellows` and `tackle_ready` when a player loads into it.
+    - Before, the sub played under the booked-player caution, his first yellow sent him off, and the subs panel showed him booked.
+    - The outgoing player's booking stays on his own line (`eng.lines[pid].yellow`).
+  - The new test is `test_restarts.py::test_a_substitute_starts_unbooked`. It fails without the fix (`yellows[slot]` stays 1).
+  - Other per-slot state was checked:
+    - `player_fouls` and `player_xg` are keyed by player id;
+    - `distance` only feeds the team total;
+    - `target`, `urgent` and `running` are recomputed every re-plan.
+    - The reviewer found `engaged` and the restart taker; both go to 0c.
 - **Tests:**
-  - `just lint` is clean (ruff, and mypy on 100 files), and all 120 backend tests pass;
-  - the frontend build (`tsc -b` and vite) and oxlint are clean;
-  - the guard was checked against mock servers: default saves, throwaway saves, an old build, 404, nothing listening, port 8000, and the override;
-  - `just e2e` (smoke then live) and `debug.mjs` pass on a fresh throwaway :8765 server, with no browser errors except smoke's expected 409 from `/api/career` before a career exists;
-  - the user's `saves/slot_1` is unchanged (same files, same modification times).
-- **Reviewer:** no violations found. Its two optional doc notes are applied (the plan's dated `:8000` finding is marked fixed, and the skill no longer says to restart between e2e runs).
-- **Unresolved:** everything from quick fix 0b onward. The verified bugs still open:
-  - a substitute inherits a yellow card;
+  - `just lint` is clean (ruff, and mypy on 100 files);
+  - all 121 backend tests pass;
+  - the golden and determinism tests pass unchanged.
+- **Reviewer:** no violations found in the diff.
+  - It found two more pre-existing per-slot carry-overs, left for quick fix 0c:
+    - `engaged` (`engine.py:93`) survives substitutions, so the newcomer, or a defender facing him, skips the 0.3–0.8 s sizing-up (`duels.py:56-59`);
+    - a restart taker chosen before a substitution can be the newcomer (`restarts.py:58-60`, `engine.py:763-764`).
+- **Unresolved:** everything from 0c onward. The verified bugs still open:
+  - the substitute's `engaged` state and restart taker (0c);
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
-  - the card rules;
+  - the card rules (no DOGSO; booked caution applied twice; the aggression > 80 red-card cliff);
   - the metric gaps.
-- **Next task:** quick fix 0b (a substitute starts with no yellow card), as its own checkpoint. Then 2.3a.
+- **Next task:** quick fix 0c (the substitute's `engaged` state and a re-picked restart taker; the golden values will change). Then Step 2.3a (`continuation-plan.md`, Step 2.3):
+  - measurement, and restructuring the targets into rate / volume / reference;
+  - rating responses;
+  - behaviour-neutral refactors;
+  - the no-league-names guard test;
+  - then the f020e2 identity batch.
 - **Calibration:**
-  - Nothing is running, and nothing is needed before 2.3a. 2.3a's first batch is the f020e2 identity check (seed 21, ENG4 and ENG1, 200 each, from the worktree pinned at the 2.3a commit).
+  - Nothing is running. 2.3a's first batch is the f020e2 identity check (seed 21, ENG4 and ENG1, 200 each, from the worktree pinned at the 2.3a commit), run one at a time.
   - `.worktrees/measure` is detached at 50e3cf1.
   - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh`.
   - The reports are in `reports/engine/step2.3/` and the Grimsby C1 reports in `reports/engine/2026092*-ENG4-n200-ab*` (local only).
 - **Play-testing:**
-  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has neither 0a nor later engine work.
+  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has neither 0a, 0b nor later engine work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
@@ -58,7 +64,11 @@
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged
-- [ ] 0b A substitute starts with no yellow card: `_load` resets the slot's `yellows` (`engine.py:100, 183-198`), with a test. Re-record the golden values if a golden match makes such a substitution
+- [x] 0b A substitute starts with no yellow card: `_load` resets the slot's `yellows` and `tackle_ready` (`engine.py:183-202`). Tested by `test_a_substitute_starts_unbooked`, which fails without the fix. The golden values are unchanged: no golden match makes such a substitution
+- [ ] 0c Two more per-slot carry-overs on a substitution, found by the reviewer.
+  - Clear the slot's `engaged` state (`engine.py:93`; `duels.py:56-59`); this moves the seed-12 golden, so re-record it with a History note.
+  - Re-pick a pending restart's taker in `_bring_on` when the slot it named has been substituted (`restarts.py:58-60`, `engine.py:763-764`).
+  - Both with tests.
 
 ## Cloud session (29 Sep, claude.ai/code)
 

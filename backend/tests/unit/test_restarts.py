@@ -161,3 +161,20 @@ def test_substitution_waits_for_a_stoppage(world: World) -> None:
     ids = [sp.player_id for sp in engine.players]
     assert on in ids and out not in ids and engine.pending_for(0) == []
     assert engine.subs_used[0] == 1
+
+
+def test_a_substitute_starts_unbooked(world: World) -> None:
+    # A booking belongs to the player, not his slot: the man coming on starts with no yellow
+    # and can tackle at once, while the outgoing player keeps his card on his own line.
+    engine = _live(_engine(world))
+    slot = _outfield(engine, 0)[4]
+    out = engine.players[slot].player_id
+    engine.yellows[slot] = 1
+    engine.lines[out].yellow = 1
+    engine.tackle_ready[slot] = engine.t + 5.0
+    on = engine.bench[0][0].player_id
+    engine.substitute(0, out, on)
+    engine.award_restart("throw_in", 1, (30.0, 0.0))
+    assert engine.players[slot].player_id == on
+    assert engine.yellows[slot] == 0 and engine.tackle_ready[slot] == 0.0
+    assert engine.lines[out].yellow == 1

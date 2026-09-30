@@ -196,6 +196,10 @@ class MatchEngine:
         self.accel[i] = 2.6 + 4.2 * a[ATTR_INDEX["acceleration"]] / 100
         self.stamina[i] = max(0.35, sp.player.condition / 100)
         self.active[i] = True
+        # Match state belongs to the player, not the slot: a substitute comes on unbooked and
+        # free to tackle. The outgoing player's booking stays on his own line.
+        self.yellows[i] = 0
+        self.tackle_ready[i] = 0.0
 
     def _club(self, i: int) -> int:
         return self.sheets[int(self.team_of[i])].club_id

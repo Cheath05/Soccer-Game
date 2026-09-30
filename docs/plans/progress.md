@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 2 (targets and report). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, and 2.3a part 1 d361049.
+- **Checkpoint commit:** 555d2e4, Step 2.3a part 2 (targets and report). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, and 2.3a part 1 d361049.
 - **Engine:** behaviour unchanged (reporting only). The golden values are unchanged; the last change to them is 0c (2bb32e2).
 - **Completed at this checkpoint (2.3a part 2, 30 Sep):**
   - **`match_targets.yaml`: every entry has a kind.**

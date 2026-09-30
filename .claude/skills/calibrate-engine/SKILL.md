@@ -100,6 +100,34 @@ All values are per match with both teams combined, unless the name says `per_tea
 
 The home, draw and away shares show no home advantage. The agent engine had none until Step 2.1 of the recovery plan.
 
+## How a report is organised (since Step 2.3a)
+
+The report follows the calibration principles in `docs/plans/continuation-plan.md`:
+- **One engine.** League differences come from ratings first, then team context, then at most a small, bounded league-environment parameter.
+- **Rates, not raw counts.**
+- **League figures validate; they are never tuned towards.**
+
+Its sections:
+- **Rates:** judged as they are. They include pass accuracy, conversion, shares and waits.
+- **Volumes, judged per minute of ball in play:** each count per match (goals, shots, passes, fouls, throw-ins and so on) is compared with the target range divided by the league's real ball-in-play minutes (`_exposure` in `match_targets.yaml`). A batch that keeps the ball in play too long can look right per match while its rate is wrong, and the reverse; judge the rate.
+- **League references:** validation only. `ENG4` adds League Two's own figures on top of the EFL section. A miss is diagnosed down to rates and ratings. If it can't be reached without a league-specific rule or an implausible mechanic, record it as a conflict.
+- **Pass reliability:** completion against the passer's own estimate, by length band and estimate decile. Estimates should be honest: each row's gap within about ±0.05.
+- **By starting XI rating:** team-level results grouped by XI rating, both divisions on one scale. League quality should show up here, through the players.
+
+The pass metrics: `pass_acc_*`, `estimate_gap_*`, `pass_time_*` (seconds from the kick to a completed reception), `long_ball_share`, `cross_share`, and `pass_fail_*` (where failed passes went).
+- The bands are short <14 m, medium 14–32 m, long ≥32 m (Opta's long ball), cross, and throw (long throws included).
+- `heavy_touch_self_regather`: the share of heavy touches the receiver gathered again himself within 3 s.
+- `offsides_*`: offsides by kind.
+
+**The quality sweep (rating responses).** Run equal synthetic sides at four quality levels, same seed, one at a time:
+```bash
+for q in 58 66 74 82; do
+  uv run --frozen footsim calibrate-engine --synthetic --division ENG4 --quality $q-$q --equal \
+    --n 200 --seed 21 --workers 7 --out /Users/alexbenton/Developer/Soccer-Game/reports/engine/<step>/sweep-q$q
+done
+```
+Read the same metric across the four reports (pass accuracy, completion by band, miscontrols): it should change clearly and in the right direction, with the CIs separated.
+
 ## Targets and sources
 
 `match_targets.yaml` holds per-division ranges with sources: football-data.co.uk 2023/24–2025/26, Opta Analyst, the Premier League and the IFAB Laws. The acceptance thresholds are in section S of `docs/plans/match-believability.md`.

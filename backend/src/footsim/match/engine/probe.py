@@ -35,8 +35,9 @@ FAILURES = ("intercepted", "recovered", "loose", "offside", "aerial_lost", "foul
             "out_throw_in", "out_goal_kick", "out_corner", "out_other")
 REGATHER_WINDOW = 3.0  # s: a completed pass may be gathered this long after it stopped
 # Volume metrics also reported per minute of ball in play (the calibration principles).
-PER_BIP_MINUTE = ("passes", "shots", "fouls", "offsides", "corners", "throw_ins", "goal_kicks",
-                  "interceptions", "high_regains", "tackles")
+PER_BIP_MINUTE = ("goals", "shots", "shots_on_target", "xg", "passes", "corners", "fouls",
+                  "yellows", "reds", "offsides", "penalties", "tackles", "interceptions",
+                  "throw_ins", "goal_kicks", "high_regains")
 
 
 def _zone(xa: float) -> str:

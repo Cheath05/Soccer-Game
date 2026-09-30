@@ -29,7 +29,7 @@ from sqlalchemy import Engine, create_engine, text
 from footsim.core.paths import REPO_ROOT, config_dir
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
-from footsim.match.engine.probe import aggregate, summarize
+from footsim.match.engine.probe import aggregate, reliability, summarize
 from footsim.match.synthetic import synthetic_sheet
 from footsim.match.teams import TeamSheet
 from footsim.world.context import AI_FORMATIONS, World, get_world
@@ -130,7 +130,9 @@ def play_task(task: MatchTask) -> dict[str, Any]:
     engine.report()
     summary = summarize(engine)
     summary.update(index=task.index, arm=task.arm.name, focus=task.focus,
-                   home_club=task.home, away_club=task.away)
+                   home_club=task.home, away_club=task.away,
+                   xi_rating=[round(float(np.mean([sp.rating for sp in sheet.starters])), 2)
+                              for sheet in (home, away)])
     return summary
 
 
@@ -204,9 +206,15 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
 # --- reports -------------------------------------------------------------------------------
 
 
+TARGET_KINDS = ("rate", "volume", "reference")
+
+
 def load_targets(division: str) -> dict[str, dict[str, Any]]:
+    """ENG1's targets, or the EFL's with the division's own section (League Two's references,
+    say) on top. League figures only ever validate: the engine has no league input."""
     raw: dict[str, dict[str, dict[str, Any]]] = yaml.safe_load(TARGETS.read_text("utf-8"))
-    return raw["ENG1" if division == "ENG1" else "EFL"]
+    base = raw["ENG1" if division == "ENG1" else "EFL"]
+    return base if division == "ENG1" else {**base, **raw.get(division, {})}
 
 
 def _fmt(value: float) -> str:
@@ -220,18 +228,65 @@ def _fmt(value: float) -> str:
 
 
 def compare(agg: dict[str, float], targets: dict[str, dict[str, Any]],
-            ci: dict[str, float] | None = None) -> list[tuple[str, ...]]:
-    rows: list[tuple[str, ...]] = []
+            ci: dict[str, float] | None = None) -> dict[str, list[tuple[str, ...]]]:
+    """Report rows by kind of target: rates judged as they are; volumes judged per minute of
+    ball in play against the range divided by the league's real ball-in-play minutes; league
+    references (validation only); and metrics with no target."""
+    def spread(metric: str) -> str:
+        return f"±{_fmt(ci[metric])}" if ci and metric in ci else ""
+
+    def judged(value: float, low: float, high: float) -> str:
+        return "ok" if not math.isnan(value) and low - 1e-9 <= value <= high + 1e-9 else "OFF"
+
+    exposure = float(targets.get("_exposure", {}).get("ball_in_play_min", float("nan")))
+    shown = {f"{m}_per_bip_min" for m, t in targets.items()
+             if isinstance(t, dict) and t.get("kind") == "volume"}
+    sections: dict[str, list[tuple[str, ...]]] = {k: [] for k in (*TARGET_KINDS, "other")}
     for metric, value in agg.items():
-        spread = f"±{_fmt(ci[metric])}" if ci and metric in ci else ""
         target = targets.get(metric)
-        if target is None:
-            rows.append((metric, _fmt(value), spread, "", "", ""))
+        if target is None or metric.startswith("_"):
+            if metric not in shown:
+                sections["other"].append((metric, _fmt(value), spread(metric)))
             continue
+        kind = target.get("kind", "rate")
         low, high = target["range"]
-        ok = not math.isnan(value) and low - 1e-9 <= value <= high + 1e-9
-        rows.append((metric, _fmt(value), spread, f"{_fmt(low)}–{_fmt(high)}",
-                     "ok" if ok else "OFF", str(target.get("ref", ""))))
+        ref = str(target.get("ref", ""))
+        if kind == "volume":
+            rate = agg.get(f"{metric}_per_bip_min", float("nan"))
+            lo, hi = low / exposure, high / exposure
+            per_match = f"{_fmt(low)}–{_fmt(high)} a match: {ref}"
+            sections["volume"].append((metric, _fmt(value), _fmt(rate),
+                                       spread(f"{metric}_per_bip_min"), f"{_fmt(lo)}–{_fmt(hi)}",
+                                       judged(rate, lo, hi), per_match))
+        else:
+            sections[kind].append((metric, _fmt(value), spread(metric),
+                                   f"{_fmt(low)}–{_fmt(high)}", judged(value, low, high), ref))
+    return sections
+
+
+def by_rating(results: Sequence[dict[str, Any]], width: float = 5.0) -> list[dict[str, Any]]:
+    """Team-level results grouped by the team's starting XI rating, pooled across divisions:
+    with one engine, league quality should show up here, through the players."""
+    groups: dict[float, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+    for r in results:
+        for t in (0, 1):
+            rating = r.get("xi_rating", [float("nan")] * 2)[t]
+            if math.isnan(rating):
+                continue
+            groups.setdefault(math.floor(rating / width) * width, []).append(
+                (r["teams"][t], r["teams"][1 - t]))
+    rows = []
+    for low in sorted(groups):
+        pairs = groups[low]
+        passes = sum(mine["passes"] for mine, _ in pairs)
+        rows.append({"xi_rating": f"{low:.0f}-{low + width:.0f}", "team_matches": len(pairs),
+                     "pass_accuracy": sum(m["passes_completed"] for m, _ in pairs) / max(1, passes),
+                     "goals_for": float(np.mean([m["goals"] for m, _ in pairs])),
+                     "xg_for": float(np.mean([m["xg"] for m, _ in pairs])),
+                     "xg_against": float(np.mean([o["xg"] for _, o in pairs])),
+                     "interceptions": float(np.mean([m["interceptions"] for m, _ in pairs])),
+                     "fouls": float(np.mean([m["fouls"] for m, _ in pairs])),
+                     "high_regains": float(np.mean([m["high_regains"] for m, _ in pairs]))})
     return rows
 
 
@@ -321,11 +376,41 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
     baseline = [r for r in results if r["arm"] == arms[0].name]
     agg = aggregate(baseline)
     ci = bootstrap_ci(baseline)
+    sections = compare(agg, targets, ci)
+    rel = reliability(baseline)
+    ratings = by_rating(baseline)
     lines += ["## Baseline vs real football", "",
               f"±: half-width of the 95% interval ({BOOTSTRAP_REPS} bootstrap resamples of the "
-              "matches).", "",
+              "matches). Kinds of target are explained in match_targets.yaml.", "",
+              "### Rates", "",
               "| Metric | Engine | ±95% | Target | | Reference |", "|---|---|---|---|---|---|"]
-    lines += [f"| {' | '.join(row)} |" for row in compare(agg, targets, ci)]
+    lines += [f"| {' | '.join(row)} |" for row in sections["rate"]]
+    lines += ["", "### Volumes, judged per minute of ball in play", "",
+              "| Metric | Per match | Per BIP minute | ±95% | Target | | Reference |",
+              "|---|---|---|---|---|---|---|"]
+    lines += [f"| {' | '.join(row)} |" for row in sections["volume"]]
+    if sections["reference"]:
+        lines += ["", "### League references (validation only, never tuned towards)", "",
+                  "| Metric | Engine | ±95% | Reference range | | Source |",
+                  "|---|---|---|---|---|---|"]
+        lines += [f"| {' | '.join(row)} |" for row in sections["reference"]]
+    lines += ["", "### Other measurements", "", "| Metric | Engine | ±95% |", "|---|---|---|"]
+    lines += [f"| {' | '.join(row)} |" for row in sections["other"]]
+    if rel:
+        lines += ["", "### Pass reliability: completion against the passer's estimate", "",
+                  "| Band | Estimate | Passes | Mean estimate | Completed | Gap |",
+                  "|---|---|---|---|---|---|"]
+        lines += [f"| {r['band']} | {r['estimate']} | {r['passes']} | {r['mean_estimate']:.3f} "
+                  f"| {r['completed']:.3f} | {r['gap']:+.3f} |" for r in rel]
+    if ratings:
+        lines += ["", "### By starting XI rating (team level)", "",
+                  "| XI rating | Team-matches | Pass accuracy | Goals for | xG for | xG against "
+                  "| Interceptions | Fouls | High regains |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        lines += [f"| {r['xi_rating']} | {r['team_matches']} | {r['pass_accuracy']:.3f} "
+                  f"| {r['goals_for']:.2f} | {r['xg_for']:.2f} | {r['xg_against']:.2f} "
+                  f"| {r['interceptions']:.1f} | {r['fouls']:.1f} | {r['high_regains']:.1f} |"
+                  for r in ratings]
     deltas: dict[str, dict[str, tuple[float, float]]] = {}
     if len(arms) > 1:
         base_name = arms[0].name
@@ -352,6 +437,8 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
         {"label": label, "division": division, "synthetic": synthetic, "teams": teams,
          "aggregate": agg,
          "ci95": ci,
+         "reliability": rel,
+         "by_rating": ratings,
          "arms": {arm.name: aggregate([r for r in results if r["arm"] == arm.name])
                   for arm in arms},
          "focus": {arm.name: focus_view([r for r in results if r["arm"] == arm.name])

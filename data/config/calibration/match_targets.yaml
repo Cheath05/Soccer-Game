@@ -11,9 +11,20 @@
 #   study   corner-kick systematic review (MDPI 2025); throw-in study (La Liga 2021/22)
 #   approx  typical published values, still to be pinned down; treat as soft
 # Metric names match footsim.match.engine.probe.aggregate.
+#
+# Kinds (see the calibration principles in docs/plans/continuation-plan.md):
+#   rate       (the default) a rate or share that carries over directly: judged as it is.
+#   volume     a count per match. Judged as a rate per minute of ball in play, so a batch that
+#              keeps the ball in play too long isn't credited with the extra events: the range
+#              is divided by the section's real ball-in-play minutes (_exposure), and compared
+#              with the engine's <metric>_per_bip_min. The per-match value is still reported.
+#   reference  a league figure for validation only: it checks what emerges from real squads and
+#              is never tuned towards directly. A miss is diagnosed, not patched.
+# A division section (such as ENG4) adds references on top of its league's section.
 
 ENG1:
-  goals:              {range: [2.65, 3.05], ref: "fd E0 3.28 / 2.93 / 2.75"}
+  _exposure:          {ball_in_play_min: 56.7, ref: "opta 58:11 / 56:59 / 55:00 (23/24-25/26), mean"}
+  goals:              {range: [2.65, 3.05], kind: volume, ref: "fd E0 3.28 / 2.93 / 2.75"}
   home_win:           {range: [0.41, 0.47], ref: "fd E0 46.1% / 40.8% / 42.6%"}
   draw:               {range: [0.22, 0.29], ref: "fd E0 21.6% / 24.5% / 27.4%"}
   away_win:           {range: [0.28, 0.35], ref: "fd E0 32.4% / 34.7% / 30.0%"}
@@ -22,32 +33,32 @@ ENG1:
   nil_nil:            {range: [0.04, 0.09], ref: "fd E0 2.9% / 4.2% / 7.1%"}
   six_plus_goals:     {range: [0.03, 0.07], ref: "fd E0 9.5% / 6.3% / 4.2%"}
   margin_4_plus:      {range: [0.02, 0.06], ref: "fd E0 8.7% / 6.3% / 2.1%"}
-  shots:              {range: [23.0, 27.5], ref: "fd E0 27.6 / 25.9 / 25.0"}
-  shots_on_target:    {range: [7.8, 9.8], ref: "fd E0 9.9 / 9.1 / 8.4"}
-  xg:                 {range: [2.5, 3.1], ref: "approx: goals less finishing variance"}
+  shots:              {range: [23.0, 27.5], kind: volume, ref: "fd E0 27.6 / 25.9 / 25.0"}
+  shots_on_target:    {range: [7.8, 9.8], kind: volume, ref: "fd E0 9.9 / 9.1 / 8.4"}
+  xg:                 {range: [2.5, 3.1], kind: volume, ref: "approx: goals less finishing variance"}
   conversion:         {range: [0.095, 0.12], ref: "pl 10.6% (24/25), 11.9% (23/24)"}
   xg_per_shot:        {range: [0.09, 0.12], ref: "opta open play ~0.12, set pieces ~0.09"}
   shots_outside_box:  {range: [0.30, 0.42], ref: "approx"}
-  passes:             {range: [850, 1000], ref: "opta 941 / 893 / 873 per game"}
+  passes:             {range: [850, 1000], kind: volume, ref: "opta 941 / 893 / 873 per game"}
   pass_accuracy:      {range: [0.80, 0.85], ref: "approx"}
-  corners:            {range: [9.0, 11.5], ref: "fd E0 10.8 / 10.3 / 10.0"}
-  fouls:              {range: [20.0, 24.0], ref: "fd E0 22.1 / 22.1 / 21.6"}
-  yellows:            {range: [3.4, 4.3], ref: "fd E0 4.17 / 4.05 / 3.75"}
-  reds:               {range: [0.08, 0.18], ref: "fd E0 0.150 / 0.137 / 0.103"}
-  offsides:           {range: [2.5, 4.5], ref: "approx"}
-  penalties:          {range: [0.15, 0.30], ref: "pl 0.17 per match (24/25), 0.26 ten-season average"}
+  corners:            {range: [9.0, 11.5], kind: volume, ref: "fd E0 10.8 / 10.3 / 10.0"}
+  fouls:              {range: [20.0, 24.0], kind: volume, ref: "fd E0 22.1 / 22.1 / 21.6"}
+  yellows:            {range: [3.4, 4.3], kind: volume, ref: "fd E0 4.17 / 4.05 / 3.75"}
+  reds:               {range: [0.08, 0.18], kind: volume, ref: "fd E0 0.150 / 0.137 / 0.103"}
+  offsides:           {range: [2.5, 4.5], kind: volume, ref: "approx"}
+  penalties:          {range: [0.15, 0.30], kind: volume, ref: "pl 0.17 per match (24/25), 0.26 ten-season average"}
   save_rate:          {range: [0.64, 0.74], ref: "approx: (on target - goals) / on target"}
-  tackles:            {range: [28.0, 45.0], ref: "approx: tackles attempted"}
-  interceptions:      {range: [14.0, 26.0], ref: "approx"}
-  throw_ins:          {range: [32.0, 42.0], ref: "opta 32.9 (24/25), 38.1 (25/26); study 33"}
-  goal_kicks:         {range: [14.0, 20.0], ref: "approx"}
+  tackles:            {range: [28.0, 45.0], kind: volume, ref: "approx: tackles attempted"}
+  interceptions:      {range: [14.0, 26.0], kind: volume, ref: "approx"}
+  throw_ins:          {range: [32.0, 42.0], kind: volume, ref: "opta 32.9 (24/25), 38.1 (25/26); study 33"}
+  goal_kicks:         {range: [14.0, 20.0], kind: volume, ref: "approx"}
   ball_in_play_min:   {range: [54.0, 60.0], ref: "opta 58:11 (23/24), 56:59 (24/25), 55:00 (25/26)"}
   duration_min:       {range: [96.5, 101.5], ref: "opta/pl 101:36 (23/24), 99:44 (24/25), 100:35 (25/26)"}
   wait_throw_in:      {range: [10.0, 18.0], ref: "opta 15.6 s (24/25), 17.7 s (25/26)"}
   wait_goal_kick:     {range: [18.0, 30.0], ref: "opta 28.3 s (24/25), 30.3 s (25/26)"}
   wait_corner:        {range: [25.0, 37.0], ref: "opta 33.6 s (24/25), 36.9 s (25/26)"}
   distance_km_per_team: {range: [100.0, 118.0], ref: "Man City 115.4 km (25/26, league high)"}
-  high_regains:       {range: [11.0, 17.0], ref: "pl 14.9 (24/25), 16.7 (23/24); opta 13.3 (25/26)"}
+  high_regains:       {range: [11.0, 17.0], kind: volume, ref: "pl 14.9 (24/25), 16.7 (23/24); opta 13.3 (25/26)"}
   fast_break_shot_share: {range: [0.06, 0.12], ref: "opta 10.2% of shots (24/25), 5.0% (21/22)"}
   set_piece_goal_share:  {range: [0.20, 0.32], ref: "opta 22.0% (24/25), 28-30% (25/26), incl. pens"}
   own_goal_share:     {range: [0.01, 0.05], ref: "approx"}
@@ -56,7 +67,8 @@ ENG1:
   teleports:          {range: [0.0, 0.0], ref: "design rule: nobody teleports outside resets"}
 
 EFL:  # Championship, League One, League Two
-  goals:              {range: [2.45, 2.85], ref: "fd E1-E3: 2.45-2.98 by season"}
+  _exposure:          {ball_in_play_min: 54.0, ref: "approx: between the PL (56.7) and League Two (about 6 min less, The Analyst)"}
+  goals:              {range: [2.45, 2.85], kind: volume, ref: "fd E1-E3: 2.45-2.98 by season"}
   home_win:           {range: [0.41, 0.47], ref: "fd E1-E3 41.7-46.0%"}
   draw:               {range: [0.23, 0.29], ref: "fd E1-E3 23.4-28.6%"}
   away_win:           {range: [0.26, 0.34], ref: "fd E1-E3 25.9-33.2%"}
@@ -65,35 +77,39 @@ EFL:  # Championship, League One, League Two
   nil_nil:            {range: [0.05, 0.09], ref: "fd E1-E3 4.9-8.7%"}
   six_plus_goals:     {range: [0.025, 0.06], ref: "fd E1-E3 3.1-4.7% (9.1% outlier)"}
   margin_4_plus:      {range: [0.025, 0.06], ref: "fd E1-E3 3.3-5.4%"}
-  shots:              {range: [22.0, 26.0], ref: "fd E1-E3 22.6-25.8"}
-  shots_on_target:    {range: [7.3, 8.9], ref: "fd E1-E3 7.6-8.8"}
-  xg:                 {range: [2.3, 2.9], ref: "approx"}
+  shots:              {range: [22.0, 26.0], kind: volume, ref: "fd E1-E3 22.6-25.8"}
+  shots_on_target:    {range: [7.3, 8.9], kind: volume, ref: "fd E1-E3 7.6-8.8"}
+  xg:                 {range: [2.3, 2.9], kind: volume, ref: "approx"}
   conversion:         {range: [0.09, 0.12], ref: "approx"}
   xg_per_shot:        {range: [0.09, 0.12], ref: "approx"}
   shots_outside_box:  {range: [0.30, 0.42], ref: "approx"}
-  passes:             {range: [700, 900], ref: "approx"}
+  passes:             {range: [700, 900], kind: volume, ref: "approx"}
   pass_accuracy:      {range: [0.74, 0.81], ref: "approx"}
-  corners:            {range: [9.0, 11.2], ref: "fd E1-E3 9.7-10.7"}
-  fouls:              {range: [20.5, 24.5], ref: "fd E1-E3 21.5-23.4"}
-  yellows:            {range: [3.3, 4.2], ref: "fd E1-E3 3.67-3.97"}
-  reds:               {range: [0.08, 0.18], ref: "fd E1-E3 0.100-0.168"}
-  offsides:           {range: [2.5, 4.5], ref: "approx"}
-  penalties:          {range: [0.15, 0.32], ref: "approx"}
+  corners:            {range: [9.0, 11.2], kind: volume, ref: "fd E1-E3 9.7-10.7"}
+  fouls:              {range: [20.5, 24.5], kind: volume, ref: "fd E1-E3 21.5-23.4"}
+  yellows:            {range: [3.3, 4.2], kind: volume, ref: "fd E1-E3 3.67-3.97"}
+  reds:               {range: [0.08, 0.18], kind: volume, ref: "fd E1-E3 0.100-0.168"}
+  offsides:           {range: [2.5, 4.5], kind: volume, ref: "approx"}
+  penalties:          {range: [0.15, 0.32], kind: volume, ref: "approx"}
   save_rate:          {range: [0.62, 0.72], ref: "approx"}
-  tackles:            {range: [28.0, 45.0], ref: "approx"}
-  interceptions:      {range: [14.0, 26.0], ref: "approx"}
-  throw_ins:          {range: [32.0, 44.0], ref: "approx"}
-  goal_kicks:         {range: [14.0, 21.0], ref: "approx"}
+  tackles:            {range: [28.0, 45.0], kind: volume, ref: "approx"}
+  interceptions:      {range: [14.0, 26.0], kind: volume, ref: "approx"}
+  throw_ins:          {range: [32.0, 44.0], kind: volume, ref: "approx"}
+  goal_kicks:         {range: [14.0, 21.0], kind: volume, ref: "approx"}
   ball_in_play_min:   {range: [52.0, 60.0], ref: "approx: slightly below the PL"}
   duration_min:       {range: [95.0, 100.5], ref: "approx"}
   wait_throw_in:      {range: [10.0, 18.0], ref: "opta (PL)"}
   wait_goal_kick:     {range: [18.0, 30.0], ref: "opta (PL)"}
   wait_corner:        {range: [25.0, 37.0], ref: "opta (PL)"}
   distance_km_per_team: {range: [98.0, 116.0], ref: "approx"}
-  high_regains:       {range: [10.0, 17.0], ref: "approx"}
+  high_regains:       {range: [10.0, 17.0], kind: volume, ref: "approx"}
   fast_break_shot_share: {range: [0.06, 0.12], ref: "opta (PL)"}
   set_piece_goal_share:  {range: [0.22, 0.34], ref: "approx: set pieces matter more lower down"}
   own_goal_share:     {range: [0.01, 0.05], ref: "approx"}
   corner_attackers_in_box: {range: [4.5, 6.5], ref: "study"}
   corners_with_4_plus_attackers: {range: [0.8, 1.0], ref: "design target"}
   teleports:          {range: [0.0, 0.0], ref: "design rule"}
+
+ENG4:  # League Two: references only, on top of the EFL section
+  throw_ins:          {range: [50.0, 62.0], kind: reference, ref: "The Analyst: over 56 a game in League Two, just over 30 in the PL (2020/21-2022/23)"}
+  ball_in_play_min:   {range: [48.0, 54.0], kind: reference, ref: "The Analyst: about 6 minutes a match below the PL"}

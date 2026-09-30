@@ -4,8 +4,20 @@ import math
 from typing import Any
 
 import pytest
+import yaml
 
-from footsim.calibration.engine_batch import BASELINE, Arm, bootstrap_ci, make_tasks, paired_deltas
+from footsim.calibration.engine_batch import (
+    BASELINE,
+    TARGET_KINDS,
+    TARGETS,
+    Arm,
+    bootstrap_ci,
+    by_rating,
+    compare,
+    load_targets,
+    make_tasks,
+    paired_deltas,
+)
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
 from footsim.match.engine.probe import summarize
@@ -81,3 +93,50 @@ def test_equal_synthetic_sides_share_a_quality() -> None:
         replays = {(t.seed, t.home, t.away, t.home_quality, t.away_quality)
                    for t in equal if t.index == index}
         assert len(replays) == 1
+
+
+def test_targets_are_tagged_by_kind() -> None:
+    raw = yaml.safe_load(TARGETS.read_text("utf-8"))
+    for section in ("ENG1", "EFL"):
+        assert raw[section]["_exposure"]["ball_in_play_min"] > 0
+    for section, targets in raw.items():
+        for metric, target in targets.items():
+            if metric != "_exposure":
+                assert target.get("kind", "rate") in TARGET_KINDS, (section, metric)
+    # A division's own section holds references only: never a behaviour, never a tuning target.
+    assert all(t["kind"] == "reference" for t in raw["ENG4"].values())
+
+
+def test_league_two_references_sit_on_top_of_the_efl() -> None:
+    assert load_targets("ENG4")["throw_ins"]["kind"] == "reference"
+    assert load_targets("ENG2")["throw_ins"]["kind"] == "volume"
+    assert load_targets("ENG1")["_exposure"]["ball_in_play_min"] > 55
+
+
+def test_volumes_are_judged_per_minute_of_ball_in_play() -> None:
+    targets = {"_exposure": {"ball_in_play_min": 50.0},
+               "passes": {"range": [850, 1000], "kind": "volume", "ref": "x"},
+               "pass_accuracy": {"range": [0.80, 0.85], "ref": "y"},
+               "throw_ins": {"range": [50, 62], "kind": "reference", "ref": "z"}}
+    # 1,100 passes a match looks like plenty, but the range per minute of ball in play is
+    # 850/50-1000/50 = 17-20, so 16 a minute is too slow despite the high count.
+    agg = {"passes": 1100.0, "passes_per_bip_min": 16.0, "pass_accuracy": 0.82,
+           "throw_ins": 40.0, "tackles": 30.0}
+    sections = compare(agg, targets)
+    (passes,) = sections["volume"]
+    assert passes[0] == "passes" and passes[5] == "OFF" and passes[4] == "17.0–20.0"
+    assert sections["rate"][0][4] == "ok"
+    assert sections["reference"][0][0] == "throw_ins" and sections["reference"][0][4] == "OFF"
+    assert [row[0] for row in sections["other"]] == ["tackles"]  # the rate isn't repeated
+
+
+def test_results_group_by_starting_xi_rating() -> None:
+    def team(passes: int, completed: int) -> dict[str, float]:
+        return {"passes": passes, "passes_completed": completed, "goals": 1, "xg": 1.2,
+                "interceptions": 10, "fouls": 11, "high_regains": 7}
+    results = [{"xi_rating": [72.3, 64.9], "teams": [team(400, 340), team(300, 230)]},
+               {"xi_rating": [71.0, 61.2], "teams": [team(420, 370), team(350, 270)]}]
+    rows = by_rating(results)
+    assert [r["xi_rating"] for r in rows] == ["60-65", "70-75"]
+    assert [r["team_matches"] for r in rows] == [2, 2]
+    assert rows[1]["pass_accuracy"] == pytest.approx(710 / 820)

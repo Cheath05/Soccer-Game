@@ -17,7 +17,7 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Code:** the last code change is 50e3cf1 (the interception floor, inert at the committed `intercept_scale` of 1.0). The last behaviour change, and the last change to the golden values, is 65b3b8f (runners stop on the offside line). f347e8c only edited `CLAUDE.md`.
-- **Checkpoint commit:** CHECKPOINT_HASH, the docs-only commit that added `continuation-plan.md`. This note was filled in by the commit after it.
+- **Checkpoint commit:** 10926c4, the docs-only commit that added `continuation-plan.md`. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
 - **Completed (30 Sep: planning and diagnostics only, no engine change):**
   - read round 5 of Step 2.3 (f020e2 and f020e3, ENG4 and ENG1, 200 each). The table and its reading are in `continuation-plan.md`, status section 5;
   - ran a pass diagnostic: completion by length band and the passers' honesty (synthetic sides, 6 matches per cell);

@@ -32,7 +32,10 @@ A local, single-player football (soccer) manager simulator. The core is a Python
 - `cd frontend && npm run build` builds the viewer.
 - `footsim calibrate-engine --n 200 --division ENG1` runs a calibration batch.
   - Run it from the measurement worktree `.worktrees/measure`, pinned to a commit, never from the checkout being edited (see the `calibrate-engine` skill).
-  - Don't run other heavy work alongside a batch: this Mac has only 4 performance cores.
+  - Don't run other heavy work alongside a batch.
+    - This Mac has only 4 performance cores and 8 GB of RAM, and its swap was nearly full on 29 Sep.
+    - Test suites, browser runs and agents simulating matches can double a batch's time.
+    - Light work (editing, static review) is fine.
 - The user's game runs on :8000. Automated browser checks use a throwaway server on :8765 with `FOOTSIM_SAVES_DIR` set to a temporary folder (see the `run-footsim` skill).
 
 ## Rules

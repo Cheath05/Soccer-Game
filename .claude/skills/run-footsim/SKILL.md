@@ -31,7 +31,7 @@ cd /Users/alexbenton/Developer/Soccer-Game/backend && FOOTSIM_SAVES_DIR=$SAVES u
 ```
 
 - Run the server in the background.
-- Restart it between e2e runs, because it keeps the last career in memory.
+- The scripts start from `/start`, so one server can run them back to back. Restart it only for a clean slate; it keeps the last career in memory.
 - Kill it when you're done: `kill $(lsof -ti tcp:8765 -sTCP:LISTEN)`.
 
 ## Automated browser tests (Playwright, already installed)
@@ -44,6 +44,11 @@ node e2e/smoke.mjs http://127.0.0.1:8765 $OUT && node e2e/live.mjs http://127.0.
 
 - `live.mjs` starts a Liverpool career and watches a match, covering speed, half-time, subs, the player card, Instant and the report.
 - Screenshots land in `$OUT`. Read them with the Read tool.
+- `just e2e` runs `smoke.mjs` and `live.mjs` against :8765 by default.
+- Every script starts a new career, which overwrites save slot 1. So `e2e/target.mjs` first asks the server (`GET /api/health`) where it keeps its saves.
+  - It refuses unless the server confirms that isn't the default folder.
+  - That rules out :8000 (refused outright), the Vite servers that pass /api through to it, and a test server started without `FOOTSIM_SAVES_DIR`.
+  - `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides the check. Never set it for the user's game.
 
 ## Interactive checks with the chrome-devtools MCP
 

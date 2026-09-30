@@ -2,8 +2,9 @@
 // drawn over a live match, and still there while paused.
 // Usage: node e2e/debug.mjs <url> <dir>
 import { chromium } from 'playwright'
+import { target } from './target.mjs'
 
-const base = process.argv[2] ?? 'http://127.0.0.1:8765'
+const base = await target(process.argv[2])
 const out = process.argv[3] ?? '/tmp'
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -11,10 +12,13 @@ const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 const shot = (name) => page.screenshot({ path: `${out}/${name}.png` })
 
-await page.goto(base)
+// /start shows the start page even when the server still has a career open (from an
+// earlier script, say), where / would show that career's dashboard.
+await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Debug')
-await page.getByText('Arsenal', { exact: true }).click()
+// The club tile is a button; the saved-careers list may show the same name as text.
+await page.getByRole('button', { name: /^Arsenal Squad/ }).click()
 await page.getByRole('button', { name: 'Start career' }).click()
 await page.getByRole('button', { name: 'Continue' }).click()
 await page.getByText('Your starting XI').waitFor({ timeout: 60000 })

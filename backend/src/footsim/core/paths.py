@@ -14,5 +14,8 @@ def data_dir() -> Path:
     return Path(os.environ.get("FOOTSIM_DATA_DIR", REPO_ROOT / "data"))
 
 
+DEFAULT_SAVES = REPO_ROOT / "saves"  # the user's own careers; tests and browser checks use another
+
+
 def saves_dir() -> Path:
-    return Path(os.environ.get("FOOTSIM_SAVES_DIR", REPO_ROOT / "saves"))
+    return Path(os.environ.get("FOOTSIM_SAVES_DIR", DEFAULT_SAVES))

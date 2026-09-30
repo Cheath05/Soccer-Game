@@ -65,7 +65,7 @@ just lint          # ruff + mypy
 just sim-season    # simulate a whole season of all four divisions and print the tables
 just api           # backend only, with auto-reload, on http://127.0.0.1:8000
 just web           # frontend dev server on http://127.0.0.1:5173 (proxies /api to the backend)
-just e2e           # browser smoke tests against a running demo (needs `npx playwright install chromium`)
+just e2e           # browser tests against a throwaway server on :8765 with temporary saves (see the run-footsim skill; needs `npx playwright install chromium`)
 ```
 
 Game rules and content (positions, roles, formations, instructions, leagues, calendars, wage levels, world-building rules, fast-engine parameters) are YAML files in `data/config/`, validated at load time. Import mappings live in `data/import_profiles/`.

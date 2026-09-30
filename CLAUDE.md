@@ -37,7 +37,9 @@ A local, single-player football (soccer) manager simulator. The core is a Python
     - Test suites, browser runs and agents simulating matches can double a batch's time.
     - Light work (editing, static review) is fine.
 - The user's game runs on :8000. Automated browser checks use a throwaway server on :8765 with `FOOTSIM_SAVES_DIR` set to a temporary folder (see the `run-footsim` skill).
-- **Never run `just e2e` without a :8765 URL** until quick fix 0 in `progress.md` lands. Its default URL is the user's :8000 game, and starting a career there overwrites save slot 1, the Grimsby career.
+- **`just e2e` drives a throwaway server on :8765 by default;** start one first (see the `run-footsim` skill).
+  - The e2e scripts start a new career, which overwrites save slot 1. So they run only against a server whose `/api/health` confirms it isn't using the default saves folder, and they refuse :8000 outright. `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides this.
+  - Never set it for the user's game: slot 1 is the Grimsby career.
 
 ## Rules
 

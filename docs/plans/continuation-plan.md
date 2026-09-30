@@ -142,7 +142,7 @@ No implementation, and no calibration batch. The repo is already clean at f347e8
   - there are no DOGSO reds;
   - a booked player's foul rate is ×0.09 (the caution is applied twice), so second yellows almost never happen;
   - reds hinge on an aggression > 80 cliff.
-- **`just e2e` could wipe your career.** It defaults to :8000 (`justfile:48`), and a new career always overwrites slot 1 (`api/session.py:62`).
+- **`just e2e` could wipe your career.** It defaulted to :8000 (`justfile:48`), and a new career always overwrites slot 1 (`api/session.py:62`). *Fixed in quick fix 0a.*
 - **Metrics:**
   - `take_ons` counts every duel;
   - fouls can't be split by source;
@@ -205,7 +205,7 @@ No implementation, and no calibration batch. The repo is already clean at f347e8
 ### 6. What comes next
 
 0. **Quick fixes:**
-   - `just e2e` defaults to :8765, and the scripts refuse :8000 unless `FOOTSIM_E2E_ALLOW_8000=1` is set;
+   - `just e2e` defaults to :8765, and the scripts run only against a server whose `/api/health` confirms it isn't using the default saves folder. :8000 is refused outright; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides;
    - substitutes no longer inherit a yellow card, with a test.
 1. **2.3a:** measure; restructure the targets into rates, rating responses and references; behaviour-neutral refactors.
 2. **2.3b:** fix the physics shortcuts.

@@ -770,7 +770,7 @@ The user's letters (A–K) are kept, with a few deviations based on dependencies
   - `just test`: unit and integration tests, including determinism and migration;
   - `just lint`, which is ruff plus strict mypy;
   - `just calibrate-engine` with 200 matches, compared against the targets, with the report committed under `docs/calibration/`;
-  - `just e2e` against `just demo`.
+  - `just e2e` against a throwaway server on :8765 with a temporary saves folder, never against `just demo`, which plays from the real saves.
 - **Phase acceptance:** `just validate-engine` (1,000 matches, the A/B suites, cross-engine), and the thresholds in section S must all pass.
 - **Manual checklist,** answering the user's 12 questions each time:
   - watch a whole match at 1× and time it;

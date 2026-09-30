@@ -16,43 +16,48 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Code:** the last code change is 50e3cf1 (the interception floor, inert at the committed `intercept_scale` of 1.0). The last behaviour change, and the last change to the golden values, is 65b3b8f (runners stop on the offside line). f347e8c only edited `CLAUDE.md`.
-- **Checkpoint commit:** 10926c4, the docs-only commit that added `continuation-plan.md`. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
-- **Completed (30 Sep: planning and diagnostics only, no engine change):**
-  - read round 5 of Step 2.3 (f020e2 and f020e3, ENG4 and ENG1, 200 each). The table and its reading are in `continuation-plan.md`, status section 5;
-  - ran a pass diagnostic: completion by length band and the passers' honesty (synthetic sides, 6 matches per cell);
-  - explored the code three times and had a design review. The verified bugs and physics shortcuts are listed in the plan's status section 4;
-  - revised the plan with the user into `continuation-plan.md`:
-    - the calibration principles and the league-environment layer;
-    - Step 2.3 split into 2.3a–2.3e;
-    - 2.4 moved before 2.1;
-    - Phase D starts by vectorising;
-  - added the checkpoint rule, the principles and a `just e2e` warning to `CLAUDE.md`;
-  - added rules 11 and 12 (one engine; ratings, not labels) to `engine-reviewer.md`.
-- **Tests:** 119 backend tests passed at f347e8c on 30 Sep. At this checkpoint (docs only): `just lint` is clean (ruff, and mypy on 100 files), and all 119 tests pass.
-- **Unresolved:** everything from quick fix 0 onward. None of the verified bugs is fixed yet:
+- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0a. The commit right after it only filled in this hash; `git log -2 --oneline` shows both.
+- **Engine:** the last behaviour change, and the last change to the golden values, is still 65b3b8f (runners stop on the offside line). 0a touches no engine code; the golden values are unchanged.
+- **Completed at this checkpoint (0a, 30 Sep):**
+  - **The e2e scripts can no longer touch the user's saves.**
+    - `just e2e` defaults to a throwaway server on :8765.
+    - `frontend/e2e/target.mjs` runs before any browser starts. It refuses :8000 outright, and refuses any server whose `GET /api/health` doesn't report `default_saves: false`. That covers the Vite dev and preview servers, which pass /api through to :8000, older builds that can't say, and a test server started without `FOOTSIM_SAVES_DIR`.
+    - `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` is the only override.
+  - **`/api/health`** now reports `saves_dir` and `default_saves`, with a test.
+  - **The scripts start from `/start`** and pick club tiles by button role, so `just e2e` can run `smoke.mjs` and `live.mjs` on one server.
+  - **App bug fixed** (`StartPage.tsx`): starting or loading a career from `/start` with no career open left the start page on screen.
+    - The career refetch unmounted the page, so mutate's `onSuccess` never ran.
+    - It now navigates home when the mutation's promise resolves.
+  - **Docs updated:** `CLAUDE.md`, `README.md`, the run-footsim skill, `match-believability.md` and `continuation-plan.md`.
+- **Tests:**
+  - `just lint` is clean (ruff, and mypy on 100 files), and all 120 backend tests pass;
+  - the frontend build (`tsc -b` and vite) and oxlint are clean;
+  - the guard was checked against mock servers: default saves, throwaway saves, an old build, 404, nothing listening, port 8000, and the override;
+  - `just e2e` (smoke then live) and `debug.mjs` pass on a fresh throwaway :8765 server, with no browser errors except smoke's expected 409 from `/api/career` before a career exists;
+  - the user's `saves/slot_1` is unchanged (same files, same modification times).
+- **Reviewer:** no violations found. Its two optional doc notes are applied (the plan's dated `:8000` finding is marked fixed, and the skill no longer says to restart between e2e runs).
+- **Unresolved:** everything from quick fix 0b onward. The verified bugs still open:
   - a substitute inherits a yellow card;
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
-  - the `just e2e` default points at :8000;
   - the card rules;
   - the metric gaps.
-- **Next task:** quick fix 0a, then 0b, each its own checkpoint. Then 2.3a.
+- **Next task:** quick fix 0b (a substitute starts with no yellow card), as its own checkpoint. Then 2.3a.
 - **Calibration:**
   - Nothing is running, and nothing is needed before 2.3a. 2.3a's first batch is the f020e2 identity check (seed 21, ENG4 and ENG1, 200 each, from the worktree pinned at the 2.3a commit).
   - `.worktrees/measure` is detached at 50e3cf1.
-  - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh` (committed at this checkpoint).
+  - The round-5 variant configs are in `/private/tmp/claude-502/cfg-*`. They're temporary; rebuild them with `.claude/skills/calibrate-engine/make_variant.sh`.
   - The reports are in `reports/engine/step2.3/` and the Grimsby C1 reports in `reports/engine/2026092*-ENG4-n200-ab*` (local only).
 - **Play-testing:**
-  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it doesn't show later work.
+  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has neither 0a nor later engine work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
-  - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`.
+  - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
 
 ## Quick fixes (do first; each is its own checkpoint)
 
-- [ ] 0a `just e2e` defaults to :8765, and `frontend/e2e/*.mjs` refuse :8000 unless `FOOTSIM_E2E_ALLOW_8000=1` is set. Today a default run would overwrite the user's slot 1 (`justfile:48`, `api/session.py:62`)
+- [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged
 - [ ] 0b A substitute starts with no yellow card: `_load` resets the slot's `yellows` (`engine.py:100, 183-198`), with a test. Re-record the golden values if a golden match makes such a substitution
 
 ## Cloud session (29 Sep, claude.ai/code)

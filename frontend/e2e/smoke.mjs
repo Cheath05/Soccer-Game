@@ -1,8 +1,9 @@
 // Drives the running app through a career start, a match and the main screens, saving
 // screenshots. Usage: node e2e/smoke.mjs <base url> <screenshot dir>
 import { chromium } from 'playwright'
+import { target } from './target.mjs'
 
-const base = process.argv[2] ?? 'http://127.0.0.1:8765'
+const base = await target(process.argv[2])
 const out = process.argv[3] ?? '/tmp'
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
@@ -12,10 +13,13 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 
 const shot = async (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true })
 
-await page.goto(base)
+// /start shows the start page even when the server still has a career open (from an
+// earlier script, say), where / would show that career's dashboard.
+await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Alex')
-await page.getByText('Arsenal', { exact: true }).click()
+// The club tile is a button; the saved-careers list may show the same name as text.
+await page.getByRole('button', { name: /^Arsenal Squad/ }).click()
 await shot('01-start')
 await page.getByRole('button', { name: 'Start career' }).click()
 await page.getByText('Dashboard', { exact: true }).first().waitFor()

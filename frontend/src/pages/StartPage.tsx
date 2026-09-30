@@ -18,7 +18,12 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
 
   const selectedLeague = leagues.data?.find((l) => l.key === league)
   const slotInfo = saves.data?.find((s) => String(s.slot) === slot)
+  // Go home once a career is started or loaded. Awaited on the mutation itself, not via
+  // mutate's onSuccess: the refetch that follows can unmount this page (the layout shows a
+  // loader while the career query reloads), and TanStack Query then drops that callback,
+  // leaving /start on screen. Errors are shown from the mutation's own state.
   const goHome = () => void navigate({ to: '/' })
+  const ignore = () => undefined
 
   return (
     <Container size="lg" py="xl">
@@ -53,12 +58,12 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     </Text>
                     <Group gap="xs" mt="xs">
                       {s.has_save && (
-                        <Button size="xs" loading={loadCareer.isPending} onClick={() => loadCareer.mutate({ slot: s.slot }, { onSuccess: goHome })}>
+                        <Button size="xs" loading={loadCareer.isPending} onClick={() => void loadCareer.mutateAsync({ slot: s.slot }).then(goHome, ignore)}>
                           Load
                         </Button>
                       )}
                       {s.has_autosave && (
-                        <Button size="xs" variant="default" onClick={() => loadCareer.mutate({ slot: s.slot, autosave: true }, { onSuccess: goHome })}>
+                        <Button size="xs" variant="default" onClick={() => void loadCareer.mutateAsync({ slot: s.slot, autosave: true }).then(goHome, ignore)}>
                           Load autosave
                         </Button>
                       )}
@@ -116,7 +121,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               size="md"
               disabled={clubId === null}
               loading={newCareer.isPending}
-              onClick={() => clubId !== null && newCareer.mutate({ slot: Number(slot), clubId, manager: manager || 'Manager' }, { onSuccess: goHome })}
+              onClick={() => clubId !== null && void newCareer.mutateAsync({ slot: Number(slot), clubId, manager: manager || 'Manager' }).then(goHome, ignore)}
             >
               Start career
             </Button>

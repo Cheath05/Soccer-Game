@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, quick fix 0c. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fixes 0a and 0b are 05fcd7d and 4fb1b24.
+- **Checkpoint commit:** 2bb32e2, quick fix 0c. The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Quick fixes 0a and 0b are 05fcd7d and 4fb1b24.
 - **Engine:** 0c changes behaviour, so the Mac's golden values were re-recorded in the same commit, with a History note in `test_engine_golden.py`. It's the only pinned platform; there were no Linux values to delete.
 - **Completed at this checkpoint (0c, 30 Sep):** two more ways a substitute inherited the outgoing player's match state, both found by the reviewer of 0b.
   - **Duel state.** `MatchEngine._load` drops any `engaged` entry where the slot is the defender or the carrier, and any `take_on_ready` pair that involves it.

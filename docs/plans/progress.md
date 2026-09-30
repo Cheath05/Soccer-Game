@@ -16,46 +16,38 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** d332f8b, Step 2.3a part 3 (refactors and the one-engine guard). The commit right after it only filled in this hash; `git log -2 --oneline` shows both. Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2, 2.3a part 1 d361049, and part 2 555d2e4.
-- **Engine:** behaviour unchanged; the refactors are bit-identical. The golden values are unchanged; the last change to them is 0c (2bb32e2).
-- **Completed at this checkpoint (2.3a part 3, 30 Sep):**
-  - **`actions.pass_error()`** returns the direction and length spreads that `start_pass` used inline, in the same arithmetic and draw order. 2.3c's honest estimate will use it.
-  - **`_aerial`** uses the module's `_aerial_strength`, so there's one aerial score, not two copies.
-  - **`passing.yaml` gains `control.touch_skill: 0.1`**, with the model in `defs/match.py`. The receiver's control is `(1 - w) + w * first_touch / 100`, identical to the old hard-coded 0.9 + 0.1 because (1 − 0.1) == 0.9 in doubles. 2.3e can now tune how much first touch matters.
-  - **The one-engine guard, `tests/unit/test_one_engine.py`:**
-    - no league, division or competition name in engine identifiers or non-docstring strings (checked with the AST);
-    - none in `data/config/match` YAML keys or values (comments are dropped; `environment.yaml` is exempt);
-    - `MatchEngine` takes no league-like parameter;
-    - it catches league words in identifiers and imports (`league_rules`, `division_map`), and codes joined by `_` or `-` (`ENG2_PO`);
-    - it ignores builtins such as `ZeroDivisionError`, words such as "colleague", strings such as "competition for the ball", and docstrings or comments citing sources.
-- **Tests:**
-  - `just lint` is clean (ruff, and mypy on 100 files);
-  - all 134 backend tests pass;
-  - the golden, determinism and passing tests pass unchanged.
-- **Reviewer:** no violations in the change.
-  - It confirmed the refactors are bit-identical: golden values pinned and passing; the two spread multiplications kept separate and in order; `(1 - 0.1) == 0.9`, checked on a 100k-point grid.
-  - It found gaps in the guard test, all fixed here:
-    - league codes joined by `_` or `-` were missed (`ENG2_PO`, `EFL_BIAS`);
-    - imports weren't checked;
-    - `ZeroDivisionError`, "colleague" and "competition for the ball" were false positives.
-  - The guard now splits identifiers into words, checks imports and aliases, and checks strings for league codes and names only. `test_the_guard_itself` pins its verdicts.
-- **Unresolved:** 2.3a part 4, then 2.3b–2.3e, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
+- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3a part 4 (first half: the two light measurements). The commit right after it only filled in this hash. Earlier:
+  - quick fixes: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2;
+  - 2.3a parts 1–3: d361049, 555d2e4, d332f8b.
+- **Engine:** unchanged since 2.3a part 3 (d332f8b), with bit-identical refactors only. The last change to the golden values is 0c (2bb32e2).
+- **Completed at this checkpoint (30 Sep):**
+  - **The ratings gap** (`docs/calibration/20260930-ratings-gap-eng1-eng4.md`, aggregates only):
+    - starting XI ratings are 78.9 / 70.8 / 65.9 / 62.9 from ENG1 to ENG4;
+    - League Two's outfield starters are about 19 points below the PL on every technical and mental attribute the passing mechanics read (passing, first touch, anticipation, decisions, composure), but only 3–6 below on physical ones;
+    - **so the data isn't compressed.** The missing accuracy gradient is the engine's weak response to ratings, which 2.3b–2.3e fix.
+  - **The pass-pace reference** (`docs/calibration/20260930-pass-pace-metrica.md`, from Metrica's open data, 2 matches, 1,761 completed passes):
+    - real travel times are about 1.0 s short (9.5 m), 1.6 s medium (20.2 m) and 2.8 s long (42.2 m);
+    - one engine match took 1.4 / 2.1 / 3.1 s, so engine passes look slow, especially short ones;
+    - compare speeds per band before 2.3b decides.
+- **Running now:** the 2.3a reference batch and the synthetic quality sweep, started 15:40 on 30 Sep.
+  - Launched from `.worktrees/measure` (pinned at 7c3d909) with `FOOTSIM_CONFIG_DIR=/private/tmp/claude-502/cfg-f020e2` (`make_variant.sh f020e2 0.2 0.008 0.022`):
+    - `footsim calibrate-engine --division ENG4|ENG1 --n 200 --seed 21 --workers 7 --out reports/engine/step2.3/ref-2.3a`;
+    - then `--synthetic --division ENG4 --quality Q-Q --equal --n 200 --seed 21 --workers 7 --out reports/engine/step2.3/sweep-2.3a-qQ`, for Q in 58, 66, 74 and 82.
+  - It takes about 40 minutes.
+  - **If this session is gone,** check `ps aux | grep calibrate-engine`. If nothing is running and some reports are missing, re-run only those, one at a time.
+- **Tests:** unchanged since part 3 (134 pass). This checkpoint only adds docs.
+- **Next task:** read the part 4 reports, with the kinds of target, the reliability table and the XI-rating table:
+  - the reference against round 5's f020e2;
+  - the rating responses across the four sweep levels;
+  - the engine's pass speeds per band against Metrica.
+  - Write the 2.3a summary to `docs/calibration/`, tick 2.3a, commit.
+  - Then 2.3b, the physics shortcuts.
+- **Unresolved:** 2.3b–2.3e, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
   - the card rules;
   - stale duel engagements (2.4).
-- **Next task:** 2.3a part 4, the measurements (heavy batches one at a time):
-  1. **the ENG1–ENG4 ratings gap:** mean ratings of the starters by attribute, from the world database, aggregates only, written to `docs/calibration/`;
-  2. **the Metrica pass-pace reference:** pass travel times by distance band from the public sample data, method and figures in `docs/calibration/`;
-  3. **the 2.3a reference batch:** `make_variant.sh f020e2 0.2 0.008 0.022` from the worktree pinned at the part 4 commit, then ENG4 and ENG1 at 200 each, seed 21;
-  4. **the synthetic quality sweep** at 58, 66, 74 and 82, 200 each, seed 21.
-  - Then tick 2.3a.
-- **Calibration:**
-  - Nothing is running.
-  - Pin `.worktrees/measure` by branch name (`git -C .worktrees/measure checkout -q --detach phase-1-match-believability`); it's at 50e3cf1 now.
-  - Rebuild the variant configs with `.claude/skills/calibrate-engine/make_variant.sh`. It copies the worktree's config, so pin first; the new `touch_skill` key comes along.
-  - The reference batch can't be an exact replay of round 5, because 0b and 0c changed substitutions slightly.
 - **Play-testing:**
   - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.

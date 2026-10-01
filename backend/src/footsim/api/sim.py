@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
+from footsim.api import queries
 from footsim.api.schemas import SeasonFinalOut, SimIn, SimResultOut, SimStatusOut
 from footsim.api.session import CareerSession
 from footsim.persistence.schema import club, competition, fixture, league_final
@@ -86,12 +87,13 @@ def _season_final(session: CareerSession, user: int) -> SeasonFinalOut | None:
                 competition, competition.c.id == league_final.c.competition_id).where(
                 league_final.c.season_id == meta.season_id - 1,
                 league_final.c.club_id == user)).first()
+        runs = queries.cup_runs(conn, get_world(), user).get(meta.season_id - 1, [])
     if row is None:
         return None
     return SeasonFinalOut(competition=row.name, position=row.position, played=row.played,
                           won=row.won, drawn=row.drawn, lost=row.lost,
                           goals_for=row.goals_for, goals_against=row.goals_against,
-                          points=row.points, outcome=row.outcome)
+                          points=row.points, outcome=row.outcome, cups=runs)
 
 
 def _run(session: CareerSession, job: SimJob, user: int) -> None:

@@ -15,6 +15,7 @@ const NAV = [
   { to: '/tactics', label: 'Tactics' },
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
+  { to: '/cups', label: 'Cups' },
   { to: '/start', label: 'Save / Load' },
 ] as const
 

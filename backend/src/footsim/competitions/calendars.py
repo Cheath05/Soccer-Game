@@ -54,4 +54,6 @@ def shifted_calendar(base: SeasonCalendarDef, years: int) -> SeasonCalendarDef:
         international_windows=[r(w) for w in base.international_windows],
         transfer_windows=[r(w) for w in base.transfer_windows],
         blackout=[r(b) for b in base.blackout],
+        cups={key: [[s(day) for day in legs] for legs in rounds]
+              for key, rounds in base.cups.items()},
     )

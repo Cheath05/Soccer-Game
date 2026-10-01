@@ -34,6 +34,7 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
+from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import club_name, display_name, load_squad
 
@@ -69,14 +70,17 @@ def members(conn: Connection, season_id: int, competition_id: int) -> list[int]:
 
 
 def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
-                           season_id: int) -> None:
+                           season_id: int) -> list[str]:
+    """The season's league fixtures, around the cup rounds that keep leagues out, and the
+    cups' first-round draws. Returns news of the draws."""
     calendar = season_calendar(world, meta, season_id)
     for active in active_leagues(conn, world):
         league = active.league
         clubs = members(conn, season_id, active.competition_id)
         rng = derive_rng(meta.seed, "fixtures", season_id, league.key)
         rounds = round_robin(clubs, league.format.legs, rng)
-        dates = league_round_dates(calendar.competitions[league.key], calendar, len(rounds))
+        dates = league_round_dates(calendar.competitions[league.key], calendar, len(rounds),
+                                   blocked_dates(world, calendar, league.key))
         conn.execute(fixture.insert(), [
             {"season_id": season_id, "competition_id": active.competition_id, "stage": "league",
              "round": number, "date": day.isoformat(), "home_club_id": home,
@@ -84,6 +88,7 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
             for number, (games, day) in enumerate(zip(rounds, dates, strict=True), start=1)
             for home, away in games
         ])
+    return start_cups(conn, world, meta, calendar, meta.current_date)
 
 
 def league_results(conn: Connection, competition_id: int, season_id: int) -> list[Result]:
@@ -123,6 +128,8 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     messages: list[str] = []
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
+    messages += progress_cups(conn, world, meta, season_calendar(world, meta, meta.season_id),
+                              day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
         if not _finalized(conn, cid, meta.season_id):
@@ -253,9 +260,11 @@ def _progress_playoff(conn: Connection, world: World, meta: CareerMeta, competit
 
 
 def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
-    """Knockout rules for a play-off fixture; None for league games and first legs."""
+    """Knockout rules for a play-off or cup fixture; None for league games and first legs."""
     if fx.stage == "league":
         return None
+    if fx.stage in world.defs.cups:
+        return cup_decider(conn, world, fx)
     comp_key: str = conn.execute(select(competition.c.key).where(
         competition.c.id == fx.competition_id)).scalar_one()
     playoff = next(p for p in world.defs.leagues[comp_key].playoffs if p.key == fx.stage)
@@ -327,7 +336,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     conn.execute(text("UPDATE player_state SET season_yellows = 0"))
     meta.season_id = new
     refresh_ai_tactics(conn, world, meta, calendar.season_start)
-    create_season_fixtures(conn, world, meta, new)
+    messages += create_season_fixtures(conn, world, meta, new)
     messages.insert(0, f"The {calendar.season} season begins.")
     return messages
 

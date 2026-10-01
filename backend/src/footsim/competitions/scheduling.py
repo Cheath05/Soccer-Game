@@ -33,10 +33,14 @@ def _spread(items: list[date], count: int) -> list[date]:
 
 
 def league_round_dates(
-    dates: CompetitionDates, calendar: SeasonCalendarDef, rounds: int
+    dates: CompetitionDates, calendar: SeasonCalendarDef, rounds: int,
+    reserved: frozenset[date] | set[date] = frozenset(),
 ) -> list[date]:
+    """``reserved``: days the league plays nothing (a cup round's, say)."""
+
     def blocked(day: date) -> bool:
-        return dates.pause_for_international_windows and calendar.in_international_window(day)
+        return day in reserved or (dates.pause_for_international_windows
+                                   and calendar.in_international_window(day))
 
     first = dates.start + timedelta(days=(SATURDAY - dates.start.weekday()) % 7)
     weekends = []

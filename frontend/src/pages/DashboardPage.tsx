@@ -37,7 +37,7 @@ export default function DashboardPage() {
                   <ClubLink club={next.home} /> v <ClubLink club={next.away} />
                 </Text>
                 <Text size="sm">
-                  {longDate(next.date)} · {next.competition_name} · {stageLabel(next.stage, next.round, next.tie, next.leg)}
+                  {longDate(next.date)} · {next.competition_name} · {stageLabel(next.stage, next.round, next.tie, next.leg, next.stage_name)}
                 </Text>
                 {today ? (
                   <Button color="orange" onClick={() => void navigate({ to: '/matchday' })}>

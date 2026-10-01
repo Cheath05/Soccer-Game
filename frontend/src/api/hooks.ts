@@ -8,6 +8,8 @@ import type {
   ClubOverview,
   ClubPlayer,
   Competition,
+  Cup,
+  CupSummary,
   Fixture,
   LeagueOption,
   MatchReport,
@@ -40,6 +42,15 @@ export const useTable = (key: string | undefined, season?: number | null) =>
   useQuery({
     queryKey: ['table', key, season ?? null],
     queryFn: () => api.get<Table>(`/competitions/${key}/table${season ? `?season=${season}` : ''}`),
+    enabled: !!key,
+  })
+
+export const useCups = () => useQuery({ queryKey: ['cups'], queryFn: () => api.get<CupSummary[]>('/cups') })
+
+export const useCup = (key: string | undefined, season?: number | null) =>
+  useQuery({
+    queryKey: ['cup', key, season ?? null],
+    queryFn: () => api.get<Cup>(`/cups/${key}${season ? `?season=${season}` : ''}`),
     enabled: !!key,
   })
 

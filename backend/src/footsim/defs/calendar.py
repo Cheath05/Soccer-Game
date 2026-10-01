@@ -46,6 +46,7 @@ class SeasonCalendarDef(DefModel):
     international_windows: list[DateRange] = []
     transfer_windows: list[DateRange] = []
     blackout: list[DateRange] = []
+    cups: dict[str, list[list[date]]] = {}  # each round's date (two for a two-legged round)
 
     @model_validator(mode="after")
     def _within_season(self) -> "SeasonCalendarDef":
@@ -54,6 +55,12 @@ class SeasonCalendarDef(DefModel):
             last = comp.playoffs_end or comp.end
             if not (season.contains(comp.start) and season.contains(last)):
                 raise ValueError(f"{self.key}: {key} dates fall outside the season")
+        for key, rounds in self.cups.items():
+            days = [day for legs in rounds for day in legs]
+            if not all(season.contains(day) for day in days):
+                raise ValueError(f"{self.key}: {key} dates fall outside the season")
+            if days != sorted(days):
+                raise ValueError(f"{self.key}: {key} rounds out of order")
         return self
 
     def in_international_window(self, day: date) -> bool:

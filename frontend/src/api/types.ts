@@ -46,6 +46,7 @@ export interface Fixture {
   extra_time: boolean
   home_pens: number | null
   away_pens: number | null
+  stage_name: string | null // a cup round's name
 }
 
 export interface Competition {
@@ -89,6 +90,7 @@ export interface SeasonFinal {
   goals_against: number
   points: number
   outcome: string | null
+  cups?: CupRun[] // how far the club went in each cup
 }
 
 export interface SimStatus {
@@ -158,6 +160,7 @@ export interface ClubSeason {
   outcome: Outcome | null
   final: boolean
   managed: boolean
+  cups: CupRun[]
 }
 
 export interface ClubHistory {
@@ -351,4 +354,45 @@ export interface TacticsUpdate {
   roles: Record<string, string>
   lineup: Record<string, number> | null
   instructions: Record<string, string>
+}
+
+export interface CupTie {
+  tie: string
+  home: ClubRef // drawn first
+  away: ClubRef | null // null: a bye
+  fixtures: Fixture[]
+  winner: ClubRef | null
+}
+
+export interface CupRound {
+  index: number
+  name: string
+  dates: string[]
+  legs: number
+  drawn: boolean
+  ties: CupTie[]
+}
+
+export interface Cup {
+  key: string
+  name: string
+  season: string
+  rounds: CupRound[]
+  winner: ClubRef | null
+}
+
+export interface CupSummary {
+  key: string
+  name: string
+  current_round: string | null
+  user_status: string | null
+  winner: ClubRef | null
+}
+
+export interface CupRun {
+  key: string
+  name: string
+  reached: string
+  won: boolean
+  out: boolean
 }

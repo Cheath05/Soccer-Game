@@ -40,7 +40,7 @@ if (await monthNews.isVisible()) {
 await page.getByRole('button', { name: 'Instant result' }).click()
 await page.getByText('Statistics').waitFor({ timeout: 60000 })
 await shot('04-report')
-for (const [label, name] of [['Squad', '05-squad'], ['Tactics', '06-tactics'], ['League', '07-league'], ['Fixtures', '08-fixtures']]) {
+for (const [label, name] of [['Squad', '05-squad'], ['Tactics', '06-tactics'], ['League', '07-league'], ['Fixtures', '08-fixtures'], ['Cups', '08b-cups']]) {
   await page.getByRole('navigation').getByText(label, { exact: true }).click()
   await page.waitForTimeout(1200)
   await shot(name)
@@ -62,7 +62,7 @@ await page.getByText('Best roles').waitFor()
 await shot('11-club-player')
 
 // Sim to date: a week on, the user's matches on the way played instantly, then a summary.
-const header = page.getByRole('banner')
+const header = page.locator('.mantine-AppShell-header')
 const before = await header.innerText()
 await page.getByRole('button', { name: 'Sim to…' }).click()
 await page.getByRole('menuitem', { name: 'One week' }).click()
@@ -73,12 +73,18 @@ await finished.waitFor({ timeout: 180000 })
 await shot('13-sim-summary')
 const summary = await finished.innerText()
 console.log(`sim summary: ${summary.replace(/\n+/g, ' | ')}`)
-// Results first; any news (at the season's end, a season summary) opens in its own window.
-await finished.getByRole('button', { name: /^(OK|News|Season summary)$/ }).click()
-const news = page.getByRole('dialog', { name: /^(News|Season summary)$/ })
-if (await news.isVisible().catch(() => false)) {
+// Results first; any news (cup draws, say, or at the season's end a season summary) opens in
+// its own window once the results window has closed.
+const next = finished.getByRole('button', { name: /^(OK|News|Season summary)$/ })
+const label = await next.innerText()
+await next.click()
+if (label !== 'OK') {
+  const news = page.getByRole('dialog', { name: /^(News|Season summary)$/ })
+  await news.waitFor({ timeout: 5000 })
   await shot('14-sim-news')
+  console.log(`sim news: ${(await news.innerText()).replace(/\n+/g, ' | ').slice(0, 300)}`)
   await news.getByRole('button', { name: 'OK' }).click()
+  await news.waitFor({ state: 'hidden', timeout: 5000 })
 }
 await page.waitForTimeout(500)
 const after = await header.innerText()

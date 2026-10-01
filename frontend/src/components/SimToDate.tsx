@@ -42,6 +42,11 @@ function Finish({ final }: { final: SeasonFinal }) {
         Won {final.won}, drawn {final.drawn}, lost {final.lost} · goals {final.goals_for}–{final.goals_against} ·{' '}
         {final.points} points
       </Text>
+      {(final.cups ?? []).map((run) => (
+        <Text key={run.key} size="sm">
+          {run.name}: {run.won ? 'Winners!' : run.reached === 'Final' ? 'Runners-up' : `out in the ${run.reached.toLowerCase()}`}
+        </Text>
+      ))}
     </Stack>
   )
 }

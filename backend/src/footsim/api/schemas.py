@@ -56,6 +56,50 @@ class FixtureOut(BaseModel):
     extra_time: bool
     home_pens: int | None
     away_pens: int | None
+    stage_name: str | None = None  # a cup round's name ("Third round"); None otherwise
+
+
+class CupTieOut(BaseModel):
+    tie: str
+    home: ClubRef  # drawn first
+    away: ClubRef | None  # None: a bye, the home club is exempt
+    fixtures: list[FixtureOut]  # one, or two for a two-legged tie
+    winner: ClubRef | None
+
+
+class CupRoundOut(BaseModel):
+    index: int
+    name: str
+    dates: list[str]
+    legs: int
+    drawn: bool  # False: not drawn yet
+    ties: list[CupTieOut]
+
+
+class CupOut(BaseModel):
+    key: str
+    name: str
+    season: str
+    rounds: list[CupRoundOut]
+    winner: ClubRef | None
+
+
+class CupSummaryOut(BaseModel):
+    key: str
+    name: str
+    current_round: str | None  # the round being played or next to be played
+    user_status: str | None  # the user's club: "In the third round", "Out", "Winners"...
+    winner: ClubRef | None
+
+
+class CupRunOut(BaseModel):
+    """How far a club went in a cup in one season."""
+
+    key: str
+    name: str
+    reached: str  # the last round it played in, or "Winners"
+    won: bool
+    out: bool  # knocked out (False while still in it)
 
 
 class TableRowOut(BaseModel):
@@ -106,6 +150,7 @@ class ClubSeasonOut(BaseModel):
     outcome: str | None  # champion | promoted | playoff_winner | playoffs | relegated
     final: bool  # False for the season in progress
     managed: bool  # the user managed the club that season
+    cups: list[CupRunOut] = []
 
 
 class ClubHistoryOut(BaseModel):
@@ -169,6 +214,7 @@ class SeasonFinalOut(BaseModel):
     goals_against: int
     points: int
     outcome: str | None  # champion | promoted | playoff_winner | relegated | playoffs | None
+    cups: list["CupRunOut"] = []  # how far the club went in each cup
 
 
 class SimStatusOut(BaseModel):

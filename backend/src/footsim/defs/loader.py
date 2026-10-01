@@ -15,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 from footsim.core.paths import config_dir
 from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
+from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
@@ -49,6 +50,7 @@ class GameDefinitions:
     roles: dict[str, RoleDef]
     formations: dict[str, FormationDef]
     leagues: dict[str, LeagueDef]
+    cups: dict[str, CupDef]
     calendars: dict[str, SeasonCalendarDef]
     nations: dict[str, NationDef]
     world_build: WorldBuildRules
@@ -108,6 +110,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         roles=_load_dir(RoleDef, root / "roles"),
         formations=_load_dir(FormationDef, root / "formations"),
         leagues=_load_dir(LeagueDef, root / "competitions"),
+        cups=_load_dir(CupDef, root / "cups"),
         calendars=_load_dir(SeasonCalendarDef, root / "calendars"),
         nations={n.code: n for n in _parse(NationsFile, root / "nations.yaml").nations},
         world_build=_parse(WorldBuildRules, root / "world_build.yaml"),
@@ -200,6 +203,28 @@ def _cross_validate(defs: GameDefinitions) -> None:
         for target in targets:
             if target not in defs.leagues:
                 errors.append(f"league {league.key}: movement to unknown league {target}")
+
+    sizes = {key: league.clubs for key, league in defs.leagues.items()}
+    for cup in defs.cups.values():
+        unknown = ({e.league for e in cup.entrants}
+                   | {b for rnd in cup.rounds for b in rnd.blocks}) - set(defs.leagues)
+        if unknown:
+            errors.append(f"cup {cup.key}: unknown leagues {sorted(unknown)}")
+            continue
+        for rnd, (clubs, through) in zip(cup.rounds, cup.sizes(sizes), strict=True):
+            if clubs < 2 or not clubs / 2 <= through < clubs:
+                errors.append(f"cup {cup.key} {rnd.name}: {clubs} clubs can't send {through} "
+                              "through")
+        if cup.sizes(sizes)[-1] != (2, 1):
+            errors.append(f"cup {cup.key}: the last round must be a final between two clubs")
+    for calendar in defs.calendars.values():
+        for key, rounds in calendar.cups.items():
+            dated = defs.cups.get(key)
+            if dated is None:
+                errors.append(f"calendar {calendar.key}: dates for unknown cup {key}")
+            elif [len(legs) for legs in rounds] != [r.legs for r in dated.rounds]:
+                errors.append(f"calendar {calendar.key}: {key} needs a date per leg of each "
+                              "round")
 
     # Promotion and relegation must keep every league the same size.
     for upper in defs.leagues.values():

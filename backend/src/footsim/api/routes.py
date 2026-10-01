@@ -16,6 +16,8 @@ from footsim.api.schemas import (
     ClubOverviewOut,
     ClubPlayerOut,
     CompetitionOut,
+    CupOut,
+    CupSummaryOut,
     FixtureOut,
     LeagueOption,
     MatchOut,
@@ -155,6 +157,22 @@ def seasons(session: Session) -> list[SeasonOut]:
     """Every season of the career so far, newest first."""
     with session.read() as conn:
         return queries.seasons(conn)
+
+
+@router.get("/cups")
+def cups(session: Session) -> list[CupSummaryOut]:
+    """This season's cups."""
+    with session.read() as conn:
+        return queries.cups(conn, get_world())
+
+
+@router.get("/cups/{key}")
+def cup(key: str, session: Session, season: int | None = None) -> CupOut:
+    """A cup's rounds and ties, this season or ``season``."""
+    if key not in get_world().defs.cups:
+        raise HTTPException(404, "no such cup")
+    with session.read() as conn:
+        return queries.cup(conn, get_world(), key, season)
 
 
 @router.get("/competitions/{key}/fixtures")

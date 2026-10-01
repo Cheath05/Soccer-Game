@@ -78,8 +78,15 @@ def _to_v6(conn: Connection) -> None:
     _add_column(conn, "player_development", "trend", "REAL NOT NULL DEFAULT 0")
 
 
+def _to_v7(conn: Connection) -> None:
+    """Cup ties. A career already under way gets its cups from its next season, when its
+    league fixtures are scheduled around them."""
+    metadata.create_all(conn)
+
+
 # target version -> step that upgrades from the version before it
-STEPS: dict[int, Callable[[Connection], None]] = {3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6}
+STEPS: dict[int, Callable[[Connection], None]] = {
+    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7}
 
 
 def migrate(engine: Engine) -> int:

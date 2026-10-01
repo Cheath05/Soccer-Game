@@ -19,6 +19,11 @@ from footsim.api.schemas import (
     ClubRef,
     ClubSeasonOut,
     CompetitionOut,
+    CupOut,
+    CupRoundOut,
+    CupRunOut,
+    CupSummaryOut,
+    CupTieOut,
     FixtureOut,
     FormationOut,
     InstructionOut,
@@ -48,6 +53,7 @@ from footsim.persistence.schema import (
     club,
     club_league_membership,
     competition,
+    cup_tie,
     fixture,
     league_final,
     nation,
@@ -65,7 +71,8 @@ from footsim.scouting.estimates import (
     potential_range,
 )
 from footsim.transfers.valuation import estimate_value_eur
-from footsim.world.context import World, default_instructions
+from footsim.world.context import World, default_instructions, get_world
+from footsim.world.cups import cups_in
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.season import active_leagues, season_calendar, standings
 from footsim.world.squads import display_name, short_name, team_sheet
@@ -83,6 +90,7 @@ def _competitions(conn: Connection) -> dict[int, Row[Any]]:
 
 def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]) -> FixtureOut:
     comp = comps[row.competition_id]
+    cup = get_world().defs.cups.get(comp.key)
     return FixtureOut(
         id=row.id, date=row.date, competition=comp.key, competition_name=comp.name,
         stage=row.stage, round=row.round, tie=row.tie, leg=row.leg,
@@ -90,7 +98,7 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
         away=ClubRef(id=row.away_club_id, name=names[row.away_club_id]),
         neutral=bool(row.neutral), status=row.status, home_goals=row.home_goals,
         away_goals=row.away_goals, extra_time=bool(row.extra_time), home_pens=row.home_pens,
-        away_pens=row.away_pens,
+        away_pens=row.away_pens, stage_name=cup.rounds[row.round].name if cup else None,
     )
 
 
@@ -232,6 +240,111 @@ def seasons(conn: Connection) -> list[SeasonOut]:
             for r in conn.execute(select(season).order_by(season.c.id.desc()))]
 
 
+def _cup_run(world: World, key: str, name: str, club_id: int, ties: list[Row[Any]]
+             ) -> CupRunOut | None:
+    """How far ``club_id`` went in one cup's season, from its ties (byes included)."""
+    mine = [t for t in ties if club_id in (t.club_a_id, t.club_b_id)]
+    if not mine:
+        return None
+    last = max(mine, key=lambda t: t.round)
+    rounds = world.defs.cups[key].rounds
+    won = last.round == len(rounds) - 1 and last.winner_club_id == club_id
+    out = last.winner_club_id is not None and last.winner_club_id != club_id
+    through = last.winner_club_id == club_id and last.round + 1 < len(rounds)
+    reached = "Winners" if won else rounds[last.round + 1 if through else last.round].name
+    return CupRunOut(key=key, name=name, reached=reached, won=won, out=out)
+
+
+def cup_runs(conn: Connection, world: World, club_id: int) -> dict[int, list[CupRunOut]]:
+    """Every season's cup runs of a club."""
+    comps = {r.id: r for r in conn.execute(select(competition).where(competition.c.type == "cup"))}
+    ties = conn.execute(select(cup_tie).where(or_(
+        cup_tie.c.club_a_id == club_id, cup_tie.c.club_b_id == club_id))).all()
+    by_cup: dict[tuple[int, int], list[Row[Any]]] = defaultdict(list)
+    for t in ties:
+        by_cup[(t.season_id, t.competition_id)].append(t)
+    runs: dict[int, list[CupRunOut]] = defaultdict(list)
+    for (season_id, comp_id), cup_ties in sorted(by_cup.items()):
+        comp = comps[comp_id]
+        if comp.key in world.defs.cups:
+            run = _cup_run(world, comp.key, comp.name, club_id, cup_ties)
+            if run is not None:
+                runs[season_id].append(run)
+    return runs
+
+
+def cups(conn: Connection, world: World) -> list[CupSummaryOut]:
+    """This season's cups: the round under way, and how the user's club is doing."""
+    meta = read_meta(conn)
+    names = _club_names(conn)
+    ids = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
+    result = []
+    for cup in cups_in(world, season_calendar(world, meta, meta.season_id)):
+        ties = (conn.execute(select(cup_tie).where(
+            cup_tie.c.season_id == meta.season_id, cup_tie.c.competition_id == ids[cup.key]))
+            .all() if cup.key in ids else [])
+        winner = next((t.winner_club_id for t in ties
+                       if t.round == len(cup.rounds) - 1 and t.winner_club_id), None)
+        current = None
+        if ties and winner is None:
+            latest = max(t.round for t in ties)
+            done = all(t.winner_club_id for t in ties if t.round == latest)
+            current = cup.rounds[latest + 1 if done else latest].name
+        status = None
+        if meta.user_club_id is not None and ties:
+            run = _cup_run(world, cup.key, cup.name, meta.user_club_id, list(ties))
+            if run is None:
+                status = "Not in it yet"
+            elif run.won:
+                status = "Winners"
+            else:
+                status = f"{'Out in' if run.out else 'In'} the {run.reached.lower()}"
+        elif not ties:
+            status = "Starts next season"
+        result.append(CupSummaryOut(
+            key=cup.key, name=cup.name, current_round=current, user_status=status,
+            winner=ClubRef(id=winner, name=names[winner]) if winner else None))
+    return result
+
+
+def cup(conn: Connection, world: World, key: str, season_id: int | None = None) -> CupOut:
+    """A cup's season: every round, drawn or still to come, with its ties and results."""
+    meta = read_meta(conn)
+    season_id = season_id or meta.season_id
+    definition = world.defs.cups[key]
+    calendar = season_calendar(world, meta, season_id)
+    names = _club_names(conn)
+    comps = _competitions(conn)
+    comp_id = next((cid for cid, r in comps.items() if r.key == key), None)
+    ties = conn.execute(select(cup_tie).where(
+        cup_tie.c.season_id == season_id, cup_tie.c.competition_id == comp_id,
+    ).order_by(cup_tie.c.round, cup_tie.c.id)).all() if comp_id is not None else []
+    games: dict[tuple[int, str], list[FixtureOut]] = defaultdict(list)
+    if comp_id is not None:
+        for row in conn.execute(select(fixture).where(
+                fixture.c.season_id == season_id, fixture.c.competition_id == comp_id,
+        ).order_by(fixture.c.leg)):
+            games[(row.round, row.tie)].append(fixture_out(row, names, comps))
+
+    def ref(club_id: int | None) -> ClubRef | None:
+        return ClubRef(id=club_id, name=names[club_id]) if club_id else None
+
+    rounds = []
+    for index, rnd in enumerate(definition.rounds):
+        in_round = [t for t in ties if t.round == index]
+        rounds.append(CupRoundOut(
+            index=index, name=rnd.name,
+            dates=[d.isoformat() for d in calendar.cups.get(key, [[]] * len(definition.rounds))[
+                index]],
+            legs=rnd.legs, drawn=bool(in_round),
+            ties=[CupTieOut(tie=t.tie, home=ClubRef(id=t.club_a_id, name=names[t.club_a_id]),
+                            away=ref(t.club_b_id), fixtures=games.get((index, t.tie), []),
+                            winner=ref(t.winner_club_id)) for t in in_round]))
+    final = [t for t in ties if t.round == len(definition.rounds) - 1]
+    return CupOut(key=key, name=definition.name, season=_season_label(conn, season_id),
+                  rounds=rounds, winner=ref(final[0].winner_club_id) if final else None)
+
+
 def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut:
     """Every league season of a club in this career, newest first: final positions, and the
     season in progress so far."""
@@ -246,6 +359,7 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
         return CompetitionOut(key=comps[comp_id].key, name=comps[comp_id].name,
                               tier=comps[comp_id].tier or 0)
 
+    runs = cup_runs(conn, world, club_id)
     rows: list[ClubSeasonOut] = []
     finals = conn.execute(select(league_final).where(league_final.c.club_id == club_id)
                           .order_by(league_final.c.season_id.desc())).all()
@@ -260,14 +374,14 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
             position=mine.position if any(r.played for r in table_rows) else None,
             played=mine.played, won=mine.won, drawn=mine.drawn, lost=mine.lost,
             goals_for=mine.goals_for, goals_against=mine.goals_against, points=mine.points,
-            outcome=None, final=False, managed=managed))
+            outcome=None, final=False, managed=managed, cups=runs.get(meta.season_id, [])))
     for f in finals:
         rows.append(ClubSeasonOut(
             season_id=f.season_id, season=labels[f.season_id],
             competition=competition_of(f.competition_id), position=f.position,
             played=f.played, won=f.won, drawn=f.drawn, lost=f.lost, goals_for=f.goals_for,
             goals_against=f.goals_against, points=f.points, outcome=f.outcome, final=True,
-            managed=managed))
+            managed=managed, cups=runs.get(f.season_id, [])))
     def promoted(f: Row[Any]) -> bool:  # a lower league's champions go up too
         return f.outcome in ("promoted", "playoff_winner") or (
             f.outcome == "champion" and (comps[f.competition_id].tier or 1) > 1)

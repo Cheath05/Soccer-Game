@@ -16,10 +16,17 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (1 Oct, 10:59):** P14 at e91f9ca. Round 3 of the user's play-test is done:
-  - P13, development by age, traits and whole-point moves: 578342d;
-  - P14, the overall closer to the six headline ratings, plus development-news and e2e follow-ups: e91f9ca (see "Play-test round 3" below).
-  - **:8000 runs e91f9ca,** restarted at 10:59 on 1 Oct after a check showed no connections and no sim running (the user's Wrexham season sim had finished and autosaved). The previous log is `demo-server-e8701a0-build.log`. "Load autosave" on slot 2 resumes on 1 Jul 2027 and migrates the save's working copy to schema 5.
+- **Latest checkpoint (1 Oct, evening):** P17, the cups (this commit; the next commit records its hash and the :8000 restart). Round 4 of the user's play-test ("Play-test round 4" below):
+  - P15, the up/down arrows by a player's overall: e959fe4;
+  - P16, club histories and past final tables: 3630131;
+  - 2.3c iteration 4, crosses and long balls estimated as the physics plays them, still behind the switch: 09b1242. It was measured on real squads, which recorded the conflict that keeps the switch off and also found P14's side effect on goals;
+  - P17, the FA Cup and the Carabao Cup: this commit.
+  - **Next task, re-ordered by 2.3c's measurement:**
+    1. **2.3f, attack against defence by rating, with box defending.** With honest estimates a safe short option is always there and passes into the box complete about 90%, so shots double. 2.3f has to make defending and pressing cover options before honest estimates can be switched on.
+    2. Then switch 2.3c on and calibrate the decision values (long-ball share and cross share in range).
+    3. 2.3e (control by rating), 2.4 (fouls and cards), Phase D (lets the through-ball stopgap go), then transfers and the academy.
+  - **Note:** during P17's first full test run, `test_live_safety` hung for over 10 minutes right after `test_clubs` had failed. It passed on its own (23 s), and the whole suite passed once that failure was fixed. If it hangs again, run it with `-o faulthandler_timeout=60` to see where.
+- **Before that, the same day:** P14 at e91f9ca, the overall closer to the six headline ratings; P13 at 578342d, development by age and traits. :8000 ran e91f9ca from 10:59.
 - **Before that:** 4b779e9 (code at e8701a0, P12). The user's play-test fixes are done, each its own commit:
   - **Round 1** ("Play-test fixes" below):
     - P1, 99 ratings: 85a20ce;
@@ -482,13 +489,54 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
     - crosses −0.32 → −0.03 (estimate .197, completed .213);
     - long balls −0.33 → −0.12;
     - short +0.01, medium +0.02.
-  - **The conflict this exposes** (measured on real squads below): with honest estimates, long balls all but vanish (0.3–0.7% of passes) and shots explode. Synthetic sides take 70 shots a match and score 6.7–8.3, against 40 shots and 4.2 goals with the switch off.
+  - **The conflict this exposes:** with honest estimates, long balls all but vanish and shots explode. Synthetic sides take 70 shots a match and score 6.7–8.3, against 40 shots and 4.2 goals with the switch off.
+  - **Measured on real squads** (200 matches per arm, seed 21, worktree at 09b1242; `reports/engine/step2.3/c4-off-*` and `c4-on-*`):
+
+    | | ENG1 off | ENG1 on | ENG4 off | ENG4 on |
+    |---|---|---|---|---|
+    | Goals | 4.18 | 8.03 | 2.19 | 4.54 |
+    | Shots | 41.6 | 75.9 | 23.7 | 52.7 |
+    | Pass accuracy | .876 | .915 | .905 | .902 |
+    | Long-ball share | .150 | .005 | .065 | .005 |
+    | Throw-ins | 39.7 | 13.0 | 24.5 | 11.6 |
+    | Interceptions | 18.8 | 31.1 | 20.2 | 29.1 |
+    | Shots per box entry | .63 | .81 | .56 | .74 |
     - **Why** (`scratchpad/long_options.py`, 3,382 decisions with a long option): the best long option scores 0.04–0.05 utility below the best pass everywhere from x 0 to 70, even under pressure, because a safe short option (estimate .86–.96) is always there.
     - Real sides go long when the press has covered the short options and the build-up is risky. Our pressing doesn't cover them, and passes into and around the box complete about 90%.
     - The old estimate's pessimism about short passes (−0.10 to −0.15) was hiding this weak defending.
     - Neither `loss_where_lost` 1.0 nor `RETAIN` 0.005 brings long balls back (0.5–0.7%).
     - So the decision values can't be calibrated until defending covers options and the box (2.3f, Phase D6). **The switch stays off;** 2.3f comes before switching it on.
   - **Tests:** `test_passing.py` gains a cross being anyone's who gets to it, and a long ball being whoever's gets to where it drops.
+
+- **P14's side effect on matches, found in this measurement.** The "off" arms against `ref-p12` (the same seed and engine, before P14):
+  - Premier League goals 3.75 → 4.18; conversion .089 → .100; save rate .725 → .691; draws .275 → .200. Shots are unchanged at 42.
+  - League Two goals 1.84 → 2.19; conversion .081 → .092. That's nearer the real 2.45–2.85, while the Premier League's is further from its 2.65–3.05.
+  - **Cause:** the overall picks lineups and AI formations, and it now counts every headline rating. 6 of 20 Premier League clubs and 4 of 24 League Two clubs choose a different formation (mostly 4-3-3 → 4-2-3-1), and about one starter per club changes (`scratchpad/pick_diff.py`). Keepers aren't the cause: one club changes keeper, with the same shot-stopping (`scratchpad/gk_pick.py`).
+  - **Kept**, as the user asked for the overall. Goal levels belong to 2.3f. If they should come back, the option is to pick lineups by role ratings without the headline blend, at the cost of slot ratings that differ from the overall shown.
+- [x] P17 **Cups: the FA Cup and the Carabao Cup** (`world/cups.py`, `data/config/cups/`, calendar `cups:`).
+  - **Formats** (`defs/cups.py`, validated in the loader):
+    - **FA Cup:** single matches with extra time and penalties (no replays since 2024-25), semi-finals and final at Wembley. League One and Two start in the first round. The real cup's 32 non-league qualifiers aren't in the game, so the highest-ranked clubs are exempt in rounds 1 and 2 (48 → 32 → 20). The Premier League and Championship join in round 3, which has its 64.
+    - **Carabao Cup:** the EFL's 72 in round 1, Premier League 9th–20th in round 2, the top 8 (no Europe yet) in round 3. No extra time (straight to penalties) except in the final; two-legged semi-finals.
+  - **Ranks** for entry and exemptions come from last season's finish within the league, with promoted clubs below those who stayed up. A first season uses reputation.
+  - **Dates** are in the season calendar (Carabao Cup on Tuesdays with a Sunday final in the March break; FA Cup on Saturdays), shifted to later seasons like everything else.
+    - A round's `blocks` keep leagues off its date: FA Cup round 1 for Leagues One and Two, round 3 for the Premier League and Championship, and rounds 4 to the final for the Premier League.
+    - Any other clash is rearranged at the draw: a club's league match within two days of its cup match moves to the nearest day both clubs are free. It prefers a midweek and a later date, stays within the league's dates, and keeps clear of cup dates.
+  - **Each round** is drawn when the one before it ends (`cup_tie`, schema 7). Knockout rules come through `Decider`, so the live engine plays extra time and penalties as it does for play-offs.
+  - **News:** your draw, exemption or exit, and every cup winner.
+  - **UI:**
+    - a Cups page: each round's ties and results, your tie highlighted, the rounds still to come, and a season picker;
+    - round names on fixtures, the dashboard and the match day;
+    - cup runs on club histories and in the season summary.
+  - **A career already under way** (the user's Wrexham save) gets cups from its next season, when its league fixtures can be scheduled around them.
+  - **Measured:** a whole watch-only season (`scratchpad/cup_season.py`, seed 5) takes about 20 s of quick-engine matches.
+    - Arsenal won the FA Cup (3–1 against Spurs) and Aston Villa the Carabao Cup.
+    - FA Cup: 91 matches, 18 went to extra time and 11 to penalties. Carabao Cup: 93 matches, 0 to extra time, 16 to penalties.
+    - 78 of 2,036 league matches were moved for cup ties.
+    - A new Wrexham career on :8765 plays its Carabao Cup first round on 11 Aug, before the league, and gets the draw news for every round.
+  - **Bug found and fixed:** a rearranged match could land before its league had started (`test_clubs` caught Arsenal with two games played by matchday one).
+  - **Tests:**
+    - `test_cups.py`: the formats add up, and leagues keep clear of the rounds that block them;
+    - `tests/integration/test_cups_season.py`, a whole season: every round has the clubs it should, both cups reach a winner, every match is played, no club plays twice within two days, league matches stay within their league's dates, and the next season's first round is drawn.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

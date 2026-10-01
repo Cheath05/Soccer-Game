@@ -20,7 +20,7 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
           {honours.length ? honours.join(' · ') : 'No honours yet in this career'}
         </Text>
       </Group>
-      <Table.ScrollContainer minWidth={560}>
+      <Table.ScrollContainer minWidth={760}>
         <Table striped>
           <Table.Thead>
             <Table.Tr>
@@ -34,6 +34,7 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
               <Table.Th ta="right">GD</Table.Th>
               <Table.Th ta="right">Pts</Table.Th>
               <Table.Th />
+              <Table.Th>Cups</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -67,6 +68,15 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
                         In progress
                       </Badge>
                     )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      {s.cups.map((run) => (
+                        <Badge key={run.key} size="sm" variant={run.won ? 'filled' : 'light'} color={run.won ? 'yellow' : run.out ? 'gray' : 'blue'}>
+                          {run.name}: {run.reached}
+                        </Badge>
+                      ))}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               )

@@ -1,0 +1,26 @@
+# The FA Cup (Emirates FA Cup). Single matches with extra time and penalties in every round:
+# replays were scrapped from the first round proper in 2024-25. The semi-finals and final are
+# at Wembley. Round dates are in the season calendar (calendars/*.yaml, cups: FA_CUP).
+#
+# The real first round has 80 clubs: League One and Two's 48 and 32 non-league qualifiers.
+# The game has no non-league clubs yet, so the highest-ranked League One and Two clubs are
+# exempt instead (byes), and the third round still has its 64: 20 who came through and the
+# Premier League's and Championship's 44.
+key: FA_CUP
+name: FA Cup
+short_name: FA Cup
+nation: ENG
+entrants:
+  - {league: ENG3, round: 1}
+  - {league: ENG4, round: 1}
+  - {league: ENG1, round: 3}
+  - {league: ENG2, round: 3}
+rounds:
+  - {name: First round, qualifiers: 32, blocks: [ENG3, ENG4]}
+  - {name: Second round, qualifiers: 20}
+  - {name: Third round, blocks: [ENG1, ENG2]}
+  - {name: Fourth round, blocks: [ENG1]}
+  - {name: Fifth round, blocks: [ENG1]}
+  - {name: Quarter-final, blocks: [ENG1]}
+  - {name: Semi-final, neutral: true, blocks: [ENG1]}
+  - {name: Final, neutral: true, blocks: [ENG1]}

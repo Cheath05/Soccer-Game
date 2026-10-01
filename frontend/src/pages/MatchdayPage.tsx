@@ -24,7 +24,7 @@ export default function MatchdayPage() {
       <Card withBorder>
         <Stack gap={4} align="center">
           <Text c="dimmed" size="sm">
-            {fixture.competition_name} · {stageLabel(fixture.stage, fixture.round, fixture.tie, fixture.leg)} · {longDate(fixture.date)}
+            {fixture.competition_name} · {stageLabel(fixture.stage, fixture.round, fixture.tie, fixture.leg, fixture.stage_name)} · {longDate(fixture.date)}
           </Text>
           <Title order={2}>
             <ClubLink club={fixture.home} /> v <ClubLink club={fixture.away} />

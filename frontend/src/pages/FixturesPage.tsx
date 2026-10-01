@@ -41,7 +41,7 @@ export default function FixturesPage() {
                   <Table.Td>
                     <Text size="sm">{f.competition_name}</Text>
                     <Text size="xs" c="dimmed">
-                      {stageLabel(f.stage, f.round, f.tie, f.leg)}
+                      {stageLabel(f.stage, f.round, f.tie, f.leg, f.stage_name)}
                     </Text>
                   </Table.Td>
                   <Table.Td>{f.neutral ? 'N' : home ? 'H' : 'A'}</Table.Td>

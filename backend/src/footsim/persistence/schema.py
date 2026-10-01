@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 6  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 7  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -289,6 +289,20 @@ player_state = Table(
 
 # A player's development traits, drawn once (people/development.py), and the progress he has
 # built up towards his next whole-point move.
+cup_tie = Table(
+    "cup_tie",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("round", Integer, nullable=False),  # 0-based, as the cup's rounds are listed
+    Column("tie", Text, nullable=False),  # "1", "2", ... in draw order; "B1"... for byes
+    Column("club_a_id", ForeignKey("club.id"), nullable=False),  # drawn first: at home first
+    Column("club_b_id", ForeignKey("club.id")),  # None: a bye (club A is exempt)
+    Column("winner_club_id", ForeignKey("club.id")),
+    UniqueConstraint("season_id", "competition_id", "round", "tie"),
+)
+
 player_development = Table(
     "player_development",
     metadata,

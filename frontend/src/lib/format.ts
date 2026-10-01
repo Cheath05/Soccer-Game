@@ -84,9 +84,9 @@ export function score(f: { home_goals: number | null; away_goals: number | null;
   return text
 }
 
-export function stageLabel(stage: string, round: number, tie: string | null, leg: number | null): string {
+export function stageLabel(stage: string, round: number, tie: string | null, leg: number | null, stageName?: string | null): string {
   if (stage === 'league') return `Matchday ${round}`
-  const name = tie?.startsWith('F') ? 'Play-off final' : tie?.startsWith('SF') ? 'Play-off semi-final' : 'Play-off'
+  const name = stageName ?? (tie?.startsWith('F') ? 'Play-off final' : tie?.startsWith('SF') ? 'Play-off semi-final' : 'Play-off')
   return leg ? `${name}, leg ${leg}` : name
 }
 

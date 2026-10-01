@@ -1,0 +1,25 @@
+# The EFL Cup (Carabao Cup). No extra time: a level tie goes straight to penalties, except in
+# the final at Wembley. The semi-finals are over two legs. Round dates are in the season
+# calendar (calendars/*.yaml, cups: EFL_CUP), midweeks with the final on a Sunday.
+#
+# The EFL's 72 clubs start in the first round. Premier League clubs join in the second, and
+# those in Europe (here: last season's top eight, as there's no European football yet) in the
+# third. Promoted clubs count as below those who stayed up.
+key: EFL_CUP
+name: Carabao Cup
+short_name: EFL Cup
+nation: ENG
+entrants:
+  - {league: ENG2, round: 1}
+  - {league: ENG3, round: 1}
+  - {league: ENG4, round: 1}
+  - {league: ENG1, round: 2, ranks: [9, 20]}
+  - {league: ENG1, round: 3, ranks: [1, 8]}
+rounds:
+  - {name: First round, extra_time: false}
+  - {name: Second round, extra_time: false}
+  - {name: Third round, extra_time: false}
+  - {name: Fourth round, extra_time: false}
+  - {name: Quarter-final, extra_time: false}
+  - {name: Semi-final, legs: 2, extra_time: false}
+  - {name: Final, neutral: true}

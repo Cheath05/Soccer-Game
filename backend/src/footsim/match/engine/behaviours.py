@@ -187,7 +187,7 @@ def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     if speed < 0.5:
         return eng.ball.copy()
     direction = eng.ball_v / speed
-    stop = eng.ball + direction * speed**2 / (2 * 4.0)  # where the ball will come to rest
+    stop = eng.ball + direction * speed**2 / (2 * eng.roll_friction)  # where it will stop
     segment = stop - eng.ball
     length_sq = max(float(segment @ segment), 1e-6)
     t = float(np.clip((eng.pos[i] - eng.ball) @ segment / length_sq, 0, 1))

@@ -16,35 +16,38 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** e3e299c, Step 2.3b part 1 measured (docs only). The commit right after it only filled in this hash.
-  - The part 1 code is fa82a79.
-  - Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2; 2.3a a9a8ced.
-- **Engine:** unchanged since fa82a79. The golden values were re-recorded there.
-- **Completed: the 2.3b part 1 measurement** (`docs/calibration/20260930-step2.3b1-reception.md`; reports local under `reports/engine/step2.3/ref-2.3b1/` and `sweep-2.3b1-q58|q82/`).
-  - **Passing now responds to skill:**
-    - pass accuracy is ENG4 .819 and ENG1 .815 (inside the PL range);
-    - the q58→q82 gradient is 2.1 points, up from 0.5;
-    - heavy touches gathered again by the receiver fell from 85% to about 48%;
-    - the short and medium estimate gaps shrank to −0.01 to −0.04.
-  - **Side effect, the build-up leaks again:**
-    - high regains are ENG4 47.4 (from 29.1) and ENG1 35.8 (from 23.5), against a target of 10–17;
-    - loose failures roughly doubled;
-    - goals and shots rose (ENG4 2.82 and 30.1; ENG1 3.72 and 39.1).
-  - **Cause:** misplaced and miscontrolled balls are now really lost, and there are many heavy touches (46–65 a match; the real figure isn't sourced yet).
-  - **Where it gets fixed, in plan order:** pace (2.3b part 2), honest estimates (2.3c), then the rating terms `control.receiver`, `control.touch_skill` and `read_delay` (2.3e).
-- **Tests:** unchanged since fa82a79 (138 pass).
-- **Next task:** Step 2.3b part 2, pass pace, in two commits:
-  1. **Behaviour-neutral:** a `pace` block in `passing.yaml` with today's values (`roll_friction` 4.0, arrive 5.0, arrive back 2.0, `arrive_per_metre` 0). It's used by `engine.py:496`, `behaviours.py:190` and `actions.py:397-398`; the golden values stay unchanged.
-  2. **Behaviour change:** set them against Metrica's travel times (short 0.99 s, medium 1.60 s, long 2.76 s). The analytic first guess is friction 3.3 and arrive 6 + 0.2 m/s per metre, which gives 1.0 s and 1.59 s at 9.5 m and 20 m. Then:
-     - measure the reference and the sweep (q58 and q82);
-     - recheck `intercept_scale` if interceptions leave 14–26;
-     - golden values, then commit.
-- **Calibration:**
-  - Nothing is running.
-  - Pin the worktree first (`git -C .worktrees/measure checkout -q --detach phase-1-match-believability`).
-  - Then run `.claude/skills/calibrate-engine/make_variant.sh f020e2 0.2 0.008 0.022`.
-  - Comparison script: `python3 .claude/skills/calibrate-engine/compare_steps.py OLD NEW` (step names such as 2.3a and 2.3b1) reads `reports/engine/step2.3/ref-<step>/` and `sweep-<step>-q58|q82/`.
-- **Unresolved:** 2.3b part 2, 2.3c–2.3f, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
+- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3b part 2, first commit: pace moved to YAML (behaviour-neutral). The commit right after it only filled in this hash.
+  - Earlier: the part 1 code fa82a79; its measurement e3e299c.
+- **Engine:** behaviour unchanged. The golden values pass unchanged; the last change to them was fa82a79.
+- **Completed at this checkpoint:**
+  - `passing.yaml` gains a `pace` block, with today's values:
+    - `roll_friction` 4.0, for every rolling ball;
+    - `arrive` 5.0, `arrive_per_metre` 0.0, `arrive_back` 2.0 and `back_zone` 20.0, for ground passes.
+  - The model is `PaceDef`, inside `PassingDef`. `engine.ROLL_FRICTION` and the two hard-coded `2 * 4.0` are gone.
+  - `MatchEngine.roll_friction` caches the value at construction. A test that swaps `engine.defs` afterwards must set it too.
+  - `make_variant.sh` takes optional `PACE_FRICTION`, `PACE_ARRIVE` and `PACE_PER_METRE`.
+- **Tests:**
+  - `just lint` is clean;
+  - all 138 backend tests pass;
+  - the golden values are unchanged.
+- **Reviewer:** no violations; bit-identical by construction.
+  - Its notes for later steps:
+    - the passer's estimate assumes much faster balls (`actions.py` ~259–286, `ground_speed`), to be derived from `pace` in 2.3c;
+    - the loose-ball speeds were tuned at friction 4.0 (`heavy_touch_speed`, `duels.py:152`, `actions.py` ~678, 739, 944, 981), so recheck loose-ball and out-of-play rates when friction changes;
+    - `behaviours._ball_to_goal` ignores friction.
+- **Next task:** the 2.3b part 2 measurement.
+  - Pin the worktree to this commit.
+  - Build the candidate: `PACE_FRICTION=3.3 PACE_ARRIVE=6.0 PACE_PER_METRE=0.2 make_variant.sh p33 0.2 0.008 0.022`. It's the analytic fit to Metrica's travel times (0.99 / 1.60 s at 9.5 / 20.2 m).
+  - Run the reference: ENG4 and ENG1, seed 21, 200 each, into `reports/engine/step2.3/ref-2.3b2`.
+  - Compare with `ref-2.3b1`, using `compare_steps.py 2.3b1 2.3b2`:
+    - pass times against Metrica;
+    - interceptions (if under 14, try `intercept_scale` 0.3);
+    - loose balls and out-of-play counts;
+    - high regains.
+  - Then run the sweep at q58 and q82.
+  - Commit the chosen values, with golden values and a History note.
+- **Calibration:** nothing is running yet. Pin the worktree first, then run `make_variant.sh`.
+- **Unresolved:** 2.3c–2.3f, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
   - slow tempo gets an accuracy bonus;
@@ -55,7 +58,7 @@
   - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
-  - **Note:** the latest commit is an intermediate calibration state. Expect more turnovers in your own half than real football has, until 2.3c–2.3e.
+  - **Note:** this is an intermediate calibration state (2.3b part 1): more turnovers in your own half than real football has, until 2.3c–2.3e.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
 
 ## Quick fixes (do first; each is its own checkpoint)
@@ -151,7 +154,7 @@ The local session reached its usage limit, and a cloud session carried on from 8
     - The f020e2 re-run must reproduce round 5 exactly.
   - [ ] **2.3b Physics shortcuts,** in two checkpoints:
     - [x] Part 1, reception (code): the read delay from anticipation, the re-touch lockout, crosses landing clear, and no completion for a passer's own re-gather. Tests pass; golden values re-recorded. Measured: accuracy ENG4 .819 / ENG1 .815; quality gradient 0.5 → 2.1 points; high regains up to 47 / 36. See `docs/calibration/20260930-step2.3b1-reception.md`
-    - [ ] Part 2, pass pace: `ROLL_FRICTION` and the arrival pace moved to YAML and set against Metrica's speeds per band; `intercept_scale` rechecked
+    - [ ] Part 2, pass pace. Done so far: the values are in `passing.yaml` `pace` (behaviour-neutral). Still to do: set them against Metrica's speeds per band, and recheck `intercept_scale`
   - [ ] **2.3c Honest pass estimates:** P_path × p_reach × P_arrive × P_secure, a landing grid for lofted balls and crosses, and a slow honesty test.
   - [ ] **2.3d Offside decisions:**
     - through balls judged at the runner's position;

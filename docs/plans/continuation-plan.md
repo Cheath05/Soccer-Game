@@ -360,7 +360,7 @@ The idea: `outcome = same_engine(mechanics, player ratings, tactics, environment
 - **The receiver reads the pass.** At the kick he heads for the *intended* target. He switches to the ball's real path after a read delay, set by his anticipation rating (`control.read_delay` in YAML).
 - **A heavy touch is a real contest.** The player who miscontrolled can't touch the ball again during a short lockout (`control.retouch_lockout`). His first touch then decides more than it does today.
 - **Crosses that land clear follow the ground-pass rule:** a teammate collecting within 3 s completes them.
-- **Pass pace.** If 2.3a shows engine passes much slower than Metrica's, `ROLL_FRICTION` and the arrival pace move to YAML and are set from those figures (the physics is the same for everyone).
+- **Pass pace.** If 2.3a shows engine passes much slower than Metrica's, the rolling friction and the arrival pace move to YAML (`passing.yaml` `pace`, done) and are set from those figures (the physics is the same for everyone).
 - **Measure:** 200 paired matches, both divisions, at 0.2/e2, against 2.3a, including the rating responses. If interceptions leave their range, re-check `intercept_scale` in the same round.
 - Golden values: record the Mac's, delete Linux's, add a History note. Then commit and push.
 
@@ -567,7 +567,7 @@ The idea: `outcome = same_engine(mechanics, player ratings, tactics, environment
 - **Passing:**
   - `backend/src/footsim/match/engine/actions.py`: `_pass_options` ~200–318, `start_pass` 354, `resolve_loose_or_pass` 432, `_take` 544, `_aerial` 589;
   - `behaviours.py`: `_meet_ball` 178;
-  - `engine.py`: `ROLL_FRICTION` 50, `_load` 183;
+  - `engine.py`: `_load` 183, the ball update (`roll_friction` from `passing.yaml` `pace`);
   - `probe.py`;
   - `data/config/match/passing.yaml` and `defs/match.py`.
 - **Targets and harness:** `data/config/calibration/match_targets.yaml` and `calibration/engine_batch.py` (`load_targets` 207, `write_report` 312, and the synthetic quality sweep).

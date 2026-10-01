@@ -29,6 +29,12 @@ control:
   pressure_radius: 2.5   # an opponent this close pressures the first touch
   pressure_penalty: 0.3  # worst-case drop in control chance with an opponent on top of him
   heavy_touch_speed: [2.5, 5.5]  # m/s a miscontrolled ball runs away at
+pace:                     # how hard ground passes are struck, and how the ball slows
+  roll_friction: 4.0      # m/s^2 a ball on the ground loses (every rolling ball, not only passes)
+  arrive: 5.0             # m/s a ground pass reaches its target at...
+  arrive_per_metre: 0.0   # ...plus this much per metre of the pass
+  arrive_back: 2.0        # m/s for a pass back towards our own goal area, played softly
+  back_zone: 20.0         # m from our own goal line where that applies
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)

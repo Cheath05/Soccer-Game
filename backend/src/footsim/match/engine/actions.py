@@ -393,9 +393,12 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
         eng.ball_vz = 9.81 * flight / 2
         eng.ball_z = 0.1
     else:
-        # Towards our own goal the ball is played softly, to arrive gently at the man.
-        arrive = 2.0 if (tx < 20 and tx < bx) else 5.0
-        eng.ball_v = direction * math.sqrt(arrive**2 + 2 * 4.0 * reach)
+        # Towards our own goal the ball is played softly, to arrive gently at the man; further
+        # out, longer passes are struck to arrive with more pace (passing.yaml ``pace``).
+        pace = eng.defs.passing.pace
+        arrive = (pace.arrive_back if (tx < pace.back_zone and tx < bx)
+                  else pace.arrive + pace.arrive_per_metre * distance)
+        eng.ball_v = direction * math.sqrt(arrive**2 + 2 * eng.roll_friction * reach)
         eng.ball_vz = 0.0
         eng.ball_z = 0.0
     eng.owner = -1

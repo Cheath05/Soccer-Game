@@ -140,6 +140,14 @@ class ControlDef(DefModel):
     heavy_touch_speed: tuple[float, float]
 
 
+class PaceDef(DefModel):
+    roll_friction: float = Field(gt=0)  # m/s^2: how fast a ball on the ground slows down
+    arrive: float = Field(gt=0)  # m/s a ground pass arrives at, at zero length
+    arrive_per_metre: float = Field(ge=0)  # longer passes are struck to arrive faster
+    arrive_back: float = Field(gt=0)  # m/s for a pass back towards our own goal area
+    back_zone: float = Field(ge=0)  # m from our own goal line where passes are played softly
+
+
 class PassingDef(DefModel):
     """Passing, first touch and clearances (data/config/match/passing.yaml)."""
 
@@ -150,6 +158,7 @@ class PassingDef(DefModel):
     intercept_scale: float = Field(gt=0, le=2)
     aerial_contest_radius: float = Field(gt=0)
     header_to_feet: float = Field(ge=0, le=1)
+    pace: PaceDef
 
 
 class MentalityEffect(DefModel):

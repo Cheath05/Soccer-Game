@@ -47,7 +47,6 @@ from footsim.ratings.overall import familiarity_factor
 
 DT = 0.1  # seconds per tick
 TARGET_EVERY = 3  # ticks between off-ball target updates
-ROLL_FRICTION = 4.0  # m/s^2, rolling ball deceleration
 GRAVITY = 9.81
 DRIBBLE_SPEED = 0.85  # share of top speed a player keeps with the ball at his feet
 FRAME_BUFFER = 600  # frames kept for a consumer that hasn't drained them (60 s)
@@ -90,6 +89,7 @@ class MatchEngine:
         self.accel = np.zeros(n)
         self.stamina = np.ones(n)
         self.tackle_ready = np.zeros(n)  # time a player may next attempt a tackle
+        self.roll_friction = defs.passing.pace.roll_friction  # m/s^2, a rolling ball slowing
         self.touch_ready = np.zeros(n)  # time a player may touch the ball again after a heavy touch
         self.engaged: dict[int, tuple[int, float]] = {}  # defender -> (carrier, since)
         self.take_on_ready: dict[tuple[int, int], float] = {}  # (carrier, defender) -> time
@@ -493,7 +493,7 @@ class MatchEngine:
         else:
             speed = float(norm(self.ball_v))
             if speed > 0:
-                self.ball_v *= max(0.0, speed - ROLL_FRICTION * DT) / speed
+                self.ball_v *= max(0.0, speed - self.roll_friction * DT) / speed
         step = self.ball_v * DT
         self.prev_ball = self.ball.copy()
         self.ball = self.ball + step

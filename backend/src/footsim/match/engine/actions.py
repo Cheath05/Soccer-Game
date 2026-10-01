@@ -161,7 +161,10 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
         room = nearest > 3.0
         if (xg >= MIN_SHOT_XG or mode == "free_kick"
                 or (long_range and room and xg >= LONG_SHOT_XG)):
-            options.append((xg * preference * 0.95, "shot", None))
+            # A shot that doesn't go in gives the ball up (a save, a miss, a block), as a pass
+            # that fails does: a hopeful shot is worth less than keeping the attack going.
+            utility = xg * preference * 0.95 - (1 - xg) * float(loss_cost(bx, by))
+            options.append((utility, "shot", None))
 
     # Passing: every teammate, plus balls into the path of forward runners.
     if mode != "shoot":
@@ -277,7 +280,12 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
 
     value = threat(target[:, 0], target[:, 1])
     value = np.where(np.array(kinds) == "cross", value * 1.1, value)
-    loss = loss_cost(bx, by)
+    # A pass that fails is lost where it fails, not at the passer's feet: a ball in the air
+    # where it comes down (or out of play beyond it), a ground pass on its way or at the man.
+    # So a long ball out of trouble risks the ball far from our goal.
+    lost_at = np.where(lofted[:, None], target, (target + ball) / 2)
+    loss = loss_cost(lost_at[:, 0], lost_at[:, 1])
+    here = float(loss_cost(bx, by))
     utility = success * (value + RETAIN) - (1 - success) * loss
     forward = target[:, 0] - bx
     utility += 0.004 * directness * forward / 10
@@ -301,7 +309,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     # A clearance is the last resort: heavy pressure close to our own goal.
     if mode is None and bx < 25 and pressure > 0.6:
         clear_to = (min(bx + 45, 80.0), float(np.clip(by + eng.rng.normal(0, 12), 4, 64)))
-        clear_utility = 0.005 + 0.12 * pressure**2 * loss
+        clear_utility = 0.005 + 0.12 * pressure**2 * here
         options.append((clear_utility, "clearance", PassOption(-1, clear_to, True, 0.3)))
     return options
 
@@ -323,7 +331,7 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
         # Taking a defender on succeeds about half the time; open grass is almost free.
         p_keep = 0.97 if free else float(_sigmoid((skill - 70) / 15 + (blocker - 4.0) * 0.7))
         value = float(threat(aim[0], aim[1]))
-        utility = p_keep * (value + RETAIN * 0.8) - (1 - p_keep) * loss_cost(bx, by)
+        utility = p_keep * (value + RETAIN * 0.8) - (1 - p_keep) * float(loss_cost(bx, by))
         utility += 0.012 * role.on_ball.dribble_bias + (0.004 if free else 0.0)
         options.append((utility, "carry",
                         CarryOption((float(aim[0]), float(aim[1])), not free or bx > 60)))
@@ -331,7 +339,8 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
     # where standing still just lets the defence organise).
     if bx < 70:
         keep = 1 - 0.7 * pressure
-        utility = keep * (0.8 * float(threat(bx, by)) + RETAIN) - (1 - keep) * loss_cost(bx, by)
+        utility = (keep * (0.8 * float(threat(bx, by)) + RETAIN)
+                   - (1 - keep) * float(loss_cost(bx, by)))
         options.append((utility, "carry", CarryOption((float(bx), float(by)), False)))
     return options
 

@@ -255,12 +255,27 @@ The user asked whether the engine or the management features (transfers, academy
     - **Worse:** passing is too clean, so the ball is in play too long and ENG4 scores too little.
     - **Not undone:** both fixes removed unrealistic mechanics, and undoing them would bring back the user's complaint.
     - **The missing realism is the pass mix:** ENG4 plays fewer long balls than ENG1, the reverse of real football. See P11.
-- [ ] P11 **Decision values: a failed pass is lost where it fails** (2.3c item 3, brought forward).
+- [x] P11 **Decision values: a failed pass is lost where it fails** (2.3c item 3, brought forward).
   - `_pass_options` charged every option the loss cost of the passer's own position, so a 40 m ball out of trouble was costed as if lost at the centre-back's feet. Long balls were almost never worth it.
-  - **Plan:**
-    - charge the loss where a pass fails: a lofted ball where it lands, a ground pass midway;
-    - charge a shot the possession it gives up when it doesn't score (shots ignored that, so players shot too readily);
-    - measure on 200 matches per division.
+  - **Done:**
+    - a pass's failure is costed where it's lost: a lofted ball where it lands, a ground pass midway (`pitch.loss_cost` takes arrays now);
+    - a shot is charged the possession it gives up when it doesn't go in, (1 − xG) × the loss cost where it's taken. Shots had ignored that, so players shot too readily.
+  - **Indicative** (4 synthetic matches at quality 62, before → after):
+
+    | | Before | After |
+    |---|---|---|
+    | Pass accuracy | .913 | .836 |
+    | Long-ball share | .052 | .163 |
+    | Throw-ins | 24 | 38 |
+    | Ball in play (min) | 73 | 61.5 |
+    | High regains | 19 | 14 |
+    | Shots | 22 | 31.5 |
+    | xG per shot | .073 | .075 |
+
+    - Without the shot term, shots were 35 at .056 xG each.
+  - **Shots stay too many.** Attacks reach the box too easily against static defensive shapes: Phase D.
+  - **Tests:** `test_a_long_ball_risks_the_ball_where_it_lands_not_at_the_passers_feet`. Mac golden values re-recorded with a History note.
+  - **Measurement:** 200 matches per division, `reports/engine/step2.3/ref-p11`. Recorded in the next commit.
 - [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.

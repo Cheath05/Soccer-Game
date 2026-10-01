@@ -199,3 +199,31 @@ def test_composure_decides_what_pressure_costs(world: World) -> None:
 
     assert spread(1.0, 35.0) > spread(1.0, 85.0)  # a nervous passer suffers more under it
     assert spread(0.0, 35.0) == pytest.approx(spread(0.0, 85.0))  # nobody near: no difference
+
+
+def test_a_long_ball_risks_the_ball_where_it_lands_not_at_the_passers_feet(world: World) -> None:
+    # 1 Oct: every pass was costed as if lost where it was played, so a long ball out of trouble
+    # was never worth it (League Two sides played 3% long balls). Its failure is costed where it
+    # comes down, far from our goal.
+    from footsim.match.engine.behaviours import offside_line
+    from footsim.match.engine.pitch import loss_cost, threat
+
+    engine = _empty_engine(world, 10)
+    passer, striker = 3, 9  # a defender and a forward of the home side
+    engine.pos[passer], engine.pos[striker] = (25.0, 34.0), (70.0, 34.0)
+    engine.ball, engine.owner = np.array([25.5, 34.0]), passer
+    team = 0
+    pts = engine.att_points(team, engine.pos)
+    opps = engine.team_indices(1)
+    options = actions._pass_options(
+        engine, passer, team, [striker], pts, engine.vel * engine.attack_dir[team],
+        np.array([25.5, 34.0]), opps, pts[opps], 0.0, offside_line(pts[opps], 25.5), None)
+    utility, _, option = next(o for o in options if o[2].receiver == striker)
+    s = option.estimate
+    role = 0.01 * engine.role[passer].on_ball.pass_risk * (
+        float(threat(*option.target)) - float(threat(25.5, 34.0)))
+    lost_there = s * (float(threat(*option.target)) + actions.RETAIN) \
+        - (1 - s) * float(loss_cost(*option.target)) + role
+    assert option.lofted
+    assert utility == pytest.approx(lost_there, abs=0.004)  # (plus the directness term)
+    assert float(loss_cost(*option.target)) < float(loss_cost(25.5, 34.0)) / 3

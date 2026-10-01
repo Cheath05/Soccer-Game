@@ -51,9 +51,10 @@ def threat(x: Array | float, y: Array | float) -> Array:
     return result
 
 
-def loss_cost(x: float, y: float) -> float:
+def loss_cost(x: Array | float, y: Array | float) -> Array:
     """How costly losing the ball at (x, y) is: large near our own goal."""
-    return 0.02 + 0.32 * math.exp(-math.hypot(x, y - MID_Y) / 16.0)
+    result: Array = 0.02 + 0.32 * np.exp(-np.hypot(np.asarray(x), np.asarray(y) - MID_Y) / 16.0)
+    return result
 
 
 def in_box(x: float, y: float) -> bool:

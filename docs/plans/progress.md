@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3b part 2, first commit: pace moved to YAML (behaviour-neutral). The commit right after it only filled in this hash.
+- **Checkpoint commit:** fa88821, Step 2.3b part 2, first commit: pace moved to YAML (behaviour-neutral). The commit right after it only filled in this hash.
   - Earlier: the part 1 code fa82a79; its measurement e3e299c.
 - **Engine:** behaviour unchanged. The golden values pass unchanged; the last change to them was fa82a79.
 - **Completed at this checkpoint:**

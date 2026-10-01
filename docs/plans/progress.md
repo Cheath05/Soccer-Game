@@ -122,6 +122,16 @@
   - the card rules;
   - stale duel engagements (2.4);
   - counter holds after the side already in possession gains a loose ball (E).
+- **Measured on 1 Oct (`ref-p7`), with the step that owns each:**
+  - **ENG1 shot excess** (37.5 a match):
+    - Its sides get into the box 27 times per team per match, against ENG4's 17, and each box entry yields 0.6–0.7 shots.
+    - The shots are mostly inside the box (16–22% from outside, real 30–42%) and weak (0.06–0.07 xG, real 0.09–0.12).
+    - Stronger attacks beat stronger defences too easily: 2.3f (attack against defence by rating). Then shot selection under pressure in the box.
+  - **Heavy touches:** 94 a match in ENG4 and 66 in ENG1, about 9% of receptions against roughly 3% in real football.
+    - `control.receiver` 0.95, with `touch_skill` 0.1, gives an ordinary player about 92% clean control before any pressure.
+    - 2.3e: control by rating.
+  - **Pass accuracy falls as quality rises** in ENG1 (.927 for sides rated 70–75, .895 for 80–85). Real football is the other way round.
+    - Weaker sides played safe, sideways and backwards; P11's long-ball value should change that. Check in `ref-p11`, then in 2.3e.
 - **Play-testing on :8000, the user's game.** It runs 66a92c7 (play-test fixes P1–P5), restarted at 01:40 on 1 Oct after a check showed no connections. Earlier: 17635e6 from 01:28, and 1de6591 from 21:37 on 30 Sep.
   - The log is `/private/tmp/claude-502/demo-server.log`. Earlier builds' logs are kept next to it as `demo-server-20260928-build.log`, `demo-server-1de6591-build.log` and `demo-server-17635e6-build.log`.
   - A restart clears the loaded career, so the user loads it again from the start page. Both slots were listed unchanged after the restart.
@@ -291,7 +301,10 @@ The user asked whether the engine or the management features (transfers, academy
 - [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.
-  - **Checked:** `e2e/smoke.mjs` (one week; no news that week). Still to check: a season-end sim in a browser, after the P7 batch.
+  - **Checked:**
+    - `e2e/smoke.mjs`: one week, no news that week.
+    - The new `e2e/season.mjs`: a whole Arsenal season simmed from the browser. "The season is over. Now Thu, 1 Jul 2027", then a separate Season summary: "4th in the Premier League · Won 18, drawn 9, lost 11 · goals 88–72 · 63 points". No browser errors.
+  - **Follow-up fix:** "End of season" asked for the season's end + 60 days. From 1 July that is over the job's 400-day limit, so it was refused (400) from a season's start; it worked mid-season. It now asks for the day after the calendar's end, and the rollover stops it.
 - [x] P9 **Only 3 formations:** eight more, as data: 3-5-2, 3-4-3, 3-4-2-1, 5-3-2, 5-4-1, 4-1-4-1, 4-4-1-1 and 4-1-2-1-2 (diamond), 11 in all.
   - Wing-backs take their attacking width from the `wing_back` role. The slots only drop them into a back five without the ball.
   - The user picks them on the tactics screen and during matches.

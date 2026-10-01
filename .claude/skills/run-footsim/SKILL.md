@@ -47,6 +47,9 @@ node e2e/smoke.mjs http://127.0.0.1:8765 $OUT && node e2e/live.mjs http://127.0.
 ```
 
 - `live.mjs` starts a Liverpool career and watches a match, covering speed, half-time, subs, the player card, Instant and the report.
+  - It also checks the picture never skips ahead after slowing down, and that a goal holds the picture while its banner shows.
+- `smoke.mjs` also sims a week from the header's "Sim to…" menu.
+- `season.mjs` (slow: several minutes) sims a whole season from a new Arsenal career. It checks that the results window comes first and the season summary opens separately after it. It isn't part of `just e2e`.
 - Screenshots land in `$OUT`. Read them with the Read tool.
 - `just e2e` runs `smoke.mjs` and `live.mjs` against :8765 by default.
 - Every script starts a new career, which overwrites save slot 1. So `e2e/target.mjs` first asks the server (`GET /api/health`) where it keeps its saves.

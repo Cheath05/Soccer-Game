@@ -102,8 +102,8 @@ export default function SimToDate({ career, matchToday }: { career: Career; matc
   }
   const tomorrow = addDays(career.date, 1)
   const latest = addDays(career.date, MAX_DAYS)
-  // The season ends with its play-offs; the sim stops at the season's end on its own.
-  const endOfSeason = addDays(career.season_end, 60)
+  // The season's calendar ends after its play-offs; the rollover on that day stops the sim.
+  const endOfSeason = addDays(career.season_end, 1)
 
   let progress = 0
   if (job) {

@@ -16,11 +16,18 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (1 Oct, evening):** P17, the cups (this commit; the next commit records its hash and the :8000 restart). Round 4 of the user's play-test ("Play-test round 4" below):
+- **Latest checkpoint (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
   - P15, the up/down arrows by a player's overall: e959fe4;
   - P16, club histories and past final tables: 3630131;
   - 2.3c iteration 4, crosses and long balls estimated as the physics plays them, still behind the switch: 09b1242. It was measured on real squads, which recorded the conflict that keeps the switch off and also found P14's side effect on goals;
-  - P17, the FA Cup and the Carabao Cup: this commit.
+  - P17, the FA Cup and the Carabao Cup: d5c1d9d. Follow-up 7376d17: a save from before the cups starts them this season if their first round is ahead.
+  - **:8000 runs 7376d17,** restarted at 14:54 on 1 Oct. It had been restarted on d5c1d9d at 14:49, and on e91f9ca at 10:59. Each time there were no connections and no sim running. Logs: `demo-server-e91f9ca-build.log` and `demo-server-d5c1d9d-build.log`.
+    - **The user's careers:**
+      - slot 1: Grimsby, 2026;
+      - slot 2: Wrexham, manual save 22 Jan 2028;
+      - slot 3: Chelsea, a new career started today, saved on 1 Jul 2028.
+    - Loading migrates the working copy: schema 7, potentials moved with P14's overall, the trend column, cup ties.
+    - Chelsea's cups start on its first day played; Wrexham's from 2028-29.
   - **Next task, re-ordered by 2.3c's measurement:**
     1. **2.3f, attack against defence by rating, with box defending.** With honest estimates a safe short option is always there and passes into the box complete about 90%, so shots double. 2.3f has to make defending and pressing cover options before honest estimates can be switched on.
     2. Then switch 2.3c on and calibrate the decision values (long-ball share and cross share in range).

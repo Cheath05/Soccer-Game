@@ -17,10 +17,14 @@ The user plays their career here (slot 1: Grimsby, League Two). Restart it only 
    ```bash
    cd /Users/alexbenton/Developer/Soccer-Game/frontend && npm run build
    kill $(lsof -ti tcp:8000 -sTCP:LISTEN)        # the old server
-   cd /Users/alexbenton/Developer/Soccer-Game/backend && uv run --frozen uvicorn footsim.api.app:app --host 127.0.0.1 --port 8000
+   cd /Users/alexbenton/Developer/Soccer-Game/backend && (nohup uv run --frozen uvicorn footsim.api.app:app --host 127.0.0.1 --port 8000 > /private/tmp/claude-502/demo-server.log 2>&1 &)
    ```
-   Start the last command with `run_in_background: true`.
-4. Confirm that `curl -s http://127.0.0.1:8000/api/health` answers. Tell the user they may need to load their save again.
+   - The subshell and `nohup` detach the server, so it outlives the Claude session.
+   - Don't start it as a background task: that ties the server to the session.
+   - Copy the old log aside first if it might explain a problem the user hit.
+4. **Confirm it's the new build.** `curl -s http://127.0.0.1:8000/api/health` answers, and `curl -s http://127.0.0.1:8000/ | grep -o 'assets/index-[^"]*'` names the bundle you just built. Tell the user to load their save again.
+
+**Rebuild and restart together.** The server reads `frontend/dist` from disk on every request, but loads its Python code only at start. So a rebuild alone, even one for a :8765 test, gives the user's game a new frontend over an old API. That happened between 28 and 30 Sep. Note in `progress.md` which commit :8000 runs.
 
 ## Throwaway test server (port 8765): for all automated checks
 

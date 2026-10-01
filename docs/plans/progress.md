@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it fills in this hash and records the :8000 restart.
+- **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
   - Earlier: Step 2.3c WIP iteration 2 0f96176 (iteration 1 eeb5239); 2.3b complete at d7ccf17; 2.3a a9a8ced.
 - **Engine:** behaviour changed on purpose. The Mac's golden values were re-recorded, with a History note. 2.3c is still behind `estimate.honest` (off).
@@ -76,7 +76,9 @@
   - the card rules;
   - stale duel engagements (2.4);
   - counter holds after the side already in possession gains a loose ball (E).
-- **Play-testing on :8000, the user's game.** The next commit records its restart on this build.
+- **Play-testing on :8000, the user's game.** It runs 1de6591, restarted at 21:37 on 30 Sep after a check showed no connections.
+  - The log is `/private/tmp/claude-502/demo-server.log`; the 28 Sep build's log is kept as `demo-server-20260928-build.log` next to it.
+  - A restart clears the loaded career, so the user loads it again from the start page. Both slots were listed unchanged after the restart.
   - Until 30 Sep its backend dated from 28 Sep (Phase A), while it served the 30 Sep frontend from `frontend/dist`. The frontend is read from disk; the backend isn't.
   - To update it later: `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill, once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.

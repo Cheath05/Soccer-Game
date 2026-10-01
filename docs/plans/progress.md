@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3b part 1 measured (docs only). The commit right after it only filled in this hash.
+- **Checkpoint commit:** e3e299c, Step 2.3b part 1 measured (docs only). The commit right after it only filled in this hash.
   - The part 1 code is fa82a79.
   - Earlier: 0a 05fcd7d, 0b 4fb1b24, 0c 2bb32e2; 2.3a a9a8ced.
 - **Engine:** unchanged since fa82a79. The golden values were re-recorded there.

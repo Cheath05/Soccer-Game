@@ -28,10 +28,7 @@
       - slot 3: Chelsea, a new career started today, saved on 1 Jul 2028.
     - Loading migrates the working copy: schema 7, potentials moved with P14's overall, the trend column, cup ties.
     - Chelsea's cups start on its first day played; Wrexham's from 2028-29.
-  - **Next task, re-ordered by 2.3c's measurement:**
-    1. **2.3f, attack against defence by rating, with box defending.** With honest estimates a safe short option is always there and passes into the box complete about 90%, so shots double. 2.3f has to make defending and pressing cover options before honest estimates can be switched on.
-    2. Then switch 2.3c on and calibrate the decision values (long-ball share and cross share in range).
-    3. 2.3e (control by rating), 2.4 (fouls and cards), Phase D (lets the through-ball stopgap go), then transfers and the academy.
+  - **Next task:** the approved order (1 Oct), section "The approved order (1 Oct)" below. It starts with 2.3f.
   - **Note:** during P17's first full test run, `test_live_safety` hung for over 10 minutes right after `test_clubs` had failed. It passed on its own (23 s), and the whole suite passed once that failure was fixed. If it hangs again, run it with `-o faulthandler_timeout=60` to see where.
 - **Before that, the same day:** P14 at e91f9ca, the overall closer to the six headline ratings; P13 at 578342d, development by age and traits. :8000 ran e91f9ca from 10:59.
 - **Before that:** 4b779e9 (code at e8701a0, P12). The user's play-test fixes are done, each its own commit:
@@ -547,6 +544,32 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
     - `test_cups.py`: the formats add up, and leagues keep clear of the rounds that block them;
     - `tests/integration/test_cups_season.py`, a whole season: every round has the clubs it should, both cups reach a winner, every match is played, no club plays twice within two days, league matches stay within their league's dates, and the next season's first round is drawn.
     - a save from before the cups starts them on its first day if the first round is ahead, once only.
+
+## The approved order (1 Oct)
+
+The user asked when other leagues (with their differences in quality), transfers and academies should come. The recommendation was approved ("Start the plan"); the reasoning is in the addendum at the top of `continuation-plan.md`.
+
+The order, each its own checkpoint (or several):
+
+1. **Believable matches:**
+   - [ ] 2.3f, attack against defence by rating, with box defending. It's what keeps 2.3c off.
+   - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range).
+   - [ ] 2.3e, control by rating.
+   - [ ] 2.4, fouls and cards.
+2. - [ ] **B2, the fast engine** as a surrogate of the agent engine: the same goal, shot and home-advantage rates for the same ratings, checked by cross-engine tests. Moved up from Step 5.
+3. - [ ] **W1, retirement and a yearly youth intake** (academies, part one). Players retire, and every club gets a youth intake each year, better at clubs with better academies (reputation for now). Careers in 2028 already need it.
+4. - [ ] **W2, other leagues:**
+   - the top five (Spain, Italy, Germany, France) with their second divisions and promotion and relegation, then Portugal, the Netherlands, Scotland, Saudi Arabia, MLS and others;
+   - each with its calendar, played on the fast engine;
+   - their quality comes from player ratings. A league-environment setting is added only where real stats show a residual (the calibration principles);
+   - their players get minutes, so they develop (today players abroad barely do);
+   - their domestic cups if cheap.
+5. - [ ] **W3, finances:** TV money, wages, budgets and the board, by league. Most of the gap between leagues that a manager feels is here.
+6. - [ ] **W4, transfers:** valuations, AI buying and selling, bids and negotiation (fee, wage, length), loans, free agents and expiring contracts, and the windows (already in the calendar). Most big transfers cross borders, so this comes after W2.
+7. - [ ] **W5, academies in full:** facilities, youth squads, loaning young players out.
+8. - [ ] **W6, European competitions:** the Champions League (league phase), the Europa League and the Conference League, where the leagues meet on the pitch.
+
+**Alongside, in the time the management phases leave the CPU:** Phase D (D-pre to D7), Phase E, and the remaining engine steps: 2.3d, C1, 2.1, 2.6, C2, F2, G, J and K. Their measurement batches run while management code is written, as the cups were written during 2.3c's batches.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

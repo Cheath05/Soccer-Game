@@ -1,5 +1,23 @@
 # Continuation plan (30 Sep): finish Step 2.3, then C1, discipline, home advantage, baselines, Phase D
 
+> **Revised order, approved by the user on 1 Oct ("Start the plan").** From now on the order of
+> work is the list in `progress.md`, section "The approved order (1 Oct)". It keeps
+> this plan's calibration principles and working rules, and changes what comes after Step 2.3:
+> 1. Believable matches first: 2.3f, switching 2.3c on, 2.3e, then 2.4.
+> 2. B2, the fast engine as a surrogate of the agent engine, moves up from the end. It plays
+>    every match the user doesn't watch, and will play every match in the leagues added next.
+> 3. Then the world and the manager game, in order: retirement and a yearly youth intake, other
+>    leagues, finances, transfers, full academies, European competitions.
+> 4. Phase D, Phase E and the remaining engine steps (2.3d, C1, 2.1, 2.6, C2, F2, G, J, K) run
+>    alongside the management phases: their calibration batches run while management code is
+>    written.
+>
+> League quality comes from player ratings, as the principles below say. The EA FC 27 data
+> already ranks the leagues (best-XI averages: Premier League 79.7, La Liga 78.0, Serie A 77.0,
+> Bundesliga 76.8, Ligue 1 75.5). A league-environment setting is added only where real stats
+> show a residual that ratings don't explain. Leagues differ off the pitch through money and
+> prestige, which arrive with finances and transfers.
+
 ## Context
 
 You re-briefed the project after the compaction: the full vision, your play-test feedback, and the order of work (2.3 → C1 → 2.1 → 2.4 → 2.6 → Phase D). You asked for a status assessment first, then to carry on without restarting anything.

@@ -83,6 +83,7 @@ class MatchEngine:
         self.target = np.zeros((n, 2))
         self.urgent = np.zeros(n, dtype=bool)
         self.running = np.zeros(n, dtype=bool)  # making a forward run
+        self.settle = np.zeros(n, dtype=bool)  # going to a fixed spot: a restart's taker
         self.active = np.ones(n, dtype=bool)
         self.attr = np.zeros((n, len(ATTR_INDEX)))
         self.max_speed = np.zeros(n)
@@ -423,12 +424,14 @@ class MatchEngine:
             if len(rivals) and float(np.min(norms(self.pos[rivals] - self.pos[self.owner],
                                                             axis=1))) < 2.5:
                 top[self.owner] *= 0.75  # tight control under pressure
-        cruise = np.where(dist > 6, 0.62 * top, np.where(dist > 1.5, 0.4 * top, 0.9 * dist))
+        cruise = np.where(dist > 6, behaviours.JOG * top,
+                          np.where(dist > 1.5, 0.4 * top, 0.9 * dist))
         # A forward runner holding the offside line eases off in time to stop on his mark (the
         # speed from which his acceleration can still halt him in the distance left) instead
-        # of overrunning into an offside position. Players chasing a moving ball or man keep
+        # of overrunning into an offside position, and a restart's taker stops on the ball
+        # instead of running past it and back. Players chasing a moving ball or man keep
         # full speed: their targets move with what they chase.
-        holding = self.running.copy()
+        holding = self.running | self.settle
         if self.owner >= 0:
             holding[self.owner] = False
         arrive = np.minimum(top, np.sqrt(2.0 * self.accel * dist))

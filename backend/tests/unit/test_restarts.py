@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from footsim.core.rng import derive_rng
-from footsim.match.engine import behaviours
+from footsim.match.engine import behaviours, restarts
 from footsim.match.engine.engine import DT, MatchEngine
 from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH
 from footsim.match.synthetic import synthetic_sheet
@@ -145,6 +145,35 @@ def test_restarts_take_time_and_nobody_teleports(world: World) -> None:
     for e in corners:
         assert (e.data["box_attackers"] >= world.defs.restarts.min_corner_attackers
                 or e.data["wait"] >= world.defs.restarts.timing["corner"].max_setup)
+
+
+def test_a_taker_waits_on_the_ball_instead_of_running_past_it(world: World) -> None:
+    """Play-test, 30 Sep: a taker sprinting at the spot ran past it and back until the restart
+    was due, 6 to 19 turns a restart. Once he has reached the ball he stays on it."""
+    engine = _engine(world, seed=9)
+    current: tuple[object, int] | None = None
+    arrived: float | None = None
+    checked = 0
+    for _ in range(12000):
+        engine.step()
+        restart = engine.restart
+        if restart is None or not restart.placed or restart.taker is None:
+            current, arrived = None, None
+            continue
+        i = restart.taker
+        if current != (restart, i):  # a new restart, or a new taker for it
+            current, arrived = (restart, i), None
+        gap = float(np.linalg.norm(engine.pos[i] - np.array(restart.spot)))
+        if arrived is None:
+            if gap <= restarts.TAKER_REACH:
+                arrived = engine.t
+            continue
+        if engine.t - arrived >= 1.0:
+            checked += 1
+            speed = float(np.linalg.norm(engine.vel[i]))
+            assert gap <= restarts.TAKER_REACH, f"taker {i} {gap:.1f} m off at t={engine.t:.1f}"
+            assert speed < 1.0, f"taker {i} moving at {speed:.1f} m/s at t={engine.t:.1f}"
+    assert checked > 200
 
 
 def test_substitution_waits_for_a_stoppage(world: World) -> None:

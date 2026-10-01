@@ -31,6 +31,8 @@ corner_attackers: 5           # attackers who go into the box for a corner
 min_corner_attackers: 4       # a corner waits for this many in the box (until max_setup)
 long_throw_range: 32          # metres from goal within which a long throw is aimed at the box
 long_throw_strength: 75       # strength needed to throw it that far
+taker_hurry_margin: 2.0       # s: the taker jogs to the ball, and runs only if jogging would
+                              # get him there later than this before the restart is due
 
 # Game management: late on, a side that's ahead takes its time; one behind hurries.
 late_minute: 75

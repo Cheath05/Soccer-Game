@@ -20,6 +20,7 @@ from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RunType
 from footsim.match.engine import set_pieces
 from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH, norm, norms
+from footsim.match.engine.state import Restart
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -30,20 +31,32 @@ MARKING_GROUPS = {PositionGroup.CB, PositionGroup.FB, PositionGroup.DM, Position
 MARKING_GROUPS_HIGH_PRESS = MARKING_GROUPS | {PositionGroup.AM, PositionGroup.W}
 X_BACK, X_FRONT = 0.18, 0.70  # formation x of the back line and the strikers
 CANDIDATE_ANGLES = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+JOG = 0.62  # share of top speed a player not in a hurry covers ground at (MatchEngine)
 
 
 def update_targets(eng: "MatchEngine") -> None:
     eng.urgent[:] = False
     eng.running[:] = False
+    eng.settle[:] = False
     for team in (0, 1):
         _team(eng, team)
     if eng.restart is not None and eng.restart.taker is not None:
-        eng.target[eng.restart.taker] = eng.restart.spot
-        eng.urgent[eng.restart.taker] = True
+        _taker(eng, eng.restart, eng.restart.taker)
     if eng.owner >= 0:
         eng.target[eng.owner] = eng.carry_target if eng.carry_target is not None else eng.pos[
             eng.owner]
         eng.urgent[eng.owner] = eng.carry_urgent
+
+
+def _taker(eng: "MatchEngine", restart: Restart, i: int) -> None:
+    """The taker goes to the ball and stops on it. He jogs over while there's time, and runs
+    only if jogging would get him there too late."""
+    eng.target[i] = restart.spot
+    eng.settle[i] = True
+    distance = float(norm(eng.pos[i] - np.array(restart.spot)))
+    jog = JOG * float(eng.max_speed[i]) * (0.7 + 0.3 * float(eng.stamina[i]))
+    arrival = eng.t + distance / max(jog, 0.5) + eng.defs.restarts.taker_hurry_margin
+    eng.urgent[i] = arrival >= restart.ready_at
 
 
 def _phase(ball_x: float, attacking: bool) -> Phase:

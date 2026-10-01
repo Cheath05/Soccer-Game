@@ -69,6 +69,7 @@ class RestartsDef(DefModel):
     time_wasting: float = Field(gt=0)
     hurry: float = Field(gt=0)
     time_wasting_allowance: float = Field(ge=0, le=1)
+    taker_hurry_margin: float = Field(ge=0)  # s; the taker runs to the ball only if late
 
     @model_validator(mode="after")
     def _all_kinds(self) -> "RestartsDef":

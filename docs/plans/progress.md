@@ -17,8 +17,10 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **In progress: the user's play-test fixes** ("Play-test fixes" below), each its own commit. They come before 2.3c continues.
-  - P1 (hand-picked starters shown as 99) is done in the commit that ticks it.
-  - Next is P2 (the set-piece taker running back and forth).
+  - P1 (hand-picked starters shown as 99): 85a20ce.
+  - P2 (the set-piece taker running back and forth) is done in the commit that ticks it.
+  - Next is P3 (the live viewer skipping actions).
+  - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
   - Earlier: Step 2.3c WIP iteration 2 0f96176 (iteration 1 eeb5239); 2.3b complete at d7ccf17; 2.3a a9a8ced.
@@ -127,7 +129,13 @@ The user also said save files may be deleted if they ever get in the way of the 
   - Results were never inflated: the user's matches run on the agent engine, which plays from attributes.
   - Saves store only slot → player, so nothing stored was wrong.
   - Fixed: fixed players keep their real slot rating. `test_lineup.py` fails without the fix. Golden values unchanged.
-- [ ] P2 **The set-piece taker runs back and forth before the restart.** Reproduce, find the cause in the restart state machine or the taker's targets, fix, golden values.
+- [x] P2 **The set-piece taker ran back and forth before the restart.**
+  - **Cause:** the taker was an urgent player, and urgent players run at full speed with no braking, so he ran past the spot and back until the restart was due.
+  - **Traced** in 2 synthetic matches: 6–19 turns a restart (corners 19, throw-ins 9) at up to 8 m/s, overshooting by 3–6 m.
+  - **Fixed:** a `settle` flag gives the taker the arrival braking that forward runners already have. He jogs to the ball and runs only if jogging would make him late (`restarts.yaml` `taker_hurry_margin` 2 s).
+  - **After:** 0 turns, at most about 1 m of overshoot.
+  - **Restart waits are unchanged** on 4 seeds: throw-ins 15.6 s (before 16.3), goal kicks 27.1 (28.0), corners 31.7 (32.1). Ball in play 62.4 minutes (61.8).
+  - **Tests:** `test_a_taker_waits_on_the_ball_instead_of_running_past_it` fails without the fix. Mac golden values re-recorded with a History note.
 - [ ] P3 **The live viewer skips actions:** a pass reaches a player, then the picture jumps to the other side in possession. Measure the gaps in the frame stream at each speed and in highlights, then fix.
 - [ ] P4 **Goals:** a 3-second pause and a banner with the scorer and any assist. Presentation only: the result must not change.
 - [ ] P5 **Sim to date** (Phase I, basic): continue to a chosen date, a week, a month or the season's end, playing the user's matches instantly, with stop conditions.

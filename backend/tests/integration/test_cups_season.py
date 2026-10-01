@@ -65,3 +65,27 @@ def test_a_season_of_cups(tmp_path: Path) -> None:
         assert conn.execute(text("SELECT COUNT(*) FROM cup_tie WHERE season_id = 2")
                             ).scalar_one() > 0
     engine.dispose()
+
+
+def test_a_save_from_before_the_cups_starts_them_if_their_first_round_is_ahead(
+        tmp_path: Path) -> None:
+    """The user's Chelsea career was saved on 1 Jul, before cups existed: its new season still
+    gets them, its league matches moved around the ties."""
+    from footsim.world.meta import read_meta
+    from footsim.world.season import after_day
+
+    world = get_world()
+    path = tmp_path / "old.sqlite"
+    shutil.copy(BASE_WORLD, path)
+    engine = open_database(path)
+    migrate(engine)
+    with engine.begin() as conn:
+        initialize_career(conn, world, None, None, seed=6)
+        conn.execute(text("DELETE FROM fixture WHERE stage IN ('FA_CUP', 'EFL_CUP')"))
+        conn.execute(text("DELETE FROM cup_tie"))  # as a save from before the cups
+        meta = read_meta(conn)
+        messages = after_day(conn, world, meta, meta.current_date)
+        drawn = conn.execute(text("SELECT COUNT(*) FROM cup_tie WHERE round = 0")).scalar_one()
+        assert drawn == 36 + 16 + 16  # the Carabao Cup's 36 ties, the FA Cup's 16 and 16 byes
+        assert after_day(conn, world, meta, meta.current_date) == messages == []  # once only
+    engine.dispose()

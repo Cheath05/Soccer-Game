@@ -79,8 +79,8 @@ def _to_v6(conn: Connection) -> None:
 
 
 def _to_v7(conn: Connection) -> None:
-    """Cup ties. A career already under way gets its cups from its next season, when its
-    league fixtures are scheduled around them."""
+    """Cup ties. A career already under way starts its cups this season if their first round
+    is still to come (its league matches are moved around the ties), or else next season."""
     metadata.create_all(conn)
 
 

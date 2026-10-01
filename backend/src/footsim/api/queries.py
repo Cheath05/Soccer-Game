@@ -300,7 +300,9 @@ def cups(conn: Connection, world: World) -> list[CupSummaryOut]:
             else:
                 status = f"{'Out in' if run.out else 'In'} the {run.reached.lower()}"
         elif not ties:
-            status = "Starts next season"
+            first = season_calendar(world, meta, meta.season_id).cups[cup.key][0][0]
+            status = ("The draw is still to come" if meta.current_date < first
+                      else "Starts next season")
         result.append(CupSummaryOut(
             key=cup.key, name=cup.name, current_round=current, user_status=status,
             winner=ClubRef(id=winner, name=names[winner]) if winner else None))

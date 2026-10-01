@@ -527,7 +527,9 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
     - a Cups page: each round's ties and results, your tie highlighted, the rounds still to come, and a season picker;
     - round names on fixtures, the dashboard and the match day;
     - cup runs on club histories and in the season summary.
-  - **A career already under way** (the user's Wrexham save) gets cups from its next season, when its league fixtures can be scheduled around them.
+  - **A career already under way** starts its cups this season if their first round is still ahead: the first day played draws it, and league matches move around the ties as usual. Otherwise it starts them next season.
+    - The user's Chelsea career (slot 3, saved on 1 Jul 2028, a new season's first day) gets them this season.
+    - The Wrexham career (slot 2, 22 Jan 2028) gets them from 2028-29. On a copy simmed past the season's end, the rollover drew "Carabao Cup first round draw: Colchester v Wrexham (Tue 8 Aug)".
   - **Measured:** a whole watch-only season (`scratchpad/cup_season.py`, seed 5) takes about 20 s of quick-engine matches.
     - Arsenal won the FA Cup (3–1 against Spurs) and Aston Villa the Carabao Cup.
     - FA Cup: 91 matches, 18 went to extra time and 11 to penalties. Carabao Cup: 93 matches, 0 to extra time, 16 to penalties.
@@ -537,6 +539,7 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
   - **Tests:**
     - `test_cups.py`: the formats add up, and leagues keep clear of the rounds that block them;
     - `tests/integration/test_cups_season.py`, a whole season: every round has the clubs it should, both cups reach a winner, every match is played, no club plays twice within two days, league matches stay within their league's dates, and the next season's first round is drawn.
+    - a save from before the cups starts them on its first day if the first round is ahead, once only.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

@@ -82,10 +82,12 @@ def progress_cups(conn: Connection, world: World, meta: CareerMeta,
     messages: list[str] = []
     ids = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
     for cup in cups_in(world, calendar):
-        if cup.key not in ids:
-            continue
-        ties = _ties(conn, meta.season_id, ids[cup.key])
+        ties = _ties(conn, meta.season_id, ids[cup.key]) if cup.key in ids else []
         if not ties:
+            # A save from before the cups, in a season whose first round is still to come:
+            # start it now (its league matches are rearranged around the ties as usual).
+            if today + timedelta(days=REST_DAYS) < calendar.cups[cup.key][0][0]:
+                messages += _draw(conn, world, meta, calendar, cup, 0, today)
             continue
         current = max(t.round for t in ties)
         decided = []

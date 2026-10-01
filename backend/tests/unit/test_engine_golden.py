@@ -31,7 +31,8 @@ round 5's measured passing values made the defaults, intercept_scale 0.2 with th
 distance error, so the playable game is the one Step 2.3 measures (Mac only); a restart's
 taker jogging to the ball and stopping on it instead of running past it and back
 (play-test fix P2, Mac only); a pass receiver braking onto the ball's line instead of running
-through it (Step 2.3c, Mac only).
+through it (Step 2.3c, Mac only); round 5's long-ball errors kept for lofted balls only, the
+pressure on a pass scaled by the passer's composure (play-test fix P7, Mac only).
 """
 
 import json

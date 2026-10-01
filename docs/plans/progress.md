@@ -24,7 +24,7 @@
   - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
   - P5 (sim to date): 66a92c7.
   - :8000 restarted on 66a92c7 (P1–P5) at 01:40 on 1 Oct. It had no connections, and nothing had happened on it since the 01:28 restart.
-  - **Next task:** the user's play-test round 2 (below), in its order: P6 is done in the commit that ticks it; next P7. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching (use `--workers 3` then).
+  - **Next task:** the user's play-test round 2 (below), in its order: P6 9b3635a; P7 is done in the commit that ticks it, measurement next; then P8. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching (use `--workers 3` then).
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -231,12 +231,14 @@ The user asked whether the engine or the management features (transfers, academy
   - **After:** those passes fail 4.1%, matching the estimate. Medium passes complete .92 against .84 in the same synthetic matches.
   - Overall pass accuracy will rise, likely above the real ranges. P7 and 2.3e bring it back through mechanisms (execution by ratings, composure, pressure), not by undoing this.
   - **Tests:** `test_a_receiver_stops_on_the_balls_line_instead_of_running_through_it` (4.8 m/s at the ball without the fix). Mac golden values re-recorded with a History note.
-- [ ] P7 **Misplaced passes from the back without pressure** (the user: real teams rarely do it; suggested composure or pressure).
+- [x] P7 **Misplaced passes from the back without pressure** (the user: real teams rarely do it; suggested composure or pressure).
   - **Cause, measured:** e2's length error (`length_per_metre` 0.022) applies to ground passes too. A 20 m ground pass has a 44% length spread, so 48% are mis-hit by more than 30%, and soft back passes stop short.
-  - **Plan:**
-    - the long-ball length error for lofted balls only, with a ground pace error of its own;
-    - the pressure term scaled by composure, so a pass with no pressure is clean and a nervous player suffers more under it.
-  - Measure on 200 matches per division against `ref-2.3b2-p40`.
+  - **Done:**
+    - `execution` splits each distance term: `per_metre` 0.0015 and `length_per_metre` 0.008 for any pass (the original values), plus `lofted_per_metre` 0.0065 and `lofted_length_per_metre` 0.014 for a ball in the air. Lofted balls keep e2 exactly (0.008 / 0.022).
+    - `execution.composure` 0.5: pressure costs (1 − w) + w · 2 · (1 − composure/100), so 1 at composure 50, 0.7 at 80 and 1.2 at 30. With no opponent near, composure makes no difference.
+    - The estimate uses the same `pass_error`.
+  - **Tests:** `test_a_ball_in_the_air_goes_astray_more_than_one_on_the_ground` and `test_composure_decides_what_pressure_costs`. Mac golden values re-recorded with a History note.
+  - **Measurement** (P6 and P7 together, ENG4 and ENG1 at 200 matches, against `ref-2.3b2-p40`): recorded in the next commit.
 - [ ] P8 **Sim to the season's end:** its summary sits over the season summary, and closing it closes both.
 - [ ] P9 **Only 3 formations:** add the common ones as data.
 - [ ] P10 **Players develop as the season goes,** not only at its end (overall and attributes, from age, potential and playing time).

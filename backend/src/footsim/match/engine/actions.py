@@ -340,20 +340,25 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
 
 
 def pass_error(eng: "MatchEngine", team: int, skill: Any, pressure: float, fatigue: float,
-               distance: Any, lofted: Any, crowd: bool = True) -> tuple[Any, Any]:
+               distance: Any, lofted: Any, composure: float, crowd: bool = True
+               ) -> tuple[Any, Any]:
     """How far a pass can go astray: the spread of its direction (radians) and of its length
-    (a fraction of it), from the passer's skill, pressure, fatigue, the distance, the ball's
-    flight, the tempo and the crowd (passing.yaml ``execution``). One model for the pass
-    itself and for the passer's estimate of it (which leaves out the crowd: that's stress he
-    doesn't allow for). Works on single passes and on arrays of options alike."""
+    (a fraction of it), from the passer's skill, pressure (and his composure under it),
+    fatigue, the distance, the ball's flight, the tempo and the crowd (passing.yaml
+    ``execution``). A ball in the air goes astray more with distance than one on the ground.
+    One model for the pass itself and for the passer's estimate of it (which leaves out the
+    crowd: that's stress he doesn't allow for). Works on single passes and on arrays alike."""
     ex = eng.defs.passing.execution
-    spread = (ex.base + ex.skill * (1 - skill / 100) + ex.pressure * pressure
-              + ex.fatigue * fatigue + ex.per_metre * np.maximum(0.0, distance - 15)
+    calm = (1 - ex.composure) + ex.composure * 2 * (1 - composure / 100)
+    beyond = np.maximum(0.0, distance - 15)
+    spread = (ex.base + ex.skill * (1 - skill / 100) + ex.pressure * pressure * calm
+              + ex.fatigue * fatigue + (ex.per_metre + ex.lofted_per_metre * lofted) * beyond
               + ex.lofted * lofted)
     spread = spread * (1 + eng.effect(team, "tempo").hurry)  # hurried passes go astray more
     if crowd:
         spread = spread * eng.venue_bias(team, eng.defs.home_advantage.crowd.execution * pressure)
-    length_spread = ex.length_skill * (1.2 - skill / 100) + ex.length_per_metre * distance
+    length_spread = (ex.length_skill * (1.2 - skill / 100)
+                     + (ex.length_per_metre + ex.lofted_length_per_metre * lofted) * distance)
     return spread, length_spread
 
 
@@ -550,7 +555,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
                       eng.a(i, "long_passing") if dist > 25 else eng.a(i, "short_passing")
                       for kind, dist in zip(kinds, length, strict=True)])
     spread, length_spread = pass_error(eng, team, skill, pressure, 1 - float(eng.stamina[i]),
-                                       length, lofted, crowd=False)
+                                       length, lofted, eng.a(i, "composure"), crowd=False)
     # When it gets there: the ball's pace (a lofted ball's flight as start_pass plays it).
     friction = eng.roll_friction
     back = (target[:, 0] < pace.back_zone) & (target[:, 0] < float(ball[0]))
@@ -648,7 +653,8 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     if kind == "throw":
         skill = 85.0
     fatigue = 1 - float(eng.stamina[i])
-    spread, length_spread = pass_error(eng, team, skill, pressure, fatigue, distance, lofted)
+    spread, length_spread = pass_error(eng, team, skill, pressure, fatigue, distance, lofted,
+                                       eng.a(i, "composure"))
     angle_error = eng.rng.normal(0, spread)
     length_error = float(np.clip(eng.rng.normal(1.0, length_spread), 0.5, 1.6))
     angle = math.atan2(ty - by, tx - bx) + angle_error

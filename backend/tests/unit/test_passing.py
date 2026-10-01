@@ -177,3 +177,25 @@ def test_the_honest_estimate_reads_the_balls_own_models(world: World) -> None:
     assert 0.02 <= clear <= 0.98
     engine.pos[16] = (40.0, 34.0)  # an opponent right in the line
     assert estimate() < clear
+
+
+def test_a_ball_in_the_air_goes_astray_more_than_one_on_the_ground(world: World) -> None:
+    # Round 5's long-ball errors (e2) are a lofted ball's; a calm ground pass keeps the
+    # original, smaller ones (P7, 1 Oct: e2 on every pass mis-hit half of all 20 m passes).
+    engine = _empty_engine(world, 8)
+    ex = world.defs.passing.execution
+    ground = actions.pass_error(engine, 0, 75.0, 0.0, 0.0, 30.0, False, 60.0, crowd=False)
+    lofted = actions.pass_error(engine, 0, 75.0, 0.0, 0.0, 30.0, True, 60.0, crowd=False)
+    assert lofted[0] - ground[0] == pytest.approx(ex.lofted + ex.lofted_per_metre * 15)
+    assert lofted[1] - ground[1] == pytest.approx(ex.lofted_length_per_metre * 30)
+
+
+def test_composure_decides_what_pressure_costs(world: World) -> None:
+    engine = _empty_engine(world, 9)
+
+    def spread(pressure: float, composure: float) -> float:
+        return float(actions.pass_error(engine, 0, 75.0, pressure, 0.0, 20.0, False, composure,
+                                        crowd=False)[0])
+
+    assert spread(1.0, 35.0) > spread(1.0, 85.0)  # a nervous passer suffers more under it
+    assert spread(0.0, 35.0) == pytest.approx(spread(0.0, 85.0))  # nobody near: no difference

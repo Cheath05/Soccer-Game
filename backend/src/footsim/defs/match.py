@@ -125,11 +125,14 @@ class PassExecutionDef(DefModel):
     base: float = Field(ge=0)
     skill: float = Field(ge=0)
     pressure: float = Field(ge=0)
+    composure: float = Field(ge=0, le=1)  # how much the passer's composure decides pressure's cost
     fatigue: float = Field(ge=0)
-    per_metre: float = Field(ge=0)
+    per_metre: float = Field(ge=0)  # any pass
+    lofted_per_metre: float = Field(ge=0)  # more for a ball in the air
     lofted: float = Field(ge=0)
     length_skill: float = Field(ge=0)
-    length_per_metre: float = Field(ge=0)
+    length_per_metre: float = Field(ge=0)  # a ground pass's pace
+    lofted_length_per_metre: float = Field(ge=0)  # more for where a ball in the air lands
 
 
 class ControlDef(DefModel):

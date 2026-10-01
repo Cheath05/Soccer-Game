@@ -10,15 +10,18 @@
 execution:
   base: 0.015            # radians of direction error for anyone
   skill: 0.10            # extra error for a passer with no skill at all (scaled by 1 - skill)
-  pressure: 0.07         # extra error with an opponent right on him
+  pressure: 0.07         # extra error with an opponent right on him...
+  composure: 0.5         # ...which his composure decides: scaled by (1 - w) + w * 2 * (1 -
+                         # composure / 100), so 1 at composure 50, 0.7 at 80, 1.2 at 30
   fatigue: 0.03          # extra error when exhausted
-  per_metre: 0.008       # extra error per metre beyond 15 m
+  per_metre: 0.0015      # extra error per metre beyond 15 m, for any pass
+  lofted_per_metre: 0.0065  # and more for a ball in the air: 0.008 in all, round 5's "e2"
   lofted: 0.015          # a ball in the air is harder to place
   length_skill: 0.07     # spread of how far the pass goes (fraction of its length)
-  length_per_metre: 0.022  # grows with distance: long balls are often over- or under-hit.
-                           # per_metre and length_per_metre are Step 2.3 round 5's "e2" values,
-                           # which every Step 2.3 measurement uses; provisional until 2.3e
-                           # fits them with the rating terms
+  length_per_metre: 0.008  # a ground pass's pace error grows with distance...
+  lofted_length_per_metre: 0.014  # ...and a ball in the air lands short or long far more: 0.022
+                                  # in all, e2. Round 5 measured e2 on every pass, which mis-hit
+                                  # calm ground passes (P7); provisional until 2.3e's rating terms
 control:
   receiver: 0.95         # the intended receiver, before first touch and pressure
   teammate: 0.85         # another teammate getting to it

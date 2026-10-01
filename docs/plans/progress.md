@@ -248,7 +248,14 @@ The user asked whether the engine or the management features (transfers, academy
   - The user picks them on the tactics screen and during matches.
   - **AI clubs still choose from 4-3-3, 4-2-3-1 and 4-4-2** (`world/context.py` `AI_FORMATIONS`), so calibration is unchanged. Widen that once Phase D gives formations real phase shapes.
   - `test_formations.py` plays five minutes in each. One synthetic match each against a 4-4-2 ran clean.
-- [ ] P10 **Players develop as the season goes,** not only at its end (overall and attributes, from age, potential and playing time).
+- [x] P10 **Players develop as the season goes,** not only at its end.
+  - The yearly model (`people/development.py`) now runs a twelfth at a time on the first of each month (`season.after_day` → `develop_players`), and the rollover no longer develops.
+    - Growth is compounded so twelve months add up to the year's.
+    - Decline is spread evenly, and the noise is scaled by √(1/12).
+    - Minutes count over the past twelve months.
+  - **News for the user:** a monthly "Player development." item names his players whose overall moved ("Improved: Harvey Cartwright 61→62 …").
+  - **Cost:** about 1 s per month on the full world (17,849 players).
+  - **Tests:** `test_development.py` (twelve months make a year; decline evenly). A year of monthly steps on a fresh Grimsby career changed 99% of players.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

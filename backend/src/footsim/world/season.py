@@ -2,6 +2,7 @@
 
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -34,7 +35,9 @@ from footsim.persistence.schema import (
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.meta import CareerMeta
-from footsim.world.squads import club_name, load_squad
+from footsim.world.squads import club_name, display_name, load_squad
+
+DEVELOPMENT_SHARE = 1 / 12  # of a year's development, applied on the first of each month
 
 
 @dataclass(frozen=True)
@@ -115,8 +118,11 @@ def _finalized(conn: Connection, competition_id: int, season_id: int) -> bool:
 
 
 def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
-    """Close finished leagues, start and advance play-offs. Returns news messages."""
+    """Close finished leagues, start and advance play-offs, and on the first of each month let
+    players develop. Returns news messages."""
     messages: list[str] = []
+    if day.day == 1:
+        messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
         if not _finalized(conn, cid, meta.season_id):
@@ -317,7 +323,6 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
         verb = "promoted to" if new_league.tier < old_league.tier else "relegated to"
         messages.append(f"{club_name(conn, club_id)} {verb} the {new_league.name}.")
 
-    _develop_players(conn, world, meta, old, calendar.season_start)
     _renew_contracts(conn, meta, calendar.season_start, calendar.season_end)
     conn.execute(text("UPDATE player_state SET season_yellows = 0"))
     meta.season_id = new
@@ -327,36 +332,71 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     return messages
 
 
-def _develop_players(conn: Connection, world: World, meta: CareerMeta, old_season: int,
-                     season_start: date) -> None:
+def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
+                    share: float) -> list[str]:
+    """Every player develops by ``share`` of a year (people/development.py): the young grow
+    toward their potential, faster with minutes played in the past twelve months, and the old
+    decline. Returns news of the user's players whose overall moved."""
     rows = conn.execute(text("""
-        SELECT p.id, p.birth_date, pl.pa_hidden,
+        SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date, pl.pa_hidden,
                (SELECT position FROM player_position pp WHERE pp.player_id = p.id
                 ORDER BY familiarity DESC LIMIT 1) AS position,
                COALESCE((SELECT SUM(minutes) FROM player_match pm JOIN fixture f
                          ON f.id = pm.fixture_id WHERE pm.player_id = p.id
-                         AND f.season_id = :season), 0) AS minutes
+                         AND f.date > :since AND f.date <= :day), 0) AS minutes
         FROM person p JOIN player pl ON pl.person_id = p.id
         ORDER BY p.id
-    """), {"season": old_season}).all()
+    """), {"since": (day - timedelta(days=365)).isoformat(), "day": day.isoformat()}).all()
     attrs_rows = {r.player_id: r for r in conn.execute(select(player_attr))}
     ids = [r.id for r in rows]
     matrix = np.array([[getattr(attrs_rows[i], a) for a in ATTRIBUTES] for i in ids], dtype=float)
+    groups = [world.defs.positions[r.position or "CM"].group for r in rows]
     inp = DevelopmentInput(
         attrs=matrix,
-        ages=np.array([age_on(date.fromisoformat(r.birth_date), season_start) for r in rows]),
+        ages=np.array([age_on(date.fromisoformat(r.birth_date), day) for r in rows]),
         potential=np.array([r.pa_hidden for r in rows], dtype=float),
-        groups=[world.defs.positions[r.position or "CM"].group for r in rows],
+        groups=groups,
         minutes=np.array([r.minutes for r in rows], dtype=float),
     )
     new = apply_development(world.defs, world.model, inp,
-                            derive_rng(meta.seed, "development", old_season))
+                            derive_rng(meta.seed, "development", day.isoformat()), share)
     changed = np.any(new != matrix, axis=1)
     params = [{"pid": ids[i], **{a: int(new[i, j]) for j, a in enumerate(ATTRIBUTES)}}
               for i in np.flatnonzero(changed)]
     if params:
         assignments = ", ".join(f"{a} = :{a}" for a in ATTRIBUTES)
         conn.execute(text(f"UPDATE player_attr SET {assignments} WHERE player_id = :pid"), params)
+    return _development_news(conn, world, meta, rows, groups, matrix, new)
+
+
+def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Sequence[Row[Any]],
+                      groups: list[Any], before: np.ndarray, after: np.ndarray) -> list[str]:
+    if meta.user_club_id is None:
+        return []
+    ours = {r.person_id for r in conn.execute(select(contract.c.person_id).where(
+        contract.c.club_id == meta.user_club_id, contract.c.is_active == 1))}
+    index = [k for k, r in enumerate(rows) if r.id in ours]
+    if not index:
+        return []
+    old = world.model.group_overalls(before[index])
+    new = world.model.group_overalls(after[index])
+    moves = []
+    for n, k in enumerate(index):
+        was, now = round(float(old[groups[k]][n])), round(float(new[groups[k]][n]))
+        if now != was:
+            r = rows[k]
+            name = display_name(r.first_name, r.last_name, r.known_as)
+            moves.append((now - was, f"{name} {was}→{now}"))
+    if not moves:
+        return []
+    up = [text_ for change, text_ in sorted(moves, key=lambda m: -m[0]) if change > 0]
+    down = [text_ for change, text_ in sorted(moves, key=lambda m: m[0]) if change < 0]
+    parts = []
+    if up:
+        parts.append(f"Improved: {', '.join(up)}.")
+    if down:
+        parts.append(f"Declined: {', '.join(down)}.")
+    return ["Player development. " + " ".join(parts)]
 
 
 def _renew_contracts(conn: Connection, meta: CareerMeta, season_start: date,

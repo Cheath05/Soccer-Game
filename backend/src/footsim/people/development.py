@@ -1,13 +1,15 @@
-"""Season-to-season player development (a first, annual version of design §16).
+"""Player development (design §16, first version).
 
-Each summer every player moves toward (young) or away from (old) their peak:
+Over a year every player moves toward (young) or away from (old) their peak:
   - under 28: a share of the gap to hidden potential, larger for younger players and for
-    players who got minutes last season;
+    players who got minutes in the past year;
   - 29 and over: decline that accelerates with age, hitting physical attributes first.
-The change is aimed at the player's overall in his main position group and spread over
-attributes by how much that group values them, so a striker improves mostly as a striker.
+It's applied a month at a time (``share`` 1/12), so squads change as the season goes. The
+change is aimed at the player's overall in his main position group and spread over attributes
+by how much that group values them, so a striker improves mostly as a striker.
 """
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -48,25 +50,28 @@ def _lookup(table: list[tuple[int, float]], value: float, default: float) -> flo
 
 
 def target_changes(inp: DevelopmentInput, overall: npt.NDArray[np.float64],
-                   rng: np.random.Generator) -> npt.NDArray[np.float64]:
+                   rng: np.random.Generator, share: float = 1.0) -> npt.NDArray[np.float64]:
+    """Each player's change in overall over ``share`` of a year. Growth closes the yearly share
+    of the gap to potential, compounded so that twelve monthly steps add up to the year's."""
     changes = np.zeros(len(inp.ages))
     for i, age in enumerate(inp.ages):
         if age <= 27:
             gap = max(0.0, inp.potential[i] - overall[i])
             minutes = _lookup(MINUTES_FACTOR, inp.minutes[i], HEAVY_MINUTES_FACTOR)
-            changes[i] = gap * _lookup(GROWTH_RATE, age, 0.1) * minutes
+            yearly = min(0.95, _lookup(GROWTH_RATE, age, 0.1) * minutes)
+            changes[i] = gap * (1 - (1 - yearly) ** share)
         else:
-            changes[i] = _lookup(DECLINE, age, LATE_DECLINE)
-        changes[i] += rng.normal(0, GROWTH_NOISE)
+            changes[i] = _lookup(DECLINE, age, LATE_DECLINE) * share
+        changes[i] += rng.normal(0, GROWTH_NOISE * math.sqrt(share))
     return changes
 
 
 def apply_development(defs: GameDefinitions, model: RatingModel, inp: DevelopmentInput,
-                      rng: np.random.Generator) -> npt.NDArray[np.float64]:
-    """Returns the new attribute matrix."""
+                      rng: np.random.Generator, share: float = 1.0) -> npt.NDArray[np.float64]:
+    """Returns the new attribute matrix after ``share`` of a year's development."""
     group_overalls = model.group_overalls(inp.attrs)
     overall = np.array([group_overalls[g][i] for i, g in enumerate(inp.groups)])
-    change = target_changes(inp, overall, rng)
+    change = target_changes(inp, overall, rng, share)
     new = inp.attrs.copy()
     for i, group in enumerate(inp.groups):
         weights = np.zeros(len(ATTRIBUTES))

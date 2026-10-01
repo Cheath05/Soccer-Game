@@ -157,6 +157,10 @@ class EstimateDef(DefModel):
     reach_scale: float = Field(gt=0)  # m: how softly a receiver arriving late still gets it
     regather: tuple[float, float]  # heavy touch won back: no opponent near, one on top of him
     opponent_reaction: float = Field(ge=0)  # s before an opponent starts closing a pass's path
+    adjust: float = Field(ge=0, le=1)  # share of a receiver's spare running that adjusts to a
+                                       # pass that's off (he must read it, and turn)
+    closing: float = Field(ge=0, le=1)  # share of his running the nearest opponent spends
+                                        # closing the receiver down before the ball arrives
 
 
 class PassingDef(DefModel):

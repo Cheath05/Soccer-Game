@@ -43,7 +43,7 @@
   - A keeper in his own box reaches 2.4 m and gathers about 95%.
   - Only defenders already at a dropping ball, plus the one quickest to it, contest it.
   - Short throws are estimated with skill 85, as `start_pass` plays them.
-- **Quick check with the switch on** (`scratchpad/honesty_check.py`: 6 synthetic matches, f020e2 settings; indicative):
+- **Quick check with the switch on, iteration 2** (`scratchpad/honesty_check.py`: 6 synthetic matches, f020e2 settings; indicative):
   - throw-ins are honest (estimate gaps −0.03 to −0.01);
   - long balls are now slightly overrated (+0.05);
   - medium passes are still overrated (+0.10; the 0.8–0.9 decile completes 69%);
@@ -58,12 +58,36 @@
     - the territorial value of a long ball;
     - the passing-direction instruction's weight.
   - The acceptance check must include the pass mix (long-ball share and cross share in range), not only the reliability table.
+- **Iteration 3 (1 Oct, behind the switch), with `.claude/skills/calibrate-engine/estimate_parts.py`:**
+  - That diagnostic splits the estimate into its parts (`EstimateParts`: path, reach, arrive, secure) and compares each with what happened to the passes played.
+  - **What it found:**
+    - The overrating of ground passes was almost all balls that never reached the receiver: medium passes predicted .032, actual .115.
+    - Mostly that was physics: receivers overran the ball's line (fixed as P6), and e2's length error applies to ground passes too (P7).
+  - **The estimate now follows ground passes through their errors** (`_ground_arrival`):
+    - a 5×5 Gauss-Hermite grid over the angle and length errors;
+    - meeting points 0, 3, 6 or 10 m on along the path;
+    - soft balls stopping short;
+    - the arrival pace feeding the first touch.
+  - **Also:**
+    - first-touch pressure uses the marker's distance at the ball's arrival;
+    - the path counts an opponent from the ball's first metre (blocks) and one just beyond the receiver.
+    - Two fitted shares in `passing.yaml`: `estimate.adjust` 1.0 (a receiver's running after his read delay goes into getting to a pass that's off) and `estimate.closing` 0.25 (how much opponents close a pass's path and the receiver).
+  - **Result** (12 synthetic matches, qualities 62 and 78, P6 in; estimate against completed):
+
+    | Band | Estimate | Completed |
+    |---|---|---|
+    | Short | .942 | .926 |
+    | Medium | .906 | .876 |
+    | Throws | .842 | .829 |
+
+    - The 0.8–0.9 deciles are within +4.
+    - Medium's 0.6 decile is −9: interceptions and pressured touches are still over-predicted for risky passes.
+    - These move again with P7, so re-run the diagnostic after it.
 - **What remains for 2.3c, in order:**
-  1. Ground passes overrated by 6–10 points. Likely causes:
-     - the marker closes in during the pass, so first-touch pressure at arrival is higher than at the decision; use the marker's closing distance by the arrival;
-     - about 5% of passes are gathered late or loose;
-     - the flat re-gather [0.65, 0.2] may be generous.
-  2. Crosses underrated by about 13 points: check `_landing_chance` for crosses against `_aerial`'s attackers-near rule.
+  1. Ground passes: re-check after P7, and tune `adjust` and `closing` if the deciles moved.
+  2. Crosses underrated (estimate .03 against .15–.20 completed). Make `_landing_chance` and the arrival for crosses follow `_aerial`:
+     - any attacker within 3 m of where it drops can win it;
+     - with no defender there, he wins it outright, without a first-touch roll.
   3. Calibrate the decision values, as above.
   4. Then the reliability table within ±5 points per decile **and** the pass mix in range. Then the slow honesty test, switch it on, a 200-match measurement, golden values, delete `_heuristic_success`, and commit.
 - **Tests:**

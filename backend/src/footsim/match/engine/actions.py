@@ -45,6 +45,11 @@ CONTROL_RADIUS = 1.3
 TOUCH_HEIGHT = 2.0  # m: nobody can touch a ball higher than this
 TAKE_FLOOR = 0.05  # everyone in reach has at least this chance of getting to the ball
 SQRT2 = math.sqrt(2.0)
+# Nodes and weights for averaging over a standard normal error (Gauss-Hermite, 5 points):
+# the passer's estimate goes through the pass's execution errors without random draws.
+_NODES, _WEIGHTS = np.polynomial.hermite_e.hermegauss(5)
+_WEIGHTS = _WEIGHTS / _WEIGHTS.sum()
+_FURTHER = np.array([0.0, 3.0, 6.0, 10.0])  # m beyond the nearest point a receiver may take it
 KEEPER_REACH = 2.4  # arms: keepers gather balls further away in their own box
 KEEPER_DIVE = 2.5  # how far a keeper can throw himself to catch a shot
 NO_OFFSIDE = frozenset({"throw_in", "goal_kick", "corner"})  # restarts (Law 11)
@@ -379,6 +384,44 @@ def _run_distance(eng: "MatchEngine", players: np.ndarray, seconds: Any) -> Any:
     return np.where(seconds < ramp, 0.5 * accel * seconds**2, top * seconds - top**2 / (2 * accel))
 
 
+def _ground_arrival(eng: "MatchEngine", recv: np.ndarray, length: np.ndarray,
+                    spread: np.ndarray, length_spread: np.ndarray, arrive: np.ndarray,
+                    read: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """For ground passes: the chance the ball comes within the receiver's reach, and the pace
+    factor on his first touch when it does, averaged over the pass's angle and length errors
+    (start_pass's, at Gauss-Hermite nodes). A ball struck off line passes him at a distance
+    he must cover after reading it (``estimate.adjust`` of his running, fitted); one
+    struck too softly stops short and he must come to it before it's lost; one struck too hard
+    gets there sooner and faster."""
+    friction = eng.roll_friction
+    # Axes: option, angle node, length node, and where along its path he meets it.
+    angle = spread[:, None, None, None] * _NODES[None, :, None, None]
+    factor = np.clip(1 + length_spread[:, None, None, None] * _NODES[None, None, :, None],
+                     0.5, 1.6)
+    distance = length[:, None, None, None]
+    v0 = np.sqrt(arrive[:, None, None, None] ** 2 + 2 * friction * factor * distance)
+    stops = v0**2 / (2 * friction)  # how far it rolls
+    along = distance * np.cos(angle)  # level with where he was meant to take it...
+    perp = distance * np.abs(np.sin(angle))  # ...and this far to its side
+    # He may take it where it passes nearest, or further on as it rolls (a runner chasing a
+    # ball going his way): a few points along its path, up to where it stops.
+    meet = np.minimum(along + _FURTHER[None, None, None, :], stops)
+    v_meet = np.sqrt(np.maximum(v0**2 - 2 * friction * meet, 0.0))
+    t_meet = (v0 - v_meet) / friction
+    need = np.hypot(perp, meet - along)
+    run = eng.defs.passing.estimate.adjust * _run_distance(
+        eng, recv[:, None, None, None], t_meet - read[:, None, None, None])
+    can = run + CONTROL_RADIUS >= need
+    first = np.argmax(can, axis=3)  # the earliest point he can make
+    reached = can.any(axis=3).astype(float)
+    v_first = np.take_along_axis(v_meet, first[..., None], axis=3)[..., 0]
+    weight = _WEIGHTS[None, :, None] * _WEIGHTS[None, None, :]
+    p_arrive = (reached * weight).sum(axis=(1, 2))
+    pace = np.where(reached > 0, 1 - np.maximum(0.0, v_first - 15) / 30, 0.0)
+    mean_pace = (pace * weight).sum(axis=(1, 2)) / np.maximum(p_arrive, 1e-9)
+    return p_arrive, np.where(p_arrive > 0, mean_pace, 1.0)
+
+
 def _low_flight(length: np.ndarray, flight: np.ndarray) -> np.ndarray:
     """How far from the passer a lofted ball is still low enough to touch (start_pass's
     flight: it rises at g * flight / 2)."""
@@ -464,11 +507,35 @@ def _heuristic_success(eng: "MatchEngine", i: int, receivers: list[int], kinds: 
     return success
 
 
+@dataclass
+class EstimateParts:
+    """The passer's estimate of each pass option, part by part (_estimate_parts)."""
+
+    path: np.ndarray  # no opponent picks it up on the way
+    reach: np.ndarray  # the receiver gets to where it's going
+    arrive: np.ndarray  # it comes within his reach, given the slack his run leaves him
+    secure: np.ndarray  # he keeps it: his first touch, or the contest where a lofted ball lands
+
+    def success(self) -> np.ndarray:
+        result: np.ndarray = np.clip(self.path * self.reach * self.arrive * self.secure,
+                                     0.02, 0.98)
+        return result
+
+
 def _estimate_success(eng: "MatchEngine", i: int, team: int, receivers: list[int],
                       kinds: list[str], target: np.ndarray, length: np.ndarray,
                       lofted: np.ndarray, ball: np.ndarray, opps: np.ndarray,
                       opp_pts: np.ndarray, pts: np.ndarray, pressure: float,
                       mode: str | None = None) -> np.ndarray:
+    return _estimate_parts(eng, i, team, receivers, kinds, target, length, lofted, ball, opps,
+                           opp_pts, pts, pressure, mode).success()
+
+
+def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
+                    kinds: list[str], target: np.ndarray, length: np.ndarray,
+                    lofted: np.ndarray, ball: np.ndarray, opps: np.ndarray,
+                    opp_pts: np.ndarray, pts: np.ndarray, pressure: float,
+                    mode: str | None = None) -> EstimateParts:
     """The passer's estimate of each pass succeeding, from the models the pass is then played
     with: his execution spread (pass_error), the ball's pace (passing.yaml ``pace``), opponents
     picking it up on the way (_take_chance), the receiver getting there and reading it
@@ -498,11 +565,17 @@ def _estimate_success(eng: "MatchEngine", i: int, team: int, receivers: list[int
     covered = _run_distance(eng, recv, t_arrive)
     p_reach = np.exp(-np.maximum(0.0, gap - covered) / est.reach_scale)
     read = np.array([_read_delay(eng, int(j)) for j in receivers])
-    slack = CONTROL_RADIUS + np.maximum(
+    # The running he has to spare once he has read it goes into adjusting to a pass that's off
+    # (``estimate.adjust`` of it, fitted to how receivers do in the physics).
+    slack = CONTROL_RADIUS + est.adjust * np.maximum(
         0.0, covered - np.maximum(gap, _run_distance(eng, recv, read)))
-    p_arrive = erf(slack / (SQRT2 * np.maximum(length * spread, 1e-6)))
-    p_arrive = np.where(lofted, p_arrive * erf(
-        slack / (SQRT2 * np.maximum(length * length_spread, 1e-6))), p_arrive)
+    # A lofted ball lands off by its angle and length errors; he gets there if it's within his
+    # slack. A ground ball is followed through its errors as the physics plays it.
+    p_arrive = (erf(slack / (SQRT2 * np.maximum(length * spread, 1e-6)))
+                * erf(slack / (SQRT2 * np.maximum(length * length_spread, 1e-6))))
+    ground_arrive, ground_pace = _ground_arrival(eng, recv, length, spread, length_spread,
+                                                 arrive, read)
+    p_arrive = np.where(lofted, p_arrive, ground_arrive)
     # Opponents picking it up on the way: anywhere short of the receiver for a ground pass, and
     # only while a lofted ball is still low near the passer (where it lands is contested below).
     p_path = np.ones(len(recv))
@@ -516,11 +589,13 @@ def _estimate_success(eng: "MatchEngine", i: int, team: int, receivers: list[int
         t_ball = np.where(lofted[:, None], s * (flight / length)[:, None],
                           (v0[:, None] - v_s) / friction)
         speed = np.where(lofted[:, None], (length / flight)[:, None], v_s)
-        closing = _run_distance(eng, opps[None, :], t_ball - est.opponent_reaction)
+        closing = est.closing * _run_distance(eng, opps[None, :], t_ball - est.opponent_reaction)
         off_line = np.maximum(0.0, perp - closing)
         low = _low_flight(length, flight)
-        touchable = (along > 1.0) & np.where(lofted[:, None], along < low[:, None],
-                                             along < length[:, None])
+        # A ground ball can be taken anywhere up to the receiver, including by a man just
+        # beyond him who steps across it.
+        touchable = (along > 0.0) & np.where(lofted[:, None], along < low[:, None],
+                                             along < length[:, None] + CONTROL_RADIUS)
         # A keeper in his own box reaches further and gathers almost everything (as
         # resolve_loose_or_pass plays him).
         near = ball[None, None, :] + unit[:, None, :] * s[..., None]
@@ -537,15 +612,20 @@ def _estimate_success(eng: "MatchEngine", i: int, team: int, receivers: list[int
         take = np.where(keeper, gather, take)
         take = np.where(touchable & (off_line < reach), take, 0.0)
         p_path = np.prod(1 - take, axis=1)
-    # Securing it: his first touch under pressure, and a heavy touch won back or not.
-    marker = (norms(target[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1)
-              if len(opps) else np.full(len(recv), 20.0))
+    # Securing it: his first touch under pressure, and a heavy touch won back or not. The
+    # pressure is the nearest opponent's when the ball gets there, after he has closed in.
+    if len(opps):
+        to_target = norms(target[:, None, :] - opp_pts[None, :, :], axis=2)
+        closed = est.closing * _run_distance(eng, opps[None, :],
+                                             t_arrive[:, None] - est.opponent_reaction)
+        marker = np.maximum(0.0, to_target - closed).min(axis=1)
+    else:
+        marker = np.full(len(recv), 20.0)
     close = np.clip((control.pressure_radius - marker) / control.pressure_radius, 0.0, 1.0)
     touch = eng.attr[recv, ATTR_INDEX["first_touch"]]
     w = control.touch_skill
-    arrival_speed = np.where(lofted, length / flight, arrive)
-    first_touch = (control.receiver * ((1 - w) + w * touch / 100)
-                   * (1 - np.maximum(0.0, arrival_speed - 15) / 30)
+    pace_factor = np.where(lofted, 1 - np.maximum(0.0, length / flight - 15) / 30, ground_pace)
+    first_touch = (control.receiver * ((1 - w) + w * touch / 100) * pace_factor
                    * (1 - control.pressure_penalty * close * (1 - touch / 100)))
     free, pressed = est.regather
     regather = free - (free - pressed) * close
@@ -554,8 +634,7 @@ def _estimate_success(eng: "MatchEngine", i: int, team: int, receivers: list[int
         secure[k] = _landing_chance(eng, int(recv[k]), target[k], float(flight[k]),
                                     bool(cross[k]), opps, opp_pts, float(secure[k]),
                                     float(regather[k]))
-    success: np.ndarray = np.clip(p_path * p_reach * p_arrive * secure, 0.02, 0.98)
-    return success
+    return EstimateParts(p_path, p_reach, p_arrive, secure)
 
 
 def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], lofted: bool,

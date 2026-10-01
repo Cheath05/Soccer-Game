@@ -47,6 +47,11 @@ estimate:                 # the passer's estimate of a pass, where the ball's mo
   regather: [0.65, 0.2]   # a heavy touch won back by his side: nobody near, an opponent on him
                           # (measured after Step 2.3b: about half overall)
   opponent_reaction: 0.35 # s before an opponent starts closing a pass's path
+  adjust: 1.0             # share of a receiver's running after his read delay that goes into
+                          # getting to a pass that's off (fitted to the physics: all of it, once
+                          # receivers stop on the ball's line)
+  closing: 0.25           # share of his running the nearest opponent spends closing the
+                          # receiver down before the ball arrives (fitted to the physics)
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)

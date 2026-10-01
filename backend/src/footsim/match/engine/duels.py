@@ -109,8 +109,6 @@ def _tackle_rate(eng: "MatchEngine", k: int, i: int) -> float:
     rate = p.tackle_rate * p.pressing_commitment.get(pressing, 1.0)
     rate *= 0.6 + eng.a(k, "aggression") / 250
     rate *= 0.7 + 0.3 * float(eng.stamina[k])
-    if eng.yellows[k]:
-        rate *= p.booked_caution
     if in_own_box(*eng.to_att(team, float(eng.pos[i, 0]), float(eng.pos[i, 1]))):
         rate *= p.careful_in_own_box
     return rate
@@ -128,8 +126,10 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
     foul *= (1.3 if sliding else 1.0) * (1.25 if from_behind else 1.0)
     if in_own_box(carrier_x, carrier_y):
         foul *= p.box_foul_scale
-    # (A booked player's caution is in how often he tackles: _tackle_rate. Applying it here as
-    # well made second yellows almost impossible.)
+    if eng.yellows[k]:
+        # A booked player stays on his feet, whoever starts the duel. (It also cut how often he
+        # tackled until 2.4: applied twice, it made second yellows almost impossible.)
+        foul *= p.booked_caution
     foul *= eng.venue_bias(defending, eng.defs.home_advantage.referee.foul)
     kind = "take_on" if take_on else "tackle"
     if eng.rng.random() < foul:

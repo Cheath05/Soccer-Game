@@ -238,7 +238,29 @@ The user asked whether the engine or the management features (transfers, academy
     - `execution.composure` 0.5: pressure costs (1 − w) + w · 2 · (1 − composure/100), so 1 at composure 50, 0.7 at 80 and 1.2 at 30. With no opponent near, composure makes no difference.
     - The estimate uses the same `pass_error`.
   - **Tests:** `test_a_ball_in_the_air_goes_astray_more_than_one_on_the_ground` and `test_composure_decides_what_pressure_costs`. Mac golden values re-recorded with a History note.
-  - **Measurement** (P6 and P7 together, ENG4 and ENG1 at 200 matches, against `ref-2.3b2-p40`): recorded in the next commit.
+  - **Measured** (P6 and P7 together, real squads, seed 21, 200 matches per division, `reports/engine/step2.3/ref-p7`; before → after):
+
+    | | ENG4 | ENG1 | Real |
+    |---|---|---|---|
+    | Pass accuracy | .817 → .922 | .812 → .905 | PL .80–.85; EFL .74–.81 |
+    | Medium completed | .810 → .938 | .829 → .946 | ~.83–.87 |
+    | High regains | 41.8 → 19.5 | 31.2 → 15.8 | 10–17 |
+    | Throw-ins | 37.8 → 19.8 | 52.2 → 31.5 | PL 32–42; EFL 32–44 |
+    | Ball in play (min) | 65.3 → 75.3 | 58.1 → 65.8 | 52–60 |
+    | Goals | 2.92 → 1.61 | 3.67 → 3.11 | PL 2.65–3.05; EFL 2.45–2.85 |
+    | Shots | 30.0 → 20.7 | 37.1 → 37.5 | PL 23–27.5; EFL 22–26 |
+    | Long-ball share | .039 → .034 | .103 → .094 | PL .095–.14 |
+
+    - **Better:** the build-up leak is gone (high regains in range for ENG1, near it for ENG4), and ENG1's throw-in conflict is resolved.
+    - **Worse:** passing is too clean, so the ball is in play too long and ENG4 scores too little.
+    - **Not undone:** both fixes removed unrealistic mechanics, and undoing them would bring back the user's complaint.
+    - **The missing realism is the pass mix:** ENG4 plays fewer long balls than ENG1, the reverse of real football. See P11.
+- [ ] P11 **Decision values: a failed pass is lost where it fails** (2.3c item 3, brought forward).
+  - `_pass_options` charged every option the loss cost of the passer's own position, so a 40 m ball out of trouble was costed as if lost at the centre-back's feet. Long balls were almost never worth it.
+  - **Plan:**
+    - charge the loss where a pass fails: a lofted ball where it lands, a ground pass midway;
+    - charge a shot the possession it gives up when it doesn't score (shots ignored that, so players shot too readily);
+    - measure on 200 matches per division.
 - [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.

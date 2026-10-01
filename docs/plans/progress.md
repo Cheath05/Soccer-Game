@@ -20,8 +20,9 @@
   - P1 (hand-picked starters shown as 99): 85a20ce.
   - P2 (the set-piece taker running back and forth): 36fbd4f.
   - P3 (the live viewer skipping actions): d981315.
-  - P4 (goal pause and banner) is done in the commit that ticks it.
-  - Next is P5 (sim to date). Then restart :8000 so the user can play-test P1–P5.
+  - P4 (goal pause and banner): 17635e6.
+  - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
+  - Next is P5 (sim to date), then restart :8000 again.
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -83,8 +84,8 @@
   - the card rules;
   - stale duel engagements (2.4);
   - counter holds after the side already in possession gains a loose ball (E).
-- **Play-testing on :8000, the user's game.** It runs 1de6591, restarted at 21:37 on 30 Sep after a check showed no connections.
-  - The log is `/private/tmp/claude-502/demo-server.log`; the 28 Sep build's log is kept as `demo-server-20260928-build.log` next to it.
+- **Play-testing on :8000, the user's game.** It runs 17635e6 (play-test fixes P1–P4), restarted at 01:28 on 1 Oct after a check showed no connections. Before that it ran 1de6591, from 21:37 on 30 Sep.
+  - The log is `/private/tmp/claude-502/demo-server.log`. Earlier builds' logs are kept next to it as `demo-server-20260928-build.log` and `demo-server-1de6591-build.log`.
   - A restart clears the loaded career, so the user loads it again from the start page. Both slots were listed unchanged after the restart.
   - Until 30 Sep its backend dated from 28 Sep (Phase A), while it served the 30 Sep frontend from `frontend/dist`. The frontend is read from disk; the backend isn't.
   - To update it later: `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill, once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.

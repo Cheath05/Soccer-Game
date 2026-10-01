@@ -30,7 +30,8 @@ real travel times, arriving at 6 m/s plus 0.17 m/s a metre (Step 2.3b pace, Mac 
 round 5's measured passing values made the defaults, intercept_scale 0.2 with the e2
 distance error, so the playable game is the one Step 2.3 measures (Mac only); a restart's
 taker jogging to the ball and stopping on it instead of running past it and back
-(play-test fix P2, Mac only).
+(play-test fix P2, Mac only); a pass receiver braking onto the ball's line instead of running
+through it (Step 2.3c, Mac only).
 """
 
 import json

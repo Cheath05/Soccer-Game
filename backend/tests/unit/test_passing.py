@@ -88,6 +88,30 @@ def test_the_receiver_reads_a_pass_after_his_read_delay(world: World) -> None:
     assert not np.allclose(behaviours._meet_ball(engine, receiver), (50.0, 34.0))
 
 
+def test_a_receiver_stops_on_the_balls_line_instead_of_running_through_it(
+        world: World) -> None:
+    # A pass struck 3 m off line: once he has read it he gets across to its path and waits there
+    # for it, rather than running through the line at full speed (30 Sep: safe short passes
+    # failed twice as often as they should, receivers overrunning the ball).
+    engine = _empty_engine(world, 7)
+    passer, receiver = 5, 8
+    engine.pos[passer], engine.pos[receiver] = (30.0, 34.0), (50.0, 34.0)
+    engine.ball, engine.owner = np.array([30.5, 34.0]), passer
+    actions.start_pass(engine, passer, receiver, engine.to_att(0, 50.0, 34.0), False, "pass")
+    info = engine.pass_info
+    assert info is not None
+    off_line = np.array([50.0, 37.0]) - engine.ball
+    engine.ball_v = off_line / np.linalg.norm(off_line) * float(np.linalg.norm(engine.ball_v))
+    info.target = (50.0, 37.0)
+    engine.rng = _Rolls(engine.rng, 0.0)  # type: ignore[assignment]  # every roll succeeds
+    for _ in range(40):
+        engine.step()
+        if engine.owner == receiver:
+            break
+    assert engine.owner == receiver
+    assert float(np.linalg.norm(engine.vel[receiver])) < 3.5  # braking onto the line
+
+
 def test_a_heavy_touch_gets_away_from_the_player(world: World) -> None:
     # After a heavy touch he can't touch the ball again until his lockout ends, however close
     # it is: it's a contest, not a free second go.

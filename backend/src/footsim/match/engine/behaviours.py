@@ -155,6 +155,7 @@ def _team(eng: "MatchEngine", team: int) -> None:
         if eng.pass_info is not None and eng.pass_info.receiver == i and eng.state == "pass":
             eng.target[i] = _meet_ball(eng, i)
             eng.urgent[i] = True
+            eng.settle[i] = True  # he gets to the ball's line and waits there, not past it
             continue
         eng.target[i] = pitch[k]
     if eng.state == "loose" and attacking:

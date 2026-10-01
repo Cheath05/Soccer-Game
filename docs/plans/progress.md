@@ -24,7 +24,7 @@
   - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
   - P5 (sim to date): 66a92c7.
   - :8000 restarted on 66a92c7 (P1–P5) at 01:40 on 1 Oct. It had no connections, and nothing had happened on it since the 01:28 restart.
-  - **Next task:** back to the plan, 2.3c remaining items 1–4 below. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching.
+  - **Next task:** the user's play-test round 2 (below), in its order: P6 is done in the commit that ticks it; next P7. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching (use `--workers 3` then).
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -186,6 +186,36 @@ The user also said save files may be deleted if they ever get in the way of the 
     - `tests/integration/test_sim_to_date.py`: plays every user match before the date and none after; refuses Continue meanwhile; autosaves; stops on request; refuses a date not ahead.
     - `e2e/smoke.mjs` sims a week from the browser.
 - Later (the user agrees): transfers and the other management systems.
+
+## Play-test round 2 (the user, 1 Oct; each is its own checkpoint)
+
+The user asked whether the engine or the management features (transfers, academy) should come first, and to do whatever makes the game a finished product most effectively.
+
+**The order chosen:**
+1. **First, the engine problems the user can see in a match:** misplaced passes in build-up (P6, P7).
+2. **Then the cheap, visible fixes:**
+   - the sim summary covering the season summary (P8);
+   - more formations (P9);
+   - players developing during the season (P10).
+3. **Then 2.3c's remaining calibration and the rest of the plan.** The invisible parts are time-boxed.
+4. **Transfers and the academy come later,** each as its own phase once matches feel right. They are big systems, and half-built ones help nobody.
+
+- [x] P6 **Receivers ran through the ball's line.**
+  - A pass receiver is an urgent player, and urgent players never brake, so after reading a pass he sprinted at the nearest point of its path and overran it. The physics then had him miss passes he should take.
+  - **Found by 2.3c's honesty diagnostics:** safe-looking short passes (estimated 0.96) failed 8.0%. Two thirds of the failures were balls the receiver never got within 1.3 m of.
+  - **Fixed:** the receiver gets the arrival braking from P2 (`settle`), and stops on the line.
+  - **After:** those passes fail 4.1%, matching the estimate. Medium passes complete .92 against .84 in the same synthetic matches.
+  - Overall pass accuracy will rise, likely above the real ranges. P7 and 2.3e bring it back through mechanisms (execution by ratings, composure, pressure), not by undoing this.
+  - **Tests:** `test_a_receiver_stops_on_the_balls_line_instead_of_running_through_it` (4.8 m/s at the ball without the fix). Mac golden values re-recorded with a History note.
+- [ ] P7 **Misplaced passes from the back without pressure** (the user: real teams rarely do it; suggested composure or pressure).
+  - **Cause, measured:** e2's length error (`length_per_metre` 0.022) applies to ground passes too. A 20 m ground pass has a 44% length spread, so 48% are mis-hit by more than 30%, and soft back passes stop short.
+  - **Plan:**
+    - the long-ball length error for lofted balls only, with a ground pace error of its own;
+    - the pressure term scaled by composure, so a pass with no pressure is clean and a nervous player suffers more under it.
+  - Measure on 200 matches per division against `ref-2.3b2-p40`.
+- [ ] P8 **Sim to the season's end:** its summary sits over the season summary, and closing it closes both.
+- [ ] P9 **Only 3 formations:** add the common ones as data.
+- [ ] P10 **Players develop as the season goes,** not only at its end (overall and attributes, from age, potential and playing time).
 
 ## Quick fixes (do first; each is its own checkpoint)
 

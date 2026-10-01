@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, **WIP**: Step 2.3c honest pass estimates, behind a switch that's off. The commit right after it only filled in this hash.
+- **Checkpoint commit:** eeb5239, **WIP**: Step 2.3c honest pass estimates, behind a switch that's off. The commit right after it only filled in this hash.
   - Earlier: 2.3b complete at d7ccf17; the pace refactor fa88821; 2.3a a9a8ced.
 - **Engine:** behaviour unchanged. With `passing.yaml` `estimate.honest: false` (committed), the game plays exactly as at d7ccf17, and the golden values pass unchanged.
 - **Done in this WIP:**

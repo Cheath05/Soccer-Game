@@ -328,7 +328,28 @@ The user asked whether the engine or the management features (transfers, academy
     - a high press reads 1.38–1.58 and a normal one 1.02–1.51;
     - so `tactics.yaml` `high_press` 1.02 → 1.33, and `min_samples` 50 → 30 (sides spend less time on the ball near their own goal).
   - **Tests:** `test_a_passer_sees_a_clear_offside_but_may_miss_a_marginal_one`. The long-ball test now checks the configured share. Mac golden values re-recorded.
-  - **Measurement:** `reports/engine/step2.3/ref-p12`, recorded in the next commit.
+  - **Measured** (`reports/engine/step2.3/ref-p12`, 200 matches per division; p40 is what :8000 ran before, P11 is at full strength):
+
+    | | ENG4 p40 → P11 → P12 | ENG1 p40 → P11 → P12 | Real |
+    |---|---|---|---|
+    | Goals | 2.92 → 2.29 → 1.85 | 3.67 → 4.35 → 3.75 | PL 2.65–3.05; EFL 2.45–2.85 |
+    | Shots | 30.0 → 28.4 → 22.8 | 37.1 → 48.4 → 42.0 | PL 23–27.5; EFL 22–26 |
+    | Pass accuracy | .817 → .869 → .907 | .812 → .824 → .874 | PL .80–.85; EFL .74–.81 |
+    | Long-ball share | .039 → .106 → .059 | .103 → .239 → .154 | PL ~.12 |
+    | High regains | 41.8 → 15.8 → 18.6 | 31.2 → 12.7 → 14.5 | 10–17 |
+    | Throw-ins | 37.8 → 27.7 → 22.5 | 52.2 → 49.5 → 41.0 | PL 32–42; EFL 32–44 |
+    | Ball in play (min) | 65.3 → 67.6 → 74.0 | 58.1 → 54.4 → 61.3 | 52–60 |
+    | Offsides | 6.4 → 12.5 → 2.9 | 4.9 → 8.1 → 1.6 | 2.5–4.5 |
+    | Fouls | 8.4 → 13.5 → 13.1 | 14.1 → 19.6 → 20.0 | 20–24.5 |
+
+  - **Shipped to :8000:** P12 fixes what the user raised (misplaced calm passes, the high-turnover leak) and offsides, with ENG1 throw-ins and fouls now in range.
+  - **Left over:**
+    - passing a little too clean;
+    - League Two scoring too little (1.85);
+    - Premier League shots too many (42).
+  - **No single `loss_where_lost` fixes both divisions.**
+    - Premier League sides go long more than League Two ones at any value, the reverse of real football, because the heuristic estimate overrates long balls most for good long passers.
+    - So the real fix is 2.3c's honest estimate, then Phase D's defending against long balls and runners (2.3f for the shots).
 - [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.

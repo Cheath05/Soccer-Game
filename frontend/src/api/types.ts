@@ -123,13 +123,49 @@ export interface TableRow {
   points: number
   zone: 'champion' | 'promotion' | 'playoff' | 'relegation' | null
   form: string[]
+  outcome: Outcome | null // a finished season's
 }
 
 export interface Table {
   competition: string
   name: string
   season: string
+  final: boolean // the season is over and this is its final table
   rows: TableRow[]
+}
+
+export type Outcome = 'champion' | 'promoted' | 'playoff_winner' | 'playoffs' | 'relegated'
+
+export interface Season {
+  id: number
+  label: string
+  current: boolean
+}
+
+/** A club's league season: its final position, or its position so far this season. */
+export interface ClubSeason {
+  season_id: number
+  season: string
+  competition: Competition
+  position: number | null
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  points: number
+  outcome: Outcome | null
+  final: boolean
+  managed: boolean
+}
+
+export interface ClubHistory {
+  club: ClubRef
+  seasons: ClubSeason[] // newest first
+  titles: number
+  promotions: number
+  relegations: number
 }
 
 export interface SquadPlayer {

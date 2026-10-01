@@ -12,10 +12,12 @@ from sqlalchemy import Connection, Row, bindparam, func, or_, select, text
 from footsim.api.schemas import (
     AttributeOut,
     CareerOut,
+    ClubHistoryOut,
     ClubOption,
     ClubOverviewOut,
     ClubPlayerOut,
     ClubRef,
+    ClubSeasonOut,
     CompetitionOut,
     FixtureOut,
     FormationOut,
@@ -28,6 +30,7 @@ from footsim.api.schemas import (
     PotentialOut,
     RoleOut,
     RoleRatingOut,
+    SeasonOut,
     SheetEntryOut,
     SlotOut,
     SquadPlayerOut,
@@ -46,6 +49,7 @@ from footsim.persistence.schema import (
     club_league_membership,
     competition,
     fixture,
+    league_final,
     nation,
     player_attr,
     player_position,
@@ -209,14 +213,71 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
         ordered.sort(key=lambda r: names[r.club_id])
         for position, r in enumerate(ordered, start=1):
             r.position = position
+    outcomes = {r.club_id: r.outcome for r in conn.execute(select(league_final).where(
+        league_final.c.season_id == season_id, league_final.c.competition_id == comp.id))}
     rows = [TableRowOut(
         position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
         played=r.played, won=r.won, drawn=r.drawn, lost=r.lost, goals_for=r.goals_for,
         goals_against=r.goals_against, goal_difference=r.goal_difference, points=r.points,
         zone=zones.get(r.position), form=form.get(r.club_id, []),
+        outcome=outcomes.get(r.club_id),
     ) for r in ordered]
     return TableOut(competition=key, name=comp.name, season=_season_label(conn, season_id),
-                    rows=rows)
+                    final=bool(outcomes), rows=rows)
+
+
+def seasons(conn: Connection) -> list[SeasonOut]:
+    current = read_meta(conn).season_id
+    return [SeasonOut(id=r.id, label=r.label, current=r.id == current)
+            for r in conn.execute(select(season).order_by(season.c.id.desc()))]
+
+
+def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut:
+    """Every league season of a club in this career, newest first: final positions, and the
+    season in progress so far."""
+    require_club(conn, club_id)
+    meta = read_meta(conn)
+    names = _club_names(conn)
+    comps = _competitions(conn)
+    labels = {r.id: r.label for r in conn.execute(select(season))}
+    managed = club_id == meta.user_club_id
+
+    def competition_of(comp_id: int) -> CompetitionOut:
+        return CompetitionOut(key=comps[comp_id].key, name=comps[comp_id].name,
+                              tier=comps[comp_id].tier or 0)
+
+    rows: list[ClubSeasonOut] = []
+    finals = conn.execute(select(league_final).where(league_final.c.club_id == club_id)
+                          .order_by(league_final.c.season_id.desc())).all()
+    finished = {f.season_id for f in finals}
+    current = _club_competition(conn, club_id, meta.season_id)
+    if current is not None and meta.season_id not in finished:
+        table_rows = standings(conn, world, meta, current.id, meta.season_id)
+        mine = next(r for r in table_rows if r.club_id == club_id)
+        rows.append(ClubSeasonOut(
+            season_id=meta.season_id, season=labels[meta.season_id],
+            competition=competition_of(current.id),
+            position=mine.position if any(r.played for r in table_rows) else None,
+            played=mine.played, won=mine.won, drawn=mine.drawn, lost=mine.lost,
+            goals_for=mine.goals_for, goals_against=mine.goals_against, points=mine.points,
+            outcome=None, final=False, managed=managed))
+    for f in finals:
+        rows.append(ClubSeasonOut(
+            season_id=f.season_id, season=labels[f.season_id],
+            competition=competition_of(f.competition_id), position=f.position,
+            played=f.played, won=f.won, drawn=f.drawn, lost=f.lost, goals_for=f.goals_for,
+            goals_against=f.goals_against, points=f.points, outcome=f.outcome, final=True,
+            managed=managed))
+    def promoted(f: Row[Any]) -> bool:  # a lower league's champions go up too
+        return f.outcome in ("promoted", "playoff_winner") or (
+            f.outcome == "champion" and (comps[f.competition_id].tier or 1) > 1)
+
+    return ClubHistoryOut(
+        club=ClubRef(id=club_id, name=names[club_id]), seasons=rows,
+        titles=sum(f.outcome == "champion" for f in finals),
+        promotions=sum(promoted(f) for f in finals),
+        relegations=sum(f.outcome == "relegated" for f in finals),
+    )
 
 
 def _form(conn: Connection, competition_id: int, season_id: int) -> dict[int, list[str]]:

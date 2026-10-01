@@ -1,8 +1,9 @@
-import { Badge, Group, SegmentedControl, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Group, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useState } from 'react'
 
-import { useCareer, useCompetitions, useTable } from '../api/hooks'
+import { useCareer, useCompetitions, useSeasons, useTable } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
+import { OUTCOMES } from '../lib/format'
 
 const ZONE_COLOR: Record<string, string> = {
   champion: 'var(--mantine-color-yellow-light)',
@@ -15,16 +16,38 @@ export default function LeaguePage() {
   const career = useCareer().data
   const competitions = useCompetitions()
   const [key, setKey] = useState<string | null>(null)
+  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const seasons = useSeasons().data ?? []
   const active = key ?? career?.competition?.key ?? 'ENG1'
-  const table = useTable(active)
+  const table = useTable(active, seasonId ? Number(seasonId) : null)
 
   return (
     <Stack>
       <Group justify="space-between">
-        <Title order={2}>{table.data?.name ?? 'League'}</Title>
-        {competitions.data && (
-          <SegmentedControl value={active} onChange={setKey} data={competitions.data.map((c) => ({ value: c.key, label: c.name.replace('EFL ', '') }))} />
-        )}
+        <Title order={2}>
+          {table.data?.name ?? 'League'}
+          {table.data && seasons.length > 1 && (
+            <Text span c="dimmed" fz="lg" ml="xs">
+              {table.data.season}
+              {table.data.final ? ' · final table' : ''}
+            </Text>
+          )}
+        </Title>
+        <Group>
+          {seasons.length > 1 && (
+            <Select
+              aria-label="Season"
+              w={130}
+              value={seasonId ?? String(seasons.find((s) => s.current)?.id ?? '')}
+              onChange={setSeasonId}
+              allowDeselect={false}
+              data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
+            />
+          )}
+          {competitions.data && (
+            <SegmentedControl value={active} onChange={setKey} data={competitions.data.map((c) => ({ value: c.key, label: c.name.replace('EFL ', '') }))} />
+          )}
+        </Group>
       </Group>
       <Table.ScrollContainer minWidth={640}>
         <Table highlightOnHover>
@@ -48,7 +71,14 @@ export default function LeaguePage() {
               <Table.Tr key={r.club.id} bg={r.zone ? ZONE_COLOR[r.zone] : undefined} fw={r.club.id === career?.club.id ? 700 : undefined}>
                 <Table.Td>{r.position}</Table.Td>
                 <Table.Td>
-                  <ClubLink club={r.club} />
+                  <Group gap="xs" wrap="nowrap">
+                    <ClubLink club={r.club} />
+                    {r.outcome && OUTCOMES[r.outcome] && (
+                      <Badge size="xs" variant="light" color={OUTCOMES[r.outcome]!.color}>
+                        {OUTCOMES[r.outcome]!.label}
+                      </Badge>
+                    )}
+                  </Group>
                 </Table.Td>
                 <Table.Td ta="right">{r.played}</Table.Td>
                 <Table.Td ta="right">{r.won}</Table.Td>

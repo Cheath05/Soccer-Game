@@ -88,15 +88,26 @@ export default function Layout() {
       </AppShell.Header>
       <AppShell.Navbar p="sm">
         {NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            label={item.label}
-            active={item.to === '/' ? path === '/' : path.startsWith(item.to)}
-            onClick={() => {
-              close()
-              void navigate({ to: item.to })
-            }}
-          />
+          <div key={item.to}>
+            {item.to === '/start' && data && (
+              <NavLink
+                label="Club & history"
+                active={path === `/clubs/${data.club.id}`}
+                onClick={() => {
+                  close()
+                  void navigate({ to: '/clubs/$clubId', params: { clubId: String(data.club.id) } })
+                }}
+              />
+            )}
+            <NavLink
+              label={item.label}
+              active={item.to === '/' ? path === '/' : path.startsWith(item.to)}
+              onClick={() => {
+                close()
+                void navigate({ to: item.to })
+              }}
+            />
+          </div>
         ))}
         {matchToday && (
           <NavLink label="Match day" color="orange" active={path === '/matchday'} onClick={() => void navigate({ to: '/matchday' })} />

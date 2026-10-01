@@ -458,6 +458,18 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
   - A whole-point move (every attribute up) shows the arrow for about three months.
   - **Tests:** `tests/integration/test_development_trend.py` checks the sign by age; `test_migrations.py` checks that a schema-5 save gains the column. All backend tests pass and `just lint` is clean.
 
+- [x] P16 **History: where every club finished.**
+  - `GET /api/clubs/{id}/history`: a club's league seasons in this career, newest first. Final positions and outcomes come from `league_final`; the season in progress shows its position so far. It also counts titles, promotions (a lower league's champions included) and relegations.
+  - `GET /api/seasons` and `?season=` on the table: past seasons' final tables, with each club's outcome (champions, promoted, play-off winners, play-offs, relegated).
+  - **UI:**
+    - a History card on every club page;
+    - a "Club & history" link in the sidebar to the user's own club;
+    - a season picker on the League page.
+  - The career starts in 2026–27, so there's no history from before it: the real past isn't in the data.
+  - `managed` is true for every season of the user's club, as a career has one club so far. Job changes would need a manager-history table.
+  - **Checked** on a copy of the user's Wrexham save (now 22 Jan 2028), on a throwaway :8765: it loads in 0.35 s, running migrations v4–v6. History shows 2026–27 21st (42 pts) and 2027–28 19th so far. The 2026–27 Championship final table shows West Ham champions, Swansea play-off winners, three relegated.
+  - **Tests:** `tests/integration/test_history.py`. All backend tests pass, lint is clean and the smoke e2e passes.
+
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged

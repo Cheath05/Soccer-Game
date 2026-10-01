@@ -71,13 +71,49 @@ class TableRowOut(BaseModel):
     points: int
     zone: str | None
     form: list[str]
+    outcome: str | None = None  # a finished season's: champion | promoted | playoff_winner |
+    #                             playoffs | relegated
 
 
 class TableOut(BaseModel):
     competition: str
     name: str
     season: str
+    final: bool = False  # the season is over and this is its final table
     rows: list[TableRowOut]
+
+
+class SeasonOut(BaseModel):
+    id: int
+    label: str
+    current: bool
+
+
+class ClubSeasonOut(BaseModel):
+    """A club's league season: its final position, or its position so far this season."""
+
+    season_id: int
+    season: str
+    competition: "CompetitionOut"
+    position: int | None  # None before the season's first match
+    played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    points: int
+    outcome: str | None  # champion | promoted | playoff_winner | playoffs | relegated
+    final: bool  # False for the season in progress
+    managed: bool  # the user managed the club that season
+
+
+class ClubHistoryOut(BaseModel):
+    club: ClubRef
+    seasons: list[ClubSeasonOut]  # newest first
+    titles: int  # league titles won in the career so far
+    promotions: int
+    relegations: int
 
 
 class CompetitionOut(BaseModel):

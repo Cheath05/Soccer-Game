@@ -4,10 +4,11 @@ import { useMemo, useState } from 'react'
 
 import { useClub, useClubPlayers } from '../api/hooks'
 import type { ClubPlayer, Fixture } from '../api/types'
+import ClubHistoryCard from '../components/ClubHistoryCard'
 import ClubLink from '../components/ClubLink'
 import Overall from '../components/Overall'
 import ResultBadge from '../components/ResultBadge'
-import { money, positionColor, score, shortDate, wage } from '../lib/format'
+import { money, ordinal, positionColor, score, shortDate, wage } from '../lib/format'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'contract_end'
 
@@ -97,6 +98,8 @@ export default function ClubPage() {
           <FixtureCard title="Next fixtures" fixtures={c.upcoming} clubId={id} empty="No fixtures left this season." />
         </Grid.Col>
       </Grid>
+
+      <ClubHistoryCard clubId={id} />
 
       <Group justify="space-between">
         <Title order={3}>Squad</Title>
@@ -213,11 +216,6 @@ function FixtureCard({ title, fixtures, clubId, empty }: { title: string; fixtur
       )}
     </Card>
   )
-}
-
-function ordinal(n: number): string {
-  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
-  return `${n}${suffix}`
 }
 
 function compare(a: ClubPlayer, b: ClubPlayer, key: SortKey): number {

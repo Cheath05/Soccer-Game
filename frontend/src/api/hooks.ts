@@ -4,6 +4,7 @@ import { ApiError, api } from './client'
 import type {
   AdvanceResult,
   Career,
+  ClubHistory,
   ClubOverview,
   ClubPlayer,
   Competition,
@@ -12,6 +13,7 @@ import type {
   MatchReport,
   PlayerDetail,
   SaveSlot,
+  Season,
   SimStatus,
   SquadPlayer,
   Table,
@@ -34,8 +36,17 @@ export const useWorldLeagues = () =>
 export const useCompetitions = () =>
   useQuery({ queryKey: ['competitions'], queryFn: () => api.get<Competition[]>('/competitions') })
 
-export const useTable = (key: string | undefined) =>
-  useQuery({ queryKey: ['table', key], queryFn: () => api.get<Table>(`/competitions/${key}/table`), enabled: !!key })
+export const useTable = (key: string | undefined, season?: number | null) =>
+  useQuery({
+    queryKey: ['table', key, season ?? null],
+    queryFn: () => api.get<Table>(`/competitions/${key}/table${season ? `?season=${season}` : ''}`),
+    enabled: !!key,
+  })
+
+export const useSeasons = () => useQuery({ queryKey: ['seasons'], queryFn: () => api.get<Season[]>('/seasons') })
+
+export const useClubHistory = (clubId: number) =>
+  useQuery({ queryKey: ['club-history', clubId], queryFn: () => api.get<ClubHistory>(`/clubs/${clubId}/history`) })
 
 export const useSquad = (clubId: number | undefined) =>
   useQuery({ queryKey: ['squad', clubId], queryFn: () => api.get<SquadPlayer[]>(`/clubs/${clubId}/squad`), enabled: !!clubId })

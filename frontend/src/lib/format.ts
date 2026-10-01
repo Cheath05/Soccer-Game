@@ -98,3 +98,17 @@ export function positionColor(position: string): string {
   if (['DM', 'CM', 'AM', 'LM', 'RM'].includes(position)) return 'green'
   return 'red'
 }
+
+/** How a club's league season ended, for badges in tables and histories. */
+export const OUTCOMES: Record<string, { label: string; color: string }> = {
+  champion: { label: 'Champions', color: 'yellow' },
+  promoted: { label: 'Promoted', color: 'teal' },
+  playoff_winner: { label: 'Play-off winners', color: 'teal' },
+  playoffs: { label: 'Play-offs', color: 'blue' },
+  relegated: { label: 'Relegated', color: 'red' },
+}
+
+export function ordinal(n: number): string {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
+  return `${n}${suffix}`
+}

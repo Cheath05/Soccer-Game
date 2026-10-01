@@ -12,6 +12,7 @@ from footsim.api import queries, sim
 from footsim.api.schemas import (
     AdvanceOut,
     CareerOut,
+    ClubHistoryOut,
     ClubOverviewOut,
     ClubPlayerOut,
     CompetitionOut,
@@ -21,6 +22,7 @@ from footsim.api.schemas import (
     NewCareerIn,
     PlayerDetailOut,
     SaveSlotOut,
+    SeasonOut,
     SquadPlayerOut,
     TableOut,
     TacticsIn,
@@ -148,6 +150,13 @@ def competition_table(key: str, session: Session, season: int | None = None) -> 
         return queries.table(conn, get_world(), key, season)
 
 
+@router.get("/seasons")
+def seasons(session: Session) -> list[SeasonOut]:
+    """Every season of the career so far, newest first."""
+    with session.read() as conn:
+        return queries.seasons(conn)
+
+
 @router.get("/competitions/{key}/fixtures")
 def competition_fixtures(key: str, session: Session) -> list[FixtureOut]:
     with session.read() as conn:
@@ -180,6 +189,16 @@ def club_squad(club_id: int, session: Session) -> list[SquadPlayerOut]:
         if club_id != read_meta(conn).user_club_id:
             raise HTTPException(403, "only your own club's squad details are available")
         return queries.squad(conn, get_world(), club_id)
+
+
+@router.get("/clubs/{club_id}/history")
+def club_history(club_id: int, session: Session) -> ClubHistoryOut:
+    """A club's league seasons in this career, newest first."""
+    with session.read() as conn:
+        try:
+            return queries.club_history(conn, get_world(), club_id)
+        except queries.ClubNotFound as exc:
+            raise HTTPException(404, "club not found") from exc
 
 
 @router.get("/clubs/{club_id}/fixtures")

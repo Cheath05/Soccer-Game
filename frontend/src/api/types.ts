@@ -208,6 +208,7 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   skill_moves: number
   attributes: Record<string, { key: string; value: number }[]>
   face: Record<string, number>
+  face_key: string[] // the headline ratings that count most towards his overall
   roles: { key: string; name: string; position_group: string; rating: number }[]
   familiarity: Record<string, number>
   potential: { low: number; high: number; label: string }

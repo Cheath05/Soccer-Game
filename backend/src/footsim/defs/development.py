@@ -19,6 +19,7 @@ class DevelopmentDef(DefModel):
     ageless_slowdown: float = Field(ge=0, le=1)  # share of the normal decline once it starts
     noise: float = Field(ge=0)  # a year's random swing in overall (sd)
     specific_share: float = Field(ge=0, le=1)  # of each month's change, on individual attributes
+    news_min_change: float = Field(ge=0)  # the least change in overall the news reports
 
     @model_validator(mode="after")
     def _ordered(self) -> "DevelopmentDef":

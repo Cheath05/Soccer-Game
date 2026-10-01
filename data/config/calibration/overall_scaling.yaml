@@ -2,11 +2,11 @@
 # Linear scaling of our role-weighted overall onto ea_fc27 overall_rating.
 # r2 / mae: how well the scaled overall reproduces the reference, per position group.
 groups:
-  GK: {scale: 0.9958, offset: 1.553}  # n=1971 r2=0.989 mae=0.64
-  CB: {scale: 0.9981, offset: -0.032}  # n=3256 r2=0.979 mae=0.74
-  FB: {scale: 0.9740, offset: 2.156}  # n=2664 r2=0.958 mae=1.02
-  DM: {scale: 0.9475, offset: 4.850}  # n=1456 r2=0.980 mae=0.73
-  CM: {scale: 0.9650, offset: 1.985}  # n=2095 r2=0.972 mae=0.92
-  AM: {scale: 0.9461, offset: 3.830}  # n=1068 r2=0.986 mae=0.68
-  W: {scale: 1.0185, offset: -2.498}  # n=2921 r2=0.965 mae=0.96
-  ST: {scale: 0.9916, offset: -0.273}  # n=2418 r2=0.983 mae=0.69
+  GK: {scale: 1.0313, offset: 0.459}  # n=1971 r2=0.984 mae=0.75
+  CB: {scale: 1.0827, offset: -2.367}  # n=3256 r2=0.903 mae=1.58
+  FB: {scale: 1.0137, offset: 0.800}  # n=2664 r2=0.928 mae=1.35
+  DM: {scale: 1.0535, offset: -0.677}  # n=1456 r2=0.957 mae=1.07
+  CM: {scale: 1.0694, offset: -2.947}  # n=2095 r2=0.947 mae=1.27
+  AM: {scale: 1.0466, offset: -1.076}  # n=1068 r2=0.977 mae=0.89
+  W: {scale: 1.0861, offset: -5.441}  # n=2921 r2=0.936 mae=1.32
+  ST: {scale: 1.0621, offset: -2.120}  # n=2418 r2=0.929 mae=1.42

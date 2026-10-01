@@ -110,4 +110,8 @@ def test_a_month_also_moves_a_few_individual_attributes(world: World) -> None:
                                 np.random.default_rng(2))
     changed = (new != a).sum(axis=1)
     assert np.all(moves == 0)  # no whole-point moves: every change is individual
-    assert 1 <= np.median(changed) <= 6  # a handful of attributes each, not every one
+    outfield = len(ATTR_INDEX) - len(attributes_in(AttrGroup.GOALKEEPING))
+    # A handful of attributes each, not every one: a dozen or so here, where the whole month's
+    # change (0.7 of an overall at 18) is individual. Since P14 the overall counts more
+    # attributes, so each point moves it less and a month takes more of them (4-6 before)
+    assert 1 <= np.median(changed) <= outfield / 3

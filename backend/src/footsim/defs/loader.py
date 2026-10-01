@@ -29,10 +29,12 @@ from footsim.defs.match import (
     TacticsDef,
 )
 from footsim.defs.nations import NationDef, NationsFile
+from footsim.defs.overall import OverallDef
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
 from footsim.defs.roles import RoleDef
 from footsim.defs.world_build import WorldBuildRules
 from footsim.domain.personality import PERSONALITY_TRAITS
+from footsim.ratings.face import GOALKEEPER_FACE, OUTFIELD_FACE
 
 
 class DefinitionError(Exception):
@@ -60,6 +62,7 @@ class GameDefinitions:
     tactics: TacticsDef
     home_advantage: HomeAdvantageDef
     development: DevelopmentDef
+    overall: OverallDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -118,6 +121,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
         development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),
+        overall=_parse(OverallDef, root / "overall.yaml"),
     )
     _cross_validate(defs)
     return defs
@@ -143,6 +147,11 @@ def _cross_validate(defs: GameDefinitions) -> None:
                     f"formation {f.key} slot {slot.id}: role {role.key} ({role.group}) "
                     f"does not fit position {pos.code} ({pos.group})"
                 )
+
+    for group, weights in defs.overall.face_weights.items():
+        face = GOALKEEPER_FACE if group is PositionGroup.GK else OUTFIELD_FACE
+        for stat in set(weights) - set(face):
+            errors.append(f"overall.yaml {group}: unknown headline rating {stat}")
 
     names = [n.name for n in defs.nations.values()]
     if len(names) != len(set(names)):

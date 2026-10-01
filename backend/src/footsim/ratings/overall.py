@@ -1,9 +1,10 @@
 """Role and position overall ratings.
 
 Role overall = weighted sum of attributes (weights = position group base + role modifiers,
-renormalised), then a per-group linear scaling fitted so our numbers sit on a familiar
-1-99 scale (data/config/calibration/overall_scaling.yaml). Position overall = the best
-role overall in that position's group.
+renormalised, blended with the position's weights over the six headline ratings in
+data/config/overall.yaml), then a per-group linear scaling fitted so our numbers sit on a
+familiar 1-99 scale (data/config/calibration/overall_scaling.yaml). Position overall = the
+best role overall in that position's group.
 
 Overall is a summary for UI and AI decisions. The match engine reads attributes directly.
 """
@@ -21,6 +22,7 @@ from footsim.defs.loader import GameDefinitions
 from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RoleDef
 from footsim.domain.attributes import ATTR_INDEX, ATTRIBUTES
+from footsim.ratings.face import GOALKEEPER_FACE, OUTFIELD_FACE
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -42,6 +44,16 @@ def role_weights(defs: GameDefinitions, role: RoleDef) -> dict[str, float]:
     clipped = {a: max(0.0, w) for a, w in combined.items() if w > 0}
     total = sum(clipped.values())
     return {a: w / total for a, w in clipped.items()}
+
+
+def face_weights(defs: GameDefinitions, group: PositionGroup) -> dict[str, float]:
+    """The position's weights over its headline ratings, as weights over attributes."""
+    face = GOALKEEPER_FACE if group is PositionGroup.GK else OUTFIELD_FACE
+    combined: dict[str, float] = {}
+    for stat, weight in defs.overall.face_weights[group].items():
+        for attr, share in face[stat].items():
+            combined[attr] = combined.get(attr, 0.0) + weight * share
+    return combined
 
 
 class GroupScaling(BaseModel):
@@ -73,14 +85,19 @@ class RatingModel:
     offset: FloatArray  # (n_roles,)
 
     @classmethod
-    def build(cls, defs: GameDefinitions, scaling: OverallScaling | None = None) -> "RatingModel":
+    def build(cls, defs: GameDefinitions, scaling: OverallScaling | None = None,
+              face_blend: float | None = None) -> "RatingModel":
+        """``face_blend`` overrides overall.yaml's (0: the roles alone, as before P14)."""
         scaling = scaling or OverallScaling()
+        blend = defs.overall.face_blend if face_blend is None else face_blend
         group_order = list(PositionGroup)
         roles = sorted(defs.roles.values(), key=lambda r: (group_order.index(r.group), r.key))
         weights = np.zeros((len(ATTRIBUTES), len(roles)))
         for j, role in enumerate(roles):
             for attr, w in role_weights(defs, role).items():
-                weights[ATTR_INDEX[attr], j] = w
+                weights[ATTR_INDEX[attr], j] += (1 - blend) * w
+            for attr, w in face_weights(defs, role.group).items():
+                weights[ATTR_INDEX[attr], j] += blend * w
         return cls(
             role_keys=tuple(r.key for r in roles),
             role_groups=tuple(r.group for r in roles),

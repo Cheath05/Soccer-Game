@@ -414,9 +414,11 @@ def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Se
     old = world.model.group_overalls(before[index])
     new = world.model.group_overalls(after[index])
     changes = []
+    least = world.defs.development.news_min_change
     for n, k in enumerate(index):
-        was, now = round(float(old[groups[k]][n])), round(float(new[groups[k]][n]))
-        if now != was:
+        before_k, after_k = float(old[groups[k]][n]), float(new[groups[k]][n])
+        was, now = round(before_k), round(after_k)
+        if now != was and abs(after_k - before_k) >= least:
             r = rows[k]
             name = display_name(r.first_name, r.last_name, r.known_as)
             whole = " (every attribute up)" if moves[k] > 0 else (

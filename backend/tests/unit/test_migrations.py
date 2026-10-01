@@ -1,10 +1,13 @@
 """Saves written by an older build are upgraded in place on load."""
 
+import shutil
 from pathlib import Path
 
+import numpy as np
 import pytest
 from sqlalchemy import inspect, text
 
+from footsim.core.paths import data_dir
 from footsim.persistence.database import (
     SchemaMismatch,
     create_database,
@@ -60,4 +63,32 @@ def test_version_3_gains_player_development(tmp_path: Path) -> None:
     assert migrate(engine) == 3
     with engine.connect() as conn:
         assert "player_development" in inspect(conn).get_table_names()
+    engine.dispose()
+
+
+BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_4_moves_potential_with_the_new_overall(tmp_path: Path) -> None:
+    """Overalls count every headline rating from v5 (P14): each player's hidden potential moves
+    with his overall, so his room to grow is unchanged, and it moves only once."""
+    path = tmp_path / "v4.sqlite"
+    shutil.copy(BASE_WORLD, path)
+    engine = open_database(path)
+    write_meta(engine, {"schema_version": 4})
+    with engine.connect() as conn:
+        before = dict(conn.execute(text("SELECT person_id, pa_hidden FROM player")).all())
+    migrate(engine)
+    with engine.connect() as conn:
+        after = dict(conn.execute(text("SELECT person_id, pa_hidden FROM player")).all())
+    shifts = np.array([after[p] - before[p] for p in before])
+    assert abs(shifts.mean()) < 0.5  # each group's average overall is unchanged...
+    assert (shifts != 0).mean() > 0.5  # ...but most players' overall moved
+    assert np.abs(shifts).max() <= 10
+    assert read_meta(engine)["schema_version"] == SCHEMA_VERSION
+    migrate(engine)  # loading it again changes nothing
+    with engine.connect() as conn:
+        again = dict(conn.execute(text("SELECT person_id, pa_hidden FROM player")).all())
+    assert again == after
     engine.dispose()

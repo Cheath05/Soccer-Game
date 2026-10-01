@@ -454,11 +454,13 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     traits = [t.trait for t in conn.execute(
         select(player_trait.c.trait).where(player_trait.c.player_id == player_id))]
     private = {} if own else {"condition": None, "wage_weekly_eur": None}
+    weights = world.defs.overall.face_weights[world.defs.positions[entry.position].group]
     return PlayerDetailOut(
         **{**entry.model_dump(), **private},
         club=ClubRef(id=r.club_id, name=names[r.club_id]) if r.club_id else None,
         weight_kg=r.weight_kg, weak_foot=r.weak_foot, skill_moves=r.skill_moves,
         attributes=dict(grouped), face=face_stats(values, goalkeeper=entry.position == "GK"),
+        face_key=sorted(weights, key=lambda k: -weights[k])[:3],
         roles=roles, familiarity=fams,
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
         traits=traits, own_player=own,

@@ -245,6 +245,7 @@ class PlayerDetailOut(SquadPlayerOut):
     skill_moves: int
     attributes: dict[str, list[AttributeOut]]
     face: dict[str, int]
+    face_key: list[str]  # the headline ratings that count most towards his overall
     roles: list[RoleRatingOut]
     familiarity: dict[str, int]
     potential: PotentialOut

@@ -1,0 +1,34 @@
+# How a player's overall is made (ratings/overall.py).
+#
+# A player's overall in a position is the best of his role ratings there. Each role rating is a
+# weighted sum of his attributes, blended with a position-weighted mean of his six headline
+# ratings (the PAC SHO PAS DRI DEF PHY on his page; DIV HAN KIC REF SPD POS for a keeper), then
+# scaled per position group to the familiar 1-99 scale (calibration/overall_scaling.yaml, fitted
+# by `footsim calibrate-overall` so each group keeps the source's average and spread).
+#
+# The roles alone put almost all the weight on a position's two or three key attributes, so a
+# centre-back with DEF 77 and PHY 81 but PAC 43 and SHO 38 rated 78. Blending in the headline
+# ratings, every one of them counted, brings a one-dimensional player down a few points and a
+# rounded one up, while the best players stay the best (P14, play-test round 3).
+# Measured on the EA FC 27 players at 0.7 against the roles alone (1 Oct): one-dimensional
+# players 2-5 points lower (that centre-back 78 -> 75, one with PAC 30 78 -> 73, a midfielder
+# with PAC 35 78 -> 73), rounded ones within a point; every group's average and spread kept
+# (change -0.05 on average, sd 1.5); the top 30 one point lower on average (-3 to +2);
+# correlation with the source overall 0.95-0.99 by group. Higher is closer to the headline
+# ratings but further from the source's overall.
+#
+# Changing anything here moves overalls, but not the hidden potentials saved careers drew
+# against them: add a migration step like persistence/migrations.py's _to_v5 when you do, and
+# rerun `footsim calibrate-overall`.
+
+face_blend: 0.7
+
+face_weights:     # each group's weights add up to 1
+  ST: {SHO: 0.32, PAC: 0.18, DRI: 0.18, PHY: 0.14, PAS: 0.13, DEF: 0.05}
+  W:  {PAC: 0.25, DRI: 0.25, PAS: 0.18, SHO: 0.17, PHY: 0.10, DEF: 0.05}
+  AM: {PAS: 0.30, DRI: 0.25, SHO: 0.18, PAC: 0.12, PHY: 0.08, DEF: 0.07}
+  CM: {PAS: 0.28, DRI: 0.18, DEF: 0.17, PHY: 0.15, PAC: 0.12, SHO: 0.10}
+  DM: {DEF: 0.30, PAS: 0.22, PHY: 0.20, DRI: 0.12, PAC: 0.10, SHO: 0.06}
+  FB: {DEF: 0.27, PAC: 0.22, PAS: 0.17, DRI: 0.15, PHY: 0.14, SHO: 0.05}
+  CB: {DEF: 0.38, PHY: 0.25, PAC: 0.15, PAS: 0.12, DRI: 0.05, SHO: 0.05}
+  GK: {REF: 0.22, DIV: 0.20, POS: 0.20, HAN: 0.18, KIC: 0.12, SPD: 0.08}

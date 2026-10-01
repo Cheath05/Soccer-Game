@@ -37,3 +37,5 @@ ageless_slowdown: 0.5     # and it runs at this share of the normal pace
 noise: 1.0                # a year's random swing in overall (sd), spread over the months
 specific_share: 0.4       # of each month's change, on individual attributes; the rest builds up
                           # into whole-point moves of every attribute
+news_min_change: 0.5      # the news names a player only when his overall moved this much in the
+                          # month, so one sitting on x.5 doesn't flicker up and down in it

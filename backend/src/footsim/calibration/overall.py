@@ -1,7 +1,10 @@
 """Fits the per-group linear scaling that puts our role-weighted overall on the same scale
 as a reference rating (e.g. EA's overall), writing data/config/calibration/overall_scaling.yaml.
 
-Only the scale is borrowed: which attributes matter for which role stays our own design.
+Only the scale is borrowed: which attributes matter for which role stays our own design. Each
+group's scaling matches the reference's mean and spread (not a least-squares fit, which would
+shrink the spread wherever our overall weighs things differently: the best players would no
+longer reach the reference's top).
 """
 
 from dataclasses import dataclass
@@ -42,7 +45,8 @@ def fit_overall_scaling(defs: GameDefinitions, players: list[SourcePlayer]) -> l
         if int(mask.sum()) < MIN_PLAYERS:
             continue
         x, y = raw[group][mask], target[mask]
-        scale, offset = np.polyfit(x, y, 1)
+        scale = float(y.std() / x.std())
+        offset = float(y.mean() - scale * x.mean())
         predicted = scale * x + offset
         ss_res = float(((y - predicted) ** 2).sum())
         ss_tot = float(((y - y.mean()) ** 2).sum())

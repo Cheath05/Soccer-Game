@@ -64,18 +64,33 @@ export default function PlayerPage() {
         </Group>
       </Group>
 
-      <SimpleGrid cols={{ base: 3, sm: 6 }}>
-        {Object.entries(p.face).map(([k, v]) => (
-          <Card key={k} withBorder padding="xs" ta="center">
-            <Text size="xs" c="dimmed">
-              {k}
-            </Text>
-            <Text fw={700} fz="xl" c={ratingColor(v)}>
-              {v}
-            </Text>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <Stack gap={4}>
+        <SimpleGrid cols={{ base: 3, sm: 6 }}>
+          {Object.entries(p.face).map(([k, v]) => {
+            const key = (p.face_key ?? []).includes(k)
+            return (
+              <Card
+                key={k}
+                withBorder
+                padding="xs"
+                ta="center"
+                style={key ? { borderColor: 'var(--mantine-primary-color-filled)' } : undefined}
+              >
+                <Text size="xs" c={key ? undefined : 'dimmed'} fw={key ? 700 : undefined}>
+                  {k}
+                </Text>
+                <Text fw={700} fz="xl" c={ratingColor(v)}>
+                  {v}
+                </Text>
+              </Card>
+            )
+          })}
+        </SimpleGrid>
+        <Text size="xs" c="dimmed">
+          Outlined: the ratings that count most towards a {p.position}&apos;s overall. Every one of them counts
+          for something.
+        </Text>
+      </Stack>
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 8 }}>

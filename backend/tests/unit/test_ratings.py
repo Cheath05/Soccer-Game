@@ -1,4 +1,5 @@
 import math
+from datetime import date
 
 import numpy as np
 import pytest
@@ -49,18 +50,54 @@ def test_winger_is_excellent_wide_and_poor_at_centre_back(defs: GameDefinitions)
     model = RatingModel.build(defs)
     overall = model.group_overalls(attribute_vector(WINGER))
     assert overall[PositionGroup.W] >= 84
-    assert overall[PositionGroup.CB] <= 62
-    assert overall[PositionGroup.W] - overall[PositionGroup.CB] >= 25
+    # His pace and passing count a little at centre-back since P14 (62 before), and being out of
+    # position costs him more on top (familiarity_factor)
+    assert overall[PositionGroup.CB] <= 66
+    assert overall[PositionGroup.W] - overall[PositionGroup.CB] >= 20
 
 
 def test_attribute_only_affects_roles_that_weight_it(defs: GameDefinitions) -> None:
-    model = RatingModel.build(defs)
+    model = RatingModel.build(defs, face_blend=0.0)  # the roles alone
     base = attribute_vector(WINGER)
     better = base.copy()
     better[ATTRIBUTES.index("finishing")] += 10
     delta = model.role_overalls(better) - model.role_overalls(base)
     assert delta[model.role_index("poacher")] > 1.5
     assert delta[model.role_index("central_defender")] == pytest.approx(0.0)
+
+
+def _centre_back(pace: float, passing: float, shooting: float, dribbling: float) -> np.ndarray:
+    """A centre-back with DEF and PHY about 80, and the rest as given."""
+    attrs = dict.fromkeys(ATTRIBUTES, 60.0)
+    attrs.update(dict.fromkeys(attributes_in(AttrGroup.GOALKEEPING), 10.0))
+    attrs.update(dict.fromkeys(("marking", "def_positioning", "standing_tackle", "interceptions",
+                                "sliding_tackle", "heading_accuracy", "strength", "stamina",
+                                "aggression", "jumping"), 80.0))
+    attrs.update({"acceleration": pace, "sprint_speed": pace})
+    attrs.update({a: passing for a in ("short_passing", "vision", "long_passing", "crossing",
+                                       "curve", "free_kicks")})
+    attrs.update({a: shooting for a in ("finishing", "shot_power", "long_shots", "volleys",
+                                        "penalties")})
+    attrs.update({a: dribbling for a in ("dribbling", "first_touch", "agility", "balance")})
+    return attribute_vector(attrs)
+
+
+def test_every_headline_rating_counts_towards_the_overall(defs: GameDefinitions) -> None:
+    """The user's report (1 Oct): a player with only two headline ratings at 70+ rated 76. A
+    one-dimensional centre-back now sits further below a rounded one with the same defending."""
+    narrow = _centre_back(pace=45, passing=55, shooting=35, dribbling=50)
+    rounded = _centre_back(pace=72, passing=72, shooting=60, dribbling=70)
+    before = RatingModel.build(defs, face_blend=0.0).group_overalls(np.stack([narrow, rounded]))
+    after = RatingModel.build(defs).group_overalls(np.stack([narrow, rounded]))
+    gap_before = before[PositionGroup.CB][1] - before[PositionGroup.CB][0]
+    gap_after = after[PositionGroup.CB][1] - after[PositionGroup.CB][0]
+    assert gap_after >= gap_before + 3
+
+
+def test_key_headline_ratings_still_matter_most(defs: GameDefinitions) -> None:
+    for group, weights in defs.overall.face_weights.items():
+        key = "REF" if group is PositionGroup.GK else max(weights, key=lambda k: weights[k])
+        assert weights[key] >= 0.2, group
 
 
 def test_group_scaling_applies(defs: GameDefinitions) -> None:
@@ -88,3 +125,30 @@ def test_face_stats_match_design_example() -> None:
     stats = face_stats(WINGER)
     assert stats["PAC"] == 91
     assert stats["DEF"] < 45
+
+
+def test_scaling_keeps_the_sources_mean_and_spread(defs: GameDefinitions) -> None:
+    """Each group's scaling matches the source's mean and spread, so the best players still
+    reach the top of the scale."""
+    from footsim.calibration.overall import fit_overall_scaling
+    from footsim.importers.records import SourcePlayer
+
+    rng = np.random.default_rng(0)
+    players = []
+    for i in range(60):
+        quality = rng.uniform(50, 85)
+        attrs = {a: int(np.clip(quality + rng.normal(0, 8), 1, 99)) for a in ATTRIBUTES}
+        players.append(SourcePlayer(
+            source="test", source_id=str(i), first_name="A", last_name=str(i), known_as=None,
+            birth_date=date(2000, 1, 1), nationality="England",
+            club="Club", league="League", position="ST", alt_positions=[],
+            preferred_foot="Right", weak_foot=3, skill_moves=3, height_cm=180, weight_kg=75,
+            source_overall=int(round(quality)), playstyles=[], attrs=attrs))
+    (fit,) = fit_overall_scaling(defs, players)
+    scaling = OverallScaling(groups={PositionGroup.ST: GroupScaling(scale=fit.scale,
+                                                                    offset=fit.offset)})
+    matrix = np.array([[p.attrs[a] for a in ATTRIBUTES] for p in players], dtype=float)
+    scaled = RatingModel.build(defs, scaling).group_overalls(matrix)[PositionGroup.ST]
+    source = np.array([p.source_overall for p in players], dtype=float)
+    assert scaled.mean() == pytest.approx(source.mean(), abs=1e-6)
+    assert scaled.std() == pytest.approx(source.std(), abs=1e-6)

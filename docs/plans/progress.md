@@ -16,7 +16,10 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (1 Oct, 03:45):** 4b779e9 (code at e8701a0, P12). The user's play-test fixes are done, each its own commit:
+- **Latest checkpoint (1 Oct):** P14 (this commit; the next commit records its hash). Round 3 of the user's play-test is done:
+  - P13, development by age, traits and whole-point moves: 578342d;
+  - P14, the overall closer to the six headline ratings, plus development-news and e2e follow-ups: see "Play-test round 3" below.
+- **Before that:** 4b779e9 (code at e8701a0, P12). The user's play-test fixes are done, each its own commit:
   - **Round 1** ("Play-test fixes" below):
     - P1, 99 ratings: 85a20ce;
     - P2, set-piece taker: 36fbd4f;
@@ -31,9 +34,9 @@
     - P10, development: c0db47a;
     - P11, losses costed where they happen: 82cbeb6;
     - P12, offsides, P11 softened, manager re-measured: e8701a0.
-  - **Measurements** in `reports/engine/step2.3/`: `ref-p7`, `ref-p11` and `ref-p12`, each recorded under its item below.
-  - **:8000 runs e8701a0,** restarted at 03:45 on 1 Oct, with no connections and the user's last sim finished and autosaved at 03:02.
-    - The user's Chelsea career (slot 2) is in 2030–31: its autosave is on 31 Mar 2031 and its manual save on 21 Sep 2029. "Load autosave" resumes.
+  - **Measurements** in `reports/engine/step2.3/`: `ref-p7`, `ref-p11` and `ref-p12`, each recorded under its item below. P13 and P14 change no match mechanics (P14 changes lineup picks and synthetic sides slightly), so `ref-p12` still describes the engine.
+  - **:8000** ran e8701a0 from 03:45 on 1 Oct. Since then the user started a Wrexham career in slot 2 (manual save 1 Jul 2026, autosave 1 Jul 2027). The Chelsea career it replaced survives only in `saves/slot_2/backups` (the rotating backups up to 01:58 on 1 Oct). Restarted on P14 after this commit if nobody is connected: see the checkpoint after it.
+    - Saves from before are schema 3. Loading runs the v4 (development table) and v5 (potential moves with the new overall) migrations on the working copy.
   - **Next task**, in the order chosen with the user ("Play-test round 2"):
     1. 2.3c's honest estimate. It's the real fix for the inverted long-ball response (Premier League sides go longer than League Two's) and for the over-clean passing.
     2. 2.3f, attack against defence by rating, for the Premier League shot excess.
@@ -406,11 +409,31 @@ The user asked for:
     - `test_development.py`: a regular reaches his ceiling by his peak and holds it; decline from his decline age, matching the table; ageless rare and mostly the best; a whole-point move lifts every attribute; individual moves touch a handful;
     - `test_migrations.py`: a schema-3 save gains the table.
   - **Not yet:** retirement doesn't exist, so "until they retire" waits for it (youth and academy phase).
-- [ ] P14 **The overall closer to the six headline ratings.** Measured on the base world:
-  - On average the overall isn't above them: within 0 to −3.6 of each group's top three.
-  - Specialists, though, sit well above most of them: Calvin Stengs, AM 77 (PAS 77, DRI 76, the rest 52–68); Dan Burn, CB 78 (DEF 77, PHY 81, PAC 43, SHO 38).
-  - The overall follows only the 2–3 ratings that matter for the position, as EA FC's does.
-  - **Plan:** blend the position-weighted headline ratings into the overall (one YAML setting). Keep each position group's mean and spread, so the stars stay stars and potential stays on the same scale, while specialists move towards their headline ratings.
+- [x] P14 **The overall closer to the six headline ratings** (`ratings/overall.py`, new `data/config/overall.yaml`).
+  - **Before**, measured on the base world: on average the overall wasn't above the headline ratings (within 0 to −3.6 of each group's top three). Specialists, though, sat well above most of theirs: Calvin Stengs, AM 77 (PAS 77, DRI 76, the rest 52–68); Dan Burn, CB 78 (DEF 77, PHY 81, PAC 43, SHO 38). The roles put almost all the weight on the position's 2–3 key attributes, as EA FC's overall does.
+  - **Now** each role's weights are blended with the position's weights over all six headline ratings: `face_blend` 0.7, with per-group weights (a CB: DEF .38, PHY .25, PAC .15, PAS .12, DRI .05, SHO .05).
+  - **Scaling:** `footsim calibrate-overall` now matches each group's mean and spread to EA FC 27's overall instead of a least-squares fit, which would have shrunk the spread and pulled the best players down. `overall_scaling.yaml` was refitted.
+  - **Measured on the EA FC 27 players** (`scratchpad/p14_check.py`), against the roles alone:
+    - one-dimensional players are 2–5 points lower: Burn 78→75, a CB with PAC 30 78→73, a CM with PAC 35 78→73, a ST with DEF 31 78→74;
+    - rounded ones move within a point;
+    - every group keeps its average and spread (change −0.05 on average, sd 1.5);
+    - the top 30 are 1 point lower on average (−3 to +2): Mbappé 91, Haaland 89, Kane 86, Saliba 86;
+    - correlation with EA's overall is 0.95–0.99 by group (r² 0.90–0.98).
+    - CBs are still mostly above their third-best headline rating, as their SHO and DRI barely count.
+  - **Potential stays consistent.** It was drawn relative to the old overall, so schema 5's migration moves each player's hidden potential by however much his overall changed, at his current attributes. His room to grow is unchanged. The pre-P14 scaling is kept in the migration for this.
+    - On a copy of the user's Wrexham autosave: 0.6 s, potentials −0.6 on average (sd 1.4, −9 to +5).
+    - New careers copy the base world (schema 2) and migrate the same way, so the base world needn't be rebuilt.
+  - **The player page** outlines the three headline ratings that count most for his position, with a note that every one counts for something (`face_key` in the API).
+  - **Development follow-ups:**
+    - each attribute point now moves the overall less, so a month's individual moves touch more attributes (about 11 a month for a fast-growing 18-year-old when all of it is individual, 4–6 before);
+    - the monthly news names a player only when his overall moved at least `news_min_change` (0.5) in the month. Before, someone sitting on x.5 flickered "80→81" then "81→80" in consecutive months.
+    - The smoke and live e2e scripts close the monthly news window, which since P13 can open after "Continue".
+  - **Golden values:** re-recorded for the Mac, with a History note. Synthetic players are drawn to hit a target overall, so their attributes change with it, and so do lineup picks.
+  - **Tests:**
+    - `test_ratings.py`: a one-dimensional CB falls at least 3 points further behind a rounded one; the key ratings still weigh most; the scaling keeps the source's mean and spread;
+    - `test_migrations.py`: a schema-4 world's potentials move with the new overall, about 0 on average, and only once.
+    - all 173 backend tests pass and `just lint` is clean;
+    - smoke and live e2e pass on a fresh :8765 with no browser errors; a centre-back's page outlines PAC, DEF and PHY (Saliba 86).
 
 ## Quick fixes (do first; each is its own checkpoint)
 

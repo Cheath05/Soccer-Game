@@ -37,7 +37,9 @@ failure costed where it's lost (where a lofted ball lands, midway for a ground p
 shot's the possession it gives up (P11, Mac only); a passer noticing any offside beyond his
 blind spot instead of re-rolling at every decision, and the in-match manager's press reading
 re-measured for the more direct play, and a failed pass's cost moved only halfway to where
-it's lost (P12, Mac only).
+it's lost (P12, Mac only); overalls counting all six headline ratings, which changes the
+attributes synthetic players are drawn with for a given overall, and who's picked (P14, Mac
+only).
 """
 
 import json

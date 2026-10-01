@@ -19,9 +19,8 @@ from footsim.core.rng import derive_rng, derive_seed
 from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef, MovementKind, PlayoffDef, SimLevel
 from footsim.domain.attributes import ATTRIBUTES
-from footsim.importers.generate import age_on
 from footsim.match.report import Decider
-from footsim.people.development import DevelopmentInput, apply_development
+from footsim.people.development import DevelopmentInput, Traits, apply_month, draw_traits
 from footsim.persistence.schema import (
     club_league_membership,
     competition,
@@ -29,6 +28,7 @@ from footsim.persistence.schema import (
     fixture,
     league_final,
     player_attr,
+    player_development,
     playoff_tie,
     season,
     tactic,
@@ -334,9 +334,10 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
 
 def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
                     share: float) -> list[str]:
-    """Every player develops by ``share`` of a year (people/development.py): the young grow
-    toward their potential, faster with minutes played in the past twelve months, and the old
-    decline. Returns news of the user's players whose overall moved."""
+    """A month of development for every player (people/development.py): the young grow
+    towards their ceilings, faster with minutes played in the past twelve months, and the old
+    decline. Traits are drawn the first time a player needs them. Returns news of the user's
+    players whose overall moved. ``share`` is kept for callers; a step is always a month."""
     rows = conn.execute(text("""
         SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date, pl.pa_hidden,
                (SELECT position FROM player_position pp WHERE pp.player_id = p.id
@@ -351,26 +352,58 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     ids = [r.id for r in rows]
     matrix = np.array([[getattr(attrs_rows[i], a) for a in ATTRIBUTES] for i in ids], dtype=float)
     groups = [world.defs.positions[r.position or "CM"].group for r in rows]
+    potential = np.array([r.pa_hidden for r in rows], dtype=float)
+    traits, progress = _development_state(conn, world, meta, day, ids, potential)
     inp = DevelopmentInput(
         attrs=matrix,
-        ages=np.array([age_on(date.fromisoformat(r.birth_date), day) for r in rows]),
-        potential=np.array([r.pa_hidden for r in rows], dtype=float),
+        ages=np.array([(day - date.fromisoformat(r.birth_date)).days / 365.25 for r in rows]),
+        potential=potential,
         groups=groups,
         minutes=np.array([r.minutes for r in rows], dtype=float),
     )
-    new = apply_development(world.defs, world.model, inp,
-                            derive_rng(meta.seed, "development", day.isoformat()), share)
+    new, progress, moves = apply_month(world.defs.development, world.model, inp, traits,
+                                       progress, derive_rng(meta.seed, "development",
+                                                            day.isoformat()))
     changed = np.any(new != matrix, axis=1)
     params = [{"pid": ids[i], **{a: int(new[i, j]) for j, a in enumerate(ATTRIBUTES)}}
               for i in np.flatnonzero(changed)]
     if params:
         assignments = ", ".join(f"{a} = :{a}" for a in ATTRIBUTES)
         conn.execute(text(f"UPDATE player_attr SET {assignments} WHERE player_id = :pid"), params)
-    return _development_news(conn, world, meta, rows, groups, matrix, new)
+    conn.execute(text("UPDATE player_development SET progress = :progress WHERE player_id = :pid"),
+                 [{"pid": pid, "progress": float(p)} for pid, p in zip(ids, progress, strict=True)])
+    return _development_news(conn, world, meta, rows, groups, matrix, new, moves)
+
+
+def _development_state(conn: Connection, world: World, meta: CareerMeta, day: date,
+                       ids: list[int], potential: np.ndarray) -> tuple[Traits, np.ndarray]:
+    """Every player's traits and progress, drawing traits for those who have none yet."""
+    known: dict[int, tuple[float, float, float, bool, float]] = {
+        r.player_id: (r.peak_age, r.decline_age, float(r.ceiling_bonus), bool(r.ageless),
+                      r.progress)
+        for r in conn.execute(select(player_development))}
+    missing = [k for k, pid in enumerate(ids) if pid not in known]
+    if missing:
+        drawn = draw_traits(world.defs.development, potential[missing],
+                            derive_rng(meta.seed, "development-traits", day.isoformat()))
+        rows = []
+        for n, k in enumerate(missing):
+            entry = (float(drawn.peak_age[n]), float(drawn.decline_age[n]),
+                     float(drawn.ceiling_bonus[n]), bool(drawn.ageless[n]), 0.0)
+            known[ids[k]] = entry
+            rows.append({"player_id": ids[k], "peak_age": entry[0], "decline_age": entry[1],
+                         "ceiling_bonus": int(entry[2]), "ageless": int(entry[3]),
+                         "progress": 0.0})
+        conn.execute(player_development.insert(), rows)
+    state = np.array([known[pid] for pid in ids], dtype=float)
+    traits = Traits(peak_age=state[:, 0], decline_age=state[:, 1], ceiling_bonus=state[:, 2],
+                    ageless=state[:, 3] > 0.5)
+    return traits, state[:, 4].copy()
 
 
 def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Sequence[Row[Any]],
-                      groups: list[Any], before: np.ndarray, after: np.ndarray) -> list[str]:
+                      groups: list[Any], before: np.ndarray, after: np.ndarray,
+                      moves: np.ndarray) -> list[str]:
     if meta.user_club_id is None:
         return []
     ours = {r.person_id for r in conn.execute(select(contract.c.person_id).where(
@@ -380,17 +413,19 @@ def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Se
         return []
     old = world.model.group_overalls(before[index])
     new = world.model.group_overalls(after[index])
-    moves = []
+    changes = []
     for n, k in enumerate(index):
         was, now = round(float(old[groups[k]][n])), round(float(new[groups[k]][n]))
         if now != was:
             r = rows[k]
             name = display_name(r.first_name, r.last_name, r.known_as)
-            moves.append((now - was, f"{name} {was}→{now}"))
-    if not moves:
+            whole = " (every attribute up)" if moves[k] > 0 else (
+                " (every attribute down)" if moves[k] < 0 else "")
+            changes.append((now - was, f"{name} {was}→{now}{whole}"))
+    if not changes:
         return []
-    up = [text_ for change, text_ in sorted(moves, key=lambda m: -m[0]) if change > 0]
-    down = [text_ for change, text_ in sorted(moves, key=lambda m: m[0]) if change < 0]
+    up = [text_ for change, text_ in sorted(changes, key=lambda m: -m[0]) if change > 0]
+    down = [text_ for change, text_ in sorted(changes, key=lambda m: m[0]) if change < 0]
     parts = []
     if up:
         parts.append(f"Improved: {', '.join(up)}.")

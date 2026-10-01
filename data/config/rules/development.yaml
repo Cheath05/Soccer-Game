@@ -1,0 +1,39 @@
+# Player development, applied on the first of every month (people/development.py).
+#
+# Over a career a player grows towards his ceiling: his hidden potential, and for some a little
+# beyond it. He reaches it in his prime, holds it, and declines from his early thirties, his
+# physical attributes first. A rare few, nearly all of them very good players, keep their prime
+# into their late thirties ("ageless").
+#
+# Each month's change is split: part of it lands on a few individual attributes (most often the
+# ones that matter in his position), and the rest builds up until his overall moves by a whole
+# point, when every attribute moves together.
+
+growth_by_age:            # (up to age, share of the gap to his ceiling closed in a year)
+  - [19, 0.30]
+  - [22, 0.35]
+  - [25, 0.42]
+  - [28, 0.55]
+late_growth: 0.15         # between his peak and his decline: what's left closes slowly
+minutes:                  # (minutes in the past twelve months up to, growth factor)
+  - [450, 0.55]
+  - [1350, 0.8]
+  - [2700, 1.0]
+heavy_minutes: 1.1        # a regular starter's
+peak_age: [26, 29]        # each player's own peak age, drawn from this range
+beyond_potential:         # (chance, low, high): how far above his potential his ceiling sits
+  - [0.20, 1, 2]
+  - [0.08, 3, 4]
+  - [0.02, 5, 7]
+decline_start: [31, 33]   # the age each player starts to decline, drawn from this range
+decline_by_year: [-0.5, -1.0, -1.6, -2.3, -3.0, -3.8]   # overall a year, then the last value on
+ageless_chance:           # (from potential, chance) of keeping his prime into his late thirties
+  - [0, 0.002]
+  - [80, 0.01]
+  - [85, 0.04]
+  - [88, 0.10]
+ageless_delay: 4          # years later his decline starts
+ageless_slowdown: 0.5     # and it runs at this share of the normal pace
+noise: 1.0                # a year's random swing in overall (sd), spread over the months
+specific_share: 0.4       # of each month's change, on individual attributes; the rest builds up
+                          # into whole-point moves of every attribute

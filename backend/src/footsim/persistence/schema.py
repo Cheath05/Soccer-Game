@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 3  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 4  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -285,6 +285,19 @@ player_state = Table(
     Column("injury", Text),
     Column("suspended_matches", Integer, nullable=False, default=0),
     Column("season_yellows", Integer, nullable=False, default=0),
+)
+
+# A player's development traits, drawn once (people/development.py), and the progress he has
+# built up towards his next whole-point move.
+player_development = Table(
+    "player_development",
+    metadata,
+    Column("player_id", ForeignKey("player.person_id"), primary_key=True),
+    Column("peak_age", Float, nullable=False),
+    Column("decline_age", Float, nullable=False),
+    Column("ceiling_bonus", Integer, nullable=False),
+    Column("ageless", Integer, nullable=False),
+    Column("progress", Float, nullable=False),
 )
 
 tactic = Table(

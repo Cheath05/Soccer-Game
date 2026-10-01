@@ -27,8 +27,13 @@ def _to_v3(conn: Connection) -> None:
     _add_column(conn, "match_event", "second", "INTEGER")
 
 
+def _to_v4(conn: Connection) -> None:
+    """Players' development traits and progress (rows are drawn the first time they're needed)."""
+    metadata.create_all(conn)
+
+
 # target version -> step that upgrades from the version before it
-STEPS: dict[int, Callable[[Connection], None]] = {3: _to_v3}
+STEPS: dict[int, Callable[[Connection], None]] = {3: _to_v3, 4: _to_v4}
 
 
 def migrate(engine: Engine) -> int:

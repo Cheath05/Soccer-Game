@@ -376,6 +376,42 @@ The user asked whether the engine or the management features (transfers, academy
   - **Cost:** about 1 s per month on the full world (17,849 players).
   - **Tests:** `test_development.py` (twelve months make a year; decline evenly). A year of monthly steps on a fresh Grimsby career changed 99% of players.
 
+## Play-test round 3 (the user, 1 Oct: development and the overall)
+
+The user asked for:
+- **Development:** ratings rise through the season; in their prime (about 20–28) players reach their ceiling, with chances to go above it; decline from the early to mid thirties; a rare few, only "wonder players", keep their prime until they retire.
+- **Monthly upgrades** go to specific stats, and when the overall goes up, every stat goes up with it.
+- **The overall** sits too far above the six headline ratings: "a player with only 2/5 general ratings at 70 and the rest lower and their rating is like 76". Make them closer.
+
+- [x] P13 **Development as the user described** (`people/development.py`, `data/config/rules/development.yaml`).
+  - **Traits**, drawn once per player and kept in the new `player_development` table (schema 4, migrated on load):
+    - his peak age (26–29);
+    - the age his decline starts (31–33);
+    - how far his ceiling sits above his potential (30% of players: +1–2, +3–4 or +5–7);
+    - agelessness: 0.2% of ordinary players, 10% of those with potential 88+. His decline starts 4 years later and runs at half pace.
+  - **Each month:**
+    - before his peak age, a player closes a share of the gap to his ceiling (30–55% a year by age, scaled by minutes played in the past twelve months), so a regular reaches it by his peak;
+    - he holds it, closing what's left slowly;
+    - from his decline age he loses 0.5, 1.0, 1.6, 2.3, 3.0, then 3.8 overall a year, physical attributes first;
+    - noise of 1 point a year (sd).
+  - **The month's change is split:**
+    - 40% lands on a few individual attributes, picked by how much his position values them; in decline, physical ones first;
+    - 60% builds up as `progress` until it makes a whole point of overall. Then every attribute moves by one: every outfield attribute for outfield players, every one but the mental ones on the way down.
+  - **News:** "Player development. Improved: Iwan Morgan 62→63, Alex Graham 54→55 (every attribute up). Declined: …"
+  - **Measured on the full world** (a fresh career, a year of monthly steps, no matches played):
+    - 0.73 s a month;
+    - 62 ageless players (0.35%);
+    - average overall change over the year: ages 15–21 +1.7, 21–25 +0.9, 25–29 +0.3, 29–32 0.0, 32–35 −1.0, 35+ −2.7. Young regulars grow about twice that, since minutes count.
+  - **Tests:**
+    - `test_development.py`: a regular reaches his ceiling by his peak and holds it; decline from his decline age, matching the table; ageless rare and mostly the best; a whole-point move lifts every attribute; individual moves touch a handful;
+    - `test_migrations.py`: a schema-3 save gains the table.
+  - **Not yet:** retirement doesn't exist, so "until they retire" waits for it (youth and academy phase).
+- [ ] P14 **The overall closer to the six headline ratings.** Measured on the base world:
+  - On average the overall isn't above them: within 0 to −3.6 of each group's top three.
+  - Specialists, though, sit well above most of them: Calvin Stengs, AM 77 (PAS 77, DRI 76, the rest 52–68); Dan Burn, CB 78 (DEF 77, PHY 81, PAC 43, SHO 38).
+  - The overall follows only the 2–3 ratings that matter for the position, as EA FC's does.
+  - **Plan:** blend the position-weighted headline ratings into the overall (one YAML setting). Keep each position group's mean and spread, so the stars stay stars and potential stays on the same scale, while specialists move towards their headline ratings.
+
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged

@@ -46,3 +46,18 @@ def test_newer_databases_are_refused(tmp_path: Path) -> None:
     with pytest.raises(SchemaMismatch):
         migrate(engine)
     engine.dispose()
+
+
+def test_version_3_gains_player_development(tmp_path: Path) -> None:
+    """Saves from before monthly development traits get the table when loaded (1 Oct)."""
+    path = tmp_path / "v3.sqlite"
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE player_development"))
+    write_meta(engine, {"schema_version": 3})
+    engine.dispose()
+    engine = open_database(path)
+    assert migrate(engine) == 3
+    with engine.connect() as conn:
+        assert "player_development" in inspect(conn).get_table_names()
+    engine.dispose()

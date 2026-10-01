@@ -15,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 from footsim.core.paths import config_dir
 from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
+from footsim.defs.development import DevelopmentDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
 from footsim.defs.match import (
@@ -58,6 +59,7 @@ class GameDefinitions:
     passing: PassingDef
     tactics: TacticsDef
     home_advantage: HomeAdvantageDef
+    development: DevelopmentDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -115,6 +117,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         passing=_parse(PassingDef, root / "match" / "passing.yaml"),
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
+        development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),
     )
     _cross_validate(defs)
     return defs

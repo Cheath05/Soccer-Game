@@ -23,7 +23,13 @@ const RESTART_NAMES: Record<string, string> = {
 export default function ScoreBar({ match }: { match: LiveMatch }) {
   const live = match.live
   if (!live) return null
-  const behind = match.playhead.current !== null ? Math.max(0, live.t - match.playhead.current) : 0
+  const playhead = match.playhead.current
+  const behind = playhead !== null ? Math.max(0, live.t - playhead) : 0
+  // The score follows the picture too: a goal counts once it has been seen.
+  const score: [number, number] = [live.score[0], live.score[1]]
+  if (playhead !== null && !live.finished) {
+    for (const f of live.feed) if (f.type === 'goal' && f.team !== null && f.t > playhead + 0.05) score[f.team] -= 1
+  }
   const still = live.atBreak || live.finished || live.clock.state !== 'playing'
   const elapsed = still ? live.clock.elapsed : Math.max(0, live.clock.elapsed - behind)
   const clock = live.finished ? 'FT' : live.atBreak ? 'HT' : formatClock(live.clock.period, elapsed)
@@ -38,7 +44,7 @@ export default function ScoreBar({ match }: { match: LiveMatch }) {
         </Group>
         <Stack gap={2} align="center">
           <Title order={2} style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {live.score[0]} – {live.score[1]}
+            {score[0]} – {score[1]}
           </Title>
           <Group gap={6}>
             <Badge variant="filled" color="dark" size="lg" aria-label="Match clock" style={{ fontVariantNumeric: 'tabular-nums' }}>

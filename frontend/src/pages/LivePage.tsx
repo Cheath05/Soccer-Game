@@ -2,6 +2,7 @@ import { Alert, Box, Button, Card, Checkbox, Group, ScrollArea, SegmentedControl
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import GoalBanner from '../match-viewer/GoalBanner'
 import HalfTimePanel from '../match-viewer/HalfTimePanel'
 import PitchView from '../match-viewer/PitchView'
 import PlaybackControls from '../match-viewer/PlaybackControls'
@@ -48,6 +49,7 @@ export default function LivePage() {
         <Stack gap="xs" style={{ flex: '3 1 560px', minWidth: 320 }}>
           <Box pos="relative">
             <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} />
+            <GoalBanner match={match} />
             {selectedStatus && (
               <Box pos="absolute" top={8} left={8}>
                 <PlayerCard player={selectedStatus} onClose={() => setSelected(null)} />

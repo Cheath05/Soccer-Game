@@ -31,6 +31,7 @@ class PresentationDef(DefModel):
     highlight_before: float = Field(ge=0)  # game seconds shown before a highlight
     highlight_after: float = Field(ge=0)
     highlight_rate: float = Field(gt=0)  # match seconds per real second replaying one
+    goal_pause: float = Field(ge=0)  # real seconds the picture holds on a goal
 
     @model_validator(mode="after")
     def _default_speed_offered(self) -> "PresentationDef":

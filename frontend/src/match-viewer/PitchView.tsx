@@ -63,7 +63,12 @@ export default function PitchView({ match, showNames, debug = false, selected, o
             // Follow the server's timeline: it carries on from what's on screen through pauses
             // and speed changes, so the picture moves on smoothly and never skips ahead.
             if (sync.moving) pt += dt * sync.rate
-            const target = sync.shown + (sync.moving ? ((now - sync.wall) / 1000) * sync.rate : 0)
+            let target = sync.shown + (sync.moving ? ((now - sync.wall) / 1000) * sync.rate : 0)
+            if (sync.holdAt !== null) {
+              // Stop on a goal rather than running past it before the server says to hold.
+              target = Math.min(target, sync.holdAt)
+              pt = Math.min(pt, sync.holdAt)
+            }
             const gap = target - pt
             // Far out (a highlight, or a tab that was hidden): go straight there.
             if (Math.abs(gap) > Math.max(3, 2 * sync.rate)) pt = target

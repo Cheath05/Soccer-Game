@@ -16,6 +16,7 @@ export interface Sync {
   wall: number
   rate: number
   moving: boolean
+  holdAt: number | null // the picture stops here (a goal) until the server moves it on
 }
 
 export interface LiveMatch {
@@ -40,6 +41,8 @@ function fromInit(msg: Message): LiveState {
     userTeam: msg.user_team,
     score: msg.score,
     t: msg.t,
+    shown: msg.shown ?? msg.t,
+    holding: msg.holding ?? null,
     clock: msg.clock,
     paused: msg.paused,
     speed: msg.speed,
@@ -65,13 +68,17 @@ function fromInit(msg: Message): LiveState {
   }
 }
 
-function toSync(msg: Message): Sync | null {
+// ``offset`` is the server clock's lag behind ours in seconds (the smallest seen): with it,
+// ``shown`` is placed at the moment the server meant, not when its message happened to arrive.
+function toSync(msg: Message, offset: number): Sync | null {
   if (typeof msg.shown !== 'number') return null // an older server: free-running playback
+  const wall = typeof msg.server_time === 'number' && Number.isFinite(offset) ? (msg.server_time + offset) * 1000 : performance.now()
   return {
     shown: msg.shown,
-    wall: performance.now(),
+    wall,
     rate: msg.play_rate ?? msg.rate,
-    moving: !msg.paused || msg.at_break || msg.finished,
+    moving: (!msg.paused || msg.at_break || msg.finished) && !msg.holding,
+    holdAt: msg.hold_at ?? null,
   }
 }
 
@@ -83,6 +90,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
   const debugBuffer = useRef<DebugSnapshot[]>([])
   const playhead = useRef<number | null>(null)
   const sync = useRef<Sync | null>(null)
+  const clockOffset = useRef(Infinity)
   const nextId = useRef(1)
   const [live, setLive] = useState<LiveState | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -107,8 +115,12 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
       liveRef.current = next
       setLive(next)
     }
+    clockOffset.current = Infinity
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data as string) as Message
+      if (typeof msg.server_time === 'number') {
+        clockOffset.current = Math.min(clockOffset.current, performance.now() / 1000 - msg.server_time)
+      }
       if (msg.type === 'ack') return
       if (msg.type === 'error') {
         // A refused command is shown briefly; a failure without a command ends the view.
@@ -137,7 +149,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         const state = fromInit(msg)
         buffer.current = (msg.frames as number[][]).map(toSnapshot)
         debugBuffer.current = []
-        sync.current = toSync(msg)
+        sync.current = toSync(msg, clockOffset.current)
         playhead.current =
           sync.current?.shown ?? (buffer.current.length ? buffer.current[buffer.current.length - 1].t : null)
         commit(state)
@@ -149,6 +161,8 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         ...previous,
         score: msg.score,
         t: msg.t,
+        shown: msg.shown ?? msg.t,
+        holding: msg.holding ?? null,
         clock: msg.clock,
         paused: msg.paused,
         speed: msg.speed,
@@ -161,7 +175,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         pendingSubs: msg.pending_subs,
         subsLeft: msg.subs_left,
       }
-      sync.current = toSync(msg)
+      sync.current = toSync(msg, clockOffset.current)
       if (msg.feed) next.feed = [...[...msg.feed].reverse(), ...previous.feed].slice(0, 250)
       if (msg.lineup) next.lineup = msg.lineup
       if (msg.formation) next.formation = msg.formation

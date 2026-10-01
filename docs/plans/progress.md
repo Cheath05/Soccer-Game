@@ -19,8 +19,9 @@
 - **In progress: the user's play-test fixes** ("Play-test fixes" below), each its own commit. They come before 2.3c continues.
   - P1 (hand-picked starters shown as 99): 85a20ce.
   - P2 (the set-piece taker running back and forth): 36fbd4f.
-  - P3 (the live viewer skipping actions) is done in the commit that ticks it.
-  - Next is P4 (goal pause and banner), built on P3's timeline.
+  - P3 (the live viewer skipping actions): d981315.
+  - P4 (goal pause and banner) is done in the commit that ticks it.
+  - Next is P5 (sim to date). Then restart :8000 so the user can play-test P1–P5.
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -151,7 +152,22 @@ The user also said save files may be deleted if they ever get in the way of the 
     - In Chromium (`e2e/live.mjs`, which now samples the time the pitch draws via `canvas.dataset.t`): the largest step in about 100 ms after slowing from 8× to 1× is 2.7 match seconds, a smooth catch-up.
   - **Tests:** `test_the_picture_carries_on_through_speed_changes_and_pauses`; the frame-limit test now also checks that every touch is sent. Golden values unchanged (presentation only).
   - **Also:** `e2e/smoke.mjs` no longer reports the 409 a fresh server's start page gets for `/api/career` (no career loaded yet, as intended).
-- [ ] P4 **Goals:** a 3-second pause and a banner with the scorer and any assist. Presentation only: the result must not change.
+- [x] P4 **Goals: a 3-second pause and a banner with the scorer and any assist.**
+  - **The hold:** `LiveSession` collects each goal from the engine's log, which now carries `scorer_id` and `assist_id`; a substitution can follow at the kick-off in the same tick, so slots won't do.
+    - It adds a `Hold` to the timeline, and `shown` stops there for `presentation.yaml` `goal_pause` (3) real seconds at any speed, highlights included.
+    - The engine runs ahead of the screen, so the hold is in place before the picture gets there.
+    - Pausing or changing speed during a hold keeps only the time it has left.
+  - **Messages:** each one carries `holding` (scorer, assist, own goal, penalty, clock, score), `hold_at` and `server_time`.
+  - **The viewer:**
+    - its playhead stops on `hold_at`;
+    - it puts the server's `shown` at the moment the server meant, using the smallest clock offset seen. This removes the lag from message delivery: about 2 match seconds at 8×.
+    - `GoalBanner` shows once the picture reaches the goal.
+    - The scoreboard counts a goal only once it has been seen; the commentary already did.
+  - **Tests:**
+    - `test_a_goal_holds_the_picture_while_the_scorer_is_shown` and `test_goal_pauses_never_change_the_result`;
+    - `e2e/live.mjs` watches for the banner at 8× (into the second half if need be) and checks the picture holds still, as it did for "GOAL! Evanilson, Assist: Ryan Christie";
+    - after slowing from 8× to 1×, the largest step in about 100 ms is 1.3 match seconds;
+    - golden values unchanged.
 - [ ] P5 **Sim to date** (Phase I, basic): continue to a chosen date, a week, a month or the season's end, playing the user's matches instantly, with stop conditions.
 - Later (the user agrees): transfers and the other management systems.
 

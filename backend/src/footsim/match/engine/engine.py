@@ -559,7 +559,9 @@ class MatchEngine:
             self.record_event("own_goal", team,
                               self.players[scorer].player_id if scorer >= 0 else None)
             self.emit("goal", team, scorer if scorer >= 0 else None, own_goal=True,
-                      penalty=False, assist=None)
+                      penalty=False, assist=None,
+                      scorer_id=self.players[scorer].player_id if scorer >= 0 else None,
+                      assist_id=None)
             self._announce("goal", team, f"GOAL! Own goal by {name}")
         else:
             penalty = info is not None and info.penalty
@@ -574,7 +576,9 @@ class MatchEngine:
             kind = "penalty_goal" if penalty else "goal"
             self.record_event(kind, team, self.players[scorer].player_id,
                               self.players[assist].player_id if assist is not None else None)
-            self.emit("goal", team, scorer, own_goal=False, penalty=penalty, assist=assist)
+            self.emit("goal", team, scorer, own_goal=False, penalty=penalty, assist=assist,
+                      scorer_id=self.players[scorer].player_id,
+                      assist_id=self.players[assist].player_id if assist is not None else None)
             text = f"GOAL! {self.players[scorer].player.name}"
             if assist is not None:
                 text += f", assisted by {self.players[assist].player.name}"

@@ -9,6 +9,8 @@ speed, and highlights mode just skips frames.
 One timeline says what the viewer should be showing (``shown``). Pausing, resuming and
 changing speed or mode carry on from the moment on screen, so the picture never jumps; the
 engine runs a little ahead of it (``lookahead_seconds``), and the viewer steers towards it.
+At a goal the timeline holds still for ``goal_pause`` real seconds, at any speed, while the
+viewer shows who scored.
 
 Commands that do change the match (formation, instructions, substitutions, starting the
 next period) are applied between two ticks and logged with that tick, so a watched match
@@ -76,6 +78,15 @@ class Pump:
     highlight: bool = False
 
 
+@dataclass
+class Hold:
+    """The picture stops on a moment of the match for a while (a goal), whatever the speed."""
+
+    t: float  # the match time it stops on
+    seconds: float  # real seconds it stays there (what's left, once it has started)
+    info: dict[str, Any]  # what the viewer shows meanwhile
+
+
 class LiveSession:
     def __init__(self, engine: MatchEngine, world: World, presentation: PresentationDef,
                  user_team: int) -> None:
@@ -93,6 +104,10 @@ class LiveSession:
         self.anchor_wall = 0.0
         self.replay_until = -1.0  # highlights: play at normal speed until this match time
         self.last_owner = -2.0  # the ball's owner in the last frame looked at (_drain)
+        self.holds: list[Hold] = []
+        self.log_seen = len(engine.log)  # engine events already looked at for goals
+        self.names = {sp.player_id: sp.player.name for sheet in engine.sheets
+                      for sp in [*sheet.starters, *sheet.bench]}
         self.log: list[tuple[int, Command]] = []
         self.feed_sent = 0
         self.lineup_sent = -1
@@ -119,19 +134,40 @@ class LiveSession:
             return min(self.rate, self.p.highlight_rate)
         return self.rate
 
-    def shown(self, now: float) -> float:
-        """The match time the viewer should be showing at real time ``now``. It stands still
-        while paused, and runs on to the whistle at a break."""
+    def _timeline(self, now: float) -> tuple[float, Hold | None, float]:
+        """Where the picture is at real time ``now``: the match time on screen (before
+        clamping to the engine), the hold it's stopped on if any, and that hold's real seconds
+        left. It stands still while paused, and runs on to the whistle at a break."""
         engine = self.engine
-        moving = not self.paused or engine.at_break or engine.finished
         t = self.anchor_sim
-        if moving:
-            t += max(0.0, now - self.anchor_wall) * self.play_rate
-        return min(t, engine.t)
+        ahead = [h for h in self.holds if h.t >= t]
+        if self.paused and not (engine.at_break or engine.finished):
+            hold = next((h for h in ahead if h.t == t), None)
+            return t, hold, hold.seconds if hold is not None else 0.0
+        budget = max(0.0, now - self.anchor_wall)  # real seconds since the anchor
+        for hold in ahead:
+            reach = (hold.t - t) / self.play_rate
+            if budget < reach:
+                break
+            budget -= reach
+            t = hold.t
+            if budget < hold.seconds:
+                return t, hold, hold.seconds - budget
+            budget -= hold.seconds
+        return t + budget * self.play_rate, None, 0.0
+
+    def shown(self, now: float) -> float:
+        """The match time the viewer should be showing at real time ``now``."""
+        return min(self._timeline(now)[0], self.engine.t)
 
     def _reanchor(self, now: float) -> None:
-        """Carry on from the moment on screen (not from where the engine has got to)."""
-        self.anchor_sim = self.shown(now)
+        """Carry on from the moment on screen (not from where the engine has got to). A hold
+        under way keeps only the time it has left."""
+        t, hold, left = self._timeline(now)
+        if hold is not None:
+            hold.seconds = left
+        self.holds = [h for h in self.holds if h.t > t or h is hold]
+        self.anchor_sim = min(t, self.engine.t)
         self.anchor_wall = now
 
     def pause(self, now: float) -> None:
@@ -200,16 +236,37 @@ class LiveSession:
             return Pump([])
         if self.mode == "highlights" and self.shown(now) >= self.replay_until:
             return self._skip_to_highlight(now)
-        due = self.anchor_sim + (now - self.anchor_wall) * self.play_rate
-        target = due + self.p.lookahead_seconds * self.play_rate
+        target = self._timeline(now)[0] + self.p.lookahead_seconds * self.play_rate
         ticks = 0
         while (engine.t < target and ticks < MAX_TICKS_PER_PUMP and not engine.finished
                and not engine.at_break):
             engine.step()
             ticks += 1
+        self._collect_goals()
         if engine.at_break:
             self.paused = True
         return Pump(self._drain())
+
+    def _collect_goals(self) -> None:
+        """A hold for each new goal. The engine runs ahead of the screen, so the hold is in
+        place before the picture gets there."""
+        log = self.engine.log
+        for event in log[self.log_seen:]:
+            if event.kind == "goal":
+                self.holds.append(Hold(event.t, self.p.goal_pause, self._goal_info(event.t,
+                                                                                   event.team,
+                                                                                   event.data)))
+        self.log_seen = len(log)
+
+    def _goal_info(self, t: float, team: int | None, data: dict[str, Any]) -> dict[str, Any]:
+        announced = next((f for f in reversed(self.engine.feed)
+                          if f["type"] == "goal" and f["t"] == t), None)
+        return {"t": t, "team": team,
+                "scorer": self.names.get(data.get("scorer_id", -1)),
+                "assist": self.names.get(data.get("assist_id", -1)),
+                "own_goal": bool(data.get("own_goal")), "penalty": bool(data.get("penalty")),
+                "clock": announced["clock"] if announced else None,
+                "score": announced["score"] if announced else list(self.engine.score)}
 
     def _drain(self, limit: int | None = None) -> list[list[float]]:
         frames = list(self.engine.frames)
@@ -238,6 +295,7 @@ class LiveSession:
             if engine.finished or engine.at_break or any(
                     f["type"] in HIGHLIGHT_TYPES for f in engine.feed[start:]):
                 break
+        self._collect_goals()
         if engine.at_break:
             self.paused = True
         if not any(f["type"] in HIGHLIGHT_TYPES for f in engine.feed[start:]):
@@ -260,8 +318,12 @@ class LiveSession:
 
     def state(self, now: float) -> dict[str, Any]:
         e = self.engine
+        t, hold, _ = self._timeline(now)
+        shown = min(t, e.t)
+        hold_at = min((h.t for h in self.holds if h.t > shown), default=None)
         return {"score": list(e.score), "minute": e.minute, "period": e.period,
-                "t": round(e.t, 1), "shown": round(self.shown(now), 2),
+                "t": round(e.t, 1), "shown": round(shown, 2), "server_time": round(now, 3),
+                "holding": hold.info if hold is not None else None, "hold_at": hold_at,
                 "clock": self.clock(), "paused": self.paused,
                 "speed": self.speed,
                 "rate": self.rate, "play_rate": self.play_rate, "mode": self.mode,

@@ -42,6 +42,7 @@ const drawn = () => pitch.evaluate((c) => Number(c.dataset.t))
 await page.getByText('8×').click()
 await page.waitForTimeout(1500)
 await page.getByText('1×', { exact: true }).click()
+await page.waitForTimeout(300) // the server's next message brings the new speed
 let previous = await drawn()
 let worst = 0
 for (let i = 0; i < 30; i++) {
@@ -51,10 +52,31 @@ for (let i = 0; i < 30; i++) {
   previous = now
 }
 console.log(`largest step in ~100 ms after slowing from 8x to 1x: ${worst.toFixed(1)} match s`)
-if (worst > 4) errors.push(`the picture jumped ${worst.toFixed(1)} match seconds after slowing down`)
+if (worst > 3) errors.push(`the picture jumped ${worst.toFixed(1)} match seconds after slowing down`)
 
+// On to half-time at 8x. A goal holds the picture for a few seconds with a banner naming the
+// scorer; if one comes, check the picture stands still meanwhile (goals are up to the match).
 await page.getByText('8×').click()
-await page.getByRole('button', { name: 'Start second half' }).waitFor({ timeout: 90000 })
+const halfTime = page.getByRole('button', { name: 'Start second half' })
+const banner = page.getByRole('status', { name: 'Goal' })
+let goalSeen = false
+// Polls for up to ``ms`` (or until ``stop()``); on a goal, checks the picture holds still.
+const watchForGoal = async (ms, stop) => {
+  for (let waited = 0; waited < ms && !goalSeen && !(await stop()); waited += 100) {
+    if (await banner.isVisible()) {
+      goalSeen = true
+      const at = await drawn()
+      await page.waitForTimeout(1000)
+      const later = await drawn()
+      await shot('12a-live-goal')
+      console.log(`goal banner: ${(await banner.innerText()).replace(/\n/g, ' | ')}`)
+      if (Math.abs(later - at) > 0.5) errors.push(`the picture moved ${later - at} match s during a goal pause`)
+    }
+    await page.waitForTimeout(100)
+  }
+}
+await watchForGoal(90000, () => halfTime.isVisible())
+await halfTime.waitFor({ timeout: 90000 })
 await shot('12-live-half-time')
 
 await page.getByRole('tab', { name: 'Tactics' }).click()
@@ -89,6 +111,8 @@ for (const [fx, fy] of [[0.5, 0.5], [0.4, 0.4], [0.6, 0.6], [0.3, 0.5], [0.7, 0.
   if (await page.getByText(/Fitness at kick-off/).count()) break
 }
 await shot('14-live-player-card')
+if (!goalSeen) await watchForGoal(30000, async () => false) // goals are up to the match
+console.log(goalSeen ? 'goal pause checked' : 'no goal seen to check the pause on')
 
 await page.getByRole('button', { name: 'Instant result' }).click()
 await page.getByRole('button', { name: 'Match report' }).waitFor({ timeout: 60000 })

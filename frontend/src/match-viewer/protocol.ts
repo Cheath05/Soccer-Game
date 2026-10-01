@@ -22,6 +22,18 @@ export interface FeedItem {
   text: string
 }
 
+// A goal the picture is holding on (LiveSession: the timeline stops for a few seconds).
+export interface GoalInfo {
+  t: number
+  team: number
+  scorer: string | null
+  assist: string | null
+  own_goal: boolean
+  penalty: boolean
+  clock: string | null
+  score: [number, number]
+}
+
 // A player on the pitch: ability (ovr) and today's performance (rating) are different things.
 export interface PlayerStatus {
   index: number
@@ -76,6 +88,8 @@ export interface LiveState {
   userTeam: number
   score: [number, number]
   t: number
+  shown: number // the match time the picture should be showing
+  holding: GoalInfo | null // the picture is holding on this goal
   clock: ClockInfo
   paused: boolean
   speed: number

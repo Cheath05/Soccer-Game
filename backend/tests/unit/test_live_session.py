@@ -181,3 +181,55 @@ def test_the_debug_overlay_shows_intentions_without_changing_the_match(world: Wo
     assert watched.engine.tick_count == plain.engine.tick_count
     assert watched.engine.pos.tobytes() == plain.engine.pos.tobytes()  # nothing read back
     assert (watched.engine.rng.bit_generator.state == plain.engine.rng.bit_generator.state)
+
+
+def _first_goal(session: LiveSession, now: float) -> tuple[float, object]:
+    """Pump at 8x until the engine has scored; returns the real time and the goal's hold."""
+    session.apply({"type": "speed", "value": 8}, now)
+    session.apply({"type": "resume"}, now)
+    while not session.holds:
+        session.pump(now)
+        now += TICK
+        if session.engine.at_break:
+            session.apply({"type": "start_period"}, now)
+        assert not session.engine.finished, "no goal in this match"
+    return now, session.holds[0]
+
+
+def test_a_goal_holds_the_picture_while_the_scorer_is_shown(world: World) -> None:
+    """Play-test, 30 Sep: the user wants a pause and a banner at each goal, so it can't be
+    missed at any speed."""
+    session = _session(world)
+    now, hold = _first_goal(session, 0.0)
+    goal_t = hold.t  # type: ignore[attr-defined]
+    pause = session.p.goal_pause
+    # The engine runs ahead, so the hold is known before the picture gets there.
+    assert session.shown(now) < goal_t
+    while session.shown(now) < goal_t:
+        session.pump(now)
+        now += TICK
+    reached = now
+    info = session.state(now)["holding"]
+    assert info is not None and info["scorer"] and info["team"] in (0, 1)
+    assert info["score"][info["team"]] >= 1
+    while now < reached + pause - 2 * TICK:  # the picture stays on the goal...
+        session.pump(now)
+        assert session.shown(now) == pytest.approx(goal_t)
+        now += TICK
+    _play(session, now, 1.0)  # ...and then carries on
+    assert session.shown(now + 1.0) > goal_t + 30
+    assert session.state(now + 1.0)["holding"] is None
+
+
+def test_goal_pauses_never_change_the_result(world: World) -> None:
+    watched = _session(world)
+    now, _ = _first_goal(watched, 0.0)
+    while not watched.engine.finished:
+        watched.pump(now)
+        now += TICK
+        if watched.engine.at_break:
+            watched.apply({"type": "start_period"}, now)
+    headless = _engine(world)
+    headless.run()
+    assert watched.engine.score == headless.score
+    assert watched.engine.tick_count == headless.tick_count

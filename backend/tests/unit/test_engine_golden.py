@@ -34,7 +34,10 @@ taker jogging to the ball and stopping on it instead of running past it and back
 through it (Step 2.3c, Mac only); round 5's long-ball errors kept for lofted balls only, the
 pressure on a pass scaled by the passer's composure (play-test fix P7, Mac only); a pass's
 failure costed where it's lost (where a lofted ball lands, midway for a ground pass) and a
-shot's the possession it gives up (P11, Mac only).
+shot's the possession it gives up (P11, Mac only); a passer noticing any offside beyond his
+blind spot instead of re-rolling at every decision, and the in-match manager's press reading
+re-measured for the more direct play, and a failed pass's cost moved only halfway to where
+it's lost (P12, Mac only).
 """
 
 import json

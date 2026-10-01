@@ -55,6 +55,14 @@ estimate:                 # the passer's estimate of a pass, where the ball's mo
                           # receivers stop on the ball's line)
   closing: 0.25           # share of his running the nearest opponent spends closing the
                           # receiver down before the ball arrives (fitted to the physics)
+offside_blind_spot: 1.0      # m: how far offside a receiver can be without a passer with no
+                             # decision-making at all noticing; scaled by (1 - decisions / 100),
+                             # so 0.3 m at decisions 70. Only marginal offsides slip past
+                             # (4 synthetic matches: 14.5 offsides with the old re-roll, 4.25)
+loss_where_lost: 0.5         # a failed pass is costed this far from the passer's feet towards
+                             # where it's lost (a lofted ball's landing, a ground pass's midway).
+                             # 1.0 (P11) made Premier League sides play 24% long balls and 48 shots
+                             # a match, as defences can't deal with long balls yet (Phase D)
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)

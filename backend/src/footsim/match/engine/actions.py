@@ -282,8 +282,12 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     value = np.where(np.array(kinds) == "cross", value * 1.1, value)
     # A pass that fails is lost where it fails, not at the passer's feet: a ball in the air
     # where it comes down (or out of play beyond it), a ground pass on its way or at the man.
-    # So a long ball out of trouble risks the ball far from our goal.
+    # So a long ball out of trouble risks the ball far from our goal. How far the cost moves
+    # there is ``loss_where_lost`` (1: all the way), while defences can't yet deal with long
+    # balls as real ones do (Phase D).
     lost_at = np.where(lofted[:, None], target, (target + ball) / 2)
+    w = eng.defs.passing.loss_where_lost
+    lost_at = w * lost_at + (1 - w) * ball[None, :]
     loss = loss_cost(lost_at[:, 0], lost_at[:, 1])
     here = float(loss_cost(bx, by))
     utility = success * (value + RETAIN) - (1 - success) * loss
@@ -292,16 +296,24 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     if directness < 0:
         utility -= 0.012 * (length > 25)
     utility += 0.01 * eng.role[i].on_ball.pass_risk * (value - float(threat(bx, by)))
-    offside = (target[:, 0] > line + 0.3) & (target[:, 0] > bx) & (target[:, 0] > 52.5)
-    options: list[Option] = []
+    # Offside (Law 11) is judged on where the receiver is when the ball is played. The passer
+    # notices anyone offside by more than his blind spot, which good decision-makers keep
+    # small: only marginal ones slip past him (and the assistant referee flags them). None from
+    # a throw-in, a goal kick or a corner.
+    restart_free = mode in ("throw", "long_throw", "corner", "goal_kick")
+    blind = eng.defs.passing.offside_blind_spot * (1 - eng.a(i, "decisions") / 100)
     decisions = eng.a(i, "decisions")
+    in_behind = (target[:, 0] > line + 0.3) & (target[:, 0] > bx) & (target[:, 0] > 52.5)
+    options: list[Option] = []
     for k, j in enumerate(receivers):
         receiver_x = pts[j][0]
-        spots_offside = eng.rng.random() < 0.3 + 0.65 * decisions / 100
-        if kinds[k] != "through" and receiver_x > line + 0.3 and receiver_x > bx and \
-                receiver_x > 52.5 and spots_offside:
-            continue  # sees the offside and doesn't play it
-        if offside[k] and kinds[k] == "through" and spots_offside:
+        if (not restart_free and receiver_x > line + 0.3 + blind and receiver_x > bx
+                and receiver_x > 52.5):
+            continue  # he sees the offside and doesn't play it
+        # A stopgap until defenders track runners (Phase D): a ball in behind the line is
+        # played only now and then. Without it, through balls are close to free goals.
+        if (kinds[k] == "through" and in_behind[k]
+                and eng.rng.random() < 0.3 + 0.65 * decisions / 100):
             continue
         options.append((float(utility[k]), kinds[k],
                         PassOption(j, (float(target[k, 0]), float(target[k, 1])),

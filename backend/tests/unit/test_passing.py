@@ -211,6 +211,9 @@ def test_a_long_ball_risks_the_ball_where_it_lands_not_at_the_passers_feet(world
     engine = _empty_engine(world, 10)
     passer, striker = 3, 9  # a defender and a forward of the home side
     engine.pos[passer], engine.pos[striker] = (25.0, 34.0), (70.0, 34.0)
+    keeper, defender = engine.keeper(1), [int(i) for i in engine.team_indices(1)][3]
+    assert keeper is not None
+    engine.pos[keeper], engine.pos[defender] = (100.0, 34.0), (75.0, 20.0)  # he's onside
     engine.ball, engine.owner = np.array([25.5, 34.0]), passer
     team = 0
     pts = engine.att_points(team, engine.pos)
@@ -222,8 +225,42 @@ def test_a_long_ball_risks_the_ball_where_it_lands_not_at_the_passers_feet(world
     s = option.estimate
     role = 0.01 * engine.role[passer].on_ball.pass_risk * (
         float(threat(*option.target)) - float(threat(25.5, 34.0)))
-    lost_there = s * (float(threat(*option.target)) + actions.RETAIN) \
-        - (1 - s) * float(loss_cost(*option.target)) + role
+    w = world.defs.passing.loss_where_lost  # how far the cost moves to where it's lost
+    lost_at = w * np.array(option.target) + (1 - w) * np.array([25.5, 34.0])
+    expected = s * (float(threat(*option.target)) + actions.RETAIN) \
+        - (1 - s) * float(loss_cost(*lost_at)) + role
+    at_feet = s * (float(threat(*option.target)) + actions.RETAIN) \
+        - (1 - s) * float(loss_cost(25.5, 34.0)) + role
     assert option.lofted
-    assert utility == pytest.approx(lost_there, abs=0.004)  # (plus the directness term)
-    assert float(loss_cost(*option.target)) < float(loss_cost(25.5, 34.0)) / 3
+    assert utility == pytest.approx(expected, abs=0.001)  # (plus the directness term)
+    assert w > 0 and utility > at_feet + 0.002
+
+
+def test_a_passer_sees_a_clear_offside_but_may_miss_a_marginal_one(world: World) -> None:
+    # 1 Oct: the passer re-rolled whether he noticed an offside at every decision, so sooner
+    # or later he played it (14 offsides a match once long balls came in). Now a receiver
+    # offside by more than the passer's blind spot is never played to; one level-ish may be.
+    from footsim.match.engine.behaviours import offside_line
+
+    engine = _empty_engine(world, 11)
+    passer, clear, marginal = 5, 9, 10
+    engine.pos[passer] = (60.0, 34.0)
+    keeper, defender = engine.keeper(1), [int(i) for i in engine.team_indices(1)][3]
+    assert keeper is not None
+    engine.pos[keeper], engine.pos[defender] = (100.0, 34.0), (80.0, 30.0)
+    blind = world.defs.passing.offside_blind_spot * (1 - engine.a(passer, "decisions") / 100)
+    engine.pos[clear] = (80.3 + blind + 1.0, 28.0)  # within a throw's reach too
+    engine.pos[marginal] = (80.3 + blind / 2, 48.0)
+    engine.ball, engine.owner = np.array([60.5, 34.0]), passer
+    pts = engine.att_points(0, engine.pos)
+    opps = engine.team_indices(1)
+    assert offside_line(pts[opps], 60.5) == pytest.approx(80.0)
+
+    def receivers(mode: str | None) -> set[int]:
+        options = actions._pass_options(
+            engine, passer, 0, [clear, marginal], pts, engine.vel * engine.attack_dir[0],
+            np.array([60.5, 34.0]), opps, pts[opps], 0.0, 80.0, mode)
+        return {o[2].receiver for o in options if o[1] == "pass"}
+
+    assert receivers(None) == {marginal}
+    assert receivers("throw") == {clear, marginal}  # no offside from a throw-in

@@ -171,6 +171,9 @@ class PassingDef(DefModel):
 
     execution: PassExecutionDef
     control: ControlDef
+    offside_blind_spot: float = Field(ge=0)  # m beyond the line a passer may not notice
+    loss_where_lost: float = Field(ge=0, le=1)  # how far a failed pass's cost moves to where
+                                                # it's lost (0: the passer's feet)
     clearance_wide_share: float = Field(ge=0, le=1)
     target_area: float = Field(gt=0)
     intercept_scale: float = Field(gt=0, le=2)

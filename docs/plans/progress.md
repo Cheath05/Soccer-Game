@@ -297,7 +297,38 @@ The user asked whether the engine or the management features (transfers, academy
     - Without the shot term, shots were 35 at .056 xG each.
   - **Shots stay too many.** Attacks reach the box too easily against static defensive shapes: Phase D.
   - **Tests:** `test_a_long_ball_risks_the_ball_where_it_lands_not_at_the_passers_feet`. Mac golden values re-recorded with a History note.
-  - **Measurement:** 200 matches per division, `reports/engine/step2.3/ref-p11`. Recorded in the next commit.
+  - **Measured** (`reports/engine/step2.3/ref-p11`, 200 matches per division, P7 → P11):
+
+    | | ENG4 | ENG1 | Real |
+    |---|---|---|---|
+    | Pass accuracy | .922 → .869 | .905 → .824 | PL .80–.85; EFL .74–.81 |
+    | Long-ball share | .034 → .106 | .094 → .239 | PL ~.12 |
+    | Goals | 1.61 → 2.29 | 3.11 → 4.35 | PL 2.65–3.05; EFL 2.45–2.85 |
+    | Shots | 20.7 → 28.4 | 37.5 → 48.4 | PL 23–27.5; EFL 22–26 |
+    | Ball in play (min) | 75.3 → 67.6 | 65.8 → 54.4 | 52–60 |
+    | High regains | 19.5 → 15.8 | 15.8 → 12.7 | 10–17 |
+    | Offsides | 7.3 → 12.5 | 5.9 → 8.1 | 2.5–4.5 |
+    | Shots from outside the box | .22 → .12 | .16 → .08 | .30–.42 |
+
+    - **Right for ENG4.** For ENG1 it's too much: Premier League sides pass long well, so with territory valued they went long a quarter of the time. Defences can't deal with long balls yet (Phase D), so box entries, shots and goals ran away.
+    - **More offsides:** long balls met the per-decision offside re-roll (P12).
+    - **Long shots almost vanished:** the shot term weighs most on low-xG shots. Known; revisit with shot selection.
+    - **Not shipped to :8000** in this form; P12 below adjusts it.
+- [x] P12 **Offsides, and P11 softened.**
+  - **Offside awareness:** the passer re-rolled whether he noticed an offside at every decision, so sooner or later he played it.
+    - Now he notices any receiver beyond his blind spot (`passing.yaml` `offside_blind_spot` 1.0 m × (1 − decisions/100), about 0.3 m at decisions 70), judged on the receiver's position as the law has it.
+    - No offside filter at throw-ins, goal kicks or corners.
+    - Indicative (4 matches, quality 62): offsides 14.5 → 4.25.
+  - **Through balls in behind stay rare** through the old random filter: a stopgap until defenders track runners (Phase D).
+    - Without it, through balls jumped from 103 to 154 a match and goals to 5.75 (4 matches): defences can't deal with balls in behind yet.
+  - **P11 softened:** `passing.yaml` `loss_where_lost` 0.5 costs a failed pass halfway between the passer's feet and where it's lost.
+    - Indicative (4 matches each), quality 78: long balls .09, shots 32, accuracy .91, ball in play 68.5 min. Quality 62: .086, 24 shots, accuracy .88, 68 min.
+    - The 200-match batch decides between 0.5 and 1.0.
+  - **The in-match manager's press reading,** re-measured over 8 seeds now that sides go long out of the back:
+    - a high press reads 1.38–1.58 and a normal one 1.02–1.51;
+    - so `tactics.yaml` `high_press` 1.02 → 1.33, and `min_samples` 50 → 30 (sides spend less time on the ball near their own goal).
+  - **Tests:** `test_a_passer_sees_a_clear_offside_but_may_miss_a_marginal_one`. The long-ball test now checks the configured share. Mac golden values re-recorded.
+  - **Measurement:** `reports/engine/step2.3/ref-p12`, recorded in the next commit.
 - [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.

@@ -54,14 +54,16 @@ manager:
   review_every: 300        # match seconds between reviews
   sample_every: 1.0        # match seconds between looks at the opponent
   memory: 900              # match seconds of looks he judges the opponent on
-  min_samples: 50          # looks needed before he trusts his read of the opponent
+  min_samples: 30          # looks needed before he trusts his read of the opponent (was 50 until
+                           # sides went long out of the back: 1 Oct, P11/P12)
   late: 70                 # minute from which the score changes his approach
   very_late: 82            # minute from which a side behind also goes direct and presses high
   protect_from: 80         # minute from which a side one goal up also drops its line a step
   high_line: 40.0          # opponent back line (m from their goal) he calls high
   press_zone: 40.0         # he judges their press while his side has the ball this near its goal
   press_radius: 10.0       # opponents this close to his ball carrier count as pressing him
-  high_press: 1.02         # average pressers he calls a high press
+  high_press: 1.33         # average pressers he calls a high press. Re-measured 1 Oct over 8 seeds:
+                           # high press 1.38-1.58 (mean 1.45), normal 1.02-1.51 (mean 1.22)
 # Measured on 15-minute reads against 4-4-2, 4-3-3 and 4-2-3-1 opponents (synthetic 75 v 75,
 # 5 matches each, 29 Sep): back line deep 26.9, normal 34-36, high 43-47 m (a high press alone
 # lifts it to 37-40); pressers near our goal 0.77-0.81 on average against a normal press

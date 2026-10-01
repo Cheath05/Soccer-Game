@@ -16,59 +16,47 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** eeb5239, **WIP**: Step 2.3c honest pass estimates, behind a switch that's off. The commit right after it only filled in this hash.
-  - Earlier: 2.3b complete at d7ccf17; the pace refactor fa88821; 2.3a a9a8ced.
-- **Engine:** behaviour unchanged. With `passing.yaml` `estimate.honest: false` (committed), the game plays exactly as at d7ccf17, and the golden values pass unchanged.
-- **Done in this WIP:**
-  - **`actions._estimate_success`:** the passer's estimate built from the ball's own models:
-    - `pass_error` without the crowd's stress;
-    - the pace kinematics, for timing;
-    - `_take_chance`, the shared take chance, for pickups on the way;
-    - `_read_delay`, the receiver's own;
-    - the `control` values, for first touch;
-    - the re-gather chance after a heavy touch;
-    - `_landing_chance`, for lofted balls and crosses: keeper claim, the aerial duel, header to feet.
-  - **Shared with the physics** (bit-identical): `_take_chance`, `_claim_chance`, `TOUCH_HEIGHT`, `TAKE_FLOOR`, and an array-friendly `pass_error(..., crowd=)`.
-  - **`_heuristic_success`** is the old estimate, moved verbatim. It's used while the switch is off.
-  - **Config:** `passing.yaml` `estimate` (`honest`, `reach_scale`, `regather`, `opponent_reaction`) with `EstimateDef`.
-  - **Test:** `test_the_honest_estimate_reads_the_balls_own_models`.
-- **What remains for 2.3c.** Measured with the switch on, f020e2 settings and 6 synthetic matches (indicative):
-  - **Medium passes are overrated by about 10 points.** Confidently estimated medium passes (≥0.8) complete 81%. What the estimate misses:
-    - 4.9% go out for throw-ins: a miss near the touchline runs out before the late-reading receiver gets there. Add a touchline term (the chance the lateral error, or a pass that misses its man, crosses the line before he can get to it).
-    - 5.2% end unresolved: gathered late, or loose.
-    - 2.6% are heavy touches.
-  - **Long balls are underrated by about 12 points,** and passers stop playing them: the long-ball share fell to 0.2%. The estimate demands the intended receiver reach the landing point, but in the physics teammates near where the ball comes down also collect it.
-    - Model the landing as "any teammate gets there before the opponents", over a 3×3 grid of landing points.
-    - The f020e2 length error (σ ≈ 0.9 × length at 40 m) is part of the problem, and 2.3e retunes it.
-  - **Then:**
-    - iterate until every reliability decile is within ±5 points, using `probe.reliability` on synthetic and real squads;
-    - add the slow honesty test (≥1,000 plays per setup);
-    - switch it on and measure (200 each against `ref-2.3b2-p40`);
-    - re-record the golden values, delete `_heuristic_success`, and commit.
-  - **The quick check recipe:**
-    - copy `data/config` to `/private/tmp/claude-502/cfg-dev`;
-    - set `intercept_scale` 0.2, `per_metre` 0.008, `length_per_metre` 0.022, and `estimate.honest: true`;
-    - run 6 synthetic matches, then `probe.aggregate` and `probe.reliability`.
+- **Checkpoint commit:** CHECKPOINT_HASH, **WIP**: Step 2.3c iteration 2, still behind `estimate.honest` (off). The commit right after it only filled in this hash.
+  - Earlier: iteration 1 eeb5239; 2.3b complete at d7ccf17; 2.3a a9a8ced.
+- **Engine:** behaviour unchanged. With the switch off, the game plays exactly as at d7ccf17, and the golden values pass unchanged.
+- **Done in iteration 2** (from the reviewer's notes on iteration 1):
+  - `_run_distance`: receivers and chasers move as `_move_players` runs an urgent player (top speed from stamina, own acceleration), replacing a flat 0.9 share.
+  - The receiver runs for the intended point during his read delay, and only the ground beyond that is slack for a pass that's off.
+  - A keeper in his own box reaches 2.4 m and gathers about 95%.
+  - Only defenders already at a dropping ball, plus the one quickest to it, contest it.
+  - Short throws are estimated with skill 85, as `start_pass` plays them.
+- **Quick check with the switch on** (`scratchpad/honesty_check.py`: 6 synthetic matches, f020e2 settings; indicative):
+  - throw-ins are honest (estimate gaps −0.03 to −0.01);
+  - long balls are now slightly overrated (+0.05);
+  - medium passes are still overrated (+0.10; the 0.8–0.9 decile completes 69%);
+  - short passes are overrated (+0.06);
+  - crosses are underrated (−0.13).
+- **Key finding, which changes 2.3c's scope:** with honest estimates, long balls vanish (0.2% of passes, against Opta's 11.7%).
+  - Their estimate is now about right (~0.5), but the decision values (`threat`, `RETAIN`, `loss_cost`) never make a 50% long ball worth playing.
+  - Real teams go long mostly under pressure in their own half, against a high press, or when the short options are covered: situations where losing a short pass is costly.
+  - The old estimate's +0.10–0.16 optimism about long balls had been standing in for that.
+  - **So 2.3c needs a second half: calibrate the decision values with honest estimates.** Candidates:
+    - the loss cost of a short pass under pressure deep in our own half, which also covers the high-regain leak;
+    - the territorial value of a long ball;
+    - the passing-direction instruction's weight.
+  - The acceptance check must include the pass mix (long-ball share and cross share in range), not only the reliability table.
+- **What remains for 2.3c, in order:**
+  1. Ground passes overrated by 6–10 points. Likely causes:
+     - the marker closes in during the pass, so first-touch pressure at arrival is higher than at the decision; use the marker's closing distance by the arrival;
+     - about 5% of passes are gathered late or loose;
+     - the flat re-gather [0.65, 0.2] may be generous.
+  2. Crosses underrated by about 13 points: check `_landing_chance` for crosses against `_aerial`'s attackers-near rule.
+  3. Calibrate the decision values, as above.
+  4. Then the reliability table within ±5 points per decile **and** the pass mix in range. Then the slow honesty test, switch it on, a 200-match measurement, golden values, delete `_heuristic_success`, and commit.
 - **Tests:**
   - `just lint` is clean;
   - all 139 backend tests pass;
   - the golden values are unchanged.
-- **Reviewer:** the committed behaviour is bit-identical (golden and passing tests pass), with no rule violations.
-  - Its modelling notes for the next iteration:
-    1. Mirror how the engine runs players (`max_speed × (0.7 + 0.3·stamina)`, limited by acceleration) instead of a flat 0.9, which is a tunable rather than physics. Ignoring acceleration overrates reach: part of the medium-pass overrating.
-    2. The slack should count the receiver's running during his read delay: `max(0, gap − speed·read)`.
-    3. Model a keeper in his own box: 2.4 m reach, takes about 0.95.
-    4. Long balls: the engine sends one chaser, not every opponent for the whole flight. That's likely most of the long-ball underrating.
-    5. Throw-ins use skill 85 in the engine.
-    6. The flat `regather` ignores ratings.
-    7. Share the inline literals (5.0, `LENGTH − 7`, 3.0, the flight clip, 15/30) with the physics through helpers, so they can't drift.
-    8. Add a lofted-ball or cross test.
-  - Cost when switched on: 145 µs per decision against 62, about +0.1 s a match.
-- **Next task:** finish 2.3c as above. Then 2.3d (offside decisions) and 2.3e (rating terms).
-- **Calibration:**
-  - Nothing is running.
-  - Pin the worktree first, then `make_variant.sh f020e2 0.2 0.008 0.022`.
-  - Add `estimate.honest: true` to a variant by editing the copied `passing.yaml`.
+- **Next task:** 2.3c remaining items 1–4 above. The quick check recipe:
+  - `cfg-dev` = the checkout's `data/config`, with `intercept_scale` 0.2, `per_metre` 0.008, `length_per_metre` 0.022 and `honest: true`;
+  - then `FOOTSIM_CONFIG_DIR=/private/tmp/claude-502/cfg-dev uv run python <scratchpad>/honesty_check.py`;
+  - the script is also described in this checkpoint, if the scratchpad is gone: 6 synthetic matches (3 at q62, 3 at q78), then `probe.aggregate` and `probe.reliability`.
+- **Calibration:** nothing is running. Pin the worktree first for any batch.
 - **Unresolved:** 2.3c (WIP), 2.3d–2.3f, C1, 2.4, 2.1 and 2.6. The verified engine bugs still open:
   - onside through balls are dropped;
   - offside awareness re-rolls every decision;
@@ -80,7 +68,7 @@
   - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
   - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
-  - **Note:** this is an intermediate calibration state (`intercept_scale` 1.0 is still committed; 2.3e sets the final values).
+  - **Note:** this is an intermediate calibration state.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
 
 ## Quick fixes (do first; each is its own checkpoint)

@@ -353,7 +353,7 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     matrix = np.array([[getattr(attrs_rows[i], a) for a in ATTRIBUTES] for i in ids], dtype=float)
     groups = [world.defs.positions[r.position or "CM"].group for r in rows]
     potential = np.array([r.pa_hidden for r in rows], dtype=float)
-    traits, progress = _development_state(conn, world, meta, day, ids, potential)
+    traits, progress, trend = _development_state(conn, world, meta, day, ids, potential)
     inp = DevelopmentInput(
         attrs=matrix,
         ages=np.array([(day - date.fromisoformat(r.birth_date)).days / 365.25 for r in rows]),
@@ -364,23 +364,35 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     new, progress, moves = apply_month(world.defs.development, world.model, inp, traits,
                                        progress, derive_rng(meta.seed, "development",
                                                             day.isoformat()))
+    rules = world.defs.development
+    moved = _own_overalls(world, new, groups) - _own_overalls(world, matrix, groups)
+    trend = rules.trend_memory * trend + (1 - rules.trend_memory) * moved
     changed = np.any(new != matrix, axis=1)
     params = [{"pid": ids[i], **{a: int(new[i, j]) for j, a in enumerate(ATTRIBUTES)}}
               for i in np.flatnonzero(changed)]
     if params:
         assignments = ", ".join(f"{a} = :{a}" for a in ATTRIBUTES)
         conn.execute(text(f"UPDATE player_attr SET {assignments} WHERE player_id = :pid"), params)
-    conn.execute(text("UPDATE player_development SET progress = :progress WHERE player_id = :pid"),
-                 [{"pid": pid, "progress": float(p)} for pid, p in zip(ids, progress, strict=True)])
+    conn.execute(text("UPDATE player_development SET progress = :progress, trend = :trend "
+                      "WHERE player_id = :pid"),
+                 [{"pid": pid, "progress": float(p), "trend": float(t)}
+                  for pid, p, t in zip(ids, progress, trend, strict=True)])
     return _development_news(conn, world, meta, rows, groups, matrix, new, moves)
 
 
+def _own_overalls(world: World, attrs: np.ndarray, groups: list[Any]) -> np.ndarray:
+    """Each player's overall in his own position group."""
+    overalls = world.model.group_overalls(attrs)
+    return np.array([overalls[g][i] for i, g in enumerate(groups)])
+
+
 def _development_state(conn: Connection, world: World, meta: CareerMeta, day: date,
-                       ids: list[int], potential: np.ndarray) -> tuple[Traits, np.ndarray]:
-    """Every player's traits and progress, drawing traits for those who have none yet."""
-    known: dict[int, tuple[float, float, float, bool, float]] = {
+                       ids: list[int], potential: np.ndarray
+                       ) -> tuple[Traits, np.ndarray, np.ndarray]:
+    """Every player's traits, progress and trend, drawing traits for those who have none yet."""
+    known: dict[int, tuple[float, float, float, bool, float, float]] = {
         r.player_id: (r.peak_age, r.decline_age, float(r.ceiling_bonus), bool(r.ageless),
-                      r.progress)
+                      r.progress, r.trend)
         for r in conn.execute(select(player_development))}
     missing = [k for k, pid in enumerate(ids) if pid not in known]
     if missing:
@@ -389,16 +401,16 @@ def _development_state(conn: Connection, world: World, meta: CareerMeta, day: da
         rows = []
         for n, k in enumerate(missing):
             entry = (float(drawn.peak_age[n]), float(drawn.decline_age[n]),
-                     float(drawn.ceiling_bonus[n]), bool(drawn.ageless[n]), 0.0)
+                     float(drawn.ceiling_bonus[n]), bool(drawn.ageless[n]), 0.0, 0.0)
             known[ids[k]] = entry
             rows.append({"player_id": ids[k], "peak_age": entry[0], "decline_age": entry[1],
                          "ceiling_bonus": int(entry[2]), "ageless": int(entry[3]),
-                         "progress": 0.0})
+                         "progress": 0.0, "trend": 0.0})
         conn.execute(player_development.insert(), rows)
     state = np.array([known[pid] for pid in ids], dtype=float)
     traits = Traits(peak_age=state[:, 0], decline_age=state[:, 1], ceiling_bonus=state[:, 2],
                     ageless=state[:, 3] > 0.5)
-    return traits, state[:, 4].copy()
+    return traits, state[:, 4].copy(), state[:, 5].copy()
 
 
 def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Sequence[Row[Any]],

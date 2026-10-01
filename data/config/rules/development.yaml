@@ -39,3 +39,7 @@ specific_share: 0.4       # of each month's change, on individual attributes; th
                           # into whole-point moves of every attribute
 news_min_change: 0.5      # the news names a player only when his overall moved this much in the
                           # month, so one sitting on x.5 doesn't flicker up and down in it
+trend_memory: 0.7         # a player's trend: his monthly change in overall, smoothed (the share
+                          # of last month's trend kept), so one month's noise doesn't flip it
+trend_shown: 0.12         # overall a month (about 1.5 a year) that shows the green up or red
+                          # down arrow by his overall

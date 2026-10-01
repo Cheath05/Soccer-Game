@@ -51,6 +51,11 @@ export default function PlayerPage() {
             <Text fz={32} fw={800} c={ratingColor(p.overall)}>
               {p.overall}
             </Text>
+            {!!p.trend && (
+              <Text size="xs" fw={600} c={p.trend > 0 ? 'green.7' : 'red.7'}>
+                {p.trend > 0 ? '▲ Rising lately' : '▼ Falling lately'}
+              </Text>
+            )}
           </Card>
           <Card withBorder padding="sm" ta="center" miw={150}>
             <Text size="xs" c="dimmed">

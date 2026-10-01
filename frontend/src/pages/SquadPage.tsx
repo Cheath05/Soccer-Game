@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 
 import { useCareer, useSquad } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
-import { money, positionColor, ratingColor, wage } from '../lib/format'
+import Overall from '../components/Overall'
+import { money, positionColor, wage } from '../lib/format'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
 
@@ -95,9 +96,7 @@ export default function SquadPage() {
                 </Table.Td>
                 <Table.Td ta="right">{p.age}</Table.Td>
                 <Table.Td ta="right">
-                  <Text fw={700} c={ratingColor(p.overall)} size="sm">
-                    {p.overall}
-                  </Text>
+                  <Overall value={p.overall} trend={p.trend} />
                 </Table.Td>
                 <Table.Td>
                   <Progress value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size="sm" />

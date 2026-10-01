@@ -436,6 +436,28 @@ The user asked for:
     - all 173 backend tests pass and `just lint` is clean;
     - smoke and live e2e pass on a fresh :8765 with no browser errors; a centre-back's page outlines PAC, DEF and PHY (Saliba 86).
 
+## Play-test round 4 (the user, 1 Oct: arrows, history, cups, 2.3c)
+
+The user asked to "continue with step 2.3c", and also for:
+- **cup games** like the FA Cup and the Carabao Cup;
+- **history:** where their club, and other clubs, finished in previous years;
+- **an up (green) or down (red) indicator** by a player's overall, for "their latest overall form".
+
+Order of work: the arrows (P15) and the history (P16) first, as they're small. Then 2.3c, with the cups (P17) written while 2.3c's batches run and checked between them.
+
+- [x] P15 **Up/down arrows by a player's overall.**
+  - Each month's development also updates a per-player `trend`: his monthly change in overall, smoothed (`trend_memory` 0.7 of last month's trend kept). It's stored in `player_development` (schema 6, migrated on load).
+  - The squad, any club's squad and the player page show a green ▲ when the trend is at least `trend_shown` (0.12 overall a month, about 1.5 a year), and a red ▼ at −0.12 or below. The player page says "Rising lately" or "Falling lately".
+  - **Measured on a fresh career** with no matches played (`scratchpad/trend_check.py`), share showing ▲/▼ after 11 months:
+    - 15–21: 54%/0%;
+    - 21–25: 33%/1%;
+    - 25–29: 15%/3%;
+    - 29–32: 6%/5%;
+    - 32–35: 2%/21%;
+    - 35+: 0%/71%.
+  - A whole-point move (every attribute up) shows the arrow for about three months.
+  - **Tests:** `tests/integration/test_development_trend.py` checks the sign by age; `test_migrations.py` checks that a schema-5 save gains the column. All backend tests pass and `just lint` is clean.
+
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged

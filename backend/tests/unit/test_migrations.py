@@ -92,3 +92,19 @@ def test_version_4_moves_potential_with_the_new_overall(tmp_path: Path) -> None:
         again = dict(conn.execute(text("SELECT person_id, pa_hidden FROM player")).all())
     assert again == after
     engine.dispose()
+
+
+def test_version_5_gains_the_overall_trend(tmp_path: Path) -> None:
+    """Saves from before the up/down arrow get each player's trend, starting level."""
+    path = tmp_path / "v5.sqlite"
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE player_development DROP COLUMN trend"))
+    write_meta(engine, {"schema_version": 5})
+    engine.dispose()
+    engine = open_database(path)
+    assert migrate(engine) == 5
+    with engine.connect() as conn:
+        columns = {c["name"] for c in inspect(conn).get_columns("player_development")}
+    assert "trend" in columns
+    engine.dispose()

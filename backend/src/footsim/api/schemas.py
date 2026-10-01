@@ -156,6 +156,7 @@ class SquadPlayerOut(BaseModel):
     age: int
     nationality: str | None
     overall: int
+    trend: int  # his overall lately: 1 rising, -1 falling, 0 steady
     condition: int
     form: float
     injury: str | None
@@ -184,6 +185,7 @@ class ClubPlayerOut(BaseModel):
     age: int
     nationality: str | None
     overall: int
+    trend: int  # his overall lately: 1 rising, -1 falling, 0 steady
     status: str  # available | injured | suspended
     value_eur: int
     contract_end: str

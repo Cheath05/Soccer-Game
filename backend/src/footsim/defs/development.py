@@ -20,6 +20,8 @@ class DevelopmentDef(DefModel):
     noise: float = Field(ge=0)  # a year's random swing in overall (sd)
     specific_share: float = Field(ge=0, le=1)  # of each month's change, on individual attributes
     news_min_change: float = Field(ge=0)  # the least change in overall the news reports
+    trend_memory: float = Field(ge=0, lt=1)  # share of last month's trend his trend keeps
+    trend_shown: float = Field(ge=0)  # trend (overall a month) that shows an up or down arrow
 
     @model_validator(mode="after")
     def _ordered(self) -> "DevelopmentDef":

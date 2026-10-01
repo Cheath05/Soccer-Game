@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 5  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 6  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -298,6 +298,9 @@ player_development = Table(
     Column("ceiling_bonus", Integer, nullable=False),
     Column("ageless", Integer, nullable=False),
     Column("progress", Float, nullable=False),
+    # recent monthly change in his overall, smoothed (development.yaml trend_memory): the
+    # up/down arrow next to his overall
+    Column("trend", Float, nullable=False, server_default="0"),
 )
 
 tactic = Table(

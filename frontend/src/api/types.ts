@@ -141,6 +141,7 @@ export interface SquadPlayer {
   age: number
   nationality: string | null
   overall: number
+  trend: number // his overall lately: 1 rising, -1 falling, 0 steady
   condition: number
   form: number
   injury: string | null
@@ -166,6 +167,7 @@ export interface ClubPlayer {
   age: number
   nationality: string | null
   overall: number
+  trend: number // his overall lately: 1 rising, -1 falling, 0 steady
   status: 'available' | 'injured' | 'suspended'
   value_eur: number
   contract_end: string

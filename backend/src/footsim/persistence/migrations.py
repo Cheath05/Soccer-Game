@@ -72,8 +72,14 @@ def _to_v5(conn: Connection) -> None:
     conn.execute(game_meta.insert(), [{"key": "schema_version", "value": json.dumps(5)}])
 
 
+def _to_v6(conn: Connection) -> None:
+    """Each player's recent overall trend, for the up/down arrow by his overall."""
+    metadata.create_all(conn)  # a world that never had the development table gets it whole
+    _add_column(conn, "player_development", "trend", "REAL NOT NULL DEFAULT 0")
+
+
 # target version -> step that upgrades from the version before it
-STEPS: dict[int, Callable[[Connection], None]] = {3: _to_v3, 4: _to_v4, 5: _to_v5}
+STEPS: dict[int, Callable[[Connection], None]] = {3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6}
 
 
 def migrate(engine: Engine) -> int:

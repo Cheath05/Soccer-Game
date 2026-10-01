@@ -255,12 +255,13 @@ _PLAYER_SQL = """
     SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date, n.name AS nation,
            pl.height_cm, pl.weight_kg, pl.preferred_foot, pl.weak_foot, pl.skill_moves,
            pl.pa_hidden, pl.value_eur_cents, k.club_id, k.wage_weekly_cents, k.end_date,
-           s.condition, s.form, s.injured_until, s.injury, s.suspended_matches
+           s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend
     FROM person p
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN nation n ON n.id = p.nation_id
     LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1
     LEFT JOIN player_state s ON s.player_id = p.id
+    LEFT JOIN player_development d ON d.player_id = p.id
 """
 
 
@@ -301,11 +302,14 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
     age = age_on(date.fromisoformat(r.birth_date), day)
     injured = r.injured_until if r.injured_until and r.injured_until > day.isoformat() else None
     value = (r.value_eur_cents // 100) if r.value_eur_cents else estimate_value_eur(overall, age)
+    shown = world.defs.development.trend_shown
+    trend = r.trend or 0.0
     return SquadPlayerOut(
         id=r.id, name=display_name(r.first_name, r.last_name, r.known_as),
         short_name=short_name(r.first_name, r.last_name, r.known_as), position=primary,
         positions=[p for p, f in sorted(fams.items(), key=lambda kv: -kv[1]) if f >= 15],
         age=age, nationality=r.nation, overall=round(overall),
+        trend=1 if trend >= shown else -1 if trend <= -shown else 0,
         condition=round(r.condition if r.condition is not None else 100),
         form=round(r.form if r.form is not None else 6.5, 1), injury=r.injury if injured else None,
         injured_until=injured, suspended=r.suspended_matches or 0, value_eur=int(value),
@@ -363,7 +367,7 @@ def _status(entry: SquadPlayerOut) -> str:
 def _outside_view(entry: SquadPlayerOut) -> ClubPlayerOut:
     return ClubPlayerOut(
         id=entry.id, name=entry.name, position=entry.position, positions=entry.positions,
-        age=entry.age, nationality=entry.nationality, overall=entry.overall,
+        age=entry.age, nationality=entry.nationality, overall=entry.overall, trend=entry.trend,
         status=_status(entry), value_eur=entry.value_eur, contract_end=entry.contract_end,
         form=entry.form, appearances=entry.appearances, goals=entry.goals,
     )

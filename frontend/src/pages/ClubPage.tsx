@@ -5,8 +5,9 @@ import { useMemo, useState } from 'react'
 import { useClub, useClubPlayers } from '../api/hooks'
 import type { ClubPlayer, Fixture } from '../api/types'
 import ClubLink from '../components/ClubLink'
+import Overall from '../components/Overall'
 import ResultBadge from '../components/ResultBadge'
-import { money, positionColor, ratingColor, score, shortDate, wage } from '../lib/format'
+import { money, positionColor, score, shortDate, wage } from '../lib/format'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'contract_end'
 
@@ -137,9 +138,7 @@ export default function ClubPage() {
                 </Table.Td>
                 <Table.Td ta="right">{p.age}</Table.Td>
                 <Table.Td ta="right">
-                  <Text fw={700} c={ratingColor(p.overall)} size="sm">
-                    {p.overall}
-                  </Text>
+                  <Overall value={p.overall} trend={p.trend} />
                 </Table.Td>
                 <Table.Td ta="right">{p.form.toFixed(1)}</Table.Td>
                 <Table.Td ta="right">{p.appearances}</Table.Td>

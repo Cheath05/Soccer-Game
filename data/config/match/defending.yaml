@@ -6,6 +6,12 @@
 # 31 shots a match at quality 58 and 49 at 82, with box entries nearly flat (34.5 -> 39.5 a
 # team) and shots per box entry rising .45 -> .62 (step2.3f/sweep0, 120 matches each). Real
 # leagues take about the same number of shots at every level.
+#
+# With the shot and first-touch pressure below, and a carrier weighing up the defender in his
+# way with the duel's scores (actions._carry_options), goals rise 11% from quality 58 to 82
+# instead of 58% (sweep2). Real squads, 200 matches each: Premier League 3.76 goals and League
+# Two 3.05 (4.18 and 2.19 before). The level that remains, too many shots at every quality, is
+# the defensive shape's (Phase D).
 
 marking:
   # Ratings at which the values below are as they were before 2.3f: an average marker

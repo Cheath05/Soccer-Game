@@ -552,7 +552,7 @@ The user asked when other leagues (with their differences in quality), transfers
 The order, each its own checkpoint (or several):
 
 1. **Believable matches:**
-   - [ ] 2.3f, attack against defence by rating, with box defending. It's what keeps 2.3c off.
+   - [x] 2.3f, attack against defence by rating (the rating symmetry; box defending's level goes to Phase D, below).
      - **Measured first** (`reports/engine/step2.3f/sweep0-q*`: equal synthetic sides, 120 matches each, seed 31, honest off):
 
        | Quality | Goals | Shots | Final-third entries | Box entries | Shots per box entry | xG per shot | Heavy touches |
@@ -576,9 +576,38 @@ The order, each its own checkpoint (or several):
        - first-touch pressure grows with the marker's marking (`touch_pressure`), in the physics and in the pass estimate;
        - iteration 1's commitment slope goes back to 0; its goal-side slope and the blocks stay.
        - On 2 matches per quality, carries in the box fell to 13% of shot sources at quality 82, but the shots came from passes, headers and through balls instead.
-   - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range).
-   - [ ] 2.3e, control by rating.
-   - [ ] 2.4, fouls and cards.
+       - **Measured** (`sweep2`, the same 120 matches per quality as `sweep0`):
+
+         | Quality | Goals before → now | Shots before → now | Shots per box entry | Tackles |
+         |---|---|---|---|---|
+         | 58 | 2.98 → 3.85 | 31.3 → 36.1 | .454 → .496 | 17 → 34 |
+         | 70 | 3.53 → 3.86 | 37.2 → 39.2 | .514 → .532 | 24 → 38 |
+         | 82 | 4.70 → 4.27 | 49.3 → 44.7 | .624 → .592 | 42 → 40 |
+
+       - **The slope is largely fixed:** goals rise 11% from quality 58 to 82 (58% before), and shots 24% (58% before).
+       - **The level rose at low quality:** weaker sides now run at defenders more, since the decision compares them with a defender of their own level instead of a fixed 70. Hence twice the tackles at 58.
+       - **What remains is the level at every quality:** 36–45 shots a match against the real 23–27.5, 8% of them from outside the box against 30–42%, about 36 box entries per team, and xG per shot about .075 against .09–.12. Attacks reach the box too easily and end in weak shots there. That's the defensive shape: a compact block covering passing options and the box (Phase D2 TeamShape and D6 defending). It's also what keeps 2.3c off.
+     - **On real squads** (200 matches per division, seed 21, `step2.3f/it2-*`, 4 workers), against `c4-off` at 09b1242:
+
+       | | ENG1 before | ENG1 now | ENG4 before | ENG4 now | Real (PL / EFL) |
+       |---|---|---|---|---|---|
+       | Goals | 4.18 | 3.76 | 2.19 | 3.05 | 2.65–3.05 / 2.45–2.85 |
+       | Shots | 41.6 | 40.3 | 23.7 | 31.4 | 23–27.5 / 22–26 |
+       | xG per shot | .077 | .071 | .064 | .081 | .09–.12 |
+       | Shots outside the box | .077 | .105 | .104 | .076 | .30–.42 |
+       | Fouls | 20.0 | 25.0 | 12.0 | 19.9 | 20–24 / 20.5–24.5 |
+       | Yellows | 3.9 | 4.4 | 2.2 | 3.5 | 3.4–4.3 / 3.3–4.2 |
+       | Tackles | 42 | 55 | 29 | 56 | about 30–40 (duels.yaml's reference) |
+       | Ball in play (min) | 61.6 | 61.7 | 73.5 | 70.1 | 54–60 / 48–54 |
+
+       The two divisions now play much more alike (3.76 against 3.05 goals, where it was 4.18 against 2.19), as real leagues do. League Two's fouls and cards are near the real figures for the first time.
+     - **Still off:** shots in both divisions; the share from outside the box; tackles; and the Premier League's fouls and yellows, now a little high. League Two's goals and shots went above range: its sides attack as boldly as stronger ones now, against defending that doesn't hold its shape.
+     - **The memory note on 1 Oct:** the machine swapped hard during the first attempt (load 105, 2.8 GB of 4 GB swap), and the batch was stopped at the 1-hour limit. Re-run with 4 workers, one division at a time.
+     - **The in-match manager re-measured:** `test_reads_a_high_press_from_the_pitch` failed. Pressed sides spend shorter spells near their goal now, so most high-press matches never collected the 30 looks a reading needs. On 12 seeds (`scratchpad/press_window.py`), `min_samples` 25 reads high presses at 1.46 on average against 0.97 for normal ones, with 64% of high presses read and no false alarms. Over each match he went direct in 8 of 12 pressed matches and 1 of 12 normal ones.
+   - **Re-sequenced by this measurement:** switching 2.3c on, and 2.3e, wait for Phase D's shape and defending (D2, D6). Both need defending that covers passing options and the box: 2.3c's honest estimates find the safe short option otherwise, and 2.3e's better control would keep that possession longer. D2 and D6 run alongside the main track, as planned. The main track goes on: 2.4, then B2, then the world.
+   - [ ] 2.4, fouls and cards. Foul volume is now near range after 2.3f, so this is mostly the card rules (DOGSO reds, `booked_caution` applied once, the aggression > 80 red-card cliff) and the stale duel engagements.
+   - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range): after D2 and D6.
+   - [ ] 2.3e, control by rating: after D2 and D6.
 2. - [ ] **B2, the fast engine** as a surrogate of the agent engine: the same goal, shot and home-advantage rates for the same ratings, checked by cross-engine tests. Moved up from Step 5.
 3. - [ ] **W1, retirement and a yearly youth intake** (academies, part one). Players retire, and every club gets a youth intake each year, better at clubs with better academies (reputation for now). Careers in 2028 already need it.
 4. - [ ] **W2, other leagues:**

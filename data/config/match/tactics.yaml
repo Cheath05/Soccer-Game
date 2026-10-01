@@ -54,8 +54,11 @@ manager:
   review_every: 300        # match seconds between reviews
   sample_every: 1.0        # match seconds between looks at the opponent
   memory: 900              # match seconds of looks he judges the opponent on
-  min_samples: 30          # looks needed before he trusts his read of the opponent (was 50 until
-                           # sides went long out of the back: 1 Oct, P11/P12)
+  min_samples: 25          # looks needed before he trusts his read of the opponent (was 50 until
+                           # sides went long out of the back, 30 until 2.3f's tighter defending
+                           # made pressed sides' spells near their goal shorter. Re-measured on 12
+                           # seeds: high-press readings 1.46 on average, normal 0.97, 64% of
+                           # high presses read and no false alarms; scratchpad/press_window.py)
   late: 70                 # minute from which the score changes his approach
   very_late: 82            # minute from which a side behind also goes direct and presses high
   protect_from: 80         # minute from which a side one goal up also drops its line a step

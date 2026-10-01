@@ -120,6 +120,21 @@ class SimResultOut(BaseModel):
     outcome: str  # W | D | L for the user's club
 
 
+class SeasonFinalOut(BaseModel):
+    """How the user's club finished a league season (league_final)."""
+
+    competition: str
+    position: int
+    played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    points: int
+    outcome: str | None  # champion | promoted | playoff_winner | relegated | playoffs | None
+
+
 class SimStatusOut(BaseModel):
     running: bool
     start: str
@@ -129,6 +144,7 @@ class SimStatusOut(BaseModel):
     messages: list[str]  # news on the way
     stop: str | None  # date | season_end | cancelled | abandoned | error
     error: str | None
+    season_final: SeasonFinalOut | None = None  # when it stopped at the season's end
 
 
 class SquadPlayerOut(BaseModel):

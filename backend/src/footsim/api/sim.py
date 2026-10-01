@@ -14,9 +14,9 @@ from datetime import date, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
-from footsim.api.schemas import SimIn, SimResultOut, SimStatusOut
+from footsim.api.schemas import SeasonFinalOut, SimIn, SimResultOut, SimStatusOut
 from footsim.api.session import CareerSession
-from footsim.persistence.schema import club, fixture
+from footsim.persistence.schema import club, competition, fixture, league_final
 from footsim.world.career import sim_step
 from footsim.world.context import get_world
 from footsim.world.meta import read_meta
@@ -36,6 +36,7 @@ class SimJob:
     messages: list[str] = field(default_factory=list)
     stop: str | None = None  # date | season_end | cancelled | abandoned | error
     error: str | None = None
+    season_final: SeasonFinalOut | None = None
     cancel: threading.Event = field(default_factory=threading.Event)
 
     @property
@@ -46,7 +47,7 @@ class SimJob:
         return SimStatusOut(running=self.running, start=self.start.isoformat(),
                             until=self.until.isoformat(), date=self.day.isoformat(),
                             results=list(self.results), messages=list(self.messages),
-                            stop=self.stop, error=self.error)
+                            stop=self.stop, error=self.error, season_final=self.season_final)
 
 
 def running(session: CareerSession) -> bool:
@@ -76,6 +77,23 @@ def _result(session: CareerSession, fixture_id: int, user: int) -> SimResultOut:
                         away_goals=fx.away_goals, outcome=outcome)
 
 
+def _season_final(session: CareerSession, user: int) -> SeasonFinalOut | None:
+    """How the user's club finished the season that has just ended."""
+    with session.read() as conn:
+        meta = read_meta(conn)
+        row = conn.execute(
+            select(league_final, competition.c.name).join(
+                competition, competition.c.id == league_final.c.competition_id).where(
+                league_final.c.season_id == meta.season_id - 1,
+                league_final.c.club_id == user)).first()
+    if row is None:
+        return None
+    return SeasonFinalOut(competition=row.name, position=row.position, played=row.played,
+                          won=row.won, drawn=row.drawn, lost=row.lost,
+                          goals_for=row.goals_for, goals_against=row.goals_against,
+                          points=row.points, outcome=row.outcome)
+
+
 def _run(session: CareerSession, job: SimJob, user: int) -> None:
     world = get_world()
     try:
@@ -92,6 +110,8 @@ def _run(session: CareerSession, job: SimJob, user: int) -> None:
             job.day = step.date
             job.messages += step.messages
             if step.stop is not None:
+                if step.stop == "season_end":
+                    job.season_final = _season_final(session, user)
                 job.stop = step.stop
                 break
         else:

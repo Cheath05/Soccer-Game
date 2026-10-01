@@ -78,6 +78,19 @@ export interface SimResult {
   outcome: 'W' | 'D' | 'L'
 }
 
+export interface SeasonFinal {
+  competition: string
+  position: number
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  points: number
+  outcome: string | null
+}
+
 export interface SimStatus {
   running: boolean
   start: string
@@ -87,6 +100,7 @@ export interface SimStatus {
   messages: string[]
   stop: 'date' | 'season_end' | 'cancelled' | 'abandoned' | 'error' | null
   error: string | null
+  season_final?: SeasonFinal | null // when it stopped at the season's end
 }
 
 export interface AdvanceResult {

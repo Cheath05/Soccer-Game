@@ -65,7 +65,13 @@ await finished.waitFor({ timeout: 180000 })
 await shot('13-sim-summary')
 const summary = await finished.innerText()
 console.log(`sim summary: ${summary.replace(/\n+/g, ' | ')}`)
-await page.getByRole('button', { name: 'OK' }).click()
+// Results first; any news (at the season's end, a season summary) opens in its own window.
+await finished.getByRole('button', { name: /^(OK|News|Season summary)$/ }).click()
+const news = page.getByRole('dialog', { name: /^(News|Season summary)$/ })
+if (await news.isVisible().catch(() => false)) {
+  await shot('14-sim-news')
+  await news.getByRole('button', { name: 'OK' }).click()
+}
 await page.waitForTimeout(500)
 const after = await header.innerText()
 if (after === before) errors.push('the date in the header did not move on after the sim')

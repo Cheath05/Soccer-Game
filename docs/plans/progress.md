@@ -239,7 +239,10 @@ The user asked whether the engine or the management features (transfers, academy
     - The estimate uses the same `pass_error`.
   - **Tests:** `test_a_ball_in_the_air_goes_astray_more_than_one_on_the_ground` and `test_composure_decides_what_pressure_costs`. Mac golden values re-recorded with a History note.
   - **Measurement** (P6 and P7 together, ENG4 and ENG1 at 200 matches, against `ref-2.3b2-p40`): recorded in the next commit.
-- [ ] P8 **Sim to the season's end:** its summary sits over the season summary, and closing it closes both.
+- [x] P8 **Sim to the season's end:** its summary sat over the season summary, and closing it closed both.
+  - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
+  - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.
+  - **Checked:** `e2e/smoke.mjs` (one week; no news that week). Still to check: a season-end sim in a browser, after the P7 batch.
 - [ ] P9 **Only 3 formations:** add the common ones as data.
 - [ ] P10 **Players develop as the season goes,** not only at its end (overall and attributes, from age, potential and playing time).
 

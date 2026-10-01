@@ -1,0 +1,56 @@
+# Conventions as in 4-3-3.yaml. A back five: the wing-backs start in the defensive line and take
+# their width forward from the wing_back role only in possession.
+
+key: "5-3-2"
+name: 5-3-2
+description: A back five with wing-backs, a midfield three, and a strike pair. Solid, and quick to counter.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,         base: {x: .04, y: .50}}
+  - id: LWB
+    position: LWB
+    default_role: wing_back
+    base: {x: .24, y: .08}
+    phase_offsets:
+      def_low: {dx: -.04}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .32}
+    phase_offsets:
+      build_up: {dx: -.02, dy: -.05}
+  - {id: CB,  position: CB, default_role: central_defender,   base: {x: .16, y: .50}}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .68}
+    phase_offsets:
+      build_up: {dx: -.02, dy: .05}
+  - id: RWB
+    position: RWB
+    default_role: wing_back
+    base: {x: .24, y: .92}
+    phase_offsets:
+      def_low: {dx: -.04}
+  - {id: LCM, position: CM, default_role: box_to_box,         base: {x: .42, y: .30}}
+  - {id: CM,  position: CM, default_role: central_midfielder, base: {x: .39, y: .50}}
+  - {id: RCM, position: CM, default_role: central_midfielder, base: {x: .42, y: .70}}
+  - id: LS
+    position: ST
+    default_role: advanced_forward
+    base: {x: .66, y: .42}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+  - id: RS
+    position: ST
+    default_role: target_forward
+    base: {x: .67, y: .58}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LWB, LCB, CB, RCB, RWB]}
+  - {type: midfield_line, slots: [LCM, CM, RCM]}
+  - {type: strike_pair, slots: [LS, RS]}
+  - {type: flank_unit, slots: [LWB, LCM]}
+  - {type: flank_unit, slots: [RWB, RCM]}

@@ -1,0 +1,48 @@
+# Conventions as in 4-3-3.yaml. The most defensive shape: a back five, a flat midfield four and
+# a lone striker. The wing-backs take their width forward from the wing_back role in possession.
+
+key: "5-4-1"
+name: 5-4-1
+description: A back five, a flat midfield four, and a lone striker. Hard to break down.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,         base: {x: .04, y: .50}}
+  - id: LWB
+    position: LWB
+    default_role: wing_back
+    base: {x: .23, y: .08}
+    phase_offsets:
+      def_low: {dx: -.04}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .32}
+    phase_offsets:
+      build_up: {dx: -.02, dy: -.05}
+  - {id: CB,  position: CB, default_role: central_defender,   base: {x: .16, y: .50}}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .68}
+    phase_offsets:
+      build_up: {dx: -.02, dy: .05}
+  - id: RWB
+    position: RWB
+    default_role: wing_back
+    base: {x: .23, y: .92}
+    phase_offsets:
+      def_low: {dx: -.04}
+  - {id: LM,  position: LM, default_role: wide_midfielder,    base: {x: .42, y: .16}}
+  - {id: LCM, position: CM, default_role: box_to_box,         base: {x: .38, y: .39}}
+  - {id: RCM, position: CM, default_role: central_midfielder, base: {x: .38, y: .61}}
+  - {id: RM,  position: RM, default_role: wide_midfielder,    base: {x: .42, y: .84}}
+  - id: ST
+    position: ST
+    default_role: target_forward
+    base: {x: .66, y: .50}
+    phase_offsets:
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LWB, LCB, CB, RCB, RWB]}
+  - {type: midfield_line, slots: [LM, LCM, RCM, RM]}
+  - {type: flank_unit, slots: [LWB, LM]}
+  - {type: flank_unit, slots: [RWB, RM]}

@@ -1,0 +1,34 @@
+# Conventions as in 4-3-3.yaml. The support striker drops between the lines without the ball.
+
+key: "4-4-1-1"
+name: 4-4-1-1
+description: Back four, a flat midfield four, a support striker behind the centre-forward.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,         base: {x: .04, y: .50}}
+  - {id: LB,  position: LB, default_role: full_back,          base: {x: .22, y: .12}}
+  - {id: LCB, position: CB, default_role: central_defender,   base: {x: .18, y: .37}}
+  - {id: RCB, position: CB, default_role: central_defender,   base: {x: .18, y: .63}}
+  - {id: RB,  position: RB, default_role: full_back,          base: {x: .22, y: .88}}
+  - {id: LM,  position: LM, default_role: wide_midfielder,    base: {x: .44, y: .13}}
+  - {id: LCM, position: CM, default_role: box_to_box,         base: {x: .40, y: .38}}
+  - {id: RCM, position: CM, default_role: central_midfielder, base: {x: .40, y: .62}}
+  - {id: RM,  position: RM, default_role: wide_midfielder,    base: {x: .44, y: .87}}
+  - id: AM
+    position: AM
+    default_role: attacking_midfielder
+    base: {x: .58, y: .48}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+  - id: ST
+    position: ST
+    default_role: advanced_forward
+    base: {x: .70, y: .52}
+    phase_offsets:
+      def_low: {dx: -.06}
+relationships:
+  - {type: back_line, slots: [LB, LCB, RCB, RB]}
+  - {type: midfield_line, slots: [LM, LCM, RCM, RM]}
+  - {type: strike_pair, slots: [AM, ST]}
+  - {type: flank_unit, slots: [LB, LM]}
+  - {type: flank_unit, slots: [RB, RM]}

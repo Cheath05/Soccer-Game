@@ -1,0 +1,60 @@
+# Conventions as in 4-3-3.yaml. Wing-backs take their attacking width from the wing_back role;
+# the two attacking midfielders play between the lines behind a lone striker.
+
+key: "3-4-2-1"
+name: 3-4-2-1
+description: Three centre-backs, wing-backs, a central pair, two attacking midfielders behind a lone striker.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,           base: {x: .04, y: .50}}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .19, y: .31}
+    phase_offsets:
+      build_up: {dx: -.02, dy: -.06}
+  - {id: CB,  position: CB, default_role: central_defender,     base: {x: .17, y: .50}}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .19, y: .69}
+    phase_offsets:
+      build_up: {dx: -.02, dy: .06}
+  - id: LWB
+    position: LWB
+    default_role: wing_back
+    base: {x: .32, y: .07}
+    phase_offsets:
+      def_mid: {dx: -.08}
+      def_low: {dx: -.13}
+  - {id: LCM, position: CM, default_role: central_midfielder,   base: {x: .40, y: .38}}
+  - {id: RCM, position: CM, default_role: box_to_box,           base: {x: .40, y: .62}}
+  - id: RWB
+    position: RWB
+    default_role: wing_back
+    base: {x: .32, y: .93}
+    phase_offsets:
+      def_mid: {dx: -.08}
+      def_low: {dx: -.13}
+  - id: LAM
+    position: AM
+    default_role: attacking_midfielder
+    base: {x: .58, y: .34}
+    phase_offsets:
+      def_low: {dx: -.08}
+  - id: RAM
+    position: AM
+    default_role: advanced_playmaker
+    base: {x: .58, y: .66}
+    phase_offsets:
+      def_low: {dx: -.08}
+  - id: ST
+    position: ST
+    default_role: advanced_forward
+    base: {x: .70, y: .50}
+    phase_offsets:
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LCB, CB, RCB]}
+  - {type: double_pivot, slots: [LCM, RCM]}
+  - {type: flank_unit, slots: [LCB, LWB, LAM]}
+  - {type: flank_unit, slots: [RCB, RWB, RAM]}

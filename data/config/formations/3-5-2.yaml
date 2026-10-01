@@ -1,0 +1,63 @@
+# Conventions as in 4-3-3.yaml. Wing-backs take their attacking width from the wing_back role
+# (it pushes them up in possession); the slots drop them into a back five without the ball.
+
+key: "3-5-2"
+name: 3-5-2
+description: Three centre-backs, wing-backs for width, a holding midfielder behind two eights, and a strike pair.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,         base: {x: .04, y: .50}}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .19, y: .31}
+    phase_offsets:
+      build_up: {dx: -.02, dy: -.06}
+  - {id: CB,  position: CB, default_role: central_defender,   base: {x: .17, y: .50}}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .19, y: .69}
+    phase_offsets:
+      build_up: {dx: -.02, dy: .06}
+  - id: LWB
+    position: LWB
+    default_role: wing_back
+    base: {x: .30, y: .07}
+    phase_offsets:
+      def_mid: {dx: -.07}
+      def_low: {dx: -.11}
+  - id: DM
+    position: DM
+    default_role: defensive_midfielder
+    base: {x: .32, y: .50}
+    phase_offsets:
+      build_up: {dx: -.03}
+  - {id: LCM, position: CM, default_role: box_to_box,         base: {x: .45, y: .34}}
+  - {id: RCM, position: CM, default_role: central_midfielder, base: {x: .45, y: .66}}
+  - id: RWB
+    position: RWB
+    default_role: wing_back
+    base: {x: .30, y: .93}
+    phase_offsets:
+      def_mid: {dx: -.07}
+      def_low: {dx: -.11}
+  - id: LS
+    position: ST
+    default_role: advanced_forward
+    base: {x: .68, y: .41}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+  - id: RS
+    position: ST
+    default_role: target_forward
+    base: {x: .69, y: .59}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LCB, CB, RCB]}
+  - {type: single_pivot, slots: [DM]}
+  - {type: strike_pair, slots: [LS, RS]}
+  - {type: flank_unit, slots: [LCB, LWB, LCM]}
+  - {type: flank_unit, slots: [RCB, RWB, RCM]}

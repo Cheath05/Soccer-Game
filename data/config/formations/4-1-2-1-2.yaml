@@ -1,0 +1,53 @@
+# Conventions as in 4-3-3.yaml. A narrow diamond: the width comes from the full-backs.
+
+key: "4-1-2-1-2"
+name: 4-1-2-1-2 (diamond)
+description: Back four, a midfield diamond, and a strike pair. Strong through the middle; the full-backs give the width.
+slots:
+  - {id: GK,  position: GK, default_role: goalkeeper,           base: {x: .04, y: .50}}
+  - {id: LB,  position: LB, default_role: full_back,            base: {x: .23, y: .12}}
+  - id: LCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .37}
+    phase_offsets:
+      build_up: {dx: -.03, dy: -.06}
+  - id: RCB
+    position: CB
+    default_role: central_defender
+    base: {x: .18, y: .63}
+    phase_offsets:
+      build_up: {dx: -.03, dy: .06}
+  - {id: RB,  position: RB, default_role: full_back,            base: {x: .23, y: .88}}
+  - id: DM
+    position: DM
+    default_role: defensive_midfielder
+    base: {x: .31, y: .50}
+    phase_offsets:
+      build_up: {dx: -.03}
+  - {id: LCM, position: CM, default_role: box_to_box,           base: {x: .42, y: .32}}
+  - {id: RCM, position: CM, default_role: central_midfielder,   base: {x: .42, y: .68}}
+  - id: AM
+    position: AM
+    default_role: advanced_playmaker
+    base: {x: .55, y: .50}
+    phase_offsets:
+      def_low: {dx: -.07}
+  - id: LS
+    position: ST
+    default_role: advanced_forward
+    base: {x: .68, y: .41}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+  - id: RS
+    position: ST
+    default_role: poacher
+    base: {x: .69, y: .59}
+    phase_offsets:
+      def_mid: {dx: -.04}
+      def_low: {dx: -.08}
+relationships:
+  - {type: back_line, slots: [LB, LCB, RCB, RB]}
+  - {type: single_pivot, slots: [DM]}
+  - {type: strike_pair, slots: [LS, RS]}

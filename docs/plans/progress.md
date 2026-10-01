@@ -243,7 +243,11 @@ The user asked whether the engine or the management features (transfers, academy
   - The results now come first, in their own window. Its button opens a separate "Season summary" (or "News") window with every item, where only the last 12 were shown before. That window stays until it's closed.
   - At the season's end the summary leads with the user's finish: position, record, goals, points and outcome. The job reads `league_final` and reports it as `SimStatusOut.season_final`.
   - **Checked:** `e2e/smoke.mjs` (one week; no news that week). Still to check: a season-end sim in a browser, after the P7 batch.
-- [ ] P9 **Only 3 formations:** add the common ones as data.
+- [x] P9 **Only 3 formations:** eight more, as data: 3-5-2, 3-4-3, 3-4-2-1, 5-3-2, 5-4-1, 4-1-4-1, 4-4-1-1 and 4-1-2-1-2 (diamond), 11 in all.
+  - Wing-backs take their attacking width from the `wing_back` role. The slots only drop them into a back five without the ball.
+  - The user picks them on the tactics screen and during matches.
+  - **AI clubs still choose from 4-3-3, 4-2-3-1 and 4-4-2** (`world/context.py` `AI_FORMATIONS`), so calibration is unchanged. Widen that once Phase D gives formations real phase shapes.
+  - `test_formations.py` plays five minutes in each. One synthetic match each against a 4-4-2 ran clean.
 - [ ] P10 **Players develop as the season goes,** not only at its end (overall and attributes, from age, potential and playing time).
 
 ## Quick fixes (do first; each is its own checkpoint)

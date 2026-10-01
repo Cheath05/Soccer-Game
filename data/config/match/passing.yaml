@@ -37,6 +37,13 @@ pace:                     # how hard ground passes are struck, and how the ball 
                           # (docs/calibration/20260930-pass-pace-metrica.md)
   arrive_back: 2.0        # m/s for a pass back towards our own goal area, played softly
   back_zone: 20.0         # m from our own goal line where that applies
+estimate:                 # the passer's estimate of a pass, where the ball's models leave gaps
+  honest: false           # Step 2.3c, work in progress: true uses the estimate built from the
+                          # ball's own models (not yet honest enough; see progress.md)
+  reach_scale: 2.5        # m: a receiver arriving this much late still gets it about 1 in 3 times
+  regather: [0.65, 0.2]   # a heavy touch won back by his side: nobody near, an opponent on him
+                          # (measured after Step 2.3b: about half overall)
+  opponent_reaction: 0.35 # s before an opponent starts closing a pass's path
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)

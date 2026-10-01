@@ -130,3 +130,26 @@ def test_a_passer_gathering_his_own_ball_completes_nothing(world: World) -> None
     actions._take(engine, 5, None)
     assert engine.owner == 5
     assert engine.stats[0].passes_completed == before and engine.last_completed_pass is None
+
+
+def test_the_honest_estimate_reads_the_balls_own_models(world: World) -> None:
+    # Step 2.3c, work in progress (off by default): the estimate built from the ball's own
+    # models gives a probability, and an opponent standing in the passing line lowers it.
+    engine = _empty_engine(world, 7)
+    passer, receiver = 5, 8
+    engine.pos[passer], engine.pos[receiver] = (30.0, 34.0), (50.0, 34.0)
+
+    def estimate() -> float:
+        pts = engine.att_points(0, engine.pos)
+        opps = engine.team_indices(1)
+        ball = pts[passer]
+        target = pts[[receiver]]
+        length = np.array([float(np.hypot(*(target[0] - ball)))])
+        return float(actions._estimate_success(
+            engine, passer, 0, [receiver], ["pass"], target, length, np.array([False]), ball,
+            opps, pts[opps], pts, 0.0)[0])
+
+    clear = estimate()
+    assert 0.02 <= clear <= 0.98
+    engine.pos[16] = (40.0, 34.0)  # an opponent right in the line
+    assert estimate() < clear

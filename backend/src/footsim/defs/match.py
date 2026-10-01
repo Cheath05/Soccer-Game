@@ -148,6 +148,14 @@ class PaceDef(DefModel):
     back_zone: float = Field(ge=0)  # m from our own goal line where passes are played softly
 
 
+class EstimateDef(DefModel):
+    """The passer's estimate, where the ball's own models leave a gap to fill."""
+    honest: bool  # Step 2.3c, work in progress: the estimate built from the ball's own models
+    reach_scale: float = Field(gt=0)  # m: how softly a receiver arriving late still gets it
+    regather: tuple[float, float]  # heavy touch won back: no opponent near, one on top of him
+    opponent_reaction: float = Field(ge=0)  # s before an opponent starts closing a pass's path
+
+
 class PassingDef(DefModel):
     """Passing, first touch and clearances (data/config/match/passing.yaml)."""
 
@@ -158,6 +166,7 @@ class PassingDef(DefModel):
     intercept_scale: float = Field(gt=0, le=2)
     aerial_contest_radius: float = Field(gt=0)
     header_to_feet: float = Field(ge=0, le=1)
+    estimate: EstimateDef
     pace: PaceDef
 
 

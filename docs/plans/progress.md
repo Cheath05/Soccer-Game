@@ -16,9 +16,10 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (1 Oct):** P14 (this commit; the next commit records its hash). Round 3 of the user's play-test is done:
+- **Latest checkpoint (1 Oct, 10:59):** P14 at e91f9ca. Round 3 of the user's play-test is done:
   - P13, development by age, traits and whole-point moves: 578342d;
-  - P14, the overall closer to the six headline ratings, plus development-news and e2e follow-ups: see "Play-test round 3" below.
+  - P14, the overall closer to the six headline ratings, plus development-news and e2e follow-ups: e91f9ca (see "Play-test round 3" below).
+  - **:8000 runs e91f9ca,** restarted at 10:59 on 1 Oct after a check showed no connections and no sim running (the user's Wrexham season sim had finished and autosaved). The previous log is `demo-server-e8701a0-build.log`. "Load autosave" on slot 2 resumes on 1 Jul 2027 and migrates the save's working copy to schema 5.
 - **Before that:** 4b779e9 (code at e8701a0, P12). The user's play-test fixes are done, each its own commit:
   - **Round 1** ("Play-test fixes" below):
     - P1, 99 ratings: 85a20ce;
@@ -35,7 +36,7 @@
     - P11, losses costed where they happen: 82cbeb6;
     - P12, offsides, P11 softened, manager re-measured: e8701a0.
   - **Measurements** in `reports/engine/step2.3/`: `ref-p7`, `ref-p11` and `ref-p12`, each recorded under its item below. P13 and P14 change no match mechanics (P14 changes lineup picks and synthetic sides slightly), so `ref-p12` still describes the engine.
-  - **:8000** ran e8701a0 from 03:45 on 1 Oct. Since then the user started a Wrexham career in slot 2 (manual save 1 Jul 2026, autosave 1 Jul 2027). The Chelsea career it replaced survives only in `saves/slot_2/backups` (the rotating backups up to 01:58 on 1 Oct). Restarted on P14 after this commit if nobody is connected: see the checkpoint after it.
+  - **:8000** ran e8701a0 from 03:45 on 1 Oct. Since then the user started a Wrexham career in slot 2 (manual save 1 Jul 2026, autosave 1 Jul 2027). The Chelsea career it replaced survives only in `saves/slot_2/backups` (the rotating backups up to 01:58 on 1 Oct). Restarted on P14: see above.
     - Saves from before are schema 3. Loading runs the v4 (development table) and v5 (potential moves with the new overall) migrations on the working copy.
   - **Next task**, in the order chosen with the user ("Play-test round 2"):
     1. 2.3c's honest estimate. It's the real fix for the inverted long-ball response (Premier League sides go longer than League Two's) and for the over-clean passing.

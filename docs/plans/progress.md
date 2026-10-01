@@ -21,7 +21,8 @@
   - P16, club histories and past final tables: 3630131;
   - 2.3c iteration 4, crosses and long balls estimated as the physics plays them, still behind the switch: 09b1242. It was measured on real squads, which recorded the conflict that keeps the switch off and also found P14's side effect on goals;
   - P17, the FA Cup and the Carabao Cup: d5c1d9d. Follow-up 7376d17: a save from before the cups starts them this season if their first round is ahead.
-  - **:8000 runs 7376d17,** restarted at 14:54 on 1 Oct. It had been restarted on d5c1d9d at 14:49, and on e91f9ca at 10:59. Each time there were no connections and no sim running. Logs: `demo-server-e91f9ca-build.log` and `demo-server-d5c1d9d-build.log`.
+  - **:8000 runs 77b4cd2 (2.3f),** restarted at 17:53 on 1 Oct, with no connections and no sim running. The user had been playing in between (a sim to 28 Nov 2028 finished and autosaved). Before that it ran 7376d17 from 14:54 (log `demo-server-7376d17-build.log`).
+  - **Earlier, :8000 ran 7376d17,** restarted at 14:54 on 1 Oct. It had been restarted on d5c1d9d at 14:49, and on e91f9ca at 10:59. Each time there were no connections and no sim running. Logs: `demo-server-e91f9ca-build.log` and `demo-server-d5c1d9d-build.log`.
     - **The user's careers:**
       - slot 1: Grimsby, 2026;
       - slot 2: Wrexham, manual save 22 Jan 2028;

@@ -26,6 +26,7 @@ from footsim.match.engine.pitch import (
     GOAL_HALF,
     LENGTH,
     MID_Y,
+    WIDTH,
     expected_goal,
     in_own_box,
     loss_cost,
@@ -492,6 +493,133 @@ def _landing_chance(eng: "MatchEngine", j: int, point: np.ndarray, flight: float
     return clean * win * keep
 
 
+def _cross_landing(eng: "MatchEngine", i: int, j: int, team: int, ball: np.ndarray,
+                   target: np.ndarray, spread: float, length_spread: float, read: float,
+                   opps: np.ndarray, opp_pts: np.ndarray, pts: np.ndarray) -> tuple[float, float]:
+    """A cross, as _aerial plays it, averaged over its angle and length errors (start_pass's,
+    at the Gauss-Hermite nodes). Where it drops it may be out of play or claimed by the keeper;
+    otherwise any attacker who gets within 3 m of it can win the header, not only the man it
+    was aimed at, outright if no defender is there and against the best one if one is. Returns
+    the chance it drops where an attacker can contest it, and the chance his side then wins it.
+    A ball that drops with nobody there runs loose, counted as lost."""
+    delta = target - ball
+    distance = max(float(norm(delta)), 0.5)
+    heading = math.atan2(float(delta[1]), float(delta[0]))
+    angles = heading + spread * _NODES[:, None]
+    reach = distance * np.clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
+    land = np.stack([ball[0] + np.cos(angles) * reach, ball[1] + np.sin(angles) * reach], axis=-1)
+    flight = np.broadcast_to(np.clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
+    in_play = ((land[..., 0] >= 0) & (land[..., 0] <= LENGTH)
+               & (land[..., 1] >= 0) & (land[..., 1] <= WIDTH))
+    est = eng.defs.passing.estimate
+    mates = np.array([m for m in eng.team_indices(team) if m != i
+                      and eng.group[int(m)] is not PositionGroup.GK], dtype=int)
+    # The man it's aimed at runs for where it was meant to drop, then adjusts once he has read
+    # it; the others are making their own runs into the box, and only drift towards it.
+    gap = norms(pts[mates] - target, axis=1)
+    covered = _run_distance(eng, mates, flight[..., None])
+    slack = np.where(mates == j, est.adjust * np.maximum(
+        0.0, covered - np.maximum(gap, _run_distance(eng, mates, np.full(1, read)))),
+        est.closing * covered)
+    aimed = np.where((mates == j)[:, None], target[None, :], pts[mates])
+    short = np.where(mates == j, np.maximum(0.0, gap - covered), 0.0)  # not even there in time
+    att_dist = norms(land[..., None, :] - aimed[None, None, :, :], axis=3) + short
+    att_there = att_dist - slack < 3.0
+    outfield = np.array([k for k, o in enumerate(opps)
+                         if eng.group[int(o)] is not PositionGroup.GK], dtype=int)
+    keeper = [k for k, o in enumerate(opps) if eng.group[int(o)] is PositionGroup.GK]
+    strength = {int(m): _aerial_strength(eng, int(m)) for m in mates}
+    clean = 1 - eng.defs.duels.aerial_foul_chance
+    arrive = win_given = 0.0
+    weights = _WEIGHTS[:, None] * _WEIGHTS[None, :]
+    for a in range(len(_NODES)):
+        for b in range(len(_NODES)):
+            if not in_play[a, b] or not att_there[a, b].any():
+                continue
+            point, time = land[a, b], float(flight[a, b])
+            dist = norms(opp_pts - point, axis=1)
+            there = dist - _run_distance(eng, opps, time)
+            claim = 0.0
+            if point[0] > LENGTH - 7:
+                for k in keeper:
+                    if there[k] < 5.0:
+                        claim = _claim_chance(eng, int(opps[k]))
+            rivals = [int(opps[k]) for k in outfield if dist[k] < 3.0]
+            if len(outfield):
+                chaser = int(outfield[int(np.argmin(there[outfield]))])
+                if there[chaser] < 3.0 and int(opps[chaser]) not in rivals:
+                    rivals.append(int(opps[chaser]))
+            best = max(strength[int(m)] for m in mates[att_there[a, b]])
+            if rivals:
+                rival = max(_aerial_strength(eng, r) for r in rivals)
+                won = clean * float(_sigmoid((best - rival) / 8))
+            else:
+                won = 1.0
+            arrive += weights[a, b]
+            win_given += weights[a, b] * (1 - claim) * won
+    return arrive, (win_given / arrive if arrive > 0 else 0.0)
+
+
+def _long_landing(eng: "MatchEngine", j: int, ball: np.ndarray, target: np.ndarray,
+                  pos_j: np.ndarray, spread: float, length_spread: float, read: float,
+                  secure: float, regather: float, opps: np.ndarray, opp_pts: np.ndarray
+                  ) -> tuple[float, float]:
+    """A long ball in the air, as the physics plays it, averaged over its angle and length
+    errors (start_pass's, at the Gauss-Hermite nodes). Where it drops it may be out of play.
+    The receiver runs for where it was meant to go until he reads it, then for where it's
+    really dropping; the nearest opponents go for it from the kick. If both get there, a header
+    decides it (_long_ball_contest); if he gets there alone he takes it as any pass; otherwise
+    it's a race for the loose ball, which the side closer to it usually wins. Returns the chance
+    it drops in play, and the chance his side then has it."""
+    passing, est = eng.defs.passing, eng.defs.passing.estimate
+    delta = target - ball
+    distance = max(float(norm(delta)), 0.5)
+    heading = math.atan2(float(delta[1]), float(delta[0]))
+    angles = heading + spread * _NODES[:, None]
+    reach = distance * np.clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
+    land = np.stack([ball[0] + np.cos(angles) * reach, ball[1] + np.sin(angles) * reach], axis=-1)
+    flight = np.broadcast_to(np.clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
+    in_play = ((land[..., 0] >= 0) & (land[..., 0] <= LENGTH)
+               & (land[..., 1] >= 0) & (land[..., 1] <= WIDTH))
+    recv = np.array([j])
+    gap = float(norm(target - pos_j))
+    early = float(_run_distance(eng, recv, np.full(1, read))[0])
+    toward = (target - pos_j) / max(gap, 1e-6)
+    at_read = pos_j + toward * min(early, gap)  # where he is once he has read it
+    radius = passing.aerial_contest_radius
+    outfield = np.array([k for k, o in enumerate(opps)
+                         if eng.group[int(o)] is not PositionGroup.GK], dtype=int)
+    clean = 1 - eng.defs.duels.aerial_foul_chance
+    keep = passing.header_to_feet + (1 - passing.header_to_feet) * regather
+    mine = _aerial_strength(eng, j)
+    weights = _WEIGHTS[:, None] * _WEIGHTS[None, :]
+    landed = ours = 0.0
+    for a in range(len(_NODES)):
+        for b in range(len(_NODES)):
+            if not in_play[a, b]:
+                continue
+            point, time = land[a, b], float(flight[a, b])
+            run = float(_run_distance(eng, recv, np.full(1, time))[0])
+            margin = max(0.0, run - early) - float(norm(point - at_read))
+            if len(outfield):
+                dist = norms(opp_pts[outfield] - point, axis=1)
+                theirs = _run_distance(eng, opps[outfield], time - est.opponent_reaction) - dist
+                best = float(theirs.max())
+            else:
+                theirs, best = np.zeros(0), -99.0
+            if margin >= -radius and best >= -radius:
+                rival = max(_aerial_strength(eng, int(opps[outfield[k]]))
+                            for k in np.flatnonzero(theirs >= -radius))
+                p = clean * float(_sigmoid((mine - rival) / 8)) * keep
+            elif margin >= -CONTROL_RADIUS:
+                p = secure
+            else:
+                p = float(_sigmoid((margin - best) / est.reach_scale)) * secure
+            landed += weights[a, b]
+            ours += weights[a, b] * p
+    return landed, (ours / landed if landed > 0 else 0.0)
+
+
 def _heuristic_success(eng: "MatchEngine", i: int, receivers: list[int], kinds: list[str],
                        target: np.ndarray, length: np.ndarray, lofted: np.ndarray,
                        ball: np.ndarray, opp_pts: np.ndarray, pts: np.ndarray,
@@ -656,10 +784,19 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
     free, pressed = est.regather
     regather = free - (free - pressed) * close
     secure = first_touch + (1 - first_touch) * regather
-    for k in np.flatnonzero(lofted):
-        secure[k] = _landing_chance(eng, int(recv[k]), target[k], float(flight[k]),
-                                    bool(cross[k]), opps, opp_pts, float(secure[k]),
-                                    float(regather[k]))
+    # A long ball is whoever's who gets to where it drops, as the physics plays it.
+    for k in np.flatnonzero(lofted & ~cross):
+        p_reach[k] = 1.0
+        p_arrive[k], secure[k] = _long_landing(
+            eng, int(recv[k]), ball, target[k], pts[int(recv[k])], float(spread[k]),
+            float(length_spread[k]), float(read[k]), float(secure[k]), float(regather[k]),
+            opps, opp_pts)
+    # A cross is anyone's in the box who gets to it, as _aerial plays it.
+    for k in np.flatnonzero(cross):
+        p_reach[k] = 1.0
+        p_arrive[k], secure[k] = _cross_landing(
+            eng, i, int(recv[k]), team, ball, target[k], float(spread[k]),
+            float(length_spread[k]), float(read[k]), opps, opp_pts, pts)
     return EstimateParts(p_path, p_reach, p_arrive, secure)
 
 

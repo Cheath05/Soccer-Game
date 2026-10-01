@@ -470,6 +470,26 @@ Order of work: the arrows (P15) and the history (P16) first, as they're small. T
   - **Checked** on a copy of the user's Wrexham save (now 22 Jan 2028), on a throwaway :8765: it loads in 0.35 s, running migrations v4–v6. History shows 2026–27 21st (42 pts) and 2027–28 19th so far. The 2026–27 Championship final table shows West Ham champions, Swansea play-off winners, three relegated.
   - **Tests:** `tests/integration/test_history.py`. All backend tests pass, lint is clean and the smoke e2e passes.
 
+- [ ] **2.3c iteration 4** (behind `estimate.honest`, still off; the golden values are unchanged).
+  - **Crosses** follow `_aerial`: `_cross_landing` averages over the cross's angle and length errors (5×5 Gauss-Hermite). At each landing point:
+    - out of play loses it;
+    - the keeper may claim it;
+    - any attacker who gets within 3 m can win the header, outright if no defender is there, else against the best one.
+  - **Long balls** follow the physics too: `_long_landing` over the same grid.
+    - The receiver runs for the intended point until he reads the ball, then for where it's dropping; the nearest opponents go from the kick.
+    - Both there: a header (`_long_ball_contest`). Him alone: his first touch. Otherwise a race for the loose ball (`reach_scale`).
+  - **Quick check** (6 synthetic matches, qualities 62 and 78, honest on), estimate minus completed:
+    - crosses −0.32 → −0.03 (estimate .197, completed .213);
+    - long balls −0.33 → −0.12;
+    - short +0.01, medium +0.02.
+  - **The conflict this exposes** (measured on real squads below): with honest estimates, long balls all but vanish (0.3–0.7% of passes) and shots explode. Synthetic sides take 70 shots a match and score 6.7–8.3, against 40 shots and 4.2 goals with the switch off.
+    - **Why** (`scratchpad/long_options.py`, 3,382 decisions with a long option): the best long option scores 0.04–0.05 utility below the best pass everywhere from x 0 to 70, even under pressure, because a safe short option (estimate .86–.96) is always there.
+    - Real sides go long when the press has covered the short options and the build-up is risky. Our pressing doesn't cover them, and passes into and around the box complete about 90%.
+    - The old estimate's pessimism about short passes (−0.10 to −0.15) was hiding this weak defending.
+    - Neither `loss_where_lost` 1.0 nor `RETAIN` 0.005 brings long balls back (0.5–0.7%).
+    - So the decision values can't be calibrated until defending covers options and the box (2.3f, Phase D6). **The switch stays off;** 2.3f comes before switching it on.
+  - **Tests:** `test_passing.py` gains a cross being anyone's who gets to it, and a long ball being whoever's gets to where it drops.
+
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged

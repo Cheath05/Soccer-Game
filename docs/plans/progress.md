@@ -22,8 +22,9 @@
   - P3 (the live viewer skipping actions): d981315.
   - P4 (goal pause and banner): 17635e6.
   - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
-  - P5 (sim to date) is done in the commit that ticks it.
-  - Next: restart :8000 on it (once nobody is connected). Then back to the plan: 2.3c remaining items 1–4 below.
+  - P5 (sim to date): 66a92c7.
+  - :8000 restarted on 66a92c7 (P1–P5) at 01:40 on 1 Oct. It had no connections, and nothing had happened on it since the 01:28 restart.
+  - **Next task:** back to the plan, 2.3c remaining items 1–4 below. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching.
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -85,8 +86,8 @@
   - the card rules;
   - stale duel engagements (2.4);
   - counter holds after the side already in possession gains a loose ball (E).
-- **Play-testing on :8000, the user's game.** It runs 17635e6 (play-test fixes P1–P4), restarted at 01:28 on 1 Oct after a check showed no connections. Before that it ran 1de6591, from 21:37 on 30 Sep.
-  - The log is `/private/tmp/claude-502/demo-server.log`. Earlier builds' logs are kept next to it as `demo-server-20260928-build.log` and `demo-server-1de6591-build.log`.
+- **Play-testing on :8000, the user's game.** It runs 66a92c7 (play-test fixes P1–P5), restarted at 01:40 on 1 Oct after a check showed no connections. Earlier: 17635e6 from 01:28, and 1de6591 from 21:37 on 30 Sep.
+  - The log is `/private/tmp/claude-502/demo-server.log`. Earlier builds' logs are kept next to it as `demo-server-20260928-build.log`, `demo-server-1de6591-build.log` and `demo-server-17635e6-build.log`.
   - A restart clears the loaded career, so the user loads it again from the start page. Both slots were listed unchanged after the restart.
   - Until 30 Sep its backend dated from 28 Sep (Phase A), while it served the 30 Sep frontend from `frontend/dist`. The frontend is read from disk; the backend isn't.
   - To update it later: `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill, once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.

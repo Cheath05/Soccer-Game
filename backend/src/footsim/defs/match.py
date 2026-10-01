@@ -30,6 +30,7 @@ class PresentationDef(DefModel):
     lookahead_seconds: float = Field(ge=0)  # real seconds simulated ahead of what's shown
     highlight_before: float = Field(ge=0)  # game seconds shown before a highlight
     highlight_after: float = Field(ge=0)
+    highlight_rate: float = Field(gt=0)  # match seconds per real second replaying one
 
     @model_validator(mode="after")
     def _default_speed_offered(self) -> "PresentationDef":

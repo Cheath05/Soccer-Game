@@ -9,3 +9,4 @@ max_frames_per_second: 30     # positions sent to the viewer, which interpolates
 lookahead_seconds: 0.25       # the engine runs this far (real time) ahead of what's on screen
 highlight_before: 12          # match seconds shown before a highlight
 highlight_after: 6
+highlight_rate: 18           # a highlight is replayed no faster than this (match s per real s)

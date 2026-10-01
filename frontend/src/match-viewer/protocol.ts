@@ -81,6 +81,7 @@ export interface LiveState {
   speed: number
   speeds: number[]
   rate: number // match seconds per real second
+  playRate: number // the same on screen: a highlight is replayed no faster than its own rate
   mode: string
   finished: boolean
   atBreak: boolean

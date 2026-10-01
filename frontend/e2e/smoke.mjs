@@ -9,7 +9,9 @@ const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+// A fresh server has no career yet: its start page asking for one gets a 409, as intended.
+const expected = (m) => m.text().includes('409') && m.location().url.endsWith('/api/career')
+page.on('console', (m) => m.type() === 'error' && !expected(m) && errors.push(m.text()))
 
 const shot = async (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true })
 

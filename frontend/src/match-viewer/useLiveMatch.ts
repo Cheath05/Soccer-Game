@@ -9,12 +9,22 @@ import { toSnapshot } from './draw'
 import type { Snapshot } from './draw'
 import type { DebugSnapshot, LiveState } from './protocol'
 
+// The server's word on what should be on screen: match time ``shown`` at ``wall``
+// (performance.now()), moving on at ``rate`` match seconds per real second unless stopped.
+export interface Sync {
+  shown: number
+  wall: number
+  rate: number
+  moving: boolean
+}
+
 export interface LiveMatch {
   live: LiveState | null
   liveRef: MutableRefObject<LiveState | null>
   buffer: MutableRefObject<Snapshot[]>
   debugBuffer: MutableRefObject<DebugSnapshot[]> // only while the debug overlay is on
   playhead: MutableRefObject<number | null>
+  sync: MutableRefObject<Sync | null>
   error: string | null // the match can't be shown
   notice: string | null // a command was refused
   ended: [number, number] | null
@@ -35,6 +45,7 @@ function fromInit(msg: Message): LiveState {
     speed: msg.speed,
     speeds: msg.speeds,
     rate: msg.rate,
+    playRate: msg.play_rate ?? msg.rate,
     mode: msg.mode,
     finished: msg.finished,
     atBreak: msg.at_break,
@@ -54,6 +65,16 @@ function fromInit(msg: Message): LiveState {
   }
 }
 
+function toSync(msg: Message): Sync | null {
+  if (typeof msg.shown !== 'number') return null // an older server: free-running playback
+  return {
+    shown: msg.shown,
+    wall: performance.now(),
+    rate: msg.play_rate ?? msg.rate,
+    moving: !msg.paused || msg.at_break || msg.finished,
+  }
+}
+
 export function useLiveMatch(fixtureId: string): LiveMatch {
   const queryClient = useQueryClient()
   const wsRef = useRef<WebSocket | null>(null)
@@ -61,6 +82,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
   const buffer = useRef<Snapshot[]>([])
   const debugBuffer = useRef<DebugSnapshot[]>([])
   const playhead = useRef<number | null>(null)
+  const sync = useRef<Sync | null>(null)
   const nextId = useRef(1)
   const [live, setLive] = useState<LiveState | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +137,9 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         const state = fromInit(msg)
         buffer.current = (msg.frames as number[][]).map(toSnapshot)
         debugBuffer.current = []
-        playhead.current = buffer.current.length ? buffer.current[buffer.current.length - 1].t : null
+        sync.current = toSync(msg)
+        playhead.current =
+          sync.current?.shown ?? (buffer.current.length ? buffer.current[buffer.current.length - 1].t : null)
         commit(state)
         return
       }
@@ -129,6 +153,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         paused: msg.paused,
         speed: msg.speed,
         rate: msg.rate,
+        playRate: msg.play_rate ?? msg.rate,
         mode: msg.mode,
         finished: msg.finished,
         atBreak: msg.at_break,
@@ -136,6 +161,7 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
         pendingSubs: msg.pending_subs,
         subsLeft: msg.subs_left,
       }
+      sync.current = toSync(msg)
       if (msg.feed) next.feed = [...[...msg.feed].reverse(), ...previous.feed].slice(0, 250)
       if (msg.lineup) next.lineup = msg.lineup
       if (msg.formation) next.formation = msg.formation
@@ -173,5 +199,5 @@ export function useLiveMatch(fixtureId: string): LiveMatch {
     return () => ws.close()
   }, [fixtureId, queryClient])
 
-  return { live, liveRef, buffer, debugBuffer, playhead, error, notice, ended, send }
+  return { live, liveRef, buffer, debugBuffer, playhead, sync, error, notice, ended, send }
 }

@@ -18,8 +18,9 @@
 - **Branch:** `phase-1-match-believability`.
 - **In progress: the user's play-test fixes** ("Play-test fixes" below), each its own commit. They come before 2.3c continues.
   - P1 (hand-picked starters shown as 99): 85a20ce.
-  - P2 (the set-piece taker running back and forth) is done in the commit that ticks it.
-  - Next is P3 (the live viewer skipping actions).
+  - P2 (the set-piece taker running back and forth): 36fbd4f.
+  - P3 (the live viewer skipping actions) is done in the commit that ticks it.
+  - Next is P4 (goal pause and banner), built on P3's timeline.
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -136,7 +137,20 @@ The user also said save files may be deleted if they ever get in the way of the 
   - **After:** 0 turns, at most about 1 m of overshoot.
   - **Restart waits are unchanged** on 4 seeds: throw-ins 15.6 s (before 16.3), goal kicks 27.1 (28.0), corners 31.7 (32.1). Ball in play 62.4 minutes (61.8).
   - **Tests:** `test_a_taker_waits_on_the_ball_instead_of_running_past_it` fails without the fix. Mac golden values re-recorded with a History note.
-- [ ] P3 **The live viewer skips actions:** a pass reaches a player, then the picture jumps to the other side in possession. Measure the gaps in the frame stream at each speed and in highlights, then fix.
+- [x] P3 **The live viewer skipped actions:** a pass reached a player, then the picture jumped to the other side in possession.
+  - **Cause:** the server runs the engine a little ahead of the screen (`lookahead_seconds`), and pausing, resuming and changing speed or mode restarted its clock from the engine's time, not the screen's.
+    - So the screen fell behind by up to `lookahead × rate` with each change: 18 match seconds when slowing from 8×.
+    - The viewer then jumped ahead once it was too far behind.
+  - **Simulated** with the real LiveSession and the viewer's playback ported line for line (scratch `viewer_sync.py`, a typical watch with speed changes and pauses): jumps of 12.9, 14.9 and 18.3 match seconds, each on slowing to 1×.
+  - **Fixed:**
+    - `LiveSession.shown(now)` is the one timeline. Pause, resume, speed and mode carry on from the moment on screen, and `pause()` is also used on connect and disconnect.
+    - Every message carries `shown` and `play_rate`, and the viewer steers its playhead to them, snapping only when far out (a highlight, a hidden tab).
+    - Highlights replay at `presentation.yaml` `highlight_rate` (18) on both ends, and the next skip waits until the viewer has seen the whole highlight.
+    - At high speeds every frame where the ball changes hands is kept, so a pass is seen from foot to foot.
+  - **After:** the same simulation shows no jumps and no frame step faster than 1.6× the rate.
+    - In Chromium (`e2e/live.mjs`, which now samples the time the pitch draws via `canvas.dataset.t`): the largest step in about 100 ms after slowing from 8× to 1× is 2.7 match seconds, a smooth catch-up.
+  - **Tests:** `test_the_picture_carries_on_through_speed_changes_and_pauses`; the frame-limit test now also checks that every touch is sent. Golden values unchanged (presentation only).
+  - **Also:** `e2e/smoke.mjs` no longer reports the 409 a fresh server's start page gets for `/api/career` (no career loaded yet, as intended).
 - [ ] P4 **Goals:** a 3-second pause and a banner with the scorer and any assist. Presentation only: the result must not change.
 - [ ] P5 **Sim to date** (Phase I, basic): continue to a chosen date, a week, a month or the season's end, playing the user's matches instantly, with stop conditions.
 - Later (the user agrees): transfers and the other management systems.

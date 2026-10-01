@@ -111,9 +111,9 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
         await ws.close()
         return
     playback = live.session
-    playback.paused = True
+    playback.pause(asyncio.get_running_loop().time())
     playback.debug = playback.engine.debug = False  # a reloaded viewer starts without it
-    await ws.send_json(playback.init_message(live.names))
+    await ws.send_json(playback.init_message(live.names, asyncio.get_running_loop().time()))
 
     inbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
@@ -168,7 +168,7 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
                 pending.append(await asyncio.wait_for(
                     inbox.get(), max(0.0, pause - (loop.time() - started))))
     finally:
-        playback.paused = True
+        playback.pause(loop.time())
         task.cancel()
         with contextlib.suppress(Exception):
             await ws.close()

@@ -1,6 +1,7 @@
 """Watching a match: playback speed and pauses change how fast you see it, never the match."""
 
 import json
+from collections import deque
 
 import pytest
 
@@ -45,16 +46,55 @@ def test_one_real_second_is_nine_match_seconds_at_1x(world: World) -> None:
     assert 180 - 1 <= session.engine.clock.elapsed <= 180 + lookahead + 1
 
 
-def test_frames_are_limited_for_the_viewer(world: World) -> None:
+class _Recording(deque[list[float]]):
+    """The engine's frame buffer, remembering every frame ever put in it."""
+
+    def __init__(self, maxlen: int | None) -> None:
+        super().__init__(maxlen=maxlen)
+        self.everything: list[list[float]] = []
+
+    def append(self, frame: list[float]) -> None:
+        self.everything.append(frame)
+        super().append(frame)
+
+
+def test_frames_are_limited_for_the_viewer_but_every_touch_is_kept(world: World) -> None:
+    """At 8x most frames are skipped, but every frame where the ball changes hands is sent,
+    so a pass is seen from the foot that plays it to the one that takes it."""
     session = _session(world)
+    frames = session.engine.frames = _Recording(session.engine.frames.maxlen)
     session.apply({"type": "speed", "value": 8}, 0.0)
     session.apply({"type": "resume"}, 0.0)
-    sent = 0
+    sent: list[list[float]] = []
     now = 0.0
     while now < 5.0:
-        sent += len(session.pump(now).frames)
+        sent += session.pump(now).frames
         now += TICK
-    assert sent <= 5.0 * (session.p.max_frames_per_second + 1 / TICK)
+    every = frames.everything
+    touches = [f for prev, f in zip(every, every[1:], strict=False) if f[4] != prev[4]]
+    assert touches
+    sent_ids = {id(f) for f in sent}
+    assert all(id(f) in sent_ids for f in touches)
+    assert len(sent) <= 5.0 * (session.p.max_frames_per_second + 1 / TICK) + len(touches)
+
+
+def test_the_picture_carries_on_through_speed_changes_and_pauses(world: World) -> None:
+    """Play-test, 30 Sep: slowing from 8x to 1x made the picture jump 13-18 match seconds ahead.
+    The timeline restarted from where the engine had got to, which runs ahead of the screen,
+    instead of from the moment on screen."""
+    session = _session(world)
+    session.apply({"type": "resume"}, 0.0)
+    now = _play(session, 0.0, 3.0)
+    for cmd in ({"type": "speed", "value": 8}, {"type": "speed", "value": 1},
+                {"type": "pause"}, {"type": "resume"}, {"type": "speed", "value": 4},
+                {"type": "speed", "value": 0.5}, {"type": "speed", "value": 2}):
+        before = session.shown(now)
+        assert session.apply(cmd, now) is None
+        assert session.shown(now) == pytest.approx(before)  # no jump
+        start, began = session.shown(now), now
+        now = _play(session, now, 2.0)
+        moved = 0.0 if session.paused else (now - began) * session.play_rate
+        assert session.shown(now) - start == pytest.approx(moved, rel=0.02, abs=0.01)
 
 
 def test_pause_stops_the_match_and_resume_does_not_jump(world: World) -> None:
@@ -110,7 +150,7 @@ def test_the_assistant_can_take_over_the_users_tactics(world: World) -> None:
     engine = MatchEngine(world.defs, home, away, derive_rng(21, "live"), record=False,
                          ai_manager=(False, True))  # as in a career: the user manages his side
     session = LiveSession(engine, world, world.defs.presentation, user_team=0)
-    assert session.init_message(("Home", "Away"))["ai_manager"] == [False, True]
+    assert session.init_message(("Home", "Away"), 0.0)["ai_manager"] == [False, True]
     assert session.apply({"type": "assistant", "value": True}, 0.0) is None
     session.apply({"type": "resume"}, 0.0)
     pump = session.pump(0.5)

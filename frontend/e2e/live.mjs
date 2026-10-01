@@ -35,6 +35,24 @@ const clockAt1x = await page.getByLabel('Match clock').innerText()
 console.log(`clock after 5 s at 1x: ${clockAt1x}`)
 await shot('11-live-1x')
 
+// The picture never skips ahead (play-test, 30 Sep: slowing down from 8x made it jump 13-18
+// match seconds). Sample the match time the pitch is drawing after going back to 1x.
+const pitch = page.locator('canvas')
+const drawn = () => pitch.evaluate((c) => Number(c.dataset.t))
+await page.getByText('8×').click()
+await page.waitForTimeout(1500)
+await page.getByText('1×', { exact: true }).click()
+let previous = await drawn()
+let worst = 0
+for (let i = 0; i < 30; i++) {
+  await page.waitForTimeout(100)
+  const now = await drawn()
+  worst = Math.max(worst, now - previous)
+  previous = now
+}
+console.log(`largest step in ~100 ms after slowing from 8x to 1x: ${worst.toFixed(1)} match s`)
+if (worst > 4) errors.push(`the picture jumped ${worst.toFixed(1)} match seconds after slowing down`)
+
 await page.getByText('8×').click()
 await page.getByRole('button', { name: 'Start second half' }).waitFor({ timeout: 90000 })
 await shot('12-live-half-time')

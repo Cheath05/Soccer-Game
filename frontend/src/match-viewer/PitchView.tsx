@@ -18,7 +18,7 @@ interface Props {
 }
 
 const PAD = 16
-const HIGHLIGHT_RATE = 18 // match seconds per real second while replaying a highlight
+const STEER = 4 // per second: how quickly the picture closes a gap to the server's timeline
 
 export default function PitchView({ match, showNames, debug = false, selected, onSelect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -57,15 +57,28 @@ export default function PitchView({ match, showNames, debug = false, selected, o
         const ctx = canvas.getContext('2d')
         if (ctx && frames.length) {
           const newest = frames[frames.length - 1].t
-          const rate = state.mode === 'highlights' ? Math.min(state.rate, HIGHLIGHT_RATE) : state.rate
           let pt = match.playhead.current ?? frames[0].t
-          // A pause freezes the picture; at half-time the last moments still play out.
-          if (!state.paused || state.finished || state.atBreak) pt += dt * rate
-          // Stay a little behind the newest frame, and catch up if we fall far behind.
-          const lag = 0.3 * rate
-          if (state.mode !== 'highlights' && pt < newest - Math.max(3, 4 * lag)) pt = newest - lag
+          const sync = match.sync.current
+          if (sync) {
+            // Follow the server's timeline: it carries on from what's on screen through pauses
+            // and speed changes, so the picture moves on smoothly and never skips ahead.
+            if (sync.moving) pt += dt * sync.rate
+            const target = sync.shown + (sync.moving ? ((now - sync.wall) / 1000) * sync.rate : 0)
+            const gap = target - pt
+            // Far out (a highlight, or a tab that was hidden): go straight there.
+            if (Math.abs(gap) > Math.max(3, 2 * sync.rate)) pt = target
+            else pt += gap * Math.min(1, dt * STEER)
+          } else {
+            // An older server: play on at the match's rate, staying a little behind the newest
+            // frame and jumping ahead if we fall far behind.
+            const rate = state.mode === 'highlights' ? Math.min(state.playRate, 18) : state.playRate
+            if (!state.paused || state.finished || state.atBreak) pt += dt * rate
+            const lag = 0.3 * rate
+            if (state.mode !== 'highlights' && pt < newest - Math.max(3, 4 * lag)) pt = newest - lag
+          }
           pt = Math.min(Math.max(pt, frames[0].t), newest)
           match.playhead.current = pt
+          canvas.dataset.t = pt.toFixed(2) // the match time on screen, for the browser tests
           let k = 0
           while (k < frames.length - 2 && frames[k + 1].t < pt) k++
           const snap = frames.length > 1 ? interpolate(frames[k], frames[k + 1], pt) : frames[0]

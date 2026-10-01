@@ -6,6 +6,10 @@ so on (data/config/match/presentation.yaml). Speed only changes how fast the vie
 the match, never the match itself: the engine runs the same ticks in the same order at any
 speed, and highlights mode just skips frames.
 
+One timeline says what the viewer should be showing (``shown``). Pausing, resuming and
+changing speed or mode carry on from the moment on screen, so the picture never jumps; the
+engine runs a little ahead of it (``lookahead_seconds``), and the viewer steers towards it.
+
 Commands that do change the match (formation, instructions, substitutions, starting the
 next period) are applied between two ticks and logged with that tick, so a watched match
 can be replayed exactly with ``replay``.
@@ -85,9 +89,10 @@ class LiveSession:
         self.paused = True
         self.mode = "full"  # full | highlights
         self.debug = False  # send the engine's debug snapshot with each update
-        self.anchor_sim = engine.t
+        self.anchor_sim = engine.t  # the match time on screen at real time anchor_wall
         self.anchor_wall = 0.0
         self.replay_until = -1.0  # highlights: play at normal speed until this match time
+        self.last_owner = -2.0  # the ball's owner in the last frame looked at (_drain)
         self.log: list[tuple[int, Command]] = []
         self.feed_sent = 0
         self.lineup_sent = -1
@@ -106,9 +111,34 @@ class LiveSession:
     def rate(self) -> float:
         return self.compression * self.speed
 
+    @property
+    def play_rate(self) -> float:
+        """Match seconds per real second on screen: a highlight is replayed no faster than
+        ``highlight_rate``."""
+        if self.mode == "highlights":
+            return min(self.rate, self.p.highlight_rate)
+        return self.rate
+
+    def shown(self, now: float) -> float:
+        """The match time the viewer should be showing at real time ``now``. It stands still
+        while paused, and runs on to the whistle at a break."""
+        engine = self.engine
+        moving = not self.paused or engine.at_break or engine.finished
+        t = self.anchor_sim
+        if moving:
+            t += max(0.0, now - self.anchor_wall) * self.play_rate
+        return min(t, engine.t)
+
     def _reanchor(self, now: float) -> None:
+        """Carry on from the moment on screen (not from where the engine has got to)."""
+        self.anchor_sim = self.shown(now)
         self.anchor_wall = now
-        self.anchor_sim = self.engine.t
+
+    def pause(self, now: float) -> None:
+        """Stop the picture on the moment it's showing."""
+        if not self.paused:
+            self._reanchor(now)
+        self.paused = True
 
     # --- commands --------------------------------------------------------------------------
 
@@ -118,12 +148,12 @@ class LiveSession:
         engine = self.engine
         try:
             if kind == "pause":
-                self.paused = True
+                self.pause(now)
             elif kind == "resume":
                 if engine.at_break:
                     return "start the next period first"
-                self.paused = False
                 self._reanchor(now)
+                self.paused = False
             elif kind == "speed":
                 value = float(cmd.get("value", self.p.default_speed))
                 if value not in self.p.speeds:
@@ -135,9 +165,9 @@ class LiveSession:
                 engine.shape_debug = [{}, {}]
                 engine.decision_debug = None
             elif kind == "mode":
+                self._reanchor(now)
                 self.mode = "highlights" if cmd.get("value") == "highlights" else "full"
                 self.replay_until = -1.0
-                self._reanchor(now)
             elif kind in MATCH_COMMANDS:
                 if engine.finished:
                     return "the match is over"
@@ -145,8 +175,8 @@ class LiveSession:
                 self.log.append((engine.tick_count,
                                  {k: v for k, v in cmd.items() if k != "cmd_id"}))
                 if kind == "start_period":
+                    self.anchor_sim, self.anchor_wall = engine.t, now
                     self.paused = False
-                    self._reanchor(now)
             else:
                 return f"unknown command {kind!r}"
         except (ValueError, KeyError, TypeError) as exc:
@@ -168,10 +198,10 @@ class LiveSession:
         engine = self.engine
         if self.paused or engine.finished or engine.at_break:
             return Pump([])
-        if self.mode == "highlights" and engine.t >= self.replay_until:
+        if self.mode == "highlights" and self.shown(now) >= self.replay_until:
             return self._skip_to_highlight(now)
-        due = self.anchor_sim + (now - self.anchor_wall) * self.rate
-        target = due + self.p.lookahead_seconds * self.rate
+        due = self.anchor_sim + (now - self.anchor_wall) * self.play_rate
+        target = due + self.p.lookahead_seconds * self.play_rate
         ticks = 0
         while (engine.t < target and ticks < MAX_TICKS_PER_PUMP and not engine.finished
                and not engine.at_break):
@@ -188,8 +218,14 @@ class LiveSession:
             frames = frames[-limit:]
         if not frames:
             return []
-        every = max(1, math.ceil(self.rate * 10 / self.p.max_frames_per_second))
-        picked = [f for f in frames if round(f[0] * 10) % every == 0]
+        every = max(1, math.ceil(self.play_rate * 10 / self.p.max_frames_per_second))
+        picked = []
+        for f in frames:
+            # Every frame where the ball changes hands is kept, so a pass is seen from the
+            # foot that plays it to the one that takes it even when most frames are skipped.
+            if round(f[0] * 10) % every == 0 or f[4] != self.last_owner:
+                picked.append(f)
+            self.last_owner = f[4]
         if not picked or picked[-1] is not frames[-1]:
             picked.append(frames[-1])
         return picked
@@ -222,12 +258,14 @@ class LiveSession:
         return {"period": c.period, "display": c.display(), "label": c.label(),
                 "state": c.state.value, "added": c.announced, "elapsed": round(c.elapsed, 1)}
 
-    def state(self) -> dict[str, Any]:
+    def state(self, now: float) -> dict[str, Any]:
         e = self.engine
         return {"score": list(e.score), "minute": e.minute, "period": e.period,
-                "t": round(e.t, 1), "clock": self.clock(), "paused": self.paused,
+                "t": round(e.t, 1), "shown": round(self.shown(now), 2),
+                "clock": self.clock(), "paused": self.paused,
                 "speed": self.speed,
-                "rate": self.rate, "mode": self.mode, "finished": e.finished,
+                "rate": self.rate, "play_rate": self.play_rate, "mode": self.mode,
+                "finished": e.finished,
                 "at_break": e.at_break,
                 "restart": ({"kind": e.restart.kind, "variant": e.restart.variant,
                              "team": e.restart.team} if e.restart is not None else None),
@@ -292,12 +330,12 @@ class LiveSession:
             bench.append(entries)
         return {"players": players, "bench": bench}
 
-    def init_message(self, names: tuple[str, str]) -> dict[str, Any]:
+    def init_message(self, names: tuple[str, str], now: float) -> dict[str, Any]:
         e = self.engine
         self.feed_sent = len(e.feed)
         self.lineup_sent = e.lineup_version
         return {
-            "type": "init", "protocol": 2, **self.state(),
+            "type": "init", "protocol": 2, **self.state(now),
             "teams": [{"name": names[0], "club_id": e.sheets[0].club_id},
                       {"name": names[1], "club_id": e.sheets[1].club_id}],
             "user_team": self.user_team,
@@ -319,7 +357,7 @@ class LiveSession:
 
     def update_message(self, pump: Pump, now: float) -> dict[str, Any]:
         e = self.engine
-        message: dict[str, Any] = {"type": "frames", **self.state(), "frames": pump.frames,
+        message: dict[str, Any] = {"type": "frames", **self.state(now), "frames": pump.frames,
                                    "highlight": pump.highlight}
         changed = False
         if len(e.feed) > self.feed_sent:

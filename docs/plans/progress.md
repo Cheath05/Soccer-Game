@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, Step 2.3b complete (part 2: pass pace set). The commit right after it only filled in this hash.
+- **Checkpoint commit:** d7ccf17, Step 2.3b complete (part 2: pass pace set). The commit right after it only filled in this hash.
   - Earlier: the pace refactor fa88821; the part 1 code fa82a79 and its measurement e3e299c; 2.3a a9a8ced.
 - **Engine:** behaviour changed. The Mac's golden values were re-recorded in this commit, with a History note. One match takes 6.6 s.
 - **Completed: Step 2.3b** (`docs/calibration/20260930-step2.3b1-reception.md` and `20260930-step2.3b2-pace.md`).

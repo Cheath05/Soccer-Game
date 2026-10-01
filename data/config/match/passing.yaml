@@ -12,10 +12,13 @@ execution:
   skill: 0.10            # extra error for a passer with no skill at all (scaled by 1 - skill)
   pressure: 0.07         # extra error with an opponent right on him
   fatigue: 0.03          # extra error when exhausted
-  per_metre: 0.0015      # extra error per metre beyond 15 m
+  per_metre: 0.008       # extra error per metre beyond 15 m
   lofted: 0.015          # a ball in the air is harder to place
   length_skill: 0.07     # spread of how far the pass goes (fraction of its length)
-  length_per_metre: 0.008  # grows with distance: long balls are often over- or under-hit
+  length_per_metre: 0.022  # grows with distance: long balls are often over- or under-hit.
+                           # per_metre and length_per_metre are Step 2.3 round 5's "e2" values,
+                           # which every Step 2.3 measurement uses; provisional until 2.3e
+                           # fits them with the rating terms
 control:
   receiver: 0.95         # the intended receiver, before first touch and pressure
   teammate: 0.85         # another teammate getting to it
@@ -47,9 +50,11 @@ estimate:                 # the passer's estimate of a pass, where the ball's mo
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)
-intercept_scale: 1.0         # how readily an opponent in a pass's path cuts it out. It scales
-                             # both the physics and the passer's reading of the lane, so his
-                             # estimate stays honest. 1.0 is the original model
+intercept_scale: 0.2         # how readily an opponent in a pass's path cuts it out. It scales
+                             # both the physics and the passer's reading of the lane. 1.0 was
+                             # the original model: 64-74 interceptions a match (round 5, 200
+                             # matches per division; real 14-26). 0.2 is round 5's f020e2, which
+                             # every Step 2.3 measurement uses; provisional until 2.3e
 target_area: 3.0             # m around a pass's target. An opponent who takes the ball while
                              # it's still on course for this area intercepts it; one it comes to
                              # (overhit or off target) recovers it. Stats and commentary only.

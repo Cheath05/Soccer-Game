@@ -26,7 +26,9 @@ longer inheriting the outgoing player's duel engagements, and a restart's taker 
 if he goes off (quick fix 0c, Mac only); a pass receiver reading the ball's real path only
 after his read delay, a heavy touch locking its player out briefly, and a cross landing
 clear completable like a ground pass (Step 2.3b, Mac only); ground passes struck to match
-real travel times, arriving at 6 m/s plus 0.17 m/s a metre (Step 2.3b pace, Mac only).
+real travel times, arriving at 6 m/s plus 0.17 m/s a metre (Step 2.3b pace, Mac only);
+round 5's measured passing values made the defaults, intercept_scale 0.2 with the e2
+distance error, so the playable game is the one Step 2.3 measures (Mac only).
 """
 
 import json

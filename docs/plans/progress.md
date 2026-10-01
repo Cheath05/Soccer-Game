@@ -16,10 +16,18 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** 0f96176, **WIP**: Step 2.3c iteration 2, still behind `estimate.honest` (off). The commit right after it only filled in this hash.
-  - Earlier: iteration 1 eeb5239; 2.3b complete at d7ccf17; 2.3a a9a8ced.
-- **Engine:** behaviour unchanged. With the switch off, the game plays exactly as at d7ccf17, and the golden values pass unchanged.
-- **Done in iteration 2** (from the reviewer's notes on iteration 1):
+- **Checkpoint commit:** the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it fills in this hash and records the :8000 restart.
+  - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
+  - Earlier: Step 2.3c WIP iteration 2 0f96176 (iteration 1 eeb5239); 2.3b complete at d7ccf17; 2.3a a9a8ced.
+- **Engine:** behaviour changed on purpose. The Mac's golden values were re-recorded, with a History note. 2.3c is still behind `estimate.honest` (off).
+  - **Why:** every Step 2.3 measurement used f020e2 through a variant config, while the committed defaults stayed at the original values.
+    - Nobody had measured those since round 5, where they gave 64–74 interceptions a match (real 14–26), 13–15 throw-ins and 69–77 minutes of ball in play.
+    - So a play-test of the latest commit showed a state no step was working on.
+  - **Measured:** `ref-2.3b2-p40` (200 matches per division, seed 21) is this exact build. Everything since d7ccf17 is behind the switch, and the golden values didn't move until this commit. Figures are in "The play-test build" below.
+  - **Still provisional:** 2.3e sets the final values.
+    - Conflict, already flagged in the continuation plan: e2's length spread is wider than real long passes plausibly are, and distance terms can't make weaker passers less accurate.
+    - It stays until 2.3e's rating terms take over part of it.
+- **2.3c, WIP, unchanged by this commit. Done in iteration 2** (from the reviewer's notes on iteration 1):
   - `_run_distance`: receivers and chasers move as `_move_players` runs an urgent player (top speed from stamina, own acceleration), replacing a flat 0.9 share.
   - The receiver runs for the intended point during his read delay, and only the ground beyond that is slack for a pass that's off.
   - A keeper in his own box reaches 2.4 m and gathers about 95%.
@@ -50,10 +58,14 @@
   4. Then the reliability table within ±5 points per decile **and** the pass mix in range. Then the slow honesty test, switch it on, a 200-match measurement, golden values, delete `_heuristic_success`, and commit.
 - **Tests:**
   - `just lint` is clean;
-  - all 139 backend tests pass;
-  - the golden values are unchanged.
+  - all 139 backend tests pass, with the golden values re-recorded for the new defaults;
+  - `just e2e` (smoke and live) passes against a fresh :8765 with no browser errors;
+  - copies of both save slots load on a :8765 server and play their next match (about 6 s each):
+    - slot 1, Grimsby: the manual save and the autosave;
+    - slot 2, Chelsea: the autosave.
+  - The saves are schema 3, the same as the old :8000 build, so no migration runs.
 - **Next task:** 2.3c remaining items 1–4 above. The quick check recipe:
-  - `cfg-dev` = the checkout's `data/config`, with `intercept_scale` 0.2, `per_metre` 0.008, `length_per_metre` 0.022 and `honest: true`;
+  - `cfg-dev` = the checkout's `data/config` with `honest: true` (f020e2 is now the default);
   - then `FOOTSIM_CONFIG_DIR=/private/tmp/claude-502/cfg-dev uv run python <scratchpad>/honesty_check.py`;
   - the script is also described in this checkpoint, if the scratchpad is gone: 6 synthetic matches (3 at q62, 3 at q78), then `probe.aggregate` and `probe.reliability`.
 - **Calibration:** nothing is running. Pin the worktree first for any batch.
@@ -64,12 +76,42 @@
   - the card rules;
   - stale duel engagements (2.4);
   - counter holds after the side already in possession gains a loose ball (E).
-- **Play-testing:**
-  - :8000 is the user's game. Its backend process dates from 28 Sep, the Phase A era, so it has none of this session's work.
-  - To play the latest commit, run `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
+- **Play-testing on :8000, the user's game.** The next commit records its restart on this build.
+  - Until 30 Sep its backend dated from 28 Sep (Phase A), while it served the 30 Sep frontend from `frontend/dist`. The frontend is read from disk; the backend isn't.
+  - To update it later: `cd frontend && npm run build`, then restart :8000 with the `run-footsim` skill, once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections.
   - Automated checks use a throwaway :8765 with a temporary `FOOTSIM_SAVES_DIR`; none is running now.
-  - **Note:** this is an intermediate calibration state.
+  - **Note:** this is an intermediate calibration state; see "The play-test build" below.
 - **Housekeeping:** `stash@{0}` (local 2.1/2.2/2.5 work from before the cloud merge) is superseded by the cloud versions and can be dropped.
+
+## The play-test build (what to expect)
+
+**Measured:** `ref-2.3b2-p40`, real squads, seed 21, 200 matches per division. Per match:
+
+| | League Two (ENG4) | Premier League (ENG1) | Real |
+|---|---|---|---|
+| Goals | 2.92 | 3.67 | PL 2.65–3.05; EFL 2.45–2.85 |
+| Shots | 30.0 | 37.1 | PL 23–27.5; EFL 22–26 |
+| Pass accuracy | .817 | .812 | PL .80–.85; EFL .74–.81 |
+| Long-ball share | .039 | .103 | PL .095–.14 |
+| Interceptions | 15.7 | 15.7 | 14–26 |
+| High regains | 41.8 | 31.2 | 10–17 |
+| Throw-ins | 37.8 | 52.2 | PL 32–42; EFL 32–44 |
+| Ball in play (min) | 65.3 | 58.1 | PL 54–60; EFL 52–60 |
+| Offsides | 6.4 | 4.9 | 2.5–4.5 |
+| Fouls | 8.4 | 14.1 | 20–24.5 |
+
+**Known issues, and the step that addresses each,** so play-test notes can focus on anything new:
+- **Too many shots, and too many goals in the Premier League.** One striker can take 10 or more shots: 13 in both 30 Sep test matches.
+  - No step owns shot selection yet.
+  - 2.3c's honest estimates should cut the overrated crosses and long balls that feed it.
+  - Re-measure after 2.3c, and add a step if it's still high.
+- **Too many turnovers high up the pitch** (high regains): 2.3c's decision values, then 2.3e.
+- **Few fouls, so few cards:** 2.4.
+- **Too many offsides:** 2.3d.
+- **Too many Premier League throw-ins:** 2.3e.
+- **League Two:** too much ball in play, and it goes long too rarely. 2.3e's rating terms, then C2's styles.
+- **Static shape:** players hold a fixed shape, and team phases flicker. Phase D.
+- **Tactics:** aggressive and direct are too strong, and slow tempo gets an accuracy bonus. C1.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

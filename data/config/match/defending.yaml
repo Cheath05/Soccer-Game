@@ -1,0 +1,26 @@
+# Defending in the agent engine: how a defender's own ratings decide how closely he marks his
+# man and how often he gets in the way of a shot (behaviours._defend, actions.start_shot).
+#
+# Better attackers already pass, control and finish better. Before 2.3f nothing a defender was
+# rated for changed where he stood, so equal sides took more shots the better both were:
+# 31 shots a match at quality 58 and 49 at 82, with box entries nearly flat (34.5 -> 39.5 a
+# team) and shots per box entry rising .45 -> .62 (step2.3f/sweep0, 120 matches each). Real
+# leagues take about the same number of shots at every level.
+
+marking:
+  # Ratings at which the values below are as they were before 2.3f: an average marker
+  # behaves as before, and a better or worse one tighter or looser.
+  reference: 60
+  goal_side: 1.8            # m he stands goal-side of his man at the reference...
+  goal_side_per_point: 0.02 # ...less this per point of marking above it (more below)
+  goal_side_min: 0.9        # and never closer than this
+  commitment: 0.45          # share of the way from his zone to his man at the reference...
+  commitment_per_point: 0.012  # ...plus this per point of marking (the role's track_runners
+                               # adds up to 0.3 on top)
+  commitment_max: 0.95
+blocks:
+  reach: 0.9                # m either side of a shot's line a defender can block it, at the
+  reach_per_point: 0.012    # reference def_positioning, and this more per point of it
+  chance: 0.28              # chance each blocker blocks it, at the reference bravery...
+  chance_per_point: 0.004   # ...and this more per point of it
+  max: 0.65                 # however many are in the way

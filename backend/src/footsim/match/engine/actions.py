@@ -1217,14 +1217,22 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
                              - 0.15 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92))
         p_goal = xg * (0.7 + 0.35 * skill / 100) * (1.3 - 0.6 * gk / 100)
     p_on = max(p_on, min(0.95, p_goal / 0.95))
-    blockers = 0
+    blockers, block_chance = 0, 0.0
     if not (penalty or free_kick):
+        # Defenders in the shot's line can block it: how far either side of it each reaches is
+        # his positioning, and how often he gets a body on it his bravery (defending.yaml).
+        rules, reference = eng.defs.defending.blocks, eng.defs.defending.marking.reference
         goal_dir = np.array([LENGTH - bx, MID_Y - by]) / max(distance, 1e-6)
         rel = opp_pts - np.array([bx, by])
         along = rel @ goal_dir
         perp = np.abs(rel[:, 0] * goal_dir[1] - rel[:, 1] * goal_dir[0])
-        blockers = int(np.sum((along > 0.8) & (along < min(distance, 14)) & (perp < 0.9)))
-    block_chance = min(0.6, 0.28 * blockers)
+        reach = np.maximum(0.3, rules.reach + rules.reach_per_point
+                           * (eng.attr[opps, ATTR_INDEX["def_positioning"]] - reference))
+        in_line = (along > 0.8) & (along < min(distance, 14)) & (perp < reach)
+        blockers = int(np.sum(in_line))
+        chance = np.clip(rules.chance + rules.chance_per_point
+                         * (eng.attr[opps, ATTR_INDEX["bravery"]] - reference), 0.0, 0.9)
+        block_chance = min(rules.max, 1.0 - float(np.prod(1.0 - chance[in_line])))
     xg = float(p_goal * (1 - block_chance))  # the chance's real scoring probability
     roll = eng.rng.random()
     if blockers and eng.rng.random() < block_chance:

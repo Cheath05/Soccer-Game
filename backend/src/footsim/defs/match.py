@@ -166,6 +166,31 @@ class EstimateDef(DefModel):
                                         # closing the receiver down before the ball arrives
 
 
+class MarkingDef(DefModel):
+    reference: float = Field(ge=0, le=100)
+    goal_side: float = Field(gt=0)
+    goal_side_per_point: float = Field(ge=0)
+    goal_side_min: float = Field(gt=0)
+    commitment: float = Field(ge=0, le=1)
+    commitment_per_point: float = Field(ge=0)
+    commitment_max: float = Field(ge=0, le=1)
+
+
+class BlocksDef(DefModel):
+    reach: float = Field(gt=0)
+    reach_per_point: float = Field(ge=0)
+    chance: float = Field(ge=0, le=1)
+    chance_per_point: float = Field(ge=0)
+    max: float = Field(ge=0, le=1)
+
+
+class DefendingDef(DefModel):
+    """How defenders' ratings decide their marking and blocks (data/config/match/defending.yaml)."""
+
+    marking: MarkingDef
+    blocks: BlocksDef
+
+
 class PassingDef(DefModel):
     """Passing, first touch and clearances (data/config/match/passing.yaml)."""
 

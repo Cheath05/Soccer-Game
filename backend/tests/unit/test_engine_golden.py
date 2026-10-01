@@ -39,7 +39,8 @@ blind spot instead of re-rolling at every decision, and the in-match manager's p
 re-measured for the more direct play, and a failed pass's cost moved only halfway to where
 it's lost (P12, Mac only); overalls counting all six headline ratings, which changes the
 attributes synthetic players are drawn with for a given overall, and who's picked (P14, Mac
-only).
+only); markers staying closer to their man and blockers reaching further the better their
+marking, positioning and bravery (2.3f WIP iteration 1, Mac only).
 """
 
 import json

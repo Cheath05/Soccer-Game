@@ -337,10 +337,12 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         if float(norm(own[k] - targets[k])) > recover_at:
             eng.urgent[idx[k]] = True
 
-    # Everyone else marks the nearest attacker in his zone, goal-side.
+    # Everyone else marks the nearest attacker in his zone, goal-side: how close he stays and
+    # how far he leaves his zone for him is his marking (defending.yaml).
     if len(opp_pts) == 0:
         return
     markers_from = MARKING_GROUPS_HIGH_PRESS if ins.get("pressing") == "high" else MARKING_GROUPS
+    rules = eng.defs.defending.marking
     for k in outfield:
         if k in chasers and eng.urgent[idx[k]]:
             continue
@@ -349,9 +351,12 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         gaps = norms(opp_pts - targets[k], axis=1)
         nearest = int(np.argmin(gaps))
         if gaps[nearest] < 12.0:
-            mark = opp_pts[nearest] - np.array([1.8, 0.0])
+            above = eng.a(idx[k], "marking") - rules.reference
+            side = max(rules.goal_side_min, rules.goal_side - rules.goal_side_per_point * above)
+            mark = opp_pts[nearest] - np.array([side, 0.0])
             track = eng.role[idx[k]].defending.track_runners
-            weight = 0.45 + 0.3 * track
+            weight = float(np.clip(rules.commitment + rules.commitment_per_point * above
+                                   + 0.3 * track, 0.0, rules.commitment_max))
             targets[k] = weight * mark + (1 - weight) * targets[k]
             if opp_pts[nearest, 0] < targets[k, 0] - 3:
                 eng.urgent[idx[k]] = True  # an attacker is getting in behind: recover

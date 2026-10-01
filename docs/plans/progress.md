@@ -553,6 +553,19 @@ The order, each its own checkpoint (or several):
 
 1. **Believable matches:**
    - [ ] 2.3f, attack against defence by rating, with box defending. It's what keeps 2.3c off.
+     - **Measured first** (`reports/engine/step2.3f/sweep0-q*`: equal synthetic sides, 120 matches each, seed 31, honest off):
+
+       | Quality | Goals | Shots | Final-third entries | Box entries | Shots per box entry | xG per shot | Heavy touches |
+       |---|---|---|---|---|---|---|---|
+       | 58 | 3.0 | 31.3 | 62.0 | 34.5 | .454 | .068 | 71 |
+       | 70 | 3.5 | 37.2 | 61.3 | 36.2 | .514 | .073 | 63 |
+       | 82 | 4.7 | 49.3 | 63.3 | 39.5 | .624 | .082 | 51 |
+
+       Entries into the final third are flat and into the box nearly so. Once there, better sides take far more and better shots. The finishing-against-keeper term already balances with quality, so creation in the box is what outgrows defending.
+     - **Why:** no defender rating changed where a defender stood. `marking`, `concentration` and `positioning` were never read, and `def_positioning` only in the tackle score. Markers stood 1.8 m goal-side, going 45% of the way from zone to man for every defender alike.
+     - **Iteration 1, WIP:** `data/config/match/defending.yaml`.
+       - A marker stands closer goal-side and commits further to his man the better his `marking`: 1.8 m and 45% at marking 60, as before; about 1.4 m and 68% at 80.
+       - Blockers reach further from the shot's line with `def_positioning`, and block more often with `bravery`. One blocker blocks at 0.28 at the reference; several combine to at most 0.65.
    - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range).
    - [ ] 2.3e, control by rating.
    - [ ] 2.4, fouls and cards.

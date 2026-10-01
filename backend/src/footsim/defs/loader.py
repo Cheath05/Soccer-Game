@@ -20,6 +20,7 @@ from footsim.defs.development import DevelopmentDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
 from footsim.defs.match import (
+    DefendingDef,
     DuelsDef,
     HomeAdvantageDef,
     InstructionDef,
@@ -61,6 +62,7 @@ class GameDefinitions:
     restarts: RestartsDef
     duels: DuelsDef
     passing: PassingDef
+    defending: DefendingDef
     tactics: TacticsDef
     home_advantage: HomeAdvantageDef
     development: DevelopmentDef
@@ -121,6 +123,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         restarts=_parse(RestartsDef, root / "match" / "restarts.yaml"),
         duels=_parse(DuelsDef, root / "match" / "duels.yaml"),
         passing=_parse(PassingDef, root / "match" / "passing.yaml"),
+        defending=_parse(DefendingDef, root / "match" / "defending.yaml"),
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
         development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),

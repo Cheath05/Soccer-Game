@@ -12,6 +12,7 @@ import type {
   MatchReport,
   PlayerDetail,
   SaveSlot,
+  SimStatus,
   SquadPlayer,
   Table,
   Tactics,
@@ -65,6 +66,30 @@ function useInvalidateAll() {
 export function useAdvance() {
   const invalidate = useInvalidateAll()
   return useMutation({ mutationFn: () => api.post<AdvanceResult>('/career/advance'), onSuccess: invalidate })
+}
+
+/** The latest sim-to-date job, polled twice a second while it runs. */
+export const useSimStatus = () =>
+  useQuery({
+    queryKey: ['sim'],
+    queryFn: () => api.get<SimStatus | null>('/career/sim'),
+    refetchInterval: (query) => (query.state.data?.running ? 500 : false),
+  })
+
+export function useStartSim() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (until: string) => api.post<SimStatus>('/career/sim', { until }),
+    onSuccess: (data) => client.setQueryData(['sim'], data),
+  })
+}
+
+export function useStopSim() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<SimStatus | null>('/career/sim/stop'),
+    onSuccess: (data) => client.setQueryData(['sim'], data),
+  })
 }
 
 export function usePlayInstant() {

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 
 from footsim import __version__
-from footsim.api import queries
+from footsim.api import queries, sim
 from footsim.api.schemas import (
     AdvanceOut,
     CareerOut,
@@ -121,8 +121,14 @@ def get_career(session: Session) -> CareerOut:
     return _career(session)
 
 
+def _not_simulating(session: CareerSession) -> None:
+    if sim.running(session):
+        raise HTTPException(409, "the game is simulating to a date: stop it or let it finish")
+
+
 @router.post("/career/advance")
 def advance_career(session: Session) -> AdvanceOut:
+    _not_simulating(session)
     with session.write() as conn:
         result = advance(conn, get_world())
     session.autosave()
@@ -200,6 +206,7 @@ def match(fixture_id: int, session: Session) -> MatchOut:
 @router.post("/fixtures/{fixture_id}/play")
 def play_now(fixture_id: int, session: Session) -> MatchOut:
     """Instant result for the user's match of the day."""
+    _not_simulating(session)
     world = get_world()
     if fixture_id in session.live_matches:
         raise HTTPException(409, "this match is being played live: finish it in the match view")

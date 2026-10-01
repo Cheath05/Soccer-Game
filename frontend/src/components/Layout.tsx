@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import { longDate } from '../lib/format'
+import SimToDate from './SimToDate'
 import StartPage from '../pages/StartPage'
 
 const NAV = [
@@ -78,6 +79,7 @@ export default function Layout() {
             >
               {saved ? 'Saved' : 'Save'}
             </Button>
+            <SimToDate career={data} matchToday={matchToday} />
             <Button size="sm" color={matchToday ? 'orange' : 'teal'} loading={advance.isPending} onClick={onContinue}>
               {matchToday ? 'Match day' : 'Continue'}
             </Button>

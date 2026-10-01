@@ -63,7 +63,7 @@ from footsim.scouting.estimates import (
 from footsim.transfers.valuation import estimate_value_eur
 from footsim.world.context import World, default_instructions
 from footsim.world.meta import CareerMeta, read_meta
-from footsim.world.season import active_leagues, standings
+from footsim.world.season import active_leagues, season_calendar, standings
 from footsim.world.squads import display_name, short_name, team_sheet
 
 # --- helpers --------------------------------------------------------------------------
@@ -173,6 +173,7 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
     ).order_by(fixture.c.date.desc()).limit(5)).all()
     return CareerOut(
         slot=slot, date=meta.current_date.isoformat(), season=_season_label(conn, meta.season_id),
+        season_end=season_calendar(world, meta, meta.season_id).season_end.isoformat(),
         manager=meta.manager_name, club=ClubRef(id=user, name=names[user]),
         competition=CompetitionOut(key=comp.key, name=comp.name, tier=comp.tier) if comp else None,
         position=position,

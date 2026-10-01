@@ -1,5 +1,7 @@
 """API response and request models."""
 
+from datetime import date
+
 from pydantic import BaseModel
 
 
@@ -88,6 +90,7 @@ class CareerOut(BaseModel):
     slot: int
     date: str
     season: str
+    season_end: str  # the last day of the season's calendar (play-offs may run past it)
     manager: str | None
     club: ClubRef
     competition: CompetitionOut | None
@@ -101,6 +104,31 @@ class AdvanceOut(BaseModel):
     stop: str
     fixture_id: int | None
     messages: list[str]
+
+
+class SimIn(BaseModel):
+    until: date  # simulate up to (not including) this day
+
+
+class SimResultOut(BaseModel):
+    fixture_id: int
+    date: str
+    home: str
+    away: str
+    home_goals: int
+    away_goals: int
+    outcome: str  # W | D | L for the user's club
+
+
+class SimStatusOut(BaseModel):
+    running: bool
+    start: str
+    until: str
+    date: str  # how far it has got
+    results: list[SimResultOut]  # the user's matches played, in order
+    messages: list[str]  # news on the way
+    stop: str | None  # date | season_end | cancelled | abandoned | error
+    error: str | None
 
 
 class SquadPlayerOut(BaseModel):

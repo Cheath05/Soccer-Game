@@ -58,12 +58,35 @@ export interface Career {
   slot: number
   date: string
   season: string
+  season_end: string // the last day of the season's calendar (play-offs may run past it)
   manager: string | null
   club: ClubRef
   competition: Competition | null
   position: number | null
   next_fixture: Fixture | null
   recent: Fixture[]
+}
+
+// Sim to date (api/sim.py): the career moving on to a chosen day in the background.
+export interface SimResult {
+  fixture_id: number
+  date: string
+  home: string
+  away: string
+  home_goals: number
+  away_goals: number
+  outcome: 'W' | 'D' | 'L'
+}
+
+export interface SimStatus {
+  running: boolean
+  start: string
+  until: string
+  date: string // how far it has got
+  results: SimResult[]
+  messages: string[]
+  stop: 'date' | 'season_end' | 'cancelled' | 'abandoned' | 'error' | null
+  error: string | null
 }
 
 export interface AdvanceResult {

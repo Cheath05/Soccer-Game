@@ -33,6 +33,7 @@ class CareerSession:
         # lets a match that finishes afterwards see it no longer belongs to this career.
         self.live_matches: dict[int, Any] = {}
         self.generation = 0
+        self.sim: Any = None  # the latest sim-to-date job (api/sim.py), running or finished
 
     @property
     def active(self) -> bool:
@@ -88,6 +89,7 @@ class CareerSession:
         self._engine = None
         self.slot = None
         self.live_matches.clear()
+        self.sim = None
         self.generation += 1
 
     @contextmanager

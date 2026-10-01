@@ -22,7 +22,8 @@
   - P3 (the live viewer skipping actions): d981315.
   - P4 (goal pause and banner): 17635e6.
   - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
-  - Next is P5 (sim to date), then restart :8000 again.
+  - P5 (sim to date) is done in the commit that ticks it.
+  - Next: restart :8000 on it (once nobody is connected). Then back to the plan: 2.3c remaining items 1–4 below.
   - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
@@ -169,7 +170,20 @@ The user also said save files may be deleted if they ever get in the way of the 
     - `e2e/live.mjs` watches for the banner at 8× (into the second half if need be) and checks the picture holds still, as it did for "GOAL! Evanilson, Assist: Ryan Christie";
     - after slowing from 8× to 1×, the largest step in about 100 ms is 1.3 match seconds;
     - golden values unchanged.
-- [ ] P5 **Sim to date** (Phase I, basic): continue to a chosen date, a week, a month or the season's end, playing the user's matches instantly, with stop conditions.
+- [x] P5 **Sim to date** (Phase I, basic).
+  - **Where:** a "Sim to…" menu beside Continue: one week, one month, end of season, or a chosen date.
+  - **The step:** `world/career.py` `sim_step` either plays the user's match of the day as Instant does, or advances to his next match day or the target, whichever comes first.
+    - The target day itself is left to the user, so its match can still be watched.
+    - The season's end (rollover after the play-offs) stops it too.
+  - **The job** (`api/sim.py`): `POST /api/career/sim {until}`, `GET` for progress, `POST /api/career/sim/stop`.
+    - A background thread takes the write lock per step only.
+    - It autosaves after each of the user's matches and at the end, and is abandoned if another career is loaded.
+    - Continue, instant play and live matches are refused while it runs, and it won't start during a live match.
+  - **The page:** a progress window (bar, current day, results as they come, Stop), then a summary with the results and the news. `CareerOut` gained `season_end`.
+  - **Stop conditions:** the date, the season's end, Stop. More can follow (injuries, offers) once those systems exist.
+  - **Tests:**
+    - `tests/integration/test_sim_to_date.py`: plays every user match before the date and none after; refuses Continue meanwhile; autosaves; stops on request; refuses a date not ahead.
+    - `e2e/smoke.mjs` sims a week from the browser.
 - Later (the user agrees): transfers and the other management systems.
 
 ## Quick fixes (do first; each is its own checkpoint)

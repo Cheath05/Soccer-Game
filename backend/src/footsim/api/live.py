@@ -23,6 +23,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
+from footsim.api import sim
 from footsim.api.session import CareerSession
 from footsim.match.live.session import LiveSession
 from footsim.persistence.schema import club, fixture
@@ -55,6 +56,8 @@ def _open(session: CareerSession, fixture_id: int) -> LiveMatch:
     live: LiveMatch | None = session.live_matches.get(fixture_id)
     if live is not None:
         return live
+    if sim.running(session):
+        raise ValueError("the game is simulating to a date: stop it or let it finish")
     world = get_world()
     generation = session.generation
     with session.read() as conn:

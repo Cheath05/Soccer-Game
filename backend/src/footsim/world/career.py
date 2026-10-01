@@ -153,6 +153,34 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
     return AdvanceResult(day, "limit", None, messages)
 
 
+@dataclass
+class SimStep:
+    """One step of simulating towards a date (``sim_step``)."""
+
+    date: date
+    stop: str | None  # why it ends here: "date" or "season_end"; None to carry on
+    fixture_id: int | None = None  # the user's match played in this step
+    messages: list[str] = field(default_factory=list)
+
+
+def sim_step(conn: Connection, world: World, until: date) -> SimStep:
+    """Move the career towards ``until`` (sim to date): play the user's match today as Instant
+    would, if there is one, or else advance to his next match day or to ``until``, whichever
+    comes first. Days before ``until`` are played; ``until`` itself is left to the user, so a
+    match on that day can still be watched. The season's end also stops it."""
+    meta = read_meta(conn)
+    day = meta.current_date
+    if day >= until:
+        return SimStep(day, "date")
+    user_fx = _user_fixture(conn, meta, day)
+    if user_fx is not None:
+        play_user_instant(conn, world, meta, user_fx, day)
+        return SimStep(day, None, user_fx.id)
+    result = advance(conn, world, max_days=(until - day).days)
+    stop = {"match": None, "season_end": "season_end"}.get(result.stop, "date")
+    return SimStep(result.date, stop, messages=result.messages)
+
+
 def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[str, str],
                     lineup: dict[str, int] | None, instructions: dict[str, str]) -> None:
     meta = read_meta(conn)

@@ -16,16 +16,28 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **In progress: the user's play-test fixes** ("Play-test fixes" below), each its own commit. They come before 2.3c continues.
-  - P1 (hand-picked starters shown as 99): 85a20ce.
-  - P2 (the set-piece taker running back and forth): 36fbd4f.
-  - P3 (the live viewer skipping actions): d981315.
-  - P4 (goal pause and banner): 17635e6.
-  - :8000 restarted on 17635e6 (P1–P4) at 01:28 on 1 Oct, after checking it had no connections and that nothing was unsaved: the last play, fixture 211, was autosaved.
-  - P5 (sim to date): 66a92c7.
-  - :8000 restarted on 66a92c7 (P1–P5) at 01:40 on 1 Oct. It had no connections, and nothing had happened on it since the 01:28 restart.
-  - **Next task:** the user's play-test round 2 (below), in its order: P6 9b3635a; P7 is done in the commit that ticks it, measurement next; then P8. Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching (use `--workers 3` then).
-  - The P-fixes change behaviour only where the play-test found bugs, so no 200-match batch runs while the user is playing. The next batch (2.3c's) re-measures them.
+- **Latest checkpoint (1 Oct, 03:00):** 82cbeb6, P11. The user's play-test fixes are done, each its own commit:
+  - **Round 1** ("Play-test fixes" below):
+    - P1, hand-picked starters shown as 99: 85a20ce;
+    - P2, set-piece taker running back and forth: 36fbd4f;
+    - P3, live viewer skipping: d981315;
+    - P4, goal pause and banner: 17635e6;
+    - P5, sim to date: 66a92c7.
+  - **Round 2** ("Play-test round 2" below):
+    - P6, receivers overrunning the ball: 9b3635a;
+    - P7, calm ground passes and composure: 235a772, measured in `ref-p7`;
+    - P8, season summary window: e407939;
+    - P9, eight more formations: 494ab06;
+    - P10, monthly player development: c0db47a;
+    - P11, losses costed where they happen: 82cbeb6, measured in `ref-p11`, running at the time of writing.
+  - **Running:** `ref-p11`, ENG4 then ENG1, 200 matches each, `--workers 3` from `.worktrees/measure` (pinned at 82cbeb6). The log is `scratchpad/batch-p11.log`.
+  - **Next task:**
+    1. Record `ref-p11` against `ref-p7` and `ref-2.3b2-p40`.
+    2. Verify P8 with a season-end sim in a browser on :8765.
+    3. Restart :8000 on the head once nobody is connected (it runs 66a92c7, P1–P5, and the user was connected throughout 1 Oct's night).
+    4. Then the shot excess (Phase D's defensive shape, or a step of its own), and 2.3c's remaining items.
+  - Check `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` before any batch: a batch slows a match the user is watching (use `--workers 3` then).
+- **Earlier on 1 Oct:** :8000 was restarted on 17635e6 (P1–P4) at 01:28 and on 66a92c7 (P1–P5) at 01:40, each time with no connections and nothing unsaved.
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
   - Earlier: Step 2.3c WIP iteration 2 0f96176 (iteration 1 eeb5239); 2.3b complete at d7ccf17; 2.3a a9a8ced.

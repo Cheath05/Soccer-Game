@@ -31,8 +31,10 @@ control:
   heavy_touch_speed: [2.5, 5.5]  # m/s a miscontrolled ball runs away at
 pace:                     # how hard ground passes are struck, and how the ball slows
   roll_friction: 4.0      # m/s^2 a ball on the ground loses (every rolling ball, not only passes)
-  arrive: 5.0             # m/s a ground pass reaches its target at...
-  arrive_per_metre: 0.0   # ...plus this much per metre of the pass
+  arrive: 6.0             # m/s a ground pass reaches its target at...
+  arrive_per_metre: 0.17  # ...plus this much per metre of the pass. With the friction this gives
+                          # Metrica's real travel times: 0.99 s for 9.5 m, 1.60 s for 20 m
+                          # (docs/calibration/20260930-pass-pace-metrica.md)
   arrive_back: 2.0        # m/s for a pass back towards our own goal area, played softly
   back_zone: 20.0         # m from our own goal line where that applies
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play

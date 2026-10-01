@@ -25,7 +25,8 @@ forward runners easing off to stop on their mark (Step 2.3, Mac only); a substit
 longer inheriting the outgoing player's duel engagements, and a restart's taker chosen again
 if he goes off (quick fix 0c, Mac only); a pass receiver reading the ball's real path only
 after his read delay, a heavy touch locking its player out briefly, and a cross landing
-clear completable like a ground pass (Step 2.3b, Mac only).
+clear completable like a ground pass (Step 2.3b, Mac only); ground passes struck to match
+real travel times, arriving at 6 m/s plus 0.17 m/s a metre (Step 2.3b pace, Mac only).
 """
 
 import json

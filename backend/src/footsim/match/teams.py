@@ -109,7 +109,9 @@ class LineupPicker:
             for j, slot in enumerate(slots):
                 score[i, j] = self.slot_rating(p, slot.position, roles[slot.id], overalls[i])
 
-        # Honour manually fixed slots where that player is available.
+        # Honour manually fixed slots where that player is available. The forcing score only
+        # steers the assignment: a fixed player keeps his real rating in the slot.
+        rating = score.copy()
         by_id = {p.player_id: i for i, p in enumerate(available)}
         slot_index = {s.id: k for k, s in enumerate(slots)}
         for slot_id, player_id in (fixed or {}).items():
@@ -124,7 +126,7 @@ class LineupPicker:
             starters.append(SheetPlayer(
                 player=available[row], number=0, slot=slot.id, position=slot.position,
                 group=self.defs.positions[slot.position].group, role=roles[slot.id],
-                rating=float(min(score[row, col], 99.0)),
+                rating=float(min(rating[row, col], 99.0)),
             ))
         starters.sort(key=lambda sp: [s.id for s in slots].index(sp.slot or ""))
 

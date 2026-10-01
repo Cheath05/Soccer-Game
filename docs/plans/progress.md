@@ -16,6 +16,9 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **In progress: the user's play-test fixes** ("Play-test fixes" below), each its own commit. They come before 2.3c continues.
+  - P1 (hand-picked starters shown as 99) is done in the commit that ticks it.
+  - Next is P2 (the set-piece taker running back and forth).
 - **Checkpoint commit:** 1de6591, the play-test build (30 Sep): round 5's measured passing values are now the committed defaults. The commit right after it only filled in this hash and recorded the :8000 restart.
   - The values are `intercept_scale` 0.2, `per_metre` 0.008 and `length_per_metre` 0.022, called "f020e2".
   - Earlier: Step 2.3c WIP iteration 2 0f96176 (iteration 1 eeb5239); 2.3b complete at d7ccf17; 2.3a a9a8ced.
@@ -114,6 +117,21 @@
 - **League Two:** too much ball in play, and it goes long too rarely. 2.3e's rating terms, then C2's styles.
 - **Static shape:** players hold a fixed shape, and team phases flicker. Phase D.
 - **Tactics:** aggressive and direct are too strong, and slow tempo gets an accuracy bonus. C1.
+
+## Play-test fixes (the user's play-test of 1de6591, 30 Sep; each is its own checkpoint)
+
+The user also said save files may be deleted if they ever get in the way of the new engine. Not needed so far: both slots load on the current build.
+
+- [x] P1 **Hand-picked starters showed as 99.** `LineupPicker.pick` forces a fixed player into his slot with a score of 1e6, and reported that score, capped at 99, as his rating.
+  - It reached the tactics screen, the live subs panel's OVR and the tie-break in a mid-match formation change.
+  - Results were never inflated: the user's matches run on the agent engine, which plays from attributes.
+  - Saves store only slot → player, so nothing stored was wrong.
+  - Fixed: fixed players keep their real slot rating. `test_lineup.py` fails without the fix. Golden values unchanged.
+- [ ] P2 **The set-piece taker runs back and forth before the restart.** Reproduce, find the cause in the restart state machine or the taker's targets, fix, golden values.
+- [ ] P3 **The live viewer skips actions:** a pass reaches a player, then the picture jumps to the other side in possession. Measure the gaps in the frame stream at each speed and in highlights, then fix.
+- [ ] P4 **Goals:** a 3-second pause and a banner with the scorer and any assist. Presentation only: the result must not change.
+- [ ] P5 **Sim to date** (Phase I, basic): continue to a chosen date, a week, a month or the season's end, playing the user's matches instantly, with stop conditions.
+- Later (the user agrees): transfers and the other management systems.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

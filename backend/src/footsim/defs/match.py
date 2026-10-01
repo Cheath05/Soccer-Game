@@ -94,6 +94,13 @@ class RedCardDef(DefModel):
     reckless: float = Field(ge=0, le=1)
 
 
+class DogsoDef(DefModel):
+    """Denying an obvious goal-scoring opportunity (Law 12)."""
+
+    max_distance: float = Field(gt=0)  # m from goal: further out, no foul denies an obvious one
+    corridor: float = Field(gt=0)  # m either side of his line to goal a covering defender is in
+
+
 class DuelsDef(DefModel):
     """Tackles, take-ons, fouls and cards in the agent engine (data/config/match/duels.yaml)."""
 
@@ -117,8 +124,10 @@ class DuelsDef(DefModel):
     aerial_foul_chance: float = Field(ge=0, le=1)
     tactical_foul_chance: float = Field(ge=0, le=1)
     booked_caution: float = Field(ge=0, le=1)
+    aggression_cards: tuple[float, float]  # aggression over which a foul's card risk grows
     yellow: YellowCardDef
     red: RedCardDef
+    dogso: DogsoDef
 
 
 class PassExecutionDef(DefModel):

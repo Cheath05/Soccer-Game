@@ -53,10 +53,10 @@ def contest(eng: "MatchEngine", i: int) -> bool:
     if gap > p.engage_radius or eng.t < eng.tackle_ready[k]:
         eng.engaged.pop(k, None)
         return False
-    carrier, since = eng.engaged.get(k, (-1, 0.0))
-    if carrier != i:
-        eng.engaged[k] = (i, eng.t)
-        since = eng.t
+    carrier, since, last = eng.engaged.get(k, (-1, 0.0, -1.0))
+    if carrier != i or eng.t - last > 2 * DT:
+        since = eng.t  # a new engagement, or one he had let lapse: he sizes the carrier up again
+    eng.engaged[k] = (i, since, eng.t)
 
     # A carrier running with the ball into a defender who blocks his path either tries to
     # take him on or checks back and looks for a pass.
@@ -128,14 +128,14 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
     foul *= (1.3 if sliding else 1.0) * (1.25 if from_behind else 1.0)
     if in_own_box(carrier_x, carrier_y):
         foul *= p.box_foul_scale
-    if eng.yellows[k]:
-        foul *= p.booked_caution
+    # (A booked player's caution is in how often he tackles: _tackle_rate. Applying it here as
+    # well made second yellows almost impossible.)
     foul *= eng.venue_bias(defending, eng.defs.home_advantage.referee.foul)
     kind = "take_on" if take_on else "tackle"
     if eng.rng.random() < foul:
         eng.emit("duel", defending, k, outcome="foul", carrier=i, xa=round(tackler_x, 1),
                  sliding=sliding, kind=kind)
-        commit_foul(eng, k, i, sliding=sliding, from_behind=from_behind)
+        commit_foul(eng, k, i, sliding=sliding, from_behind=from_behind, source=kind)
         return True
     tackle = tackle_score(eng, k, sliding, near_own_goal=carrier_x < 35)
     dribble = dribble_score(eng, i)
@@ -173,7 +173,7 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
                          f"{eng.players[k].player.short_name}")
     if _counter_on(eng, i) and eng.rng.random() < p.tactical_foul_chance * (
             eng.a(k, "aggression") / 70) * (p.booked_caution if eng.yellows[k] else 1.0):
-        commit_foul(eng, k, i, tactical=True)
+        commit_foul(eng, k, i, tactical=True, source="tactical")
         return True
     return False
 
@@ -193,8 +193,34 @@ def _counter_on(eng: "MatchEngine", i: int) -> bool:
     return goal_side <= 3
 
 
+def denies_goal_chance(eng: "MatchEngine", fouler: int, victim: int) -> bool:
+    """Law 12: a foul on the ball carrier that denies an obvious goal-scoring opportunity. He's
+    close enough to goal (duels.yaml ``dogso``) and no outfield defender other than the fouler
+    is covering between him and the goal."""
+    if eng.owner != victim:
+        return False
+    rules = eng.defs.duels.dogso
+    team = int(eng.team_of[victim])
+    vx, vy = eng.to_att(team, float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))
+    distance = math.hypot(LENGTH - vx, MID_Y - vy)
+    if distance > rules.max_distance:
+        return False
+    to_goal = np.array([LENGTH - vx, MID_Y - vy]) / max(distance, 1e-6)
+    keeper = eng.keeper(1 - team)
+    for k in eng.team_indices(1 - team):
+        if k in (fouler, keeper):
+            continue
+        dx, dy = eng.to_att(team, float(eng.pos[k, 0]), float(eng.pos[k, 1]))
+        rel = np.array([dx - vx, dy - vy])
+        along = float(rel @ to_goal)
+        if 0 < along < distance and abs(rel[0] * to_goal[1] - rel[1] * to_goal[0]) < rules.corridor:
+            return False  # he's covering
+    return True
+
+
 def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool = False,
-                from_behind: bool = False, tactical: bool = False) -> None:
+                from_behind: bool = False, tactical: bool = False, source: str = "tackle") -> None:
+    """A foul by ``fouler`` on ``victim``. ``source``: tackle, take_on, tactical or aerial."""
     p = eng.defs.duels
     team = int(eng.team_of[fouler])
     name = eng.players[fouler].player.name
@@ -202,21 +228,33 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
     eng._announce("foul", team, f"Foul by {name}" + (", stopping the counter" if tactical else ""))
     pid = eng.players[fouler].player_id
     eng.player_fouls[pid] = eng.player_fouls.get(pid, 0) + 1
-    aggressive = eng.a(fouler, "aggression") > 80
+    low, high = p.aggression_cards
+    aggressive = float(np.clip((eng.a(fouler, "aggression") - low) / (high - low), 0.0, 1.0))
     if tactical:
         yellow, red = p.yellow.tactical, 0.0
     else:
         yellow = (p.yellow.base + p.yellow.sliding * sliding + p.yellow.aggressive * aggressive
                   + p.yellow.from_behind * from_behind)
-        red = p.red.base + p.red.reckless * (sliding and aggressive)
+        red = p.red.base + p.red.reckless * sliding * aggressive
     bias = eng.venue_bias(team, eng.defs.home_advantage.referee.card)
     yellow, red = yellow * bias, red * bias
+    victim_team = 1 - team
+    vx, vy = eng.to_att(victim_team, float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))
+    penalty = in_box(vx, vy)
+    dogso = denies_goal_chance(eng, fouler, victim)
+    if dogso:
+        # Sent off for it, unless it was a challenge for the ball in his own area: the
+        # penalty is punishment enough, and it's a caution (Law 12's double jeopardy).
+        if penalty and source in ("tackle", "take_on"):
+            yellow, red = 1.0, red
+        else:
+            red = 1.0
     roll = eng.rng.random()
     card = "none"
     at = (float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))
     if roll < red:
         card = "red"
-        eng.send_off(fouler, "straight red")
+        eng.send_off(fouler, "denying a goal-scoring chance" if dogso else "straight red")
     elif roll < red + yellow:
         card = "yellow"
         eng.yellows[fouler] += 1
@@ -230,11 +268,8 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
             eng.send_off(fouler, "second yellow")
     if eng.rng.random() < INJURY_IN_FOUL:
         injure(eng, victim)
-    victim_team = 1 - team
-    vx, vy = eng.to_att(victim_team, float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))
-    penalty = in_box(vx, vy)
     eng.emit("foul", team, fouler, at=at, victim=victim, card=card, penalty=penalty,
-             tactical=tactical, xa=round(LENGTH - vx, 1))
+             tactical=tactical, xa=round(LENGTH - vx, 1), source=source, dogso=dogso)
     if penalty:
         spot = eng.to_pitch(victim_team, PENALTY_SPOT, MID_Y)
         eng._announce("penalty", victim_team, "PENALTY!")
@@ -247,9 +282,9 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
 def aerial_foul(eng: "MatchEngine", attacker: int, defender: int) -> None:
     """A contested header ends in a foul: usually the attacker pushing."""
     if eng.rng.random() < 0.7:
-        commit_foul(eng, attacker, defender)
+        commit_foul(eng, attacker, defender, source="aerial")
     else:
-        commit_foul(eng, defender, attacker)
+        commit_foul(eng, defender, attacker, source="aerial")
 
 
 def injure(eng: "MatchEngine", i: int) -> None:

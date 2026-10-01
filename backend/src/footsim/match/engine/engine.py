@@ -92,7 +92,8 @@ class MatchEngine:
         self.tackle_ready = np.zeros(n)  # time a player may next attempt a tackle
         self.roll_friction = defs.passing.pace.roll_friction  # m/s^2, a rolling ball slowing
         self.touch_ready = np.zeros(n)  # time a player may touch the ball again after a heavy touch
-        self.engaged: dict[int, tuple[int, float]] = {}  # defender -> (carrier, since)
+        # defender -> (carrier, engaged since, last seen engaged)
+        self.engaged: dict[int, tuple[int, float, float]] = {}
         self.take_on_ready: dict[tuple[int, int], float] = {}  # (carrier, defender) -> time
         self.players: list[SheetPlayer] = []
         self.slot: list[str] = []

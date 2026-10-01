@@ -42,7 +42,9 @@ attributes synthetic players are drawn with for a given overall, and who's picke
 only); markers staying closer to their man and blockers reaching further the better their
 marking, positioning and bravery (2.3f WIP iteration 1, Mac only); a carrier weighing up the
 defender in his way as the duel would, and pressure on shooters and on first touches from
-the defender's quality too (2.3f WIP iteration 2, Mac only).
+the defender's quality too (2.3f WIP iteration 2, Mac only); a booked player's caution
+applied once, cards growing smoothly with aggression, red cards for denying an obvious
+goal-scoring chance, and lapsed engagements sized up again (2.4, Mac only).
 """
 
 import json

@@ -12,6 +12,7 @@ from footsim.persistence.schema import fixture, match_event, player_match, playe
 
 YELLOWS_FOR_BAN = 5
 SECOND_YELLOW_BAN = 1
+DOGSO_BAN = 1  # a red card for denying an obvious goal-scoring chance (the FA's one match)
 STRAIGHT_RED_BAN = 3
 FORM_WEIGHT = 0.3  # weight of the latest match in the rolling form rating
 
@@ -63,8 +64,9 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
         season_yellows = state.season_yellows + ln.yellow
         ban = state.suspended_matches
         if ln.red:
-            second_yellow = reds.get(ln.player_id) == "second yellow"
-            ban += SECOND_YELLOW_BAN if second_yellow else STRAIGHT_RED_BAN
+            reason = reds.get(ln.player_id)
+            ban += (SECOND_YELLOW_BAN if reason == "second yellow" else
+                    DOGSO_BAN if reason == "denying a goal-scoring chance" else STRAIGHT_RED_BAN)
         elif ln.yellow and season_yellows % YELLOWS_FOR_BAN == 0:
             ban += 1
         conn.execute(update(player_state).where(player_state.c.player_id == ln.player_id).values(

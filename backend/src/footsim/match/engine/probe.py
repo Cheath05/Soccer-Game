@@ -215,6 +215,7 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
         elif ev.kind == "duel":
             assert team is not None
             counts["duel_" + d["outcome"]][team] += 1
+            counts[f"duel_{d['outcome']}_{d.get('kind', 'tackle')}"][team] += 1
             if d["xa"] > 42:
                 defensive_actions_high[team] += 1
         elif ev.kind == "foul":
@@ -223,6 +224,13 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
                 defensive_actions_high[team] += 1
             if d["penalty"]:
                 counts["penalties_conceded"][team] += 1
+            counts["fouls_" + d.get("source", "tackle")][team] += 1
+            if d["card"] == "second_yellow":
+                counts["second_yellows"][team] += 1
+            elif d["card"] == "red":
+                counts["straight_reds"][team] += 1
+            if d.get("dogso"):
+                counts["dogso"][team] += 1
         elif ev.kind == "clearance":
             assert team is not None
             counts["clearances"][team] += 1
@@ -300,8 +308,13 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
         row["tackles_won"] = counts["duel_won"][t]
         row["tackles_beaten"] = counts["duel_beaten"][t]
         row["tackle_fouls"] = counts["duel_foul"][t]
-        row["take_ons_won"] = counts["duel_beaten"][opp]
-        row["take_ons"] = counts["duel_beaten"][opp] + counts["duel_won"][opp]
+        # Take-ons are the duels a carrier starts by running at a defender (the rest are the
+        # defender's tackles): ours, so the duels the other side's defenders were in.
+        row["take_ons_won"] = counts["duel_beaten_take_on"][opp]
+        row["take_ons"] = counts["duel_beaten_take_on"][opp] + counts["duel_won_take_on"][opp]
+        for key in ("fouls_tackle", "fouls_take_on", "fouls_tactical", "fouls_aerial",
+                    "second_yellows", "straight_reds", "dogso"):
+            row[key] = counts[key][t]
         row["interceptions"] = counts["interceptions"][t]
         row["recoveries"] = counts["recoveries"][t]
         row["clearances"] = counts["clearances"][t]
@@ -416,7 +429,17 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
         "tackles": (duels_won + duels_beaten) / n,
         "tackles_won": duels_won / n,
         "take_ons": both("take_ons"),
-        "take_on_success": duels_beaten / max(1, duels_won + duels_beaten),
+        "take_on_success": sum(m["teams"][t]["take_ons_won"] for m in matches for t in (0, 1))
+        / max(1, sum(m["teams"][t]["take_ons"] for m in matches for t in (0, 1))),
+        "fouls_tackle": both("fouls_tackle"),
+        "fouls_take_on": both("fouls_take_on"),
+        "fouls_tactical": both("fouls_tactical"),
+        "fouls_aerial": both("fouls_aerial"),
+        "second_yellows": both("second_yellows"),
+        "straight_reds": both("straight_reds"),
+        "dogso": both("dogso"),
+        "yellows_per_foul": sum(m["teams"][t]["yellows"] for m in matches for t in (0, 1))
+        / max(1, sum(m["teams"][t]["fouls"] for m in matches for t in (0, 1))),
         "interceptions": both("interceptions"),
         "recoveries": both("recoveries"),
         "clearances": both("clearances"),

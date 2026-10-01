@@ -27,7 +27,14 @@ keep_after_tackle: [0.6, 0.75]   # chance the tackler keeps the ball: in midfiel
 foul_chance: 0.27         # of a challenge, before aggression, sliding and position
 aerial_foul_chance: 0.08  # of a contested header (mostly pushing by attackers)
 tactical_foul_chance: 0.3 # a beaten defender stopping a counter-attack
-booked_caution: 0.3       # a booked player's tackle rate and foul chance scale by this
+booked_caution: 0.3       # a booked player's tackle rate is scaled by this (until 2.4 his foul chance
+                          # was scaled too, so second yellows almost never happened)
 
 yellow: {base: 0.13, sliding: 0.08, aggressive: 0.06, from_behind: 0.05, tactical: 0.75}
 red: {base: 0.0015, reckless: 0.005}
+aggression_cards: [60, 100]  # a foul's card risk from aggression grows from nothing at 60 to the
+                             # full `aggressive` (and the reckless red) at 100. It was a step at 80.
+dogso:                    # denying an obvious goal-scoring opportunity (Law 12): a red card,
+  max_distance: 30.0      # or a yellow for a challenge for the ball in the area (it's a
+  corridor: 9.0           # penalty already). m from goal, and m either side of his line to
+                          # goal that a covering defender has to be in

@@ -16,7 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Checkpoint commit:** CHECKPOINT_HASH, **WIP**: Step 2.3c iteration 2, still behind `estimate.honest` (off). The commit right after it only filled in this hash.
+- **Checkpoint commit:** 0f96176, **WIP**: Step 2.3c iteration 2, still behind `estimate.honest` (off). The commit right after it only filled in this hash.
   - Earlier: iteration 1 eeb5239; 2.3b complete at d7ccf17; 2.3a a9a8ced.
 - **Engine:** behaviour unchanged. With the switch off, the game plays exactly as at d7ccf17, and the golden values pass unchanged.
 - **Done in iteration 2** (from the reviewer's notes on iteration 1):

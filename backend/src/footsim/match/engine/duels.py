@@ -84,6 +84,23 @@ def contest(eng: "MatchEngine", i: int) -> bool:
     return _duel(eng, k, i, gap, take_on=False)
 
 
+def tackle_score(eng: "MatchEngine", k: int, sliding: bool = False,
+                 near_own_goal: bool = False) -> float:
+    """How good defender ``k`` is at winning the ball off a carrier: his side of a duel, and
+    what a carrier weighs up before running at him (actions._carry_options)."""
+    score = (0.55 * eng.a(k, "sliding_tackle" if sliding else "standing_tackle")
+             + 0.25 * eng.a(k, "def_positioning") + 0.2 * eng.a(k, "strength"))
+    if near_own_goal:
+        score += 6.0  # near their own goal defenders commit, with cover behind them
+    return score
+
+
+def dribble_score(eng: "MatchEngine", i: int) -> float:
+    """How good carrier ``i`` is at keeping the ball from a challenge: his side of a duel."""
+    return (0.45 * eng.a(i, "dribbling") + 0.2 * eng.a(i, "agility")
+            + 0.15 * eng.a(i, "balance") + 0.2 * eng.a(i, "strength"))
+
+
 def _tackle_rate(eng: "MatchEngine", k: int, i: int) -> float:
     """Tackle attempts per second by defender ``k`` engaged with carrier ``i``."""
     p = eng.defs.duels
@@ -120,12 +137,8 @@ def _duel(eng: "MatchEngine", k: int, i: int, gap: float, take_on: bool) -> bool
                  sliding=sliding, kind=kind)
         commit_foul(eng, k, i, sliding=sliding, from_behind=from_behind)
         return True
-    tackle = (0.55 * eng.a(k, "sliding_tackle" if sliding else "standing_tackle")
-              + 0.25 * eng.a(k, "def_positioning") + 0.2 * eng.a(k, "strength"))
-    if carrier_x < 35:
-        tackle += 6.0  # near their own goal defenders commit, with cover behind them
-    dribble = (0.45 * eng.a(i, "dribbling") + 0.2 * eng.a(i, "agility")
-               + 0.15 * eng.a(i, "balance") + 0.2 * eng.a(i, "strength"))
+    tackle = tackle_score(eng, k, sliding, near_own_goal=carrier_x < 35)
+    dribble = dribble_score(eng, i)
     edge = p.take_on_edge if take_on else p.tackle_edge
     if eng.rng.random() < _sigmoid((tackle - dribble) / 12 + edge):
         eng.emit("duel", defending, k, outcome="won", carrier=i, xa=round(tackler_x, 1),

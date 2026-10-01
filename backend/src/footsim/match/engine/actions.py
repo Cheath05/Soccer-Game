@@ -153,7 +153,7 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     # Shooting: worth it when the chance is good, or from range with room to shoot.
     if mode in (None, "free_kick") and bx > 66:
         distance = math.hypot(LENGTH - bx, MID_Y - by)
-        xg = expected_goal(bx, by, pressure=pressure)
+        xg = expected_goal(bx, by, pressure=shot_pressure(eng, i, team, bx, by))
         preference = (1.0 + 0.6 * role.on_ball.shoot_bias
                       + eng.effect(team, "mentality").shoot_preference)
         long_range = 18 < distance < 30
@@ -331,18 +331,28 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
                    opp_pts: np.ndarray, pressure: float) -> list[Option]:
     bx, by = ball
     role = eng.role[i]
-    skill = eng.a(i, "dribbling") * 0.7 + eng.a(i, "agility") * 0.3
     options: list[Option] = []
     toward_goal = by + (MID_Y - by) * (0.35 if bx > 70 else 0.1)
+    opps = eng.team_indices(1 - team)
+    dribble = duels.dribble_score(eng, i)
     for dy in (-6.0, 0.0, 6.0):
         aim = np.array([min(bx + 8.0, LENGTH - 2), float(np.clip(toward_goal + dy, 3, 65))])
         step = aim - ball
         step /= max(norm(step), 1e-6)
         probe = ball + step * 4.0
-        blocker = float(np.min(norms(opp_pts - probe, axis=1))) if len(opp_pts) else 20.0
+        gaps = norms(opp_pts - probe, axis=1) if len(opp_pts) else np.full(1, 20.0)
+        blocker = float(np.min(gaps))
         free = blocker > 7.0
-        # Taking a defender on succeeds about half the time; open grass is almost free.
-        p_keep = 0.97 if free else float(_sigmoid((skill - 70) / 15 + (blocker - 4.0) * 0.7))
+        if free:
+            p_keep = 0.97  # open grass is almost free
+        else:
+            # Running at a defender: his chance of getting past, as the duel would settle it
+            # (his dribbling against the defender's tackling), and better the further away
+            # the defender is.
+            k = int(opps[int(np.argmin(gaps))])
+            tackle = duels.tackle_score(eng, k, near_own_goal=probe[0] > LENGTH - 35)
+            p_keep = float(_sigmoid((dribble - tackle) / 12 - eng.defs.duels.take_on_edge
+                                    + (blocker - 4.0) * 0.7))
         value = float(threat(aim[0], aim[1]))
         utility = p_keep * (value + RETAIN * 0.8) - (1 - p_keep) * float(loss_cost(bx, by))
         utility += 0.012 * role.on_ball.dribble_bias + (0.004 if free else 0.0)
@@ -772,10 +782,14 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
         to_target = norms(target[:, None, :] - opp_pts[None, :, :], axis=2)
         closed = est.closing * _run_distance(eng, opps[None, :],
                                              t_arrive[:, None] - est.opponent_reaction)
-        marker = np.maximum(0.0, to_target - closed).min(axis=1)
+        after = np.maximum(0.0, to_target - closed)
+        marker = after.min(axis=1)
+        quality = _marker_factor(eng, opps[np.argmin(after, axis=1)])
     else:
         marker = np.full(len(recv), 20.0)
+        quality = np.ones(len(recv))
     close = np.clip((control.pressure_radius - marker) / control.pressure_radius, 0.0, 1.0)
+    close = close * quality  # a better marker puts him off more (as _touch_pressure)
     touch = eng.attr[recv, ATTR_INDEX["first_touch"]]
     w = control.touch_skill
     pace_factor = np.where(lofted, 1 - np.maximum(0.0, length / flight - 15) / 30, ground_pace)
@@ -969,9 +983,19 @@ def _touch_pressure(eng: "MatchEngine", c: int) -> float:
     opps = eng.team_indices(1 - int(eng.team_of[c]))
     if not len(opps):
         return 0.0
-    nearest = float(np.min(norms(eng.pos[opps] - eng.pos[c], axis=1)))
-    closeness = max(0.0, (control.pressure_radius - nearest) / control.pressure_radius)
-    return control.pressure_penalty * closeness
+    gaps = norms(eng.pos[opps] - eng.pos[c], axis=1)
+    k = int(opps[int(np.argmin(gaps))])
+    closeness = max(0.0, (control.pressure_radius - float(np.min(gaps)))
+                    / control.pressure_radius)
+    return control.pressure_penalty * closeness * float(_marker_factor(eng, k))
+
+
+def _marker_factor(eng: "MatchEngine", k: Any) -> Any:
+    """How much more (or less) than an average marker opponent ``k`` (or an array of them)
+    puts a player receiving the ball off: his marking (defending.yaml touch_pressure)."""
+    rules = eng.defs.defending.touch_pressure
+    marking = eng.attr[k, ATTR_INDEX["marking"]]
+    return np.maximum(0.0, 1 + rules.per_point * (marking - rules.reference))
 
 
 def _heavy_touch(eng: "MatchEngine", c: int, info: PassInfo) -> None:
@@ -1180,6 +1204,22 @@ def _clear(eng: "MatchEngine", k: int, headed: bool = False) -> None:
 # --- shots -----------------------------------------------------------------------------
 
 
+def shot_pressure(eng: "MatchEngine", i: int, team: int, bx: float, by: float) -> float:
+    """0-1: how much the nearest opponent puts a shooter off. Closer and better defenders more
+    (their positioning and tackling), a composed shooter less (defending.yaml shot_pressure).
+    One model for the shot and for his choice to take it."""
+    rules = eng.defs.defending.shot_pressure
+    opps = eng.team_indices(1 - team)
+    if not len(opps):
+        return 0.0
+    gaps = norms(eng.att_points(team, eng.pos[opps]) - np.array([bx, by]), axis=1)
+    k = int(opps[int(np.argmin(gaps))])
+    closeness = float(np.clip((rules.radius - float(np.min(gaps))) / rules.radius, 0, 1))
+    closer = (eng.a(k, "def_positioning") + eng.a(k, "standing_tackle")) / 2
+    pressure = closeness * (1.2 - eng.a(i, "composure") / 100)
+    return pressure * max(0.0, 1 + rules.per_point * (closer - rules.reference))
+
+
 def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool = False,
                free_kick: bool = False) -> None:
     team = int(eng.team_of[i])
@@ -1187,10 +1227,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     distance = math.hypot(LENGTH - bx, MID_Y - by)
     opps = eng.team_indices(1 - team)
     opp_pts = eng.att_points(team, eng.pos[opps])
-    nearest = (float(np.min(norms(opp_pts - np.array([bx, by]), axis=1)))
-               if len(opps) else 9.0)
-    pressure = 0.0 if (penalty or free_kick) else float(np.clip((5.0 - nearest) / 5.0, 0, 1))
-    pressure *= 1.2 - eng.a(i, "composure") / 100
+    pressure = 0.0 if (penalty or free_kick) else shot_pressure(eng, i, team, bx, by)
     cone = 0 if (penalty or free_kick) else _defenders_in_cone(eng, team, bx, by, opp_pts)
     keeper = eng.keeper(1 - team)
     gk = (np.mean([eng.a(keeper, a) for a in ("gk_reflexes", "gk_diving", "gk_positioning")])

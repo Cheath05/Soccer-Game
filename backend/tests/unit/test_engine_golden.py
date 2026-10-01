@@ -40,7 +40,9 @@ re-measured for the more direct play, and a failed pass's cost moved only halfwa
 it's lost (P12, Mac only); overalls counting all six headline ratings, which changes the
 attributes synthetic players are drawn with for a given overall, and who's picked (P14, Mac
 only); markers staying closer to their man and blockers reaching further the better their
-marking, positioning and bravery (2.3f WIP iteration 1, Mac only).
+marking, positioning and bravery (2.3f WIP iteration 1, Mac only); a carrier weighing up the
+defender in his way as the duel would, and pressure on shooters and on first touches from
+the defender's quality too (2.3f WIP iteration 2, Mac only).
 """
 
 import json

@@ -566,6 +566,16 @@ The order, each its own checkpoint (or several):
      - **Iteration 1, WIP:** `data/config/match/defending.yaml`.
        - A marker stands closer goal-side and commits further to his man the better his `marking`: 1.8 m and 45% at marking 60, as before; about 1.4 m and 68% at 80.
        - Blockers reach further from the shot's line with `def_positioning`, and block more often with `bravery`. One blocker blocks at 0.28 at the reference; several combine to at most 0.65.
+       - **Measured** (`sweep1`): worse. At quality 82, shots were unchanged (49.6) while goals rose 4.70 → 5.44 and xG per shot .082 → .090. Committing markers further to their man pulled them out of their zones and gave others better chances.
+     - **Diagnosis** (`scratchpad/box_diag.py`): at quality 82, 37% of shots came straight after a carry in the box (5% at 58), taken with a defender about 2 m away. Two asymmetries:
+       - a carrier judged his chance of keeping the ball from his own dribbling against a fixed 70, never against the defender in front;
+       - the shooter's composure softened pressure, but the closing defender's quality never added to it. The same was true of a first touch, which only the receiver's own first touch decided (71 heavy touches a match at quality 58, 51 at 82).
+     - **Iteration 2, WIP:**
+       - a carrier weighs up the defender in his way with the duel's own scores (`duels.tackle_score` and `dribble_score`);
+       - shot pressure grows with the closing defender's positioning and tackling (`shot_pressure`), the same model for the shot and the decision to take it;
+       - first-touch pressure grows with the marker's marking (`touch_pressure`), in the physics and in the pass estimate;
+       - iteration 1's commitment slope goes back to 0; its goal-side slope and the blocks stay.
+       - On 2 matches per quality, carries in the box fell to 13% of shot sources at quality 82, but the shots came from passes, headers and through balls instead.
    - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range).
    - [ ] 2.3e, control by rating.
    - [ ] 2.4, fouls and cards.

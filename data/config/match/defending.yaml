@@ -15,8 +15,9 @@ marking:
   goal_side_per_point: 0.02 # ...less this per point of marking above it (more below)
   goal_side_min: 0.9        # and never closer than this
   commitment: 0.45          # share of the way from his zone to his man at the reference...
-  commitment_per_point: 0.012  # ...plus this per point of marking (the role's track_runners
-                               # adds up to 0.3 on top)
+  commitment_per_point: 0.0   # ...plus this per point of marking (the role's track_runners
+                              # adds up to 0.3 on top). 0.012 (iteration 1) pulled markers out
+                              # of their zones after their men: more and better shots against
   commitment_max: 0.95
 blocks:
   reach: 0.9                # m either side of a shot's line a defender can block it, at the
@@ -24,3 +25,14 @@ blocks:
   chance: 0.28              # chance each blocker blocks it, at the reference bravery...
   chance_per_point: 0.004   # ...and this more per point of it
   max: 0.65                 # however many are in the way
+shot_pressure:
+  radius: 5.0               # m: an opponent this close puts the shooter off (scaled down by
+                            # his composure: 1.2 - composure / 100)...
+  reference: 60
+  per_point: 0.01           # ...more the better he is: positioning and tackling, per point
+                            # above the reference (so 1.2x at 80, 0.9x at 50)
+touch_pressure:
+  reference: 60
+  per_point: 0.015          # an opponent at a receiver's first touch puts him off this much
+                            # more per point of marking above the reference (1.3x at 80, 0.85x
+                            # at 50), as his own first touch makes it matter less

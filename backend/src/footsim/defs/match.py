@@ -184,11 +184,25 @@ class BlocksDef(DefModel):
     max: float = Field(ge=0, le=1)
 
 
+class ShotPressureDef(DefModel):
+    radius: float = Field(gt=0)
+    reference: float = Field(ge=0, le=100)
+    per_point: float = Field(ge=0)
+
+
+class TouchPressureDef(DefModel):
+    reference: float = Field(ge=0, le=100)
+    per_point: float = Field(ge=0)
+
+
 class DefendingDef(DefModel):
-    """How defenders' ratings decide their marking and blocks (data/config/match/defending.yaml)."""
+    """How defenders' ratings decide their marking, blocks and pressure on shooters
+    (data/config/match/defending.yaml)."""
 
     marking: MarkingDef
     blocks: BlocksDef
+    shot_pressure: ShotPressureDef
+    touch_pressure: TouchPressureDef
 
 
 class PassingDef(DefModel):

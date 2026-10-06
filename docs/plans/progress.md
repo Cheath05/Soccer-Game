@@ -635,7 +635,26 @@ The order, each its own checkpoint (or several):
        - These belong to the duel volume and choice of opponent: Phase D's defending (D6) and transitions.
    - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range): after D2 and D6.
    - [ ] 2.3e, control by rating: after D2 and D6.
-2. - [ ] **B2, the fast engine** as a surrogate of the agent engine: the same goal, shot and home-advantage rates for the same ratings, checked by cross-engine tests. Moved up from Step 5.
+2. - [x] **B2, the fast engine** as a surrogate of the agent engine. Moved up from Step 5.
+     - **Tooling** (dc6d5ee):
+       - batch reports keep a row per match;
+       - `--division ENG1+ENG4` pools divisions, for fixtures across them as cup ties are;
+       - `footsim cross-engine REPORT` replays a report's fixtures 20 times each with the fast engine and compares the two.
+     - **Measured** (agent engine at 0488313, seed 41, 200 matches per sample, `reports/engine/b2/`):
+
+       | Sample | Goals agent / fast | Home–draw–away agent | fast | Home edge agent / fast | GD per rating point agent / fast |
+       |---|---|---|---|---|---|
+       | Premier League | 3.71 / 2.74 | .435 .240 .325 | .432 .238 .330 | +0.38 / +0.39 | +0.18 / +0.23 |
+       | League Two | 3.08 / 2.76 | .385 .285 .330 | .454 .253 .292 | +0.27 / +0.38 | −0.06 / +0.23 |
+       | Both pooled (gaps up to 15 points) | 4.13 / 3.44 | .445 .165 .390 | .457 .145 .398 | +0.20 / +0.35 | +0.24 / +0.22 |
+
+     - **Reading:**
+       - Where rating gaps are big enough to measure (the pooled fixtures), the engines respond to quality alike: +0.24 against +0.22 goal difference a point.
+       - Within League Two, gaps are too small for 200 matches to give a slope.
+       - Home and draw rates agree within a few points. The fast engine's home edge is a little stronger, at the real level (about +0.3 to +0.4).
+       - The goal level differs, and the fast engine is the one at the real level (2.65–3.05 / 2.45–2.85). The agent engine's excess is Phase D's defending. So **no fast-engine values changed:** surrogate the agent engine's rating response, not its known excess.
+       - Re-run `cross-engine` after D2 and D6 bring the agent's goals down.
+     - **Test:** `test_cross_engine.py` pins the fast engine's behaviour on 600 synthetic fixtures: +0.23 a point, home edge +0.36, 3.3 goals at those quality spreads (bounds 0.12–0.35, 0.15–0.6, 2.4–3.6).
 3. - [x] **W1, retirement and a yearly youth intake** (academies, part one). `world/lifecycle.py`, `data/config/rules/lifecycle.yaml`, run at each season's end before the new fixtures.
      - **Retirement:** chances by age, from 3% at 32 to 95% at 40. Keepers retire two years later; the ageless, and players still 78+, later still; players under 55 sooner. Free agents nobody has signed leave the professional game: at least half of them each season, at any age, until transfers can sign them. Retired players keep their history (`player.retired_on`, schema 8) and drop out of development.
      - **Youth intake:** every club takes in 2–5 youngsters a year by reputation (standing in for its academy until W5), aged 15–17.

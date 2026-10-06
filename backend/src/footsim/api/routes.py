@@ -31,6 +31,7 @@ from footsim.api.schemas import (
     TacticsOut,
 )
 from footsim.api.session import CareerSession, NoCareer
+from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
 from footsim.world.career import advance, play_user_instant, set_user_tactic
@@ -50,12 +51,14 @@ Session = Annotated[CareerSession, Depends(get_session)]
 
 @router.get("/health")
 def health(session: Session) -> dict[str, str | bool]:
-    """Liveness, and where this server keeps its saves. The browser tests refuse to run unless
-    it says that isn't the default folder, where the user's own careers live: each test starts
-    a career, which overwrites save slot 1."""
+    """Liveness, where this server keeps its saves, and which build it is. The browser tests
+    refuse to run unless it says the saves aren't in the default folder, where the user's own
+    careers live: each test starts a career, which overwrites save slot 1. The build (commit,
+    its date, branch, and whether tracked files have changed since) is what the version tag in
+    the game shows."""
     saves = session.saves.root.resolve()
     return {"status": "ok", "version": __version__, "saves_dir": str(saves),
-            "default_saves": saves == DEFAULT_SAVES.resolve()}
+            "default_saves": saves == DEFAULT_SAVES.resolve(), **build_info()}
 
 
 @cache

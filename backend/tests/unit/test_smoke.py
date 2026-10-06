@@ -26,3 +26,11 @@ def test_health_says_whether_saves_are_the_default(tmp_path: Path,
         body = client.get("/api/health").json()
         assert body["default_saves"] is expected
         assert body["saves_dir"] == str(root.resolve())
+
+
+def test_health_names_the_build() -> None:
+    body = TestClient(app).get("/api/health").json()
+    assert body["status"] == "ok"  # the keys the browser tests rely on are still there
+    for key in ("commit", "commit_date", "branch"):
+        assert isinstance(body[key], str)
+    assert isinstance(body["dirty"], bool)

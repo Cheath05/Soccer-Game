@@ -27,7 +27,11 @@
     - W2, La Liga, Serie A, the Bundesliga, Ligue 1 and their lower divisions: 131da6f.
   - **Tests:** `just lint` is clean, and the backend suite passes, with the Mac's golden values re-recorded and a History note.
   - **:8000 still runs 77b4cd2 (2.3f),** from 17:53 on 1 Oct. Restart it on this checkpoint once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections and `GET /api/career/sim` shows no sim running. Loading a save then migrates its working copy to schema 8 (retirements). The user's careers: slot 1 Grimsby, slot 2 Wrexham, slot 3 Chelsea.
-  - **Next task:** W2b, more leagues (Portugal, the Netherlands, Scotland, Saudi Arabia, Turkey, Belgium), then W3, finances.
+  - **The user's own server (6 Oct):** the user hosts the game on a Proxmox Ubuntu VM on their tailnet, reached at `https://<vm>.<tailnet>.ts.net` through `tailscale serve`.
+    - `deploy/install.sh` sets it up as systemd user services, and `deploy/update.sh` deploys every push to this branch within ten minutes, unless a match or a sim is running (`deploy/README.md`).
+    - **Every push is a deploy:** keep each pushed commit playable.
+    - **The version tag** (bottom of the menu, top of the start page) shows the build. It turns orange when the page and the server are on different commits.
+  - **Next task:** Phase D2, the defensive shape, on top of the fitted shot model (see "Behaviour changes, measured as one engine checkpoint" below). Then W3, finances.
   - **Calibration:** nothing running once this checkpoint's measurement is in.
 - **Before that (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
   - P15, the up/down arrows by a player's overall: e959fe4;

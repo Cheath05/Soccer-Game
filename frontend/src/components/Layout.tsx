@@ -1,4 +1,4 @@
-import { AppShell, Badge, Burger, Button, Center, Group, List, Loader, Modal, NavLink, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Modal, NavLink, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -7,6 +7,7 @@ import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import { longDate } from '../lib/format'
 import SimToDate from './SimToDate'
+import VersionTag from './VersionTag'
 import StartPage from '../pages/StartPage'
 
 const NAV = [
@@ -63,7 +64,13 @@ export default function Layout() {
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Title order={4}>{data.club.name}</Title>
+            <div>
+              <Title order={4}>{data.club.name}</Title>
+              {/* The navbar is folded away on a phone, so the version tag sits under the name there. */}
+              <Box hiddenFrom="sm" maw={150}>
+                <VersionTag truncate />
+              </Box>
+            </div>
             <Badge variant="light" visibleFrom="sm">
               {data.season}
             </Badge>
@@ -113,6 +120,9 @@ export default function Layout() {
         {matchToday && (
           <NavLink label="Match day" color="orange" active={path === '/matchday'} onClick={() => void navigate({ to: '/matchday' })} />
         )}
+        <AppShell.Section mt="auto" pt="sm" px="sm">
+          <VersionTag />
+        </AppShell.Section>
       </AppShell.Navbar>
       <AppShell.Main>
         {advance.error && (

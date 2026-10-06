@@ -14,6 +14,7 @@ from footsim.api.live import router as live_router
 from footsim.api.routes import router
 from footsim.api.session import CareerSession, NoCareer, default_session
 from footsim.api.sim import router as sim_router
+from footsim.core.build_info import build_info
 from footsim.core.paths import REPO_ROOT
 from footsim.persistence.database import SchemaMismatch
 
@@ -22,6 +23,7 @@ FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 def create_app(session: CareerSession | None = None, frontend: Path | None = FRONTEND_DIST
                ) -> FastAPI:
+    build_info()  # read git now, so the build reported is the code this process loaded
     app = FastAPI(title="footsim", version=__version__)
     app.state.session = session or default_session()
 

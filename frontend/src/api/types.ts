@@ -1,5 +1,17 @@
 // Mirrors backend/src/footsim/api/schemas.py.
 
+export interface Health {
+  status: string
+  version: string
+  saves_dir: string
+  default_saves: boolean
+  // The build the server runs. A server that predates these omits them.
+  commit?: string // short hash, or "unknown"
+  commit_date?: string // ISO 8601
+  branch?: string
+  dirty?: boolean // tracked files have changed since that commit
+}
+
 export interface ClubRef {
   id: number
   name: string

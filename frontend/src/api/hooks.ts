@@ -11,6 +11,7 @@ import type {
   Cup,
   CupSummary,
   Fixture,
+  Health,
   LeagueOption,
   MatchReport,
   PlayerDetail,
@@ -22,6 +23,10 @@ import type {
   Tactics,
   TacticsUpdate,
 } from './types'
+
+// Refetched on focus once stale, so a tab left open across an update notices the new server.
+export const useHealth = () =>
+  useQuery({ queryKey: ['health'], queryFn: () => api.get<Health>('/health'), staleTime: 60_000, refetchOnWindowFocus: true })
 
 export const useCareer = () =>
   useQuery({

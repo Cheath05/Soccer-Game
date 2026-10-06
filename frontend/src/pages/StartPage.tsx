@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
+import VersionTag from '../components/VersionTag'
 import { longDate } from '../lib/format'
 
 export default function StartPage({ hasCareer, error }: { hasCareer: boolean; error: Error | null }) {
@@ -33,6 +34,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           <div>
             <Title order={1}>Footsim</Title>
             <Text c="dimmed">A football management simulation.</Text>
+            <VersionTag />
           </div>
           {hasCareer && (
             <Button variant="default" onClick={goHome}>

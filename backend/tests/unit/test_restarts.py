@@ -215,14 +215,14 @@ def test_a_substitute_sizes_up_duels_afresh(world: World) -> None:
     engine = _live(_engine(world))
     slot, rival = _outfield(engine, 0)[4], _outfield(engine, 1)[4]
     other, carrier = _outfield(engine, 1)[5], _outfield(engine, 0)[5]
-    engine.engaged[slot] = (rival, engine.t)
-    engine.engaged[rival] = (slot, engine.t)
-    engine.engaged[other] = (carrier, engine.t)
+    engine.engaged[slot] = (rival, engine.t, engine.t)
+    engine.engaged[rival] = (slot, engine.t, engine.t)
+    engine.engaged[other] = (carrier, engine.t, engine.t)
     engine.take_on_ready[(slot, rival)] = engine.take_on_ready[(rival, slot)] = engine.t + 5.0
     engine.substitute(0, engine.players[slot].player_id, engine.bench[0][0].player_id)
     engine.award_restart("throw_in", 1, (30.0, 0.0))
     assert slot not in engine.engaged
-    assert all(c != slot for c, _ in engine.engaged.values())
+    assert all(c != slot for c, _, _ in engine.engaged.values())
     assert not any(slot in pair for pair in engine.take_on_ready)
     assert engine.engaged[other][0] == carrier
 

@@ -26,7 +26,7 @@ from footsim.match.engine.pitch import (
     norms,
 )
 from footsim.match.quick import INJURIES, INJURY_WEIGHTS
-from footsim.match.report import Injury
+from footsim.match.report import RED_DOGSO, RED_SECOND_YELLOW, RED_STRAIGHT, Injury
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -254,7 +254,7 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
     at = (float(eng.pos[victim, 0]), float(eng.pos[victim, 1]))
     if roll < red:
         card = "red"
-        eng.send_off(fouler, "denying a goal-scoring chance" if dogso else "straight red")
+        eng.send_off(fouler, RED_DOGSO if dogso else RED_STRAIGHT)
     elif roll < red + yellow:
         card = "yellow"
         eng.yellows[fouler] += 1
@@ -265,7 +265,7 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
         eng._announce("yellow", team, f"Yellow card: {name}")
         if eng.yellows[fouler] >= 2:
             card = "second_yellow"
-            eng.send_off(fouler, "second yellow")
+            eng.send_off(fouler, RED_SECOND_YELLOW)
     if eng.rng.random() < INJURY_IN_FOUL:
         injure(eng, victim)
     eng.emit("foul", team, fouler, at=at, victim=victim, card=card, penalty=penalty,

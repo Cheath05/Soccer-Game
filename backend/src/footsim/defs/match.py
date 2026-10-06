@@ -129,6 +129,12 @@ class DuelsDef(DefModel):
     red: RedCardDef
     dogso: DogsoDef
 
+    @model_validator(mode="after")
+    def _aggression_range(self) -> "DuelsDef":
+        if self.aggression_cards[1] <= self.aggression_cards[0]:
+            raise ValueError("aggression_cards must run from low to high")
+        return self
+
 
 class PassExecutionDef(DefModel):
     base: float = Field(ge=0)

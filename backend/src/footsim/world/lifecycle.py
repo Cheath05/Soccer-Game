@@ -163,7 +163,8 @@ def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) ->
     ours = []
     for c in clubs:
         rng = derive_rng(meta.seed, "youth", day.isoformat(), c.id)
-        count = max(1, int(round(rng.normal(_lookup(rules.intake, c.reputation), 0.8))))
+        count = max(1, int(round(rng.normal(_lookup(rules.intake, c.reputation),
+                                            rules.intake_sd))))
         for _ in range(count):
             pid = next_id
             next_id += 1
@@ -186,8 +187,8 @@ def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) ->
             potential = int(np.clip(rng.normal(_lookup(rules.potential, c.reputation),
                                                rules.potential_sd),
                                     overall + rules.potential_room, rules.max_potential))
-            left = position in ("LB", "LW", "LM", "LWB")
-            foot = "Left" if rng.random() < (0.6 if left else 0.22) else "Right"
+            side = "left" if position in ("LB", "LW", "LM", "LWB") else "other"
+            foot = "Left" if rng.random() < rules.left_footed[side] else "Right"
             height = estimate_height(position, values, build.physique, rng)
             rows["person"].append({"id": pid, "first_name": first, "last_name": last,
                                    "known_as": None, "birth_date": born.isoformat(),
@@ -195,8 +196,10 @@ def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) ->
             rows["player"].append({
                 "person_id": pid, "height_cm": height,
                 "weight_kg": estimate_weight(height, values, build.physique, rng),
-                "preferred_foot": foot, "weak_foot": int(rng.integers(2, 5)),
-                "skill_moves": int(rng.integers(2, 4)), "pa_hidden": potential,
+                "preferred_foot": foot,
+                "weak_foot": int(rng.integers(rules.weak_foot[0], rules.weak_foot[1] + 1)),
+                "skill_moves": int(rng.integers(rules.skill_moves[0], rules.skill_moves[1] + 1)),
+                "pa_hidden": potential,
                 "reputation": player_reputation(overall, c.reputation, build.reputation),
                 "value_eur_cents": None, "retired_on": None})
             rows["attr"].append({"player_id": pid, **values})
@@ -249,16 +252,16 @@ def trim_squads(conn: Connection, world: World, meta: CareerMeta, day: date) -> 
         positions = [r.primary_position or "CM" for r in squad]
         attrs = np.array([[getattr(r, a) for a in ATTRIBUTES] for r in squad], dtype=float)
         overalls = _own_overalls(world, attrs, positions)
-        keepers = [k for k, p in enumerate(positions) if p == "GK"]
+        keepers = sorted((k for k, p in enumerate(positions) if p == "GK"),
+                         key=lambda k: -float(overalls[k]))[:rules.keepers_kept]
         scores = []
         for k, r in enumerate(squad):
             age = age_on(date.fromisoformat(r.birth_date), day)
-            room = max(0.0, r.pa_hidden - float(overalls[k])) if age <= 23 else 0.0
-            score = float(overalls[k]) + 0.5 * room
-            if k in keepers and len(keepers) <= 3:
-                score += 100.0  # every squad keeps three keepers
-            scores.append((score, -age, r.id))
-        for _, _, pid in sorted(scores)[:len(squad) - rules.keep]:
+            room = (max(0.0, r.pa_hidden - float(overalls[k])) if age <= rules.young_until
+                    else 0.0)
+            scores.append((float(overalls[k]) + rules.potential_weight * room, -age, r.id, k))
+        releasable = sorted(entry for entry in scores if entry[3] not in keepers)
+        for _, _, pid, _ in releasable[:max(0, len(squad) - rules.keep)]:
             conn.execute(update(contract).where(contract.c.person_id == pid,
                                                 contract.c.is_active == 1)
                          .values(is_active=0, end_date=day.isoformat()))

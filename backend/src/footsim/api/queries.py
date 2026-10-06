@@ -671,9 +671,29 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     )
 
 
-def release_player(conn: Connection, player_id: int, day: date) -> None:
-    """End the user's contract with one of their players: he becomes a free agent."""
+class SquadTooSmall(Exception):
+    """Releasing the player would leave the user's squad unable to field a side."""
+
+
+def release_player(conn: Connection, world: World, player_id: int, day: date) -> None:
+    """End the user's contract with one of their players: he becomes a free agent. Refused
+    (SquadTooSmall) when it would leave fewer senior players or keepers than the lifecycle
+    rules' floor, as there are no transfers yet to replace them."""
     meta = read_meta(conn)
+    rules = world.defs.lifecycle.squads
+    seniors = conn.execute(text("""
+        SELECT k.person_id,
+               (SELECT position FROM player_position pp WHERE pp.player_id = k.person_id
+                ORDER BY familiarity DESC LIMIT 1) AS position
+        FROM contract k WHERE k.club_id = :club AND k.is_active = 1 AND k.kind != 'youth'
+    """), {"club": meta.user_club_id}).all()
+    leaving = [r for r in seniors if r.person_id == player_id]
+    if leaving:
+        if len(seniors) - 1 < rules.user_min_players:
+            raise SquadTooSmall(f"You need at least {rules.user_min_players} senior players.")
+        keepers = sum(r.position == "GK" for r in seniors)
+        if leaving[0].position == "GK" and keepers - 1 < rules.user_min_keepers:
+            raise SquadTooSmall(f"You need at least {rules.user_min_keepers} keepers.")
     updated = conn.execute(update(contract).where(
         contract.c.person_id == player_id, contract.c.is_active == 1,
         contract.c.club_id == meta.user_club_id,

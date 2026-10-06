@@ -108,3 +108,20 @@ def test_version_5_gains_the_overall_trend(tmp_path: Path) -> None:
         columns = {c["name"] for c in inspect(conn).get_columns("player_development")}
     assert "trend" in columns
     engine.dispose()
+
+
+def test_version_7_gains_retirement(tmp_path: Path) -> None:
+    """Saves from before retirement get the column, every player still playing."""
+    path = tmp_path / "v7.sqlite"
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE player DROP COLUMN retired_on"))
+    write_meta(engine, {"schema_version": 7})
+    engine.dispose()
+    engine = open_database(path)
+    assert migrate(engine) == 7
+    assert migrate(engine) == SCHEMA_VERSION  # and running it again changes nothing
+    with engine.connect() as conn:
+        columns = {c["name"] for c in inspect(conn).get_columns("player")}
+    assert "retired_on" in columns
+    engine.dispose()

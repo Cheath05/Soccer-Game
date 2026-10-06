@@ -242,9 +242,11 @@ def release_player(player_id: int, session: Session) -> PlayerDetailOut:
         raise HTTPException(409, "finish the match being played first")
     with session.write() as conn:
         try:
-            queries.release_player(conn, player_id, read_meta(conn).current_date)
+            queries.release_player(conn, get_world(), player_id, read_meta(conn).current_date)
         except KeyError as exc:
             raise HTTPException(400, "not one of your players") from exc
+        except queries.SquadTooSmall as exc:
+            raise HTTPException(409, f"{exc} There are no transfers yet to replace him.") from exc
     session.autosave()
     with session.read() as conn:
         return queries.player_detail(conn, get_world(), player_id)

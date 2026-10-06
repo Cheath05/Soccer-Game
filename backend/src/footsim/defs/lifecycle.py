@@ -27,6 +27,7 @@ class RetirementDef(DefModel):
 
 class YouthDef(DefModel):
     intake: list[tuple[int, int]]  # (club reputation from, players a year)
+    intake_sd: float = Field(ge=0)  # spread of a club's intake from one year to the next
     ages: tuple[int, int]
     overall: list[tuple[int, float]]  # (club reputation from, mean overall of a new player)
     overall_sd: float = Field(ge=0)
@@ -37,11 +38,19 @@ class YouthDef(DefModel):
     home_nation: float = Field(ge=0, le=1)  # share from the club's own country
     positions: dict[str, float]  # position code -> share of intakes
     contract_age: int  # his first contract runs to the end of the season he turns this
+    left_footed: dict[str, float]  # chance he's left-footed: "left" positions and the rest
+    weak_foot: tuple[int, int]  # range of his weaker foot (1-5)
+    skill_moves: tuple[int, int]  # range of his skill moves (1-5)
 
 
 class SquadsDef(DefModel):
     max_players: int = Field(ge=11)  # a computer-run club with more releases its weakest...
     keep: int = Field(ge=11)  # ...down to this many
+    young_until: int  # a player this old or younger counts some of his remaining potential...
+    potential_weight: float = Field(ge=0, le=1)  # ...this share of it
+    keepers_kept: int = Field(ge=1)  # the best this many keepers are never released
+    user_min_players: int = Field(ge=11)  # the user can't release below this many seniors...
+    user_min_keepers: int = Field(ge=1)  # ...or this many keepers
 
     @model_validator(mode="after")
     def _ordered(self) -> "SquadsDef":

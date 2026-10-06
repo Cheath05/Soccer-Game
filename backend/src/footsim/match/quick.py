@@ -15,7 +15,16 @@ import numpy as np
 from footsim.defs.loader import GameDefinitions
 from footsim.defs.positions import PositionGroup
 from footsim.match.penalties import penalty_probability, shootout
-from footsim.match.report import Decider, Injury, MatchEvent, MatchReport, PlayerLine, TeamStats
+from footsim.match.report import (
+    RED_SECOND_YELLOW,
+    RED_STRAIGHT,
+    Decider,
+    Injury,
+    MatchEvent,
+    MatchReport,
+    PlayerLine,
+    TeamStats,
+)
 from footsim.match.teams import SheetPlayer, SquadPlayer, TeamSheet
 
 YELLOW_WEIGHT = {PositionGroup.GK: 0.2, PositionGroup.CB: 1.3, PositionGroup.FB: 1.1,
@@ -239,9 +248,9 @@ class QuickEngine:
             report.events.append(MatchEvent(minute, "yellow", club, player.player_id))
             if side.yellows[player.player_id] < 2:
                 return
-            detail = "second yellow"
+            detail = RED_SECOND_YELLOW
         else:
-            detail = "straight red"
+            detail = RED_STRAIGHT
         line.red += 1
         side.reds += 1
         report.events.append(MatchEvent(minute, "red", club, player.player_id, detail=detail))

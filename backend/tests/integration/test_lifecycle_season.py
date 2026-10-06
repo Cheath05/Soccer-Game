@@ -79,6 +79,17 @@ def test_the_user_can_release_their_own_players_only(tmp_path: Path) -> None:
     released = client.post(f"/api/players/{leaving}/release").json()
     assert released["club"] is None and not released["own_player"]
     assert len(client.get(f"/api/clubs/{WREXHAM}/squad").json()) == len(squad) - 1
+    # Not below the floor: a side has to be able to play.
+    floor = get_world().defs.lifecycle.squads.user_min_players
+    for p in client.get(f"/api/clubs/{WREXHAM}/squad").json():
+        if len(client.get(f"/api/clubs/{WREXHAM}/squad").json()) <= floor:
+            break
+        if p["position"] != "GK":
+            client.post(f"/api/players/{p['id']}/release")
+    remaining = client.get(f"/api/clubs/{WREXHAM}/squad").json()
+    blocked = next(p for p in remaining if p["position"] != "GK")
+    refused = client.post(f"/api/players/{blocked['id']}/release")
+    assert refused.status_code == 409 and "at least" in refused.json()["detail"]
     other = client.get("/api/clubs/1/players").json()[0]["id"]
     assert client.post(f"/api/players/{other}/release").status_code == 400
     assert client.post(f"/api/players/{leaving}/release").status_code == 400  # already gone

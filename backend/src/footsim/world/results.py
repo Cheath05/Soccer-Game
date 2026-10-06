@@ -7,7 +7,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import Connection, select, text, update
 
-from footsim.match.report import MatchReport
+from footsim.match.report import RED_DOGSO, RED_SECOND_YELLOW, MatchReport
 from footsim.persistence.schema import fixture, match_event, player_match, player_state
 
 YELLOWS_FOR_BAN = 5
@@ -65,8 +65,8 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
         ban = state.suspended_matches
         if ln.red:
             reason = reds.get(ln.player_id)
-            ban += (SECOND_YELLOW_BAN if reason == "second yellow" else
-                    DOGSO_BAN if reason == "denying a goal-scoring chance" else STRAIGHT_RED_BAN)
+            ban += (SECOND_YELLOW_BAN if reason == RED_SECOND_YELLOW else
+                    DOGSO_BAN if reason == RED_DOGSO else STRAIGHT_RED_BAN)
         elif ln.yellow and season_yellows % YELLOWS_FOR_BAN == 0:
             ban += 1
         conn.execute(update(player_state).where(player_state.c.player_id == ln.player_id).values(

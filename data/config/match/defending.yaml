@@ -30,7 +30,9 @@ blocks:
   reach_per_point: 0.012    # reference def_positioning, and this more per point of it
   chance: 0.28              # chance each blocker blocks it, at the reference bravery...
   chance_per_point: 0.004   # ...and this more per point of it
-  max: 0.65                 # however many are in the way
+  max: 0.65                 # however many are in the way. Several blockers' chances combine as
+                            # independent tries (two at the reference: 0.48; it was 0.28 each
+                            # added up, 0.56, before 2.3f)
 shot_pressure:
   radius: 5.0               # m: an opponent this close puts the shooter off (scaled down by
                             # his composure: 1.2 - composure / 100)...

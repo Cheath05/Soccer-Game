@@ -699,6 +699,30 @@ The order, each its own checkpoint (or several):
 
 **Alongside, in the time the management phases leave the CPU:** Phase D (D-pre to D7), Phase E, and the remaining engine steps: 2.3d, C1, 2.1, 2.6, C2, F2, G, J and K. Their measurement batches run while management code is written, as the cups were written during 2.3c's batches.
 
+## Review of 2.3f, 2.4 and W1 (6 Oct, a Sonnet reviewer agent)
+
+The user allowed agents for work that doesn't need the CPU. A reviewer read the 2.3f, 2.4 and W1 commits against the project's rules.
+
+- [x] **Fixed, behaviour-neutral:**
+  - **Release had no floor:** a squad released below 11 couldn't play its next match ("needs 11 starters"), and no transfers could replace them. Now the user can't go below 16 senior players or 2 keepers (`lifecycle.yaml` `user_min_players`, `user_min_keepers`; 409 with the reason).
+  - **Squad trimming protected keepers only when a club had three or fewer;** with four or more it protected none. It now keeps the best three.
+  - **Red-card reasons** were matched by text between the engines and the ban rules; they're now shared constants (`match/report.py`).
+  - **Lifecycle tunables moved to YAML:** the intake's spread, left-footedness, weak foot and skill moves, and trimming's young-player age, potential weight and keepers kept.
+  - **Nits:**
+    - `aggression_cards` validated low < high;
+    - `test_restarts.py` updated for 3-tuple engagements;
+    - the blocks comment corrected (combined chances, two at 0.48 where 0.56 added up before).
+  - **New tests:**
+    - `test_defending.py` pins 2.3f's rating responses: a better marker puts a receiver off more, a better defender a shooter, and a carrier expects less against a better tackler;
+    - the v8 migration;
+    - Release's floor.
+- [ ] **To fix next, behaviour changes (measured as one engine checkpoint):**
+  1. **The decision to shoot sees only the pressure.** The shot then pays 0.55 for each defender in the cone and a block chance on top, so a shooter overrates his chance by up to two-thirds. That's a likely part of the shot excess: one `shot_quality` model for both.
+  2. **Keepers as the nearest opponent are read with outfield ratings** (positioning and tackling about 14), so a rushing keeper puts a shooter off half as much as before 2.3f. The same goes for first-touch pressure and carries. They should be excluded, or read with keeping ratings.
+  3. **The lapse test is a coin flip:** `t - last > 2 * DT` with floating point times. It should be 2.5 DT.
+  4. **The pass estimate's regather term can go negative** for a marker of 90+ (`close` × quality above 1). It should be clipped.
+  5. **Tunables in `actions.py`:** the blocks' reach floor and chance cap. Blocks also need their own reference.
+
 ## Quick fixes (do first; each is its own checkpoint)
 
 - [x] 0a `just e2e` defaults to :8765. The e2e scripts refuse :8000, and any server whose `/api/health` doesn't confirm `default_saves: false`; `FOOTSIM_E2E_ALLOW_REAL_SAVES=1` overrides. Also fixed the start page staying on screen after starting a career from `/start`. Verified with `just e2e` on a fresh :8765 server; the user's saves are unchanged

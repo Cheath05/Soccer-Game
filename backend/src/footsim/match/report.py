@@ -2,6 +2,11 @@
 
 from dataclasses import dataclass, field
 
+# Why a player was sent off (a red card event's detail): the ban that follows depends on it.
+RED_SECOND_YELLOW = "second yellow"
+RED_STRAIGHT = "straight red"
+RED_DOGSO = "denying a goal-scoring chance"
+
 
 @dataclass
 class PlayerLine:

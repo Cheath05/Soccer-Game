@@ -34,6 +34,7 @@ youth:
     - [45, 3]
     - [65, 4]
     - [80, 5]
+  intake_sd: 0.8          # a club's intake varies by about a player from one year to the next
   ages: [15, 17]
   overall:                # (club reputation from, the mean overall of a new youngster)
     - [0, 40.0]
@@ -53,9 +54,16 @@ youth:
   positions: {GK: 0.09, CB: 0.17, RB: 0.075, LB: 0.075, DM: 0.08, CM: 0.15, AM: 0.08,
               RW: 0.065, LW: 0.065, ST: 0.15}
   contract_age: 19        # his first contract runs to the end of the season he turns this
+  left_footed: {left: 0.6, other: 0.22}  # left back, left wing...: 60% left-footed; the rest 22%
+  weak_foot: [2, 4]
+  skill_moves: [2, 3]
 
 squads:
-  max_players: 34         # a computer-run club with more releases its weakest down to this
-  keep: 31                # many: worst first, a young player counting half his remaining
-                          # potential. The user's squad is theirs to manage (they can release
-                          # players).
+  max_players: 34         # a computer-run club with more senior players releases its weakest
+  keep: 31                # down to this many: worst overall first, and...
+  young_until: 23         # ...a player this old or younger counts...
+  potential_weight: 0.5   # ...this share of the potential he has yet to reach
+  keepers_kept: 3         # the best three keepers are never released
+  user_min_players: 16    # the user's squad is theirs to manage, but they can't release below
+  user_min_keepers: 2     # this many senior players or keepers: there are no transfers yet to
+                          # replace them, and a side without eleven can't play

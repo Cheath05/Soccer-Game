@@ -14,7 +14,7 @@ Event kinds and their data:
   duel           outcome (won|beaten|foul), carrier, xa (tackler's attacking frame)
   foul           victim, card (none|yellow|second_yellow|red), penalty
   shot           xg, outcome, header, penalty, free_kick, distance, xa, ya, goal_side,
-                 nearest, blockers
+                 nearest, blockers, cone, pressure
   save           how (catch|tip|parry), teleported
   block          how (cleared|corner|loose)
   goal           own_goal, penalty, assist

@@ -1,11 +1,39 @@
 # Going for goal in the agent engine (actions.decide, actions._aerial, actions.shot_chance).
-#
-# The thresholds are compared with the chance as the shot will play it: the place's expected
-# goals with the pressure on the shooter and the bodies in the way, less the chance of a block
-# (before his finishing and the keeper). Until the engine review fixes (6 Oct) the choice saw
-# only the place and the pressure, so the same numbers let through more shots than they do now.
-min_xg: 0.05          # open play: nobody shoots from hopeless positions...
-long_range_xg: 0.02   # ...except from 18-30 m with room to shoot
+
+# A shot's chance of scoring, blocks included, for an average Premier League shooter against
+# an average Premier League keeper: a logistic in the terms below. It was fitted to 9,415 open-play
+# shots with freeze frames, measured as the engine measures its own (StatsBomb open data,
+# Premier League 2015/16; calibration/shot_fit.py, docs/calibration/shot-model.md). It's the
+# shot's xG. The choice to shoot, the header's choice to go for goal and the recorded xG all
+# use it. The shooter's finishing and the keeper then move the real chance around it.
+chance:
+  intercept: -0.0645
+  angle: 1.1768        # per radian the posts make from the ball
+  distance: -0.1195    # per metre to the goal's centre
+  header: -0.8934
+  cone: -0.3975        # per outfield defender between the ball and the posts...
+  cone_max: 3          # ...counting at most this many
+  closeness: -1.0379   # the nearest outfield defender's pressure (defending.yaml shot_pressure)
+
+# The ratings the fit stands for: averages of Premier League players in the world data
+# (attackers' finishing; attackers' and midfielders' long shots; centre-backs' and strikers'
+# heading; first-choice keepers' reflexes, diving and positioning). League Two's are about 58,
+# 55, 59 and 62: its shooters finish worse and its keepers save less.
+reference:
+  finishing: 73
+  long_shots: 69
+  heading: 70
+  keeper: 81
+
+# When a player goes for goal (actions.decide). A shot is an option from the xG real players
+# shoot from: .015 is the 5th percentile of the fitted xG of the Premier League's open-play shots
+# (the median is .06), with no room needed (real long shots are struck with a defender about
+# 2.7 m away). Whether he takes it is his choice among his options, where a shot is worth its
+# xG times ``value`` against keeping the ball: shots also win corners and rebounds, and end
+# moves that aren't going anywhere. Calibrated on where shots come from (16 matches a value,
+# equal sides of quality 78, 6 Oct): at 0.95 14% of open-play shots were from 16.5 m or
+# more, at 2.0 53% (real .51, every distance band within a few points) with xG per shot
+# .105 (real .094), at 3.0 74%.
+min_xg: 0.015
+value: 2.0
 header_xg: 0.04       # a header this good goes for goal; otherwise it's knocked down
-cone_factor: 0.55     # each outfield defender between the ball and the posts multiplies the
-cone_max: 3           # place's expected goals by this, counting at most this many

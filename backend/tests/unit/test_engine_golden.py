@@ -49,7 +49,10 @@ shoot weighing up the bodies in the way and the chance of a block as the shot pl
 keepers no longer counted as outfield markers, shooter pressure, blockers or carriers'
 tacklers, an engagement kept through one missed tick whatever the clock's rounding, and a
 restart's taker already on the ball no longer hurrying onto it as the restart comes due
-(engine review fixes, Mac only).
+(engine review fixes, Mac only); a shot's chance from a model fitted to real shots with their
+freeze frames (place, header, defenders in the cone, pressure), blocks at the real rate,
+finishing and keeping centred on Premier League averages, and shots an option from xG .015
+worth twice their xG against keeping the ball (S1 and S2, Mac only).
 """
 
 import json

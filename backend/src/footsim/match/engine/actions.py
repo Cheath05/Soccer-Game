@@ -27,7 +27,7 @@ from footsim.match.engine.pitch import (
     LENGTH,
     MID_Y,
     WIDTH,
-    expected_goal,
+    goal_angle,
     in_own_box,
     loss_cost,
     norm,
@@ -75,11 +75,12 @@ Option = tuple[float, str, PassOption | CarryOption | None]
 
 @dataclass(frozen=True)
 class ShotChance:
-    """A shot from where the ball is, before the shooter's finishing and the keeper come in:
+    """A shot from where the ball is, for an average shooter against an average keeper:
     start_shot plays it so, and decide weighs it up the same way."""
 
-    pressure: float  # 0-1: the nearest outfield opponent putting him off (shot_pressure)
-    xg: float  # the place's expected goals, with that pressure and the bodies in the way
+    pressure: float  # the nearest outfield opponent putting him off (shot_pressure)
+    cone: int  # outfield opponents between the ball and the posts (counted up to the cap)
+    xg: float  # its chance of scoring, blocks included (shooting.yaml chance)
     blockers: int  # outfield opponents close enough to the shot's line to block it
     block: float  # the chance one of them does
 
@@ -158,25 +159,21 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     line = offside_line(opp_pts, bx)
     options: list[Option] = []
 
-    # Shooting: worth it when the chance is good, or from range with room to shoot.
+    # Shooting: an option whenever the chance is one real players take (shooting.yaml).
     if mode in (None, "free_kick") and bx > 66:
         distance = math.hypot(LENGTH - bx, MID_Y - by)
         # He sees the chance as the shot will play it: the place, the man closing him down,
         # and the bodies between him and the goal (start_shot).
-        chance = shot_chance(eng, i, team, bx, by)
-        xg = chance.xg * (1 - chance.block)
+        xg = shot_chance(eng, i, team, bx, by).xg
         preference = (1.0 + 0.6 * role.on_ball.shoot_bias
                       + eng.effect(team, "mentality").shoot_preference)
-        long_range = 18 < distance < 30
-        if long_range:
+        if 18 < distance < 30:  # from range, his long shots decide how keen he is
             preference *= 0.45 + eng.a(i, "long_shots") / 140
-        room = nearest > 3.0
         shooting = eng.defs.shooting
-        if (xg >= shooting.min_xg or mode == "free_kick"
-                or (long_range and room and xg >= shooting.long_range_xg)):
+        if xg >= shooting.min_xg or mode == "free_kick":
             # A shot that doesn't go in gives the ball up (a save, a miss, a block), as a pass
-            # that fails does: a hopeful shot is worth less than keeping the attack going.
-            utility = xg * preference * 0.95 - (1 - xg) * float(loss_cost(bx, by))
+            # that fails does. What it's worth against keeping the ball is shooting.yaml's value.
+            utility = xg * preference * shooting.value - (1 - xg) * float(loss_cost(bx, by))
             options.append((utility, "shot", None))
 
     # Passing: every teammate, plus balls into the path of forward runners.
@@ -1144,8 +1141,7 @@ def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
         eng.ball_z = 0.0
         hx, hy = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
         # As a shot from the ground is weighed up: the header as start_shot will play it.
-        chance = shot_chance(eng, best_a, team, hx, hy, header=True)
-        if chance.xg * (1 - chance.block) >= eng.defs.shooting.header_xg:
+        if shot_chance(eng, best_a, team, hx, hy, header=True).xg >= eng.defs.shooting.header_xg:
             eng.owner = best_a
             start_shot(eng, best_a, header=True)
         else:  # no angle for goal: he nods it down for a teammate
@@ -1226,16 +1222,19 @@ def _clear(eng: "MatchEngine", k: int, headed: bool = False) -> None:
 
 def shot_chance(eng: "MatchEngine", i: int, team: int, bx: float, by: float,
                 header: bool = False) -> ShotChance:
-    """Player ``i``'s shot from (bx, by) (attacking frame): the pressure on him, the place's
-    expected goals with the defenders in the way, and his chance of having it blocked. Only
-    outfield opponents: the keeper's part is the save (start_shot)."""
+    """Player ``i``'s shot from (bx, by) (attacking frame): the pressure on him, its chance of
+    scoring for an average shooter against an average keeper (the fitted model in
+    shooting.yaml: the place, a header, the defenders in the way, the pressure), and his
+    chance of having it blocked. Only outfield opponents: the keeper's part is the save."""
     distance = math.hypot(LENGTH - bx, MID_Y - by)
     opps = eng.outfield_indices(1 - team)
     opp_pts = eng.att_points(team, eng.pos[opps])
     pressure = shot_pressure(eng, i, team, bx, by)
-    shooting = eng.defs.shooting
-    cone = min(_defenders_in_cone(bx, by, opp_pts), shooting.cone_max)
-    xg = expected_goal(bx, by, header=header, pressure=pressure) * shooting.cone_factor**cone
+    fit = eng.defs.shooting.chance
+    cone = min(_defenders_in_cone(bx, by, opp_pts), fit.cone_max)
+    z = (fit.intercept + fit.angle * goal_angle(bx, by) + fit.distance * distance
+         + fit.header * header + fit.cone * cone + fit.closeness * pressure)
+    xg = 1.0 / (1.0 + math.exp(-z))
     # Defenders in the shot's line can block it: how far either side of it each reaches is
     # his positioning, and how often he gets a body on it his bravery (defending.yaml).
     rules = eng.defs.defending.blocks
@@ -1250,13 +1249,14 @@ def shot_chance(eng: "MatchEngine", i: int, team: int, bx: float, by: float,
                      * (eng.attr[opps, ATTR_INDEX["bravery"]] - rules.reference),
                      0.0, rules.chance_max)
     block = min(rules.max, 1.0 - float(np.prod(1.0 - chance[in_line])))
-    return ShotChance(pressure, xg, int(np.sum(in_line)), block)
+    return ShotChance(pressure, cone, xg, int(np.sum(in_line)), block)
 
 
 def shot_pressure(eng: "MatchEngine", i: int, team: int, bx: float, by: float) -> float:
-    """0-1: how much the nearest outfield opponent puts a shooter off. Closer and better
-    defenders more (their positioning and tackling), a composed shooter less (defending.yaml
-    shot_pressure). A keeper's part is the save."""
+    """How much the nearest outfield opponent puts a shooter off: his closeness (1 on top of
+    him, 0 at the radius), as the shot model was fitted on it for an average shooter and
+    defender. Better defenders more (their positioning and tackling), a composed shooter less
+    (defending.yaml shot_pressure). A keeper's part is the save."""
     rules = eng.defs.defending.shot_pressure
     opps = eng.outfield_indices(1 - team)
     if not len(opps):
@@ -1265,8 +1265,8 @@ def shot_pressure(eng: "MatchEngine", i: int, team: int, bx: float, by: float) -
     k = int(opps[int(np.argmin(gaps))])
     closeness = float(np.clip((rules.radius - float(np.min(gaps))) / rules.radius, 0, 1))
     closer = (eng.a(k, "def_positioning") + eng.a(k, "standing_tackle")) / 2
-    pressure = closeness * (1.2 - eng.a(i, "composure") / 100)
-    return pressure * max(0.0, 1 + rules.per_point * (closer - rules.reference))
+    composure = (1.2 - eng.a(i, "composure") / 100) / (1.2 - rules.composure_reference / 100)
+    return closeness * composure * max(0.0, 1 + rules.per_point * (closer - rules.reference))
 
 
 def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool = False,
@@ -1278,7 +1278,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     opp_pts = eng.att_points(team, eng.pos[opps])
     # A penalty or a direct free kick is struck unchallenged (the wall is in the free kick's
     # expected goals); anything else is the chance decide weighed up.
-    chance = (ShotChance(0.0, 0.0, 0, 0.0) if (penalty or free_kick)
+    chance = (ShotChance(0.0, 0, 0.0, 0, 0.0) if (penalty or free_kick)
               else shot_chance(eng, i, team, bx, by, header=header))
     pressure = chance.pressure
     keeper = eng.keeper(1 - team)
@@ -1291,22 +1291,28 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
                                      eng.players[keeper].player if keeper is not None else None)
         p_on = 0.9
     else:
+        # His skill for the shot, against the rating the shot model stands for (shooting.yaml
+        # reference): an average shooter and keeper score the chance's xG, better ones more.
+        ref = eng.defs.shooting.reference
         if header:
-            skill = eng.a(i, "heading_accuracy")
+            skill, average = eng.a(i, "heading_accuracy"), ref.heading
         elif free_kick:
-            skill = eng.a(i, "free_kicks")
+            skill, average = eng.a(i, "free_kicks"), ref.long_shots
         elif distance > 18:
-            skill = eng.a(i, "long_shots")
+            skill, average = eng.a(i, "long_shots"), ref.long_shots
         else:
-            skill = eng.a(i, "finishing")
+            skill, average = eng.a(i, "finishing"), ref.finishing
         xg = (max(0.02, 0.09 - 0.0025 * max(distance - 18, 0)) if free_kick
               else chance.xg)
         p_on = float(np.clip(0.20 + 0.40 * skill / 100 - 0.012 * max(distance - 10, 0)
-                             - 0.15 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92))
-        p_goal = xg * (0.7 + 0.35 * skill / 100) * (1.3 - 0.6 * gk / 100)
+                             - 0.08 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92))
+        finishing = (0.7 + 0.35 * skill / 100) / (0.7 + 0.35 * average / 100)
+        keeping = (1.3 - 0.6 * gk / 100) / (1.3 - 0.6 * ref.keeper / 100)
+        # The xG has blocks in it; a shot that gets through scores that much more often.
+        p_goal = min(0.95, xg / (1 - chance.block) * finishing * keeping)
     p_on = max(p_on, min(0.95, p_goal / 0.95))
     blockers, block_chance = chance.blockers, chance.block
-    xg = float(p_goal * (1 - block_chance))  # the chance's real scoring probability
+    xg = float(xg)  # the chance's xG, as a real xG model rates it: before who shoots and saves
     roll = eng.rng.random()
     if blockers and eng.rng.random() < block_chance:
         outcome = "blocked"
@@ -1368,7 +1374,7 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     eng.emit(
         "shot", team, i, xg=round(xg, 4), outcome=outcome, header=header, penalty=penalty,
         free_kick=free_kick, distance=round(distance, 1), xa=round(bx, 1), ya=round(by, 1),
-        blockers=blockers,
+        blockers=blockers, cone=chance.cone, pressure=round(pressure, 3),
         goal_side=int(np.sum(opp_pts[outfield, 0] > bx)) if outfield else 0,
         nearest=round(float(np.min(norms(opp_pts[outfield] - ball, axis=1))), 1)
         if outfield else 99.0,

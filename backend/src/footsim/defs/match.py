@@ -204,21 +204,41 @@ class BlocksDef(DefModel):
     max: float = Field(ge=0, le=1)
 
 
+class ShotChanceDef(DefModel):
+    """The fitted logistic for a shot's chance of scoring (its xG)."""
+
+    intercept: float
+    angle: float
+    distance: float
+    header: float
+    cone: float
+    cone_max: int = Field(ge=0)
+    closeness: float
+
+
+class ShotReferenceDef(DefModel):
+    finishing: float = Field(ge=1, le=99)
+    long_shots: float = Field(ge=1, le=99)
+    heading: float = Field(ge=1, le=99)
+    keeper: float = Field(ge=1, le=99)
+
+
 class ShootingDef(DefModel):
-    """When a player goes for goal, and what the bodies in the way take off the chance
+    """A shot's chance, the ratings it stands for, and when a player goes for goal
     (data/config/match/shooting.yaml)."""
 
+    chance: ShotChanceDef
+    reference: ShotReferenceDef
     min_xg: float = Field(ge=0, le=1)
-    long_range_xg: float = Field(ge=0, le=1)
+    value: float = Field(gt=0)
     header_xg: float = Field(ge=0, le=1)
-    cone_factor: float = Field(gt=0, le=1)
-    cone_max: int = Field(ge=0)
 
 
 class ShotPressureDef(DefModel):
     radius: float = Field(gt=0)
     reference: float = Field(ge=0, le=100)
     per_point: float = Field(ge=0)
+    composure_reference: float = Field(ge=0, le=100)
 
 
 class TouchPressureDef(DefModel):

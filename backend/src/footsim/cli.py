@@ -80,6 +80,14 @@ def _build_world(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fit_shots(args: argparse.Namespace) -> int:
+    from footsim.calibration.shot_fit import fit
+
+    seasons = [tuple(int(v) for v in item.split(":")) for item in args.season or ["2:27"]]
+    print(fit(args.cache, [(c, s) for c, s in seasons]))
+    return 0
+
+
 def _cross_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.cross_engine import compare_engines
     from footsim.world.context import get_world
@@ -218,6 +226,13 @@ def main(argv: list[str] | None = None) -> int:
     cross.add_argument("--reps", type=int, default=20, help="fast-engine plays per fixture")
     cross.add_argument("--seed", type=int, default=1)
     cross.set_defaults(func=_cross_engine)
+
+    shots = sub.add_parser("fit-shots",
+                           help="fit the agent engine's shot model to StatsBomb open data")
+    shots.add_argument("--season", action="append",
+                       help="competition:season ids (default 2:27, the Premier League 2015/16)")
+    shots.add_argument("--cache", type=Path, default=_default("raw/statsbomb"))
+    shots.set_defaults(func=_fit_shots)
 
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))

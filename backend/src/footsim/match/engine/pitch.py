@@ -31,18 +31,6 @@ def goal_angle(x: float, y: float) -> float:
     return abs(math.atan2(MID_Y + GOAL_HALF - y, dx) - math.atan2(MID_Y - GOAL_HALF - y, dx))
 
 
-def expected_goal(x: float, y: float, header: bool = False, pressure: float = 0.0) -> float:
-    """Chance quality from position: a logistic model on angle and distance, fitted so that
-    the penalty spot is ~0.3, the edge of the box ~0.08 and 25 m ~0.03 in open play."""
-    distance = math.hypot(LENGTH - x, MID_Y - y)
-    z = -1.2 + 2.5 * goal_angle(x, y) - 0.11 * distance
-    value = 1.0 / (1.0 + math.exp(-z))
-    if header:
-        value *= 0.55
-    value *= 1.0 - 0.5 * pressure
-    return float(min(0.8, max(0.003, value)))
-
-
 def threat(x: Array | float, y: Array | float) -> Array:
     """Value of having the ball at (x, y): mostly driven by closeness to the opponent goal."""
     distance = np.hypot(LENGTH - np.asarray(x), MID_Y - np.asarray(y))

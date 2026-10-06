@@ -26,25 +26,32 @@ marking:
                               # of their zones after their men: more and better shots against
   commitment_max: 0.95
 blocks:
-  # Outfield players only: a shot at the keeper is his to save (actions.shot_chance).
-  reference: 60
+  # Outfield players only: a shot at the keeper is his to save (actions.shot_chance). At the
+  # reference, an average Premier League defender, the per-blocker chance is fitted so that the
+  # model blocks as many shots as were blocked in the Premier League 2015/16 (29%, matching in
+  # every distance band; calibration/shot_fit.py). It was 0.28 at a reference of 60 before.
+  reference: 75
   near: 0.8                 # m in front of the ball a defender can block a shot from...
   far: 14.0                 # ...to this far (or the goal line, if nearer)
   reach: 0.9                # m either side of a shot's line a defender can block it, at the
   reach_per_point: 0.012    # reference def_positioning, and this more per point of it...
   reach_min: 0.3            # ...but never less than this
-  chance: 0.28              # chance each blocker blocks it, at the reference bravery...
+  chance: 0.48              # chance each blocker blocks it, at the reference bravery...
   chance_per_point: 0.004   # ...and this more per point of it...
   chance_max: 0.9           # ...up to this
   max: 0.65                 # however many are in the way. Several blockers' chances combine as
                             # independent tries (two at the reference: 0.48; it was 0.28 each
                             # added up, 0.56, before 2.3f)
 shot_pressure:
-  radius: 5.0               # m: an opponent this close puts the shooter off (scaled down by
-                            # his composure: 1.2 - composure / 100)...
-  reference: 60
+  # The pressure term of the fitted shot model (shooting.yaml chance.closeness): how close the
+  # nearest outfield defender is, 1 on top of the shooter and 0 at the radius, for an average
+  # Premier League shooter (composure 74) and defender (positioning and tackling 75).
+  radius: 5.0               # m: an opponent this close puts the shooter off...
+  reference: 75
   per_point: 0.01           # ...more the better he is: positioning and tackling, per point
-                            # above the reference (so 1.2x at 80, 0.9x at 50)
+                            # above the reference (so 1.05x at 80, 0.75x at 50)...
+  composure_reference: 74   # ...and less the more composed the shooter: (1.2 - composure / 100)
+                            # against (1.2 - this / 100)
 touch_pressure:
   reference: 60
   per_point: 0.015          # an opponent at a receiver's first touch puts him off this much

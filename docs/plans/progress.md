@@ -16,7 +16,20 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
+- **Latest checkpoint (6 Oct): the engine review fixes**, a behaviour change measured on real squads ("Review of 2.3f, 2.4 and W1" below). The commit before it, ca2447e, holds the review's behaviour-neutral fixes.
+  - **Since 1 Oct, in the approved order** ("The approved order (1 Oct)" below), each its own commit:
+    - the plan: aea59dc;
+    - 2.3f, attack against defence by rating: 8170f0e and 24265b2 (WIP), 77b4cd2;
+    - 2.4, fouls and cards: 88c7cf1 and 484c1ad (WIP), 0488313;
+    - B2, the fast engine against the agent engine: dc6d5ee (tooling), 5a70414;
+    - W1, retirement and youth intake: e4fdb5f;
+    - nation pickers for the start and League pages: beb267c (a Sonnet agent's patch);
+    - W2, La Liga, Serie A, the Bundesliga, Ligue 1 and their lower divisions: 131da6f.
+  - **Tests:** `just lint` is clean, and the backend suite passes, with the Mac's golden values re-recorded and a History note.
+  - **:8000 still runs 77b4cd2 (2.3f),** from 17:53 on 1 Oct. Restart it on this checkpoint once `lsof -nP -iTCP:8000 -sTCP:ESTABLISHED` shows no connections and `GET /api/career/sim` shows no sim running. Loading a save then migrates its working copy to schema 8 (retirements). The user's careers: slot 1 Grimsby, slot 2 Wrexham, slot 3 Chelsea.
+  - **Next task:** W2b, more leagues (Portugal, the Netherlands, Scotland, Saudi Arabia, Turkey, Belgium), then W3, finances.
+  - **Calibration:** nothing running once this checkpoint's measurement is in.
+- **Before that (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
   - P15, the up/down arrows by a player's overall: e959fe4;
   - P16, club histories and past final tables: 3630131;
   - 2.3c iteration 4, crosses and long balls estimated as the physics plays them, still behind the switch: 09b1242. It was measured on real squads, which recorded the conflict that keeps the switch off and also found P14's side effect on goals;
@@ -716,12 +729,36 @@ The user allowed agents for work that doesn't need the CPU. A reviewer read the 
     - `test_defending.py` pins 2.3f's rating responses: a better marker puts a receiver off more, a better defender a shooter, and a carrier expects less against a better tackler;
     - the v8 migration;
     - Release's floor.
-- [ ] **To fix next, behaviour changes (measured as one engine checkpoint):**
-  1. **The decision to shoot sees only the pressure.** The shot then pays 0.55 for each defender in the cone and a block chance on top, so a shooter overrates his chance by up to two-thirds. That's a likely part of the shot excess: one `shot_quality` model for both.
-  2. **Keepers as the nearest opponent are read with outfield ratings** (positioning and tackling about 14), so a rushing keeper puts a shooter off half as much as before 2.3f. The same goes for first-touch pressure and carries. They should be excluded, or read with keeping ratings.
-  3. **The lapse test is a coin flip:** `t - last > 2 * DT` with floating point times. It should be 2.5 DT.
-  4. **The pass estimate's regather term can go negative** for a marker of 90+ (`close` × quality above 1). It should be clipped.
-  5. **Tunables in `actions.py`:** the blocks' reach floor and chance cap. Blocks also need their own reference.
+- [x] **Behaviour changes, measured as one engine checkpoint** (the review's list):
+  1. **The decision to shoot saw only the pressure.** The shot then paid 0.55 for each defender in the cone and a block chance on top, so a shooter overrated his chance by up to two-thirds.
+     - **Fixed:** one model, `actions.shot_chance` (`ShotChance`: pressure, the place's xG with the cone, blockers, block chance). `decide` weighs `xg × (1 − block)`, and `start_shot` plays the same numbers.
+     - **Headers too:** a header went for goal on the place's xG alone, then the shot applied the pressure, cone and blocks. It now goes for goal on `shot_chance(header=True)` (found by the second review).
+  2. **Keepers as the nearest opponent were read with outfield ratings** (positioning and tackling about 14), so a rushing keeper put a shooter off half as much as before 2.3f.
+     - **Fixed:** keepers are left out of shot pressure, the cone (already), blocks, first-touch pressure, the pass estimate's marker and the carry estimate, as they already were from duels (`MatchEngine.outfield_indices`).
+     - A keeper's part is his own: the save, his claims in his box, his gathering.
+     - **Also:** a block is credited to the nearest outfield player, never the keeper (`shot_tick`).
+     - **Not yet:** a keeper never challenges a carrier (no smother or one-on-one). That belongs with Phase D6 or E.
+  3. **The lapse test was a coin flip:** `t - last > 2 * DT` with floating-point times. Replaying the clock, one missed tick lapsed 45% of the time. It's now 2.5 DT.
+  4. **The pass estimate's regather term could go negative** for a marker of 90+ (`close` × quality above 1). It's now clipped to [0, 1].
+     - This and item 2's estimate marker sit behind 2.3c's switch (`estimate.honest`, off), so neither the golden values nor the batches see them yet.
+  5. **Tunables moved to YAML:**
+     - the blocks' reach floor and chance cap, their own reference, and the shot-line geometry (0.8–14 m): `defending.yaml` blocks;
+     - the shot thresholds (`min_xg` 0.05, `long_range_xg` 0.02, `header_xg` 0.04) and the cone (0.55 a defender, at most 3): a new `shooting.yaml`.
+     - **The same numbers are now stricter:** they're compared with the chance after the cone and the block chance.
+  - **Found by the taker test on the new build:** a restart's taker already on the ball was flagged to hurry as the restart came due, and ran onto it at 1.2 m/s (P2's bug, in an edge case: a quick free kick taken by the fouled player standing on the spot). He now stays put once within reach (`behaviours._taker`; `TAKER_REACH` moved to `state.py`).
+  - **Tests:**
+    - keepers are no marker, shooter pressure, blocker or tackler;
+    - the choice to shoot sees the bodies in the way (`decide`'s own utility);
+    - the estimate reads markers as the physics does, and the regather never goes below the first touch alone;
+    - one missed tick keeps an engagement and two lapse it, on the engine's own clock.
+    - Each new test fails on the old code.
+  - **Reviewed:** a Sonnet `engine-reviewer` agent, statically. Its findings are all in this commit:
+    - the block credit;
+    - the header gate;
+    - the decision-level and estimate tests;
+    - the thresholds and geometry in YAML;
+    - the comments.
+  - **Measured:** see below once the batch is in.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

@@ -1,6 +1,8 @@
 """Attack against defence by rating (2.3f): a defender's own ratings decide how much he puts an
 opponent off. Golden values can't show a response going the wrong way; these pin it."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -57,10 +59,9 @@ def test_a_carrier_expects_less_against_a_better_tackler(world: World) -> None:
     engine.pos[carrier], engine.pos[defender] = (60.0, 34.0), (64.5, 34.0)
     engine.ball, engine.owner = np.array([60.0, 34.0]), carrier
     ball = np.array(engine.to_att(0, 60.0, 34.0))
-    opp_pts = engine.att_points(0, engine.pos[engine.team_indices(1)])
 
     def best_carry() -> float:
-        options = actions._carry_options(engine, carrier, 0, ball, opp_pts, 0.0)
+        options = actions._carry_options(engine, carrier, 0, ball, 0.0)
         return max(u for u, kind, payload in options
                    if kind == "carry" and payload.target != (float(ball[0]), float(ball[1])))
 
@@ -68,3 +69,104 @@ def test_a_carrier_expects_less_against_a_better_tackler(world: World) -> None:
     easy = best_carry()
     _set(engine, defender, standing_tackle=90, def_positioning=90, strength=90)
     assert best_carry() < easy
+
+
+def _keeper(engine: MatchEngine) -> int:
+    keeper = engine.keeper(1)
+    assert keeper is not None
+    return keeper
+
+
+def test_a_keeper_is_no_outfield_marker_shooter_pressure_or_blocker(world: World) -> None:
+    """The keeper's part is the save and his own claims: he never counts as an outfield
+    defender, read with outfield ratings he hasn't got."""
+    engine = _engine(world)
+    shooter, keeper = 9, _keeper(engine)
+    engine.pos[shooter], engine.pos[keeper] = (92.0, 34.0), (94.0, 34.0)  # right in the way
+    bx, by = engine.to_att(0, 92.0, 34.0)
+    chance = actions.shot_chance(engine, shooter, 0, bx, by)
+    assert chance.pressure == 0 and chance.blockers == 0 and chance.block == 0
+    assert actions._touch_pressure(engine, shooter) == 0
+
+
+def test_the_shooter_weighs_up_the_bodies_in_the_way_as_the_shot_plays_them(world: World) -> None:
+    """One model for the shot and the choice to take it: a defender in the shot's line makes
+    the chance smaller (in the cone) and blockable, for both."""
+    engine = _engine(world)
+    shooter, defender = 9, 14
+    engine.pos[shooter] = (88.0, 34.0)
+    bx, by = engine.to_att(0, 88.0, 34.0)
+    clear = actions.shot_chance(engine, shooter, 0, bx, by)
+    engine.pos[defender] = (94.0, 34.0)  # 6 m out, in the line, beyond pressure range
+    blocked = actions.shot_chance(engine, shooter, 0, bx, by)
+    assert clear.blockers == 0 and clear.block == 0
+    assert blocked.blockers == 1 and 0 < blocked.block < 1
+    assert blocked.pressure == clear.pressure == 0
+    assert blocked.xg < clear.xg
+
+
+def test_the_choice_to_shoot_sees_the_bodies_in_the_way(world: World) -> None:
+    """decide weighs the shot up as start_shot will play it: a defender in the line, too far
+    off to put the shooter off, still makes the shot worth less to him."""
+
+    def shot_utility(blocked: bool) -> float:
+        engine = _engine(world)
+        assert engine.attack_dir[0] > 0
+        shooter, defender = 9, 14
+        engine.pos[shooter] = (94.0, 34.0)
+        if blocked:
+            engine.pos[defender] = (100.0, 34.0)  # 6 m out, in the line
+        engine.ball, engine.owner = np.array([94.0, 34.0]), shooter
+        engine.debug = True
+        actions.decide(engine, shooter)
+        assert engine.decision_debug is not None
+        return float(next(o["utility"] for o in engine.decision_debug["options"]
+                          if o["kind"] == "shot"))
+
+    assert shot_utility(blocked=True) < shot_utility(blocked=False)
+
+
+def test_a_keeper_in_his_way_is_no_tackler_to_a_carrier(world: World) -> None:
+    """Keepers never challenge a carrier (duels.contest), so a carrier's options are the same
+    with the keeper in front of him as without."""
+    engine = _engine(world)
+    carrier, keeper = 9, _keeper(engine)
+    engine.pos[carrier] = (88.0, 34.0)
+    engine.ball, engine.owner = np.array([88.0, 34.0]), carrier
+    ball = np.array(engine.to_att(0, 88.0, 34.0))
+    alone = actions._carry_options(engine, carrier, 0, ball, 0.0)
+    engine.pos[keeper] = (92.5, 34.0)
+    assert actions._carry_options(engine, carrier, 0, ball, 0.0) == alone
+
+
+def test_the_pass_estimate_reads_markers_as_the_physics_does(world: World) -> None:
+    """The passer's estimate of the receiver securing the ball (2.3c, behind its switch): a
+    keeper near the target is no marker, and even a top marker on the target leaves a heavy
+    touch some chance of being won back, so securing it is never less likely than the first
+    touch alone."""
+    engine = _engine(world)
+    passer, receiver, marker, keeper = 5, 9, 14, _keeper(engine)
+    engine.pos[passer], engine.pos[receiver] = (50.0, 34.0), (65.0, 34.0)
+    engine.ball, engine.owner = np.array([50.0, 34.0]), passer
+
+    def secure() -> float:
+        pts = engine.att_points(0, engine.pos)
+        opps = engine.team_indices(1)
+        target = pts[[receiver]]
+        length = np.linalg.norm(target - pts[passer], axis=1)
+        parts = actions._estimate_parts(engine, passer, 0, [receiver], ["pass"], target, length,
+                                        np.array([False]), pts[passer], opps, pts[opps], pts,
+                                        0.0)
+        return float(parts.secure[0])
+
+    nobody = secure()
+    engine.pos[keeper] = (65.5, 34.0)
+    assert secure() == nobody
+    engine.pos[keeper] = (-50.0, -50.0)
+    engine.pos[marker] = (65.5, 34.0)
+    _set(engine, marker, marking=100)
+    marked = secure()
+    estimate = engine.defs.passing.estimate.model_copy(update={"regather": (0.0, 0.0)})
+    engine.defs = replace(engine.defs, passing=engine.defs.passing.model_copy(
+        update={"estimate": estimate}))  # the first touch alone
+    assert secure() <= marked < nobody

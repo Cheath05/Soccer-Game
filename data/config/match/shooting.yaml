@@ -1,0 +1,11 @@
+# Going for goal in the agent engine (actions.decide, actions._aerial, actions.shot_chance).
+#
+# The thresholds are compared with the chance as the shot will play it: the place's expected
+# goals with the pressure on the shooter and the bodies in the way, less the chance of a block
+# (before his finishing and the keeper). Until the engine review fixes (6 Oct) the choice saw
+# only the place and the pressure, so the same numbers let through more shots than they do now.
+min_xg: 0.05          # open play: nobody shoots from hopeless positions...
+long_range_xg: 0.02   # ...except from 18-30 m with room to shoot
+header_xg: 0.04       # a header this good goes for goal; otherwise it's knocked down
+cone_factor: 0.55     # each outfield defender between the ball and the posts multiplies the
+cone_max: 3           # place's expected goals by this, counting at most this many

@@ -44,7 +44,12 @@ marking, positioning and bravery (2.3f WIP iteration 1, Mac only); a carrier wei
 defender in his way as the duel would, and pressure on shooters and on first touches from
 the defender's quality too (2.3f WIP iteration 2, Mac only); a booked player's caution
 applied once, cards growing smoothly with aggression, red cards for denying an obvious
-goal-scoring chance, and lapsed engagements sized up again (2.4, Mac only).
+goal-scoring chance, and lapsed engagements sized up again (2.4, Mac only); the choice to
+shoot weighing up the bodies in the way and the chance of a block as the shot plays them,
+keepers no longer counted as outfield markers, shooter pressure, blockers or carriers'
+tacklers, an engagement kept through one missed tick whatever the clock's rounding, and a
+restart's taker already on the ball no longer hurrying onto it as the restart comes due
+(engine review fixes, Mac only).
 """
 
 import json

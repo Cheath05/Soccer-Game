@@ -20,7 +20,7 @@ from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RunType
 from footsim.match.engine import set_pieces
 from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH, norm, norms
-from footsim.match.engine.state import Restart
+from footsim.match.engine.state import TAKER_REACH, Restart
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -50,13 +50,14 @@ def update_targets(eng: "MatchEngine") -> None:
 
 def _taker(eng: "MatchEngine", restart: Restart, i: int) -> None:
     """The taker goes to the ball and stops on it. He jogs over while there's time, and runs
-    only if jogging would get him there too late."""
+    only if jogging would get him there too late. Once he's on the ball there's nothing to
+    hurry for: he takes it from where he stands (restarts.tick)."""
     eng.target[i] = restart.spot
     eng.settle[i] = True
     distance = float(norm(eng.pos[i] - np.array(restart.spot)))
     jog = JOG * float(eng.max_speed[i]) * (0.7 + 0.3 * float(eng.stamina[i]))
     arrival = eng.t + distance / max(jog, 0.5) + eng.defs.restarts.taker_hurry_margin
-    eng.urgent[i] = arrival >= restart.ready_at
+    eng.urgent[i] = distance > TAKER_REACH and arrival >= restart.ready_at
 
 
 def _phase(ball_x: float, attacking: bool) -> Phase:

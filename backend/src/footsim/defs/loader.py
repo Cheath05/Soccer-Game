@@ -29,6 +29,7 @@ from footsim.defs.match import (
     PresentationDef,
     QuickEngineParams,
     RestartsDef,
+    ShootingDef,
     TacticsDef,
 )
 from footsim.defs.nations import NationDef, NationsFile
@@ -64,6 +65,7 @@ class GameDefinitions:
     duels: DuelsDef
     passing: PassingDef
     defending: DefendingDef
+    shooting: ShootingDef
     tactics: TacticsDef
     home_advantage: HomeAdvantageDef
     development: DevelopmentDef
@@ -126,6 +128,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         duels=_parse(DuelsDef, root / "match" / "duels.yaml"),
         passing=_parse(PassingDef, root / "match" / "passing.yaml"),
         defending=_parse(DefendingDef, root / "match" / "defending.yaml"),
+        shooting=_parse(ShootingDef, root / "match" / "shooting.yaml"),
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
         development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),

@@ -19,12 +19,10 @@ import numpy as np
 from footsim.defs.positions import PositionGroup
 from footsim.match.engine import actions
 from footsim.match.engine.pitch import LENGTH, MID_Y, WIDTH, in_box, norm
-from footsim.match.engine.state import Restart
+from footsim.match.engine.state import TAKER_REACH, Restart
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
-
-TAKER_REACH = 1.2  # the taker is on the ball within this distance of the spot
 
 
 def award(eng: "MatchEngine", kind: str, team: int, spot: tuple[float, float],

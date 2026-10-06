@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 MAX_SUBS = 5
+TAKER_REACH = 1.2  # m: a restart's taker is on the ball within this distance of the spot
 
 
 @dataclass

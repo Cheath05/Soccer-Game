@@ -1,5 +1,5 @@
 # Defending in the agent engine: how a defender's own ratings decide how closely he marks his
-# man and how often he gets in the way of a shot (behaviours._defend, actions.start_shot).
+# man and how often he gets in the way of a shot (behaviours._defend, actions.shot_chance).
 #
 # Better attackers already pass, control and finish better. Before 2.3f nothing a defender was
 # rated for changed where he stood, so equal sides took more shots the better both were:
@@ -26,10 +26,16 @@ marking:
                               # of their zones after their men: more and better shots against
   commitment_max: 0.95
 blocks:
+  # Outfield players only: a shot at the keeper is his to save (actions.shot_chance).
+  reference: 60
+  near: 0.8                 # m in front of the ball a defender can block a shot from...
+  far: 14.0                 # ...to this far (or the goal line, if nearer)
   reach: 0.9                # m either side of a shot's line a defender can block it, at the
-  reach_per_point: 0.012    # reference def_positioning, and this more per point of it
+  reach_per_point: 0.012    # reference def_positioning, and this more per point of it...
+  reach_min: 0.3            # ...but never less than this
   chance: 0.28              # chance each blocker blocks it, at the reference bravery...
-  chance_per_point: 0.004   # ...and this more per point of it
+  chance_per_point: 0.004   # ...and this more per point of it...
+  chance_max: 0.9           # ...up to this
   max: 0.65                 # however many are in the way. Several blockers' chances combine as
                             # independent tries (two at the reference: 0.48; it was 0.28 each
                             # added up, 0.56, before 2.3f)

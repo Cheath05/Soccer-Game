@@ -54,9 +54,6 @@ _FURTHER = np.array([0.0, 3.0, 6.0, 10.0])  # m beyond the nearest point a recei
 KEEPER_REACH = 2.4  # arms: keepers gather balls further away in their own box
 KEEPER_DIVE = 2.5  # how far a keeper can throw himself to catch a shot
 NO_OFFSIDE = frozenset({"throw_in", "goal_kick", "corner"})  # restarts (Law 11)
-MIN_SHOT_XG = 0.05  # open play: nobody shoots from hopeless positions...
-LONG_SHOT_XG = 0.02  # ...except from 18-30 m with room to shoot
-HEADER_ON_GOAL_XG = 0.04  # a header this good goes for goal; otherwise it's knocked down
 
 
 @dataclass(frozen=True)
@@ -74,6 +71,17 @@ class CarryOption:
 
 
 Option = tuple[float, str, PassOption | CarryOption | None]
+
+
+@dataclass(frozen=True)
+class ShotChance:
+    """A shot from where the ball is, before the shooter's finishing and the keeper come in:
+    start_shot plays it so, and decide weighs it up the same way."""
+
+    pressure: float  # 0-1: the nearest outfield opponent putting him off (shot_pressure)
+    xg: float  # the place's expected goals, with that pressure and the bodies in the way
+    blockers: int  # outfield opponents close enough to the shot's line to block it
+    block: float  # the chance one of them does
 
 
 def _sigmoid(x: float | np.ndarray) -> float | np.ndarray:
@@ -153,15 +161,19 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     # Shooting: worth it when the chance is good, or from range with room to shoot.
     if mode in (None, "free_kick") and bx > 66:
         distance = math.hypot(LENGTH - bx, MID_Y - by)
-        xg = expected_goal(bx, by, pressure=shot_pressure(eng, i, team, bx, by))
+        # He sees the chance as the shot will play it: the place, the man closing him down,
+        # and the bodies between him and the goal (start_shot).
+        chance = shot_chance(eng, i, team, bx, by)
+        xg = chance.xg * (1 - chance.block)
         preference = (1.0 + 0.6 * role.on_ball.shoot_bias
                       + eng.effect(team, "mentality").shoot_preference)
         long_range = 18 < distance < 30
         if long_range:
             preference *= 0.45 + eng.a(i, "long_shots") / 140
         room = nearest > 3.0
-        if (xg >= MIN_SHOT_XG or mode == "free_kick"
-                or (long_range and room and xg >= LONG_SHOT_XG)):
+        shooting = eng.defs.shooting
+        if (xg >= shooting.min_xg or mode == "free_kick"
+                or (long_range and room and xg >= shooting.long_range_xg)):
             # A shot that doesn't go in gives the ball up (a save, a miss, a block), as a pass
             # that fails does: a hopeful shot is worth less than keeping the attack going.
             utility = xg * preference * 0.95 - (1 - xg) * float(loss_cost(bx, by))
@@ -174,7 +186,7 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
 
     # Carrying the ball.
     if mode is None:
-        options += _carry_options(eng, i, team, ball, opp_pts, pressure)
+        options += _carry_options(eng, i, team, ball, pressure)
 
     if not options:
         return
@@ -328,12 +340,14 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
 
 
 def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
-                   opp_pts: np.ndarray, pressure: float) -> list[Option]:
+                   pressure: float) -> list[Option]:
     bx, by = ball
     role = eng.role[i]
     options: list[Option] = []
     toward_goal = by + (MID_Y - by) * (0.35 if bx > 70 else 0.1)
-    opps = eng.team_indices(1 - team)
+    # Keepers never challenge a carrier (duels.contest), so only outfield players are in his way.
+    opps = eng.outfield_indices(1 - team)
+    opp_pts = eng.att_points(team, eng.pos[opps])
     dribble = duels.dribble_score(eng, i)
     for dy in (-6.0, 0.0, 6.0):
         aim = np.array([min(bx + 8.0, LENGTH - 2), float(np.clip(toward_goal + dy, 3, 65))])
@@ -778,13 +792,15 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
         p_path = np.prod(1 - take, axis=1)
     # Securing it: his first touch under pressure, and a heavy touch won back or not. The
     # pressure is the nearest opponent's when the ball gets there, after he has closed in.
-    if len(opps):
-        to_target = norms(target[:, None, :] - opp_pts[None, :, :], axis=2)
-        closed = est.closing * _run_distance(eng, opps[None, :],
+    outfield = np.array([eng.group[int(o)] is not PositionGroup.GK for o in opps], dtype=bool)
+    if outfield.any():
+        markers, marker_pts = opps[outfield], opp_pts[outfield]
+        to_target = norms(target[:, None, :] - marker_pts[None, :, :], axis=2)
+        closed = est.closing * _run_distance(eng, markers[None, :],
                                              t_arrive[:, None] - est.opponent_reaction)
         after = np.maximum(0.0, to_target - closed)
         marker = after.min(axis=1)
-        quality = _marker_factor(eng, opps[np.argmin(after, axis=1)])
+        quality = _marker_factor(eng, markers[np.argmin(after, axis=1)])
     else:
         marker = np.full(len(recv), 20.0)
         quality = np.ones(len(recv))
@@ -796,7 +812,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
     first_touch = (control.receiver * ((1 - w) + w * touch / 100) * pace_factor
                    * (1 - control.pressure_penalty * close * (1 - touch / 100)))
     free, pressed = est.regather
-    regather = free - (free - pressed) * close
+    regather = np.clip(free - (free - pressed) * close, 0.0, 1.0)  # a top marker: below pressed
     secure = first_touch + (1 - first_touch) * regather
     # A long ball is whoever's who gets to where it drops, as the physics plays it.
     for k in np.flatnonzero(lofted & ~cross):
@@ -980,7 +996,9 @@ def _touch_pressure(eng: "MatchEngine", c: int) -> float:
     """0-1: how close the nearest opponent is to a player taking the ball, scaled so an
     opponent on top of him costs the full control penalty."""
     control = eng.defs.passing.control
-    opps = eng.team_indices(1 - int(eng.team_of[c]))
+    # Outfield opponents: a keeper near the ball in his own box comes for it himself, with his
+    # handling (resolve_loose_or_pass), rather than putting the receiver off.
+    opps = eng.outfield_indices(1 - int(eng.team_of[c]))
     if not len(opps):
         return 0.0
     gaps = norms(eng.pos[opps] - eng.pos[c], axis=1)
@@ -1125,7 +1143,9 @@ def _aerial(eng: "MatchEngine", info: PassInfo) -> bool:
                  by=best_a)
         eng.ball_z = 0.0
         hx, hy = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
-        if expected_goal(hx, hy, header=True) >= HEADER_ON_GOAL_XG:
+        # As a shot from the ground is weighed up: the header as start_shot will play it.
+        chance = shot_chance(eng, best_a, team, hx, hy, header=True)
+        if chance.xg * (1 - chance.block) >= eng.defs.shooting.header_xg:
             eng.owner = best_a
             start_shot(eng, best_a, header=True)
         else:  # no angle for goal: he nods it down for a teammate
@@ -1204,12 +1224,41 @@ def _clear(eng: "MatchEngine", k: int, headed: bool = False) -> None:
 # --- shots -----------------------------------------------------------------------------
 
 
+def shot_chance(eng: "MatchEngine", i: int, team: int, bx: float, by: float,
+                header: bool = False) -> ShotChance:
+    """Player ``i``'s shot from (bx, by) (attacking frame): the pressure on him, the place's
+    expected goals with the defenders in the way, and his chance of having it blocked. Only
+    outfield opponents: the keeper's part is the save (start_shot)."""
+    distance = math.hypot(LENGTH - bx, MID_Y - by)
+    opps = eng.outfield_indices(1 - team)
+    opp_pts = eng.att_points(team, eng.pos[opps])
+    pressure = shot_pressure(eng, i, team, bx, by)
+    shooting = eng.defs.shooting
+    cone = min(_defenders_in_cone(bx, by, opp_pts), shooting.cone_max)
+    xg = expected_goal(bx, by, header=header, pressure=pressure) * shooting.cone_factor**cone
+    # Defenders in the shot's line can block it: how far either side of it each reaches is
+    # his positioning, and how often he gets a body on it his bravery (defending.yaml).
+    rules = eng.defs.defending.blocks
+    goal_dir = np.array([LENGTH - bx, MID_Y - by]) / max(distance, 1e-6)
+    rel = opp_pts - np.array([bx, by])
+    along = rel @ goal_dir
+    perp = np.abs(rel[:, 0] * goal_dir[1] - rel[:, 1] * goal_dir[0])
+    reach = np.maximum(rules.reach_min, rules.reach + rules.reach_per_point
+                       * (eng.attr[opps, ATTR_INDEX["def_positioning"]] - rules.reference))
+    in_line = (along > rules.near) & (along < min(distance, rules.far)) & (perp < reach)
+    chance = np.clip(rules.chance + rules.chance_per_point
+                     * (eng.attr[opps, ATTR_INDEX["bravery"]] - rules.reference),
+                     0.0, rules.chance_max)
+    block = min(rules.max, 1.0 - float(np.prod(1.0 - chance[in_line])))
+    return ShotChance(pressure, xg, int(np.sum(in_line)), block)
+
+
 def shot_pressure(eng: "MatchEngine", i: int, team: int, bx: float, by: float) -> float:
-    """0-1: how much the nearest opponent puts a shooter off. Closer and better defenders more
-    (their positioning and tackling), a composed shooter less (defending.yaml shot_pressure).
-    One model for the shot and for his choice to take it."""
+    """0-1: how much the nearest outfield opponent puts a shooter off. Closer and better
+    defenders more (their positioning and tackling), a composed shooter less (defending.yaml
+    shot_pressure). A keeper's part is the save."""
     rules = eng.defs.defending.shot_pressure
-    opps = eng.team_indices(1 - team)
+    opps = eng.outfield_indices(1 - team)
     if not len(opps):
         return 0.0
     gaps = norms(eng.att_points(team, eng.pos[opps]) - np.array([bx, by]), axis=1)
@@ -1227,8 +1276,11 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
     distance = math.hypot(LENGTH - bx, MID_Y - by)
     opps = eng.team_indices(1 - team)
     opp_pts = eng.att_points(team, eng.pos[opps])
-    pressure = 0.0 if (penalty or free_kick) else shot_pressure(eng, i, team, bx, by)
-    cone = 0 if (penalty or free_kick) else _defenders_in_cone(eng, team, bx, by, opp_pts)
+    # A penalty or a direct free kick is struck unchallenged (the wall is in the free kick's
+    # expected goals); anything else is the chance decide weighed up.
+    chance = (ShotChance(0.0, 0.0, 0, 0.0) if (penalty or free_kick)
+              else shot_chance(eng, i, team, bx, by, header=header))
+    pressure = chance.pressure
     keeper = eng.keeper(1 - team)
     gk = (np.mean([eng.a(keeper, a) for a in ("gk_reflexes", "gk_diving", "gk_positioning")])
           if keeper is not None else 25.0)
@@ -1247,29 +1299,13 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
             skill = eng.a(i, "long_shots")
         else:
             skill = eng.a(i, "finishing")
-        xg = expected_goal(bx, by, header=header, pressure=pressure) * 0.55**min(cone, 3)
-        if free_kick:
-            xg = max(0.02, 0.09 - 0.0025 * max(distance - 18, 0))
+        xg = (max(0.02, 0.09 - 0.0025 * max(distance - 18, 0)) if free_kick
+              else chance.xg)
         p_on = float(np.clip(0.20 + 0.40 * skill / 100 - 0.012 * max(distance - 10, 0)
                              - 0.15 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92))
         p_goal = xg * (0.7 + 0.35 * skill / 100) * (1.3 - 0.6 * gk / 100)
     p_on = max(p_on, min(0.95, p_goal / 0.95))
-    blockers, block_chance = 0, 0.0
-    if not (penalty or free_kick):
-        # Defenders in the shot's line can block it: how far either side of it each reaches is
-        # his positioning, and how often he gets a body on it his bravery (defending.yaml).
-        rules, reference = eng.defs.defending.blocks, eng.defs.defending.marking.reference
-        goal_dir = np.array([LENGTH - bx, MID_Y - by]) / max(distance, 1e-6)
-        rel = opp_pts - np.array([bx, by])
-        along = rel @ goal_dir
-        perp = np.abs(rel[:, 0] * goal_dir[1] - rel[:, 1] * goal_dir[0])
-        reach = np.maximum(0.3, rules.reach + rules.reach_per_point
-                           * (eng.attr[opps, ATTR_INDEX["def_positioning"]] - reference))
-        in_line = (along > 0.8) & (along < min(distance, 14)) & (perp < reach)
-        blockers = int(np.sum(in_line))
-        chance = np.clip(rules.chance + rules.chance_per_point
-                         * (eng.attr[opps, ATTR_INDEX["bravery"]] - reference), 0.0, 0.9)
-        block_chance = min(rules.max, 1.0 - float(np.prod(1.0 - chance[in_line])))
+    blockers, block_chance = chance.blockers, chance.block
     xg = float(p_goal * (1 - block_chance))  # the chance's real scoring probability
     roll = eng.rng.random()
     if blockers and eng.rng.random() < block_chance:
@@ -1372,21 +1408,15 @@ def _save_window(eng: "MatchEngine", team: int, keeper: int | None, bx: float,
     return (low, high) if low <= high else None
 
 
-def _defenders_in_cone(eng: "MatchEngine", team: int, bx: float, by: float,
-                       opp_pts: np.ndarray) -> int:
-    """Outfield opponents inside the triangle between the ball and the goal posts."""
-    count = 0
-    keeper = eng.keeper(1 - team)
-    opps = eng.team_indices(1 - team)
-    for k, (x, y) in zip(opps.tolist(), opp_pts.tolist(), strict=True):
-        if k == keeper or x <= bx:
-            continue
-        share = (x - bx) / max(LENGTH - bx, 0.1)
-        low = by + share * (MID_Y - GOAL_HALF - by)
-        high = by + share * (MID_Y + GOAL_HALF - by)
-        if min(low, high) - 0.5 <= y <= max(low, high) + 0.5:
-            count += 1
-    return count
+def _defenders_in_cone(bx: float, by: float, pts: np.ndarray) -> int:
+    """How many of ``pts`` (outfield opponents, attacking frame) are inside the triangle
+    between the ball and the goal posts."""
+    share = (pts[:, 0] - bx) / max(LENGTH - bx, 0.1)
+    low = by + share * (MID_Y - GOAL_HALF - by)
+    high = by + share * (MID_Y + GOAL_HALF - by)
+    inside = ((np.minimum(low, high) - 0.5 <= pts[:, 1])
+              & (pts[:, 1] <= np.maximum(low, high) + 0.5))
+    return int(np.sum((pts[:, 0] > bx) & inside))
 
 
 def shot_tick(eng: "MatchEngine") -> None:
@@ -1398,7 +1428,7 @@ def shot_tick(eng: "MatchEngine") -> None:
     team = int(eng.team_of[info.shooter])
     if info.outcome == "blocked":
         eng.shot_info = None
-        blockers = eng.team_indices(1 - team)
+        blockers = eng.outfield_indices(1 - team)  # only outfield players block (shot_chance)
         blocker = int(blockers[np.argmin(norms(eng.pos[blockers] - eng.ball, axis=1))])
         roll = eng.rng.random()
         eng.emit("block", 1 - team, blocker,

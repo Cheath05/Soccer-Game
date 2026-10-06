@@ -66,3 +66,27 @@ def test_a_lapsed_engagement_starts_again(world: World) -> None:
     engine.engaged[defender] = (carrier, 10.0, 10.0)  # engaged long ago, then let go
     duels.contest(engine, carrier)
     assert engine.engaged[defender][1] == pytest.approx(100.0)  # since: now
+
+
+def test_one_missed_tick_keeps_an_engagement_and_two_let_it_lapse(world: World) -> None:
+    """Whatever the clock's rounding: on the engine's own clock, a defender who was not the
+    nearest for one tick is still engaged, and one away for two ticks sizes the carrier up
+    again. (At 2 ticks exactly, the test used to go either way about half the time.)"""
+    engine = _engine(world, 5)
+    carrier, defender = 9, 14
+    engine.pos[carrier], engine.pos[defender] = (60.0, 34.0), (61.0, 34.0)
+    engine.ball, engine.owner = np.array([60.0, 34.0]), carrier
+    for start in range(200):
+        engine.t = 0.0
+        for _ in range(start):
+            engine.t += duels.DT
+        last = engine.t
+        for missed, lapsed in ((1, False), (2, True)):
+            engine.t = last
+            for _ in range(missed + 1):
+                engine.t += duels.DT
+            engine.engaged[defender] = (carrier, -5.0, last)
+            engine.tackle_ready[defender] = 0.0
+            duels.contest(engine, carrier)
+            since = engine.engaged[defender][1]
+            assert (since == engine.t) is lapsed, (start, missed)

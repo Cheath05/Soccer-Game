@@ -248,6 +248,12 @@ class MatchEngine:
         idx: npt.NDArray[np.int64] = np.flatnonzero(self.active & (self.team_of == team))
         return idx
 
+    def outfield_indices(self, team: int) -> npt.NDArray[np.int64]:
+        """``team``'s players on the pitch other than its keeper."""
+        idx = self.team_indices(team)
+        keep: npt.NDArray[np.int64] = idx[[self.group[i] is not PositionGroup.GK for i in idx]]
+        return keep
+
     def keeper(self, team: int) -> int | None:
         for i in self.team_indices(team):
             if self.group[i] is PositionGroup.GK:

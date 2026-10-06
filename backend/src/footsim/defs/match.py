@@ -192,11 +192,27 @@ class MarkingDef(DefModel):
 
 
 class BlocksDef(DefModel):
+    reference: float = Field(ge=0, le=100)
+    near: float = Field(ge=0)
+    far: float = Field(gt=0)
     reach: float = Field(gt=0)
     reach_per_point: float = Field(ge=0)
+    reach_min: float = Field(gt=0)
     chance: float = Field(ge=0, le=1)
     chance_per_point: float = Field(ge=0)
+    chance_max: float = Field(ge=0, le=1)
     max: float = Field(ge=0, le=1)
+
+
+class ShootingDef(DefModel):
+    """When a player goes for goal, and what the bodies in the way take off the chance
+    (data/config/match/shooting.yaml)."""
+
+    min_xg: float = Field(ge=0, le=1)
+    long_range_xg: float = Field(ge=0, le=1)
+    header_xg: float = Field(ge=0, le=1)
+    cone_factor: float = Field(gt=0, le=1)
+    cone_max: int = Field(ge=0)
 
 
 class ShotPressureDef(DefModel):

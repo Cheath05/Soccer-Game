@@ -54,7 +54,9 @@ def contest(eng: "MatchEngine", i: int) -> bool:
         eng.engaged.pop(k, None)
         return False
     carrier, since, last = eng.engaged.get(k, (-1, 0.0, -1.0))
-    if carrier != i or eng.t - last > 2 * DT:
+    # Missing one tick (someone else nearest for a moment) keeps it going; missing two lets it
+    # lapse. Halfway between, so the clock's rounding can't tip it either way.
+    if carrier != i or eng.t - last > 2.5 * DT:
         since = eng.t  # a new engagement, or one he had let lapse: he sizes the carrier up again
     eng.engaged[k] = (i, since, eng.t)
 

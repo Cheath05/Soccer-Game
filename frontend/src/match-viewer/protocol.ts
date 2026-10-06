@@ -121,6 +121,7 @@ export interface DebugTeam {
   attacking?: boolean
   width?: number
   back?: number // x of the back line
+  mid?: number | null // x of the midfield line, out of possession
   front?: number // x of the front line
   pressers?: number[]
   offside?: number | null // x of the offside line this team attacks against

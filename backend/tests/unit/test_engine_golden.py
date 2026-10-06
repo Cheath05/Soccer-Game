@@ -52,7 +52,9 @@ restart's taker already on the ball no longer hurrying onto it as the restart co
 (engine review fixes, Mac only); a shot's chance from a model fitted to real shots with their
 freeze frames (place, header, defenders in the cone, pressure), blocks at the real rate,
 finishing and keeping centred on Premier League averages, and shots an option from xG .015
-worth twice their xG against keeping the ball (S1 and S2, Mac only).
+worth twice their xG against keeping the ball (S1 and S2, Mac only); out of possession,
+three lines placed from the ball (back line, midfield goal-side of it, forwards upfield)
+with the wide players dropping into the midfield line (Phase D2, Mac only).
 """
 
 import json

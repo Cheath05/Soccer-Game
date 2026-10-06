@@ -2,8 +2,10 @@
 
 Every few ticks each team recomputes its players' targets:
   1. Formation anchors: the slot's base position plus the formation's and the role's
-     offsets for the current phase, stretched between a back line and a front line that
-     depend on the ball, the defensive-line instruction and the mentality.
+     offsets for the current phase. In possession they're stretched between a back line and
+     a front line that depend on the ball and the mentality. Out of possession the side
+     stands in three lines placed from the ball (shape.yaml): the back line, the midfield
+     and the forwards, each slot on its line or between two of them.
   2. In possession: attackers respect the offside line, forwards with a taste for runs hold
      on the last defender's shoulder, and players near the ball move into open space.
   3. Out of possession: the nearest players press the ball (more of them with high
@@ -30,6 +32,7 @@ COUNTER_PRESS_SECONDS = 4.0
 MARKING_GROUPS = {PositionGroup.CB, PositionGroup.FB, PositionGroup.DM, PositionGroup.CM}
 MARKING_GROUPS_HIGH_PRESS = MARKING_GROUPS | {PositionGroup.AM, PositionGroup.W}
 X_BACK, X_FRONT = 0.18, 0.70  # formation x of the back line and the strikers
+X_MID = 0.42  # formation x of the midfield line (central midfielders .40, wide ones .44)
 CANDIDATE_ANGLES = np.linspace(0, 2 * np.pi, 8, endpoint=False)
 JOG = 0.62  # share of top speed a player not in a hurry covers ground at (MatchEngine)
 
@@ -84,6 +87,7 @@ def _team(eng: "MatchEngine", team: int) -> None:
     phase = _phase(bx, attacking)
     slots = {s.id: s for s in eng.formation[team].slots}
 
+    lines: tuple[float, float, float] | None = None  # out of possession: back, mid, front
     if attacking and not kickoff:
         push = eng.effect(team, "mentality").push
         back = float(np.clip(bx - 32 + push, 14, 52))
@@ -91,22 +95,22 @@ def _team(eng: "MatchEngine", team: int) -> None:
         width = eng.effect(team, "width").width
         shift = 0.22
     else:
-        line_effect = eng.effect(team, "line")
-        line = line_effect.height
-        back = float(np.clip(min(line, bx - 9), 6, line))
-        if ins.get("pressing") == "high" and bx > 60 and not kickoff:
-            back = line + 4
-        front = back + line_effect.span
         width = 0.72 * eng.effect(team, "width").width
         shift = 0.42
         if kickoff:
             back, front = 22.0, 49.0
+        else:
+            line_effect = eng.effect(team, "line")
+            lines = _defending_lines(eng, bx, line_effect.height, line_effect.span,
+                                     ins.get("pressing") == "high")
+            back, front = lines[0], lines[2]
     stretch = (front - back) / (X_FRONT - X_BACK)
     if eng.debug:
         eng.shape_debug[team] = {
             "phase": "set_piece" if restart is not None else phase.value,
             "attacking": attacking, "width": round(width, 1),
             "back": round(eng.to_pitch(team, back, MID_Y)[0], 1),
+            "mid": round(eng.to_pitch(team, lines[1], MID_Y)[0], 1) if lines else None,
             "front": round(eng.to_pitch(team, front, MID_Y)[0], 1),
             "pressers": [], "offside": None,
         }
@@ -132,7 +136,13 @@ def _team(eng: "MatchEngine", team: int) -> None:
                 targets[k] = sweep
                 eng.urgent[i] = True
             continue
-        x = back + (xn - X_BACK) * stretch
+        if lines is not None:
+            drop = eng.defs.shape.defending
+            if bx < drop.drop_within and eng.group[i] in drop.drop:
+                xn = min(xn, drop.drop[eng.group[i]])  # wide players into the midfield line
+            x = _line_x(xn, *lines)
+        else:
+            x = back + (xn - X_BACK) * stretch
         y = MID_Y + (yn - 0.5) * width + (by - MID_Y) * shift
         targets[k] = (x, y)
 
@@ -166,6 +176,32 @@ def _team(eng: "MatchEngine", team: int) -> None:
         if chaser is not None:
             eng.target[chaser] = eng.ball + eng.ball_v * 0.4
             eng.urgent[chaser] = True
+
+
+def _defending_lines(eng: "MatchEngine", bx: float, height: float, span: float,
+                     pressing_high: bool) -> tuple[float, float, float]:
+    """Out of possession, with the ball ``bx`` m from our goal: our back line, midfield and
+    forwards, in m from our goal (shape.yaml defending). The back line keeps its buffer
+    goal-side of the ball, no higher than the line instruction's height (4 m more when we press
+    high and the ball is in their third). The midfield keeps just goal-side of the ball and
+    the forwards a little upfield of it, each within its gap of the line behind, and the whole
+    side within the instruction's span."""
+    rules = eng.defs.shape.defending
+    top = height + 4 if pressing_high and bx > 60 else height
+    back = float(np.clip(min(top, bx - rules.back_buffer), rules.back_floor, top))
+    low, high = rules.mid_gap
+    mid = float(np.clip(bx - rules.mid_buffer, back + low, back + min(high, span)))
+    low, high = rules.front_gap
+    front = float(np.clip(bx + rules.front_ahead, mid + low, min(mid + high, back + span)))
+    return back, mid, max(front, mid)
+
+
+def _line_x(xn: float, back: float, mid: float, front: float) -> float:
+    """A formation x (0-1) on the pitch between the three lines: X_BACK on the back line,
+    X_MID on the midfield, X_FRONT on the forwards, straight in between (and beyond)."""
+    if xn <= X_MID:
+        return back + (xn - X_BACK) * (mid - back) / (X_MID - X_BACK)
+    return mid + (xn - X_MID) * (front - mid) / (X_FRONT - X_MID)
 
 
 def _react(eng: "MatchEngine", idx: np.ndarray, targets: np.ndarray, team: int) -> None:

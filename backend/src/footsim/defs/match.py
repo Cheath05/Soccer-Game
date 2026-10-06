@@ -204,6 +204,31 @@ class BlocksDef(DefModel):
     max: float = Field(ge=0, le=1)
 
 
+class DefendingLinesDef(DefModel):
+    back_buffer: float = Field(ge=0)
+    back_floor: float = Field(ge=0)
+    mid_buffer: float
+    mid_gap: tuple[float, float]
+    front_ahead: float
+    front_gap: tuple[float, float]
+    drop_within: float = Field(ge=0)
+    drop: dict[PositionGroup, float]
+
+    @model_validator(mode="after")
+    def _gaps(self) -> "DefendingLinesDef":
+        for name in ("mid_gap", "front_gap"):
+            low, high = getattr(self, name)
+            if not 0 <= low <= high:
+                raise ValueError(f"{name} must be 0 <= low <= high")
+        return self
+
+
+class ShapeDef(DefModel):
+    """Where a side stands out of possession (data/config/match/shape.yaml)."""
+
+    defending: DefendingLinesDef
+
+
 class ShotChanceDef(DefModel):
     """The fitted logistic for a shot's chance of scoring (its xG)."""
 

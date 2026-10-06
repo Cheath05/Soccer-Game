@@ -1,0 +1,21 @@
+# The defending side's shape in the agent engine (behaviours._team): Phase D2.
+#
+# Out of possession a side stands in three lines, each placed from where the ball is. Before
+# D2 the back line alone followed the ball (9 m goal-side of it) and the midfield and forwards
+# stood a fixed span upfield of it, so with the ball in our final third they were upfield of it
+# too: about 4 outfield players goal-side of the ball (ShapeSampler, 6 Oct). Each slot sits on
+# the line its formation x puts it on, or between two of them (a holding midfielder between
+# the back line and the midfield). The defensive-line instruction (tactics.yaml line) sets the
+# back line's highest point and the most the lines spread (its span); pressing high lifts the
+# back line 4 m when the ball is in the opponent's third, as before.
+defending:
+  back_buffer: 9.0          # m the back line keeps goal-side of the ball (as before D2)...
+  back_floor: 6.0           # ...never deeper than this from our goal line in open play
+  mid_buffer: 2.0           # m the midfield line keeps goal-side of the ball...
+  mid_gap: [6.0, 15.0]      # ...at least and at most this far in front of the back line
+  front_ahead: 10.0         # m the forwards stay upfield of the ball, as an outlet...
+  front_gap: [6.0, 18.0]    # ...at least and at most this far in front of the midfield
+  drop_within: 60.0         # m from our goal: with the ball this close, the wide players and
+  drop: {W: 0.44, AM: 0.50} # the number 10 stand no further forward than these formation x
+                            # (the midfield line, and just ahead of it): a 4-3-3 defends as a
+                            # 4-5-1 and a 4-2-3-1 as a 4-4-1-1

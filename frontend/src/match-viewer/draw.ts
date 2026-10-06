@@ -188,6 +188,7 @@ export function drawDebug(
     ctx.lineWidth = 1.5
     ctx.strokeStyle = TEAM_COLORS[t].shirt
     vertical(team.back)
+    if (team.mid != null) vertical(team.mid)
     vertical(team.front)
     if (team.offside != null) {
       ctx.setLineDash([2, 3])
@@ -262,7 +263,7 @@ export function drawDebug(
       (dbg.restart ? `  ${dbg.restart.kind}${dbg.restart.variant ? `/${dbg.restart.variant}` : ''} ${dbg.restart.wait}s` : ''),
     ...dbg.teams.map(
       (team, t) =>
-        `${t === 0 ? 'Home' : 'Away'} ${team.phase ?? '-'}  lines ${team.back?.toFixed(0) ?? '-'}-${team.front?.toFixed(0) ?? '-'}  ` +
+        `${t === 0 ? 'Home' : 'Away'} ${team.phase ?? '-'}  lines ${team.back?.toFixed(0) ?? '-'}-${team.mid != null ? `${team.mid.toFixed(0)}-` : ''}${team.front?.toFixed(0) ?? '-'}  ` +
         `width ${team.width?.toFixed(0) ?? '-'}  pressing ${team.pressers?.length ?? 0}`,
     ),
     decision && chosen

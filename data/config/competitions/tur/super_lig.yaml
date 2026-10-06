@@ -1,0 +1,13 @@
+key: TUR1
+name: Süper Lig
+short_name: Süper Lig
+nation: TUR
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: TUR-2026-27
+source_leagues: [Trendyol Süper Lig]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, h2h_points, h2h_goal_difference, h2h_goals_for, goal_difference, goals_for,
+              drawing_of_lots]
+# Real life: the bottom three go down to the 1. Lig, which isn't in the data, so nobody moves.

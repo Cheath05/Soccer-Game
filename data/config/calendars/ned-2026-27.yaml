@@ -1,0 +1,16 @@
+# The Netherlands 2026-27 (approximate: after the 2025-26 pattern). Seasons share England's boundaries
+# (1 July to 30 June), so every league turns over together.
+key: NED-2026-27
+season: "2026-27"
+nation: NED
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  NED1: {start: 2026-08-07, end: 2027-05-16}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+blackout:
+  - {start: 2026-12-21, end: 2027-01-08}   # winter break

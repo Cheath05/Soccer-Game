@@ -1,0 +1,15 @@
+key: BEL1
+name: Belgian Pro League
+short_name: Pro League
+nation: BEL
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: BEL-2026-27
+source_leagues: [1A Pro League]
+# Real life: the regular season is followed by play-offs for the title, Europe and survival.
+# Play-offs within a league aren't supported yet, so the table after two rounds decides.
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, wins, goal_difference, goals_for, away_goals_for, drawing_of_lots]
+# Real life: the bottom clubs go down to the Challenger Pro League, which isn't in the data, so
+# nobody moves.

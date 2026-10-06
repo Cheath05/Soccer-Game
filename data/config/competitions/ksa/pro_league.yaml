@@ -1,0 +1,14 @@
+key: KSA1
+name: Saudi Pro League
+short_name: Saudi Pro League
+nation: KSA
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: KSA-2026-27
+source_leagues: [ROSHN Saudi League]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, h2h_points, h2h_goal_difference, goal_difference, goals_for,
+              drawing_of_lots]
+# Real life: the bottom three go down to the First Division, which isn't in the data, so nobody
+# moves.

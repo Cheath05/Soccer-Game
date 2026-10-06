@@ -1,0 +1,14 @@
+key: NED1
+name: Eredivisie
+short_name: Eredivisie
+nation: NED
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: NED-2026-27
+source_leagues: [Eredivisie]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              h2h_away_goals_for, drawing_of_lots]
+# Real life: 18th goes down, and 16th and 17th play off with the Eerste Divisie's best. The
+# Eerste Divisie isn't in the data, so nobody moves.

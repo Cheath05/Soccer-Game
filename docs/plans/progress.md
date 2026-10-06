@@ -704,7 +704,22 @@ The order, each its own checkpoint (or several):
      - **Tests:**
        - every league fits its own calendar, clear of its breaks;
        - `test_cups_season.py` now plays a season of every league and both cups: every league finishes and starts the next season at its size, with clubs moving in every country (it takes about a minute).
-   - [ ] **W2b, more leagues:** Portugal, the Netherlands, Scotland, Saudi Arabia, Turkey, Belgium (closed single divisions), then MLS (conferences) and others.
+   - [x] **W2b, more leagues:** the Liga Portugal, the Eredivisie, the Scottish Premiership, the Saudi Pro League, the Süper Lig and the Belgian Pro League.
+     - Each is on its own country's calendar (`calendars/{por,ned,sco,ksa,tur,bel}-2026-27.yaml`; approximate dates, sharing the season's boundaries):
+       - the Netherlands, Turkey and Belgium with winter breaks;
+       - Saudi Arabia paused for the AFC Asian Cup it hosts in January 2027, which leaves it five midweek rounds.
+     - **Their own rules where the engine supports them:**
+       - **tiebreakers:** head-to-head first in Portugal, Turkey and Saudi Arabia; wins first in Belgium; goal difference first in the Netherlands and Scotland;
+       - **Scotland:** 12 clubs playing each other three times (33 rounds).
+     - **Simplified, recorded in each file:**
+       - Scotland's split after 33 rounds (5 more within each half) and Belgium's play-offs aren't supported yet (W2c);
+       - nobody moves, as their second divisions aren't in the data.
+     - **The clubs** are the data's 2026-27 line-ups: Belgium's league grows to 18, and this season's promoted sides are in.
+     - **Tests:**
+       - every league fits its own calendar, with Saudi Arabia's midweeks and the others on weekends;
+       - the whole-season test (`test_cups_season.py`) plays every league, now 19 of them, and rolls the season over;
+       - all 203 backend tests pass.
+   - [ ] **W2c, other formats:** splits (Scotland), play-offs within a league (Belgium), conferences (MLS), Apertura and Clausura (Mexico, Argentina), where they fit around the core.
 5. - [ ] **W3, finances:** TV money, wages, budgets and the board, by league. Most of the gap between leagues that a manager feels is here.
 6. - [ ] **W4, transfers:** valuations, AI buying and selling, bids and negotiation (fee, wage, length), loans, free agents and expiring contracts, and the windows (already in the calendar). Most big transfers cross borders, so this comes after W2.
 7. - [ ] **W5, academies in full:** facilities, youth squads, loaning young players out.

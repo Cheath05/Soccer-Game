@@ -1,0 +1,16 @@
+# Belgium 2026-27 (approximate: after the 2025-26 pattern). Seasons share England's boundaries
+# (1 July to 30 June), so every league turns over together.
+key: BEL-2026-27
+season: "2026-27"
+nation: BEL
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  BEL1: {start: 2026-07-24, end: 2027-05-23}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+blackout:
+  - {start: 2026-12-28, end: 2027-01-14}   # winter break

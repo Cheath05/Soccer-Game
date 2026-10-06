@@ -1,0 +1,16 @@
+key: SCO1
+name: Scottish Premiership
+short_name: Premiership
+nation: SCO
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: SCO-2026-27
+source_leagues: [Scottish Premiership]
+# Real life: 33 rounds, then the league splits into a top and a bottom six for five more (38).
+# Splits aren't supported yet, so each club plays the others three times: the 33 rounds.
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: 12th goes down and 11th plays off with the Championship, which isn't in the data,
+# so nobody moves.

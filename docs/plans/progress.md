@@ -758,7 +758,52 @@ The user allowed agents for work that doesn't need the CPU. A reviewer read the 
     - the decision-level and estimate tests;
     - the thresholds and geometry in YAML;
     - the comments.
-  - **Measured:** see below once the batch is in.
+  - **Measured** (200 matches per division, seed 21, 4 workers, `reports/engine/review-fixes/`):
+    - Run at 44bdfe9: 70b9171 plus the read-only `ShapeSampler`, so the same matches.
+    - Compared with `step2.4/cards3` (0488313), the previous engine.
+
+    | | PL before | PL now | L2 before | L2 now | Real (PL / EFL) |
+    |---|---|---|---|---|---|
+    | Shots | 41.9 | **25.7** | 32.4 | **22.3** | 23–27.5 / 22–26 |
+    | Shots on target | 12.5 | 12.1 | 9.1 | 8.9 | |
+    | Goals | 3.79 | **5.19** | 3.19 | **4.25** | 2.65–3.05 / 2.45–2.85 |
+    | xG per shot | .071 | **.168** | .081 | **.183** | .09–.12 |
+    | Conversion | .090 | .202 | .098 | .190 | .095–.12 |
+    | Shots from outside the box | .104 | **.037** | .080 | **.021** | .30–.42 |
+    | Box entries per team | 32.3 | 32.1 | 25.3 | 24.8 | |
+    | Shots per box entry | .65 | .40 | .64 | .45 | |
+    | Corners | 7.7 | **3.7** | 5.5 | 2.8 | about 10–11 |
+    | Set-piece share of goals | .21 | .13 | .18 | .12 | .20–.32 |
+    | Offsides | 2.2 | 3.3 | 2.8 | 3.7 | 2.5–4.5 |
+    | Fouls / yellows | 23.8 / 4.2 | 24.3 / 4.7 | 18.8 / 3.3 | 19.2 / 3.3 | |
+    | Interceptions | 19.3 | 23.4 | 18.8 | 20.9 | 14–26 |
+    | Ball in play (min) | 62.0 | 64.3 | 70.0 | 71.5 | 54–60 |
+    | Home / draw / away | .385 .215 .400 | .495 .195 .310 | .400 .250 .350 | .450 .240 .310 | |
+
+    - **What it means:** the shot count is now in range, for the wrong reason, and goals went **up** 35%.
+      - Seeing the bodies in the way, players stopped taking hopeful shots, and kept the ball instead.
+      - Against defending that leaves about 4 outfield players goal-side of the ball in its own third, keeping it pays: they walk the ball into close-range chances (mean shot about 10 m out, against a real 16–17).
+      - Corners fell with the blocked and deflected long shots that used to make them.
+    - **Shape, measured** (the same batches; the defending side, ball in the attackers' final third):
+      - 4.2 outfield players goal-side of the ball (middle third 7.5–7.9, build-up 9.6);
+      - length 27.8 m, width 30.7 m, lines 9 m apart;
+      - box entries by pass .35, carry .23, through ball .21, cross .11.
+
+      The cause is in `behaviours._team`: the defending midfield and forwards stood a fixed span upfield of a back line only 9 m behind the ball, so they were upfield of the ball whenever it was in their third. Phase D2 (`docs/plans/defensive-shape.md`) answers that.
+    - **The chance model double-counts defenders** (found tracing every shot in 16 matches, `scratchpad/chance_diag.py`).
+      - `expected_goal` is fitted to real *average* xG by place (penalty spot .3, edge of box .08, 25 m .03), which already includes the defenders usually in the way.
+      - The shot then multiplied that by 0.55 for each defender in the cone, took a block chance off for the same defenders, and applied a finishing-and-keeper factor averaging about 0.82.
+      - So a typical crowded shot from the edge of the box came out at about .01, against a real .03–.05.
+      - Before the review fixes the decision didn't see that, so players took the shots and the recorded xG came out low (.071). Now the decision sees it too, so edge-of-box shots are almost never worth it.
+      - **The fix is to fit the chance model to real shots,** not to retune thresholds: StatsBomb's open data records where every defender stood at each shot (`calibration/shot_fit.py`; step S1 below).
+    - **Next, in order:**
+      1. **S1, the shot model fitted to real freeze frames:**
+         - place, header, the cone and pressure as one fitted logistic: the shot's xG, blocks included;
+         - the per-blocker chance fitted to real blocked shots;
+         - finishing and keeping centred on average players, so they decide execution without biasing the level;
+         - the decision and the recorded xG are the same number.
+      2. **D2, the three-line shape:** coded and set aside as `scratchpad/d2/d2.patch`. Three matches showed 5.4 goal-side, with box entries unchanged; measure on 200.
+      3. **S2, if the long-shot share is still off:** calibrate the shooting decision's values against real shot locations.
 
 ## Quick fixes (do first; each is its own checkpoint)
 

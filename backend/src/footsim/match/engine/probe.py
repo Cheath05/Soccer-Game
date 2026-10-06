@@ -5,6 +5,9 @@ team statistics plus what explains them. That covers the possession funnel (won 
 third → box → shot → goal), duels, restarts and how long they took, where shots and goals
 came from (open play, set pieces, fast breaks, rebounds), PPDA, distance run and time with
 the ball in play. ``aggregate`` summarises many matches. Nothing here affects a match.
+
+``ShapeSampler`` watches a match as it's played (``MatchEngine.run(observe=...)``): the
+defending side's shape every second the other side has the ball, and every entry into the box.
 """
 
 import math
@@ -16,7 +19,7 @@ import numpy as np
 
 from footsim.defs.positions import PositionGroup
 from footsim.match.engine.log import EngineEvent, Possession
-from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_Y
+from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_Y, in_box, norms
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -38,6 +41,112 @@ REGATHER_WINDOW = 3.0  # s: a completed pass may be gathered this long after it 
 PER_BIP_MINUTE = ("goals", "shots", "shots_on_target", "xg", "passes", "corners", "fouls",
                   "yellows", "reds", "offsides", "penalties", "tackles", "interceptions",
                   "throw_ins", "goal_kicks", "high_regains")
+
+
+# Defensive shape (ShapeSampler): sampled once a second of live play with a player on the ball,
+# measured on the defending side's outfield players in the attacking side's frame, and split by
+# where the ball is (the attacking side's build-up, middle or final third).
+SHAPE_EVERY = 10  # ticks
+SHAPE_ZONES = ("build_up", "middle", "final_third")
+SHAPE_METRICS = (
+    "length",       # m from the defending side's deepest outfield player to its highest
+    "width",        # m between its two widest
+    "line",         # m from its own goal line to its deepest outfield player
+    "behind_ball",  # its outfield players goal-side of the ball
+    "near_ball",    # its outfield players within 10 m of the ball
+    "nearest",      # m from the ball to its nearest outfield player
+    "lines_gap",    # m between its defenders' (CB, FB) mean depth and its midfielders' (DM-AM)
+    "ball_side",    # m its centre of mass sits towards the ball's side (ball 10+ m off centre)
+    "free_options",  # attackers within 30 m of the ball with no defender within 5 m
+)
+ENTRY_WAYS = ("carry", "pass", "through", "cross", "throw", "loose", "shot", "other")
+
+
+class ShapeSampler:
+    """The defending side's shape while the other side has the ball, and how attacks get into
+    the box. Read-only: it never changes the match it watches."""
+
+    def __init__(self) -> None:
+        self.samples: dict[str, list[list[float]]] = {zone: [] for zone in SHAPE_ZONES}
+        self.entries: list[dict[str, Any]] = []
+        self._seen_box: dict[int, bool] = {}  # possession number -> already in the box
+
+    def observe(self, eng: "MatchEngine") -> None:
+        live = eng.restart is None and eng.state != "dead"
+        if live and eng.possessions:
+            number = len(eng.possessions) - 1
+            poss = eng.possessions[number]
+            if poss.box and not self._seen_box.get(number, False):
+                self._entry(eng, number, poss.team)
+            self._seen_box[number] = poss.box
+        if live and eng.owner >= 0 and eng.tick_count % SHAPE_EVERY == 0:
+            self._sample(eng)
+
+    def _entry(self, eng: "MatchEngine", number: int, team: int) -> None:
+        if eng.shot_info is not None:
+            way = "shot"
+        elif eng.pass_info is not None:
+            way = eng.pass_info.kind if eng.pass_info.kind in ENTRY_WAYS else "other"
+        elif eng.owner >= 0 and int(eng.team_of[eng.owner]) == team:
+            way = "carry"
+        elif eng.owner < 0:
+            way = "loose"
+        else:
+            way = "other"
+        defenders = eng.att_points(team, eng.pos[eng.outfield_indices(1 - team)])
+        attackers = eng.att_points(team, eng.pos[eng.outfield_indices(team)])
+        bx, by = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
+        self.entries.append({
+            "team": team, "possession": number, "way": way,
+            "behind_ball": int(np.sum(defenders[:, 0] > bx)),
+            "defenders_in_box": sum(in_box(x, y) for x, y in defenders.tolist()),
+            "attackers_in_box": sum(in_box(x, y) for x, y in attackers.tolist()),
+            "nearest": float(np.min(norms(defenders - np.array([bx, by]), axis=1)))
+            if len(defenders) else 99.0,
+        })
+
+    def _sample(self, eng: "MatchEngine") -> None:
+        team = int(eng.team_of[eng.owner])  # attacking
+        out = eng.outfield_indices(1 - team)
+        if len(out) < 2:
+            return
+        pts = eng.att_points(team, eng.pos[out])
+        bx, by = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
+        ball = np.array([bx, by])
+        gaps = norms(pts - ball, axis=1)
+        groups = [eng.group[int(i)] for i in out]
+        back = [k for k, g in enumerate(groups) if g in (PositionGroup.CB, PositionGroup.FB)]
+        mid = [k for k, g in enumerate(groups)
+               if g in (PositionGroup.DM, PositionGroup.CM, PositionGroup.AM)]
+        lines_gap = (float(np.mean(pts[back, 0]) - np.mean(pts[mid, 0]))
+                     if back and mid else float("nan"))
+        ball_side = (float(np.sign(by - MID_Y) * (np.mean(pts[:, 1]) - MID_Y))
+                     if abs(by - MID_Y) > 10 else float("nan"))
+        mates = [int(j) for j in eng.outfield_indices(team) if int(j) != eng.owner]
+        free = 0
+        if mates:
+            mate_pts = eng.att_points(team, eng.pos[mates])
+            near = norms(mate_pts - ball, axis=1) < 30
+            marked = norms(mate_pts[:, None, :] - pts[None, :, :], axis=2).min(axis=1) < 5
+            free = int(np.sum(near & ~marked))
+        zone = SHAPE_ZONES[0] if bx < 35 else SHAPE_ZONES[1] if bx < 70 else SHAPE_ZONES[2]
+        self.samples[zone].append([
+            float(np.ptp(pts[:, 0])), float(np.ptp(pts[:, 1])), float(LENGTH - pts[:, 0].max()),
+            float(np.sum(pts[:, 0] > bx)), float(np.sum(gaps < 10)), float(gaps.min()),
+            lines_gap, ball_side, float(free)])
+
+    def summary(self, eng: "MatchEngine") -> dict[str, Any]:
+        zones: dict[str, dict[str, float]] = {}
+        for zone, rows in self.samples.items():
+            values = np.array(rows) if rows else np.full((1, len(SHAPE_METRICS)), np.nan)
+            with np.errstate(all="ignore"):
+                means = [float(np.nanmean(values[:, k])) if np.any(~np.isnan(values[:, k]))
+                         else float("nan") for k in range(len(SHAPE_METRICS))]
+            zones[zone] = dict(zip(SHAPE_METRICS, means, strict=True))
+            zones[zone]["samples"] = float(len(rows))
+        entries = [dict(e, shot=eng.possessions[e["possession"]].shots > 0)
+                   for e in self.entries]
+        return {"zones": zones, "entries": entries}
 
 
 def _zone(xa: float) -> str:
@@ -150,8 +259,9 @@ def _pass_outcomes(log: Sequence[EngineEvent]) -> dict[str, Any]:
             "heavy_touches": heavy, "offsides": dict(offsides)}
 
 
-def summarize(eng: "MatchEngine") -> dict[str, Any]:
-    """Metrics for one match. Team-level values are lists indexed [home, away]."""
+def summarize(eng: "MatchEngine", shape: ShapeSampler | None = None) -> dict[str, Any]:
+    """Metrics for one match. Team-level values are lists indexed [home, away]. With the
+    ``shape`` that watched it, also the defensive shape and the box entries."""
     log: list[EngineEvent] = eng.log
     possessions = eng.possessions
     teams: list[dict[str, Any]] = []
@@ -350,6 +460,7 @@ def summarize(eng: "MatchEngine") -> dict[str, Any]:
         "passes_by_zone": {z: [zone_att[z], zone_cmp[z]] for z in zone_att},
         "pass_outcomes": _pass_outcomes(log),
         "teleports": teleports,
+        **({"shape": shape.summary(eng)} if shape is not None else {}),
     }
 
 
@@ -477,9 +588,30 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
         result[f"wait_{kind}"] = _mean(waits.get(kind, []))
     result.update(_pass_metrics(matches))
     result["possession_shot_share"] = _mean(float(p["shots"] > 0) for p in possessions)
+    result.update(_shape_metrics(matches))
     bip = result["ball_in_play_min"]
     for key in PER_BIP_MINUTE:
         result[f"{key}_per_bip_min"] = result[key] / bip if bip else float("nan")
+    return result
+
+
+def _shape_metrics(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
+    """The defending side's shape by where the ball is, and how attacks get into the box
+    (matches watched by a ShapeSampler only)."""
+    watched = [m["shape"] for m in matches if "shape" in m]
+    if not watched:
+        return {}
+    result: dict[str, float] = {}
+    for zone in SHAPE_ZONES:
+        for metric in SHAPE_METRICS:
+            result[f"shape_{zone}_{metric}"] = _mean(w["zones"][zone][metric] for w in watched)
+    entries = [e for w in watched for e in w["entries"]]
+    result["box_entries_watched_per_team"] = len(entries) / (2 * len(watched))
+    for way in ENTRY_WAYS:
+        result[f"box_entry_by_{way}"] = _mean(float(e["way"] == way) for e in entries)
+    for key in ("behind_ball", "defenders_in_box", "attackers_in_box", "nearest"):
+        result[f"box_entry_{key}"] = _mean(float(e[key]) for e in entries)
+    result["box_entry_shot_share"] = _mean(float(e["shot"]) for e in entries)
     return result
 
 

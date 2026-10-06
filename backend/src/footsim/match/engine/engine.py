@@ -13,6 +13,7 @@ substitutions) change the engine's state between ticks, so their effect is real.
 """
 
 from collections import deque
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -314,12 +315,17 @@ class MatchEngine:
             self._frame()
         self.tick_count += 1
 
-    def run(self, max_ticks: int | None = None) -> None:
+    def run(self, max_ticks: int | None = None,
+            observe: Callable[["MatchEngine"], None] | None = None) -> None:
+        """Play on to the end (or ``max_ticks``). ``observe`` is called after every tick, to
+        watch the match without changing it (probe.ShapeSampler)."""
         ticks = 0
         while not self.finished and (max_ticks is None or ticks < max_ticks):
             if self.at_break and self.hold_at_breaks:
                 return
             self.step()
+            if observe is not None:
+                observe(self)
             ticks += 1
 
     # --- clock and periods --------------------------------------------------------------

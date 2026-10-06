@@ -29,7 +29,7 @@ from sqlalchemy import Engine, create_engine, text
 from footsim.core.paths import REPO_ROOT, config_dir
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
-from footsim.match.engine.probe import aggregate, reliability, summarize
+from footsim.match.engine.probe import ShapeSampler, aggregate, reliability, summarize
 from footsim.match.synthetic import synthetic_sheet
 from footsim.match.teams import TeamSheet
 from footsim.world.context import AI_FORMATIONS, World, get_world
@@ -126,9 +126,10 @@ def play_task(task: MatchTask) -> dict[str, Any]:
     target.instructions.update(task.arm.instructions)
     engine = MatchEngine(_WORLD.defs, home, away, derive_rng(task.seed, "calibrate", task.index),
                          record=False, ai_manager=task.managers)
-    engine.run()
+    shape = ShapeSampler()
+    engine.run(observe=shape.observe)
     engine.report()
-    summary = summarize(engine)
+    summary = summarize(engine, shape)
     summary.update(index=task.index, arm=task.arm.name, focus=task.focus,
                    home_club=task.home, away_club=task.away,
                    xi_rating=[round(float(np.mean([sp.rating for sp in sheet.starters])), 2)

@@ -9,7 +9,11 @@ from footsim.match.engine.engine import MatchEngine
 from footsim.match.engine.log import EngineEvent
 from footsim.match.engine.probe import (
     BANDS,
+    ENTRY_WAYS,
     FAILURES,
+    SHAPE_METRICS,
+    SHAPE_ZONES,
+    ShapeSampler,
     _pass_outcomes,
     aggregate,
     reliability,
@@ -157,3 +161,29 @@ def test_pass_metrics_are_reported(played: MatchEngine) -> None:
     assert 0.0 <= result["possession_shot_share"] <= 1.0
     rows = reliability([summarize(played)], min_passes=5)
     assert rows and all(0.0 <= r["completed"] <= 1.0 for r in rows)
+
+
+def test_watching_the_shape_changes_nothing_and_sees_every_box_entry(world: World) -> None:
+    """The shape sampler only reads the match: the same seed plays out identically with it,
+    and it records one box entry for every possession that reached the box."""
+
+    def play(watch: bool) -> tuple[MatchEngine, ShapeSampler]:
+        home = synthetic_sheet(world.defs, world.picker, 1, 74)
+        away = synthetic_sheet(world.defs, world.picker, 2, 71, formation="4-2-3-1")
+        engine = MatchEngine(world.defs, home, away, derive_rng(5, "probe"), record=False)
+        sampler = ShapeSampler()
+        engine.run(max_ticks=9000, observe=sampler.observe if watch else None)
+        return engine, sampler
+
+    watched, sampler = play(True)
+    plain, _ = play(False)
+    assert watched.score == plain.score and np.array_equal(watched.pos, plain.pos)
+    summary = summarize(watched, sampler)
+    shape = summary["shape"]
+    assert len(shape["entries"]) == sum(p.box for p in watched.possessions) > 0
+    for zone in SHAPE_ZONES:
+        assert set(SHAPE_METRICS) <= set(shape["zones"][zone])
+    agg = aggregate([summary])
+    middle = agg["shape_middle_behind_ball"]
+    assert 0 <= middle <= 10 and agg["shape_middle_length"] > 0
+    assert sum(agg[f"box_entry_by_{way}"] for way in ENTRY_WAYS) == pytest.approx(1.0)

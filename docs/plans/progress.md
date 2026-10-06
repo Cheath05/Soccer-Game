@@ -823,6 +823,65 @@ The user allowed agents for work that doesn't need the CPU. A reviewer read the 
          - the decision and the recorded xG are the same number.
       2. **D2, the three-line shape:** coded and set aside as `scratchpad/d2/d2.patch`. Three matches showed 5.4 goal-side, with box entries unchanged; measure on 200.
       3. **S2, if the long-shot share is still off:** calibrate the shooting decision's values against real shot locations.
+- [x] **S1 and S2: the shot model fitted to real shots, and real shot selection** (d53262f; `docs/calibration/shot-model.md`).
+  - **S1:**
+    - A shot's xG is a logistic on the place, a header, the outfield defenders in the cone and the nearest one's pressure. It's fitted to 9,415 Premier League 2015/16 open-play shots with StatsBomb freeze frames (`footsim fit-shots`), and matches the real scoring rate in every distance band.
+    - The per-blocker chance is fitted to the real 29% of blocked shots (0.48), and also matches in every band.
+    - Finishing, long shots, heading and keeping are centred on Premier League averages (73, 69, 70, 81), so ratings move execution around the xG without biasing its level.
+    - The decision, a header's choice and the recorded xG are one number.
+  - **S2:**
+    - The old gates (xG .05, or 18–30 m with 3 m of room and .02) excluded most real long shots. A shot is now an option from xG .015, the 5th percentile of real shots.
+    - It's worth 2.0 × xG against keeping the ball. That's calibrated on 16-match sweeps on where shots come from: 0.95 gave 14% from 16.5 m+, 2.0 gave 53% (real 51%, every band within a few points), and 3.0 gave 74%.
+  - **Measured** (200 per division, seed 21, `reports/engine/s1s2/`, against `review-fixes/`):
+
+    | | PL before | PL S1+S2 | L2 before | L2 S1+S2 | Real (PL / EFL) |
+    |---|---|---|---|---|---|
+    | xG per shot | .168 | **.101** | .183 | **.107** | .09–.12 |
+    | Conversion | .202 | **.112** | .190 | **.128** | .095–.12 |
+    | Shots from outside the box | .037 | **.428** | .021 | **.349** | .30–.42 |
+    | Ball in play (min) | 64.3 | **59.6** | 71.5 | 68.3 | 54–60 |
+    | Corners | 3.7 | 6.2 | 2.8 | 4.5 | about 10–11 |
+    | Shots | 25.7 | **47.2** | 22.3 | **35.5** | 23–27.5 / 22–26 |
+    | Goals | 5.19 | 5.30 | 4.25 | 4.54 | 2.65–3.05 / 2.45–2.85 |
+    | Possessions ending in a shot | .147 | .268 | .147 | .234 | |
+
+    - **Each shot is now real:** its quality, where it's taken from, how often it scores.
+    - **What's wrong is how many chances get made:** 27% of possessions end in a shot, and the defending shape is unchanged (4.3 goal-side of the ball in the final third). That's D2.
+    - Not pushed on its own: 47 shots a match would have looked worse in the user's game than the build deployed. It goes out with D2.
+- [ ] **D2, the defending shape** (84e044c, `docs/plans/defensive-shape.md`). On 16 identical synthetic matches at quality 78, against S1+S2:
+
+  | | Before | After |
+  |---|---|---|
+  | Goals | 4.13 | 2.94 |
+  | Shots | 36.1 | 27.8 |
+  | Box entries per team | 25.4 | 20.0 |
+  | Goal-side, ball in the final third | 4.5 | 6.0 |
+
+  xG per shot and the long-shot share were unchanged. Three single-value variants (midfield 4 m goal-side; wide players deeper; forwards 6 m ahead) each raised the goal-side count a little but didn't beat it, within 16-match noise.
+  - **Measured** (200 per division, seed 21, `reports/engine/d2/`, against `s1s2/`):
+
+    | | PL S1+S2 | PL D2 | L2 S1+S2 | L2 D2 | Real (PL / EFL) |
+    |---|---|---|---|---|---|
+    | Goals | 5.30 | **4.63** | 4.54 | **3.71** | 2.65–3.05 / 2.45–2.85 |
+    | Shots | 47.2 | **41.6** | 35.5 | **30.6** | 23–27.5 / 22–26 |
+    | xG per shot | .101 | .095 | .107 | .103 | .09–.12 |
+    | Shots from outside the box | .428 | .415 | .349 | .322 | .30–.42 |
+    | Box entries per team | 32.4 | 29.1 | 25.5 | 22.8 | |
+    | Shots per box entry | .72 | .71 | .69 | .67 | |
+    | Goal-side, ball in the final third | 4.3 | **6.0** | 4.3 | **6.1** | about 8 |
+    | Final-third length (m) | 27.9 | 18.7 | | | |
+    | Ball in play (min) | 59.6 | 61.4 | 68.3 | 70.5 | 54–60 |
+    | Take-on success | .83 | .82 | .83 | .83 | .45–.60 |
+
+  - **Reading:**
+    - D2 does what it was built for: 6 outfield players goal-side instead of 4, fewer box entries, and goals down 13–18% with the shot model's quality unchanged.
+    - The volume is still about 1.6 times real: once inside the box, a possession still ends in a shot 70% of the time.
+    - The final-third block is very short (19 m): the lines close up, but nobody closes the man on the ball.
+    - **Next is D6, engagement:** pressure on the ball carrier in and around the box, cover, the take-on duel (82% success against about half), and markers staying on their man in the box.
+  - **Still open for D6:**
+    - shots per box entry .69–.72;
+    - take-ons succeeding about 82% (real 45–60%), mostly against whoever is nearest;
+    - close-range shooters under less pressure than real ones (closeness .44–.50 against .56–.70).
 
 ## Quick fixes (do first; each is its own checkpoint)
 

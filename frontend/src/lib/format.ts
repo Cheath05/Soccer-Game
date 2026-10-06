@@ -112,3 +112,44 @@ export function ordinal(n: number): string {
   const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
   return `${n}${suffix}`
 }
+
+const NATION_NAMES: Record<string, string> = {
+  ENG: 'England',
+  ESP: 'Spain',
+  ITA: 'Italy',
+  GER: 'Germany',
+  FRA: 'France',
+  POR: 'Portugal',
+  NED: 'Netherlands',
+  SCO: 'Scotland',
+  BEL: 'Belgium',
+  TUR: 'Turkey',
+  KSA: 'Saudi Arabia',
+  USA: 'United States',
+}
+
+/** A nation code as its name (ENG is England). A code with no name stays as it is. */
+export function nationName(code: string): string {
+  return NATION_NAMES[code] ?? code
+}
+
+/** The nation a league belongs to: its `nation` code, or for a server that predates the field
+ * the first three letters of its key (ENG1 is ENG). */
+export function competitionNation(c: { key: string; nation?: string }): string {
+  return c.nation || c.key.slice(0, 3)
+}
+
+/** Leagues grouped by nation, England first and then the rest by name, each nation's leagues in tier order. */
+export function groupByNation<T extends { key: string; tier: number; nation?: string }>(leagues: T[]): { code: string; name: string; leagues: T[] }[] {
+  const groups = new Map<string, T[]>()
+  for (const league of leagues) {
+    const code = competitionNation(league)
+    const group = groups.get(code)
+    if (group) group.push(league)
+    else groups.set(code, [league])
+  }
+  const rank = (code: string) => (code === 'ENG' ? 0 : 1)
+  return [...groups]
+    .map(([code, list]) => ({ code, name: nationName(code), leagues: list.sort((a, b) => a.tier - b.tier || a.key.localeCompare(b.key)) }))
+    .sort((a, b) => rank(a.code) - rank(b.code) || a.name.localeCompare(b.name))
+}

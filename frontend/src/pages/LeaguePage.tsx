@@ -1,8 +1,9 @@
-import { Badge, Group, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Group, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useState } from 'react'
 
 import { useCareer, useCompetitions, useSeasons, useTable } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
+import LeaguePicker from '../components/LeaguePicker'
 import { OUTCOMES } from '../lib/format'
 
 const ZONE_COLOR: Record<string, string> = {
@@ -44,9 +45,7 @@ export default function LeaguePage() {
               data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
             />
           )}
-          {competitions.data && (
-            <SegmentedControl value={active} onChange={setKey} data={competitions.data.map((c) => ({ value: c.key, label: c.name.replace('EFL ', '') }))} />
-          )}
+          {competitions.data && <LeaguePicker leagues={competitions.data} value={active} onChange={setKey} />}
         </Group>
       </Group>
       <Table.ScrollContainer minWidth={640}>

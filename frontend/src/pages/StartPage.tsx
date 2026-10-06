@@ -1,8 +1,9 @@
-import { Alert, Badge, Button, Card, Container, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Container, Group, Loader, Select, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
+import LeaguePicker from '../components/LeaguePicker'
 import { longDate } from '../lib/format'
 
 export default function StartPage({ hasCareer, error }: { hasCareer: boolean; error: Error | null }) {
@@ -90,14 +91,16 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
           {leagues.data && (
             <>
-              <SegmentedControl
-                value={league}
-                onChange={(v) => {
-                  setLeague(v)
-                  setClubId(null)
-                }}
-                data={leagues.data.map((l) => ({ value: l.key, label: l.name }))}
-              />
+              <Group>
+                <LeaguePicker
+                  leagues={leagues.data}
+                  value={league}
+                  onChange={(v) => {
+                    setLeague(v)
+                    setClubId(null)
+                  }}
+                />
+              </Group>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
                 {selectedLeague?.clubs.map((c) => (
                   <UnstyledButton key={c.id} onClick={() => setClubId(c.id)}>

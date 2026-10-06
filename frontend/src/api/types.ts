@@ -14,6 +14,7 @@ export interface LeagueOption {
   key: string
   name: string
   tier: number
+  nation?: string // a nation code such as ENG; a server that predates it omits it
   clubs: ClubOption[]
 }
 
@@ -53,6 +54,7 @@ export interface Competition {
   key: string
   name: string
   tier: number
+  nation?: string // a nation code such as ENG; a server that predates it omits it
 }
 
 export interface Career {

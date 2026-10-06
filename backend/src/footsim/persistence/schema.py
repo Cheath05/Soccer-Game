@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 7  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 8  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -108,6 +108,7 @@ player = Table(
     Column("pa_hidden", SmallInteger, nullable=False),
     Column("reputation", SmallInteger, nullable=False),
     Column("value_eur_cents", Integer),
+    Column("retired_on", Text),  # the day he retired (or left the professional game)
 )
 
 player_attr = Table(

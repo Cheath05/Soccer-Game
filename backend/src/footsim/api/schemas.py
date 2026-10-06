@@ -335,6 +335,7 @@ class PlayerDetailOut(SquadPlayerOut):
     potential: PotentialOut
     traits: list[str]
     own_player: bool
+    retired: bool = False
 
 
 class MatchEventOut(BaseModel):

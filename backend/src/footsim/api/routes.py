@@ -234,6 +234,22 @@ def player(player_id: int, session: Session) -> PlayerDetailOut:
             raise HTTPException(404, "player not found") from exc
 
 
+@router.post("/players/{player_id}/release")
+def release_player(player_id: int, session: Session) -> PlayerDetailOut:
+    """Release one of the user's players: his contract ends and he becomes a free agent."""
+    _not_simulating(session)
+    if session.live_matches:
+        raise HTTPException(409, "finish the match being played first")
+    with session.write() as conn:
+        try:
+            queries.release_player(conn, player_id, read_meta(conn).current_date)
+        except KeyError as exc:
+            raise HTTPException(400, "not one of your players") from exc
+    session.autosave()
+    with session.read() as conn:
+        return queries.player_detail(conn, get_world(), player_id)
+
+
 @router.get("/fixtures/{fixture_id}")
 def match(fixture_id: int, session: Session) -> MatchOut:
     with session.read() as conn:

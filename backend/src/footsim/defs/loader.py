@@ -19,6 +19,7 @@ from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
 from footsim.defs.finance import WageLevelsFile
 from footsim.defs.formations import FormationDef
+from footsim.defs.lifecycle import LifecycleDef
 from footsim.defs.match import (
     DefendingDef,
     DuelsDef,
@@ -66,6 +67,7 @@ class GameDefinitions:
     tactics: TacticsDef
     home_advantage: HomeAdvantageDef
     development: DevelopmentDef
+    lifecycle: LifecycleDef
     overall: OverallDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
@@ -127,6 +129,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         tactics=_parse(TacticsDef, root / "match" / "tactics.yaml"),
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
         development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),
+        lifecycle=_parse(LifecycleDef, root / "rules" / "lifecycle.yaml"),
         overall=_parse(OverallDef, root / "overall.yaml"),
     )
     _cross_validate(defs)
@@ -206,6 +209,10 @@ def _cross_validate(defs: GameDefinitions) -> None:
         for target in targets:
             if target not in defs.leagues:
                 errors.append(f"league {league.key}: movement to unknown league {target}")
+
+    unknown_positions = set(defs.lifecycle.youth.positions) - set(defs.positions)
+    if unknown_positions:
+        errors.append(f"lifecycle.yaml youth: unknown positions {sorted(unknown_positions)}")
 
     sizes = {key: league.clubs for key, league in defs.leagues.items()}
     for cup in defs.cups.values():

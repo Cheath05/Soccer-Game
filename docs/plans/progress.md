@@ -636,7 +636,21 @@ The order, each its own checkpoint (or several):
    - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range): after D2 and D6.
    - [ ] 2.3e, control by rating: after D2 and D6.
 2. - [ ] **B2, the fast engine** as a surrogate of the agent engine: the same goal, shot and home-advantage rates for the same ratings, checked by cross-engine tests. Moved up from Step 5.
-3. - [ ] **W1, retirement and a yearly youth intake** (academies, part one). Players retire, and every club gets a youth intake each year, better at clubs with better academies (reputation for now). Careers in 2028 already need it.
+3. - [x] **W1, retirement and a yearly youth intake** (academies, part one). `world/lifecycle.py`, `data/config/rules/lifecycle.yaml`, run at each season's end before the new fixtures.
+     - **Retirement:** chances by age, from 3% at 32 to 95% at 40. Keepers retire two years later; the ageless, and players still 78+, later still; players under 55 sooner. Free agents nobody has signed leave the professional game: at least half of them each season, at any age, until transfers can sign them. Retired players keep their history (`player.retired_on`, schema 8) and drop out of development.
+     - **Youth intake:** every club takes in 2–5 youngsters a year by reputation (standing in for its academy until W5), aged 15–17.
+       - Attributes come from the position-fitted synthetic model at a low quality (mean overall 40–52 by reputation).
+       - Potential is drawn on top (mean 58–72, sd 8, at least 6 above his overall, at most 94).
+       - Most are from the club's own country, the rest from its players' countries, named from the save's own players of that country.
+       - Each gets a youth contract to the end of the season he turns 19, at the minimum wage.
+     - **Squads:** computer-run clubs with more than 34 senior players release their weakest down to 31: worst overall first, young players counting half their remaining potential, three keepers kept. Youngsters on youth contracts under 19 are in the youth squad and don't count. The user's squad is never trimmed: a Release button on their own players ends a contract (`POST /api/players/{id}/release`).
+     - **News:** your retirements and youth intake (with the coaches' pick of it), and notable retirements elsewhere (80+).
+     - **Balance over ten season-ends** on a fresh career (no matches or development, `scratchpad/turnover_balance.py`):
+       - the world goes from 17.9k players to 26.2k and levels off (+100 in the tenth year);
+       - about 950 free agents;
+       - average squads 37.7 including youth squads, about 30 senior;
+       - the share of 32+ rises from 12% to 21% here, where nobody declines; in a career, decline retires the old sooner.
+     - **Tests:** `test_lifecycle.py` (retirement chances); `tests/integration/test_lifecycle_season.py` (a season-end on the real world: retirements mostly from 33+, every club's intake ready to play, computer-run senior squads within the limit, the user's squad untrimmed, the youth news; and Release: own players only).
 4. - [ ] **W2, other leagues:**
    - the top five (Spain, Italy, Germany, France) with their second divisions and promotion and relegation, then Portugal, the Netherlands, Scotland, Saudi Arabia, MLS and others;
    - each with its calendar, played on the fast engine;

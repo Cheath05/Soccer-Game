@@ -1,7 +1,8 @@
-import { Badge, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Grid, Group, Loader, Modal, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { useParams } from '@tanstack/react-router'
+import { useState } from 'react'
 
-import { usePlayer } from '../api/hooks'
+import { usePlayer, useReleasePlayer } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import { attributeLabel, money, positionColor, ratingColor, wage } from '../lib/format'
 
@@ -30,7 +31,7 @@ export default function PlayerPage() {
         <div>
           <Title order={2}>{p.name}</Title>
           <Text c="dimmed">
-            {p.age} years · {p.nationality ?? 'Unknown'} · {p.club ? <ClubLink club={p.club} /> : 'Free agent'}
+            {p.age} years · {p.nationality ?? 'Unknown'} · {p.club ? <ClubLink club={p.club} /> : p.retired ? 'Retired' : 'Free agent'}
           </Text>
           <Group gap={6} mt={6}>
             {Object.entries(p.familiarity)
@@ -44,6 +45,7 @@ export default function PlayerPage() {
           </Group>
         </div>
         <Group>
+          {p.own_player && <ReleaseButton playerId={p.id} name={p.name} />}
           <Card withBorder padding="sm" ta="center" miw={90}>
             <Text size="xs" c="dimmed">
               Overall
@@ -178,5 +180,35 @@ function Row({ label, value }: { label: string; value: string }) {
       <Table.Td c="dimmed">{label}</Table.Td>
       <Table.Td>{value}</Table.Td>
     </Table.Tr>
+  )
+}
+
+function ReleaseButton({ playerId, name }: { playerId: number; name: string }) {
+  const [opened, setOpened] = useState(false)
+  const release = useReleasePlayer()
+  return (
+    <>
+      <Button variant="subtle" color="red" size="xs" onClick={() => setOpened(true)}>
+        Release
+      </Button>
+      <Modal opened={opened} onClose={() => setOpened(false)} title={`Release ${name}?`} centered>
+        <Stack>
+          <Text size="sm">His contract ends today and he leaves as a free agent. Until transfers are in the game, a released player isn&apos;t signed by anyone, and most leave the professional game at the end of the season.</Text>
+          {release.error && (
+            <Text c="red" size="sm">
+              {release.error.message}
+            </Text>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOpened(false)}>
+              Keep him
+            </Button>
+            <Button color="red" loading={release.isPending} onClick={() => release.mutate(playerId, { onSuccess: () => setOpened(false) })}>
+              Release
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
   )
 }

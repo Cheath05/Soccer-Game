@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sqlalchemy import Connection, Row, bindparam, func, or_, select, text
+from sqlalchemy import Connection, Row, bindparam, func, or_, select, text, update
 
 from footsim.api.schemas import (
     AttributeOut,
@@ -53,6 +53,7 @@ from footsim.persistence.schema import (
     club,
     club_league_membership,
     competition,
+    contract,
     cup_tie,
     fixture,
     league_final,
@@ -432,7 +433,8 @@ _PLAYER_SQL = """
     SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date, n.name AS nation,
            pl.height_cm, pl.weight_kg, pl.preferred_foot, pl.weak_foot, pl.skill_moves,
            pl.pa_hidden, pl.value_eur_cents, k.club_id, k.wage_weekly_cents, k.end_date,
-           s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend
+           s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend,
+           pl.retired_on
     FROM person p
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN nation n ON n.id = p.nation_id
@@ -644,8 +646,19 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
         face_key=sorted(weights, key=lambda k: -weights[k])[:3],
         roles=roles, familiarity=fams,
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
-        traits=traits, own_player=own,
+        traits=traits, own_player=own, retired=r.retired_on is not None,
     )
+
+
+def release_player(conn: Connection, player_id: int, day: date) -> None:
+    """End the user's contract with one of their players: he becomes a free agent."""
+    meta = read_meta(conn)
+    updated = conn.execute(update(contract).where(
+        contract.c.person_id == player_id, contract.c.is_active == 1,
+        contract.c.club_id == meta.user_club_id,
+    ).values(is_active=0, end_date=day.isoformat())).rowcount
+    if not updated:
+        raise KeyError(player_id)
 
 
 # --- matches --------------------------------------------------------------------------

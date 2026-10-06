@@ -255,6 +255,7 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   potential: { low: number; high: number; label: string }
   traits: string[]
   own_player: boolean
+  retired?: boolean
 }
 
 export interface MatchEvent {

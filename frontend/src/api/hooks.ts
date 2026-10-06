@@ -148,6 +148,14 @@ export function useLoadCareer() {
   })
 }
 
+export function useReleasePlayer() {
+  const invalidate = useInvalidateAll()
+  return useMutation({
+    mutationFn: (playerId: number) => api.post<PlayerDetail>(`/players/${playerId}/release`),
+    onSuccess: invalidate,
+  })
+}
+
 export function useSaveGame() {
   const client = useQueryClient()
   return useMutation({

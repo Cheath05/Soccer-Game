@@ -35,6 +35,7 @@ from footsim.persistence.schema import (
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
+from footsim.world.lifecycle import season_turnover
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import club_name, display_name, load_squad
 
@@ -332,6 +333,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
         verb = "promoted to" if new_league.tier < old_league.tier else "relegated to"
         messages.append(f"{club_name(conn, club_id)} {verb} the {new_league.name}.")
 
+    messages += season_turnover(conn, world, meta, calendar.season_start)
     _renew_contracts(conn, meta, calendar.season_start, calendar.season_end)
     conn.execute(text("UPDATE player_state SET season_yellows = 0"))
     meta.season_id = new
@@ -355,6 +357,7 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
                          ON f.id = pm.fixture_id WHERE pm.player_id = p.id
                          AND f.date > :since AND f.date <= :day), 0) AS minutes
         FROM person p JOIN player pl ON pl.person_id = p.id
+        WHERE pl.retired_on IS NULL
         ORDER BY p.id
     """), {"since": (day - timedelta(days=365)).isoformat(), "day": day.isoformat()}).all()
     attrs_rows = {r.player_id: r for r in conn.execute(select(player_attr))}

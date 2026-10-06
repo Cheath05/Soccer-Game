@@ -84,9 +84,14 @@ def _to_v7(conn: Connection) -> None:
     metadata.create_all(conn)
 
 
+def _to_v8(conn: Connection) -> None:
+    """Retirement: the day a player retired."""
+    _add_column(conn, "player", "retired_on", "TEXT")
+
+
 # target version -> step that upgrades from the version before it
 STEPS: dict[int, Callable[[Connection], None]] = {
-    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7}
+    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8}
 
 
 def migrate(engine: Engine) -> int:

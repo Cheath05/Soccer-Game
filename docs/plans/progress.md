@@ -606,7 +606,33 @@ The order, each its own checkpoint (or several):
      - **The memory note on 1 Oct:** the machine swapped hard during the first attempt (load 105, 2.8 GB of 4 GB swap), and the batch was stopped at the 1-hour limit. Re-run with 4 workers, one division at a time.
      - **The in-match manager re-measured:** `test_reads_a_high_press_from_the_pitch` failed. Pressed sides spend shorter spells near their goal now, so most high-press matches never collected the 30 looks a reading needs. On 12 seeds (`scratchpad/press_window.py`), `min_samples` 25 reads high presses at 1.46 on average against 0.97 for normal ones, with 64% of high presses read and no false alarms. Over each match he went direct in 8 of 12 pressed matches and 1 of 12 normal ones.
    - **Re-sequenced by this measurement:** switching 2.3c on, and 2.3e, wait for Phase D's shape and defending (D2, D6). Both need defending that covers passing options and the box: 2.3c's honest estimates find the safe short option otherwise, and 2.3e's better control would keep that possession longer. D2 and D6 run alongside the main track, as planned. The main track goes on: 2.4, then B2, then the world.
-   - [ ] 2.4, fouls and cards. Foul volume is now near range after 2.3f, so this is mostly the card rules (DOGSO reds, `booked_caution` applied once, the aggression > 80 red-card cliff) and the stale duel engagements.
+   - [x] 2.4, fouls and cards.
+     - **Rules:**
+       - a booked player's caution is applied once, to his chance of fouling in any duel. It used to scale his tackle rate and his foul chance, so second yellows almost never happened;
+       - the card risk from aggression grows smoothly from 60 to 100, where it was a step at 80;
+       - a foul that denies an obvious goal-scoring chance (Law 12: within 30 m, nobody covering in a 9 m corridor) is a red card, or a yellow for a challenge for the ball in the area, which is a penalty already. It carries a one-match ban;
+       - an engagement a defender let lapse is sized up afresh instead of carried over.
+     - **The probe:** fouls by source (tackle, take-on, tactical, aerial); second yellows, straight reds and DOGSO counted apart; take-ons as the carrier's duels only (it counted every duel).
+     - **Measured** (200 per division, seed 21, `reports/engine/step2.4/`):
+       - `cards1`: the caution on the tackle rate alone gave 0.33 second yellows a match, because booked defenders kept fouling attackers who ran at them;
+       - `cards2`: caution 0.15 on the foul chance;
+       - `cards3`, the values kept: caution 0.07 and straight reds 0.0007 a foul.
+
+       | cards3 | Premier League | League Two | Real (PL / EFL) |
+       |---|---|---|---|
+       | Fouls | 23.8 | 18.8 | 20–24 / 20.5–24.5 |
+       | Yellows | 4.20 | 3.34 | 3.4–4.3 / 3.3–4.2 |
+       | Reds | 0.185 ±0.06 | 0.085 ±0.05 | 0.08–0.18 |
+       | of which second yellows | 0.08 | 0.02 | |
+       | Penalties | 0.215 | 0.12 | 0.15–0.30 / 0.15–0.32 |
+       | Fouls by tackle / take-on / aerial | 13.8 / 10.9 / 0.8 (`cards1`) | 11.6 / 7.7 / 0.4 | |
+       | Take-ons, success | 28, 81% | 26, 82% | success about 45–60% |
+
+     - **Still off, recorded:**
+       - League Two's fouls and penalties are a little low;
+       - tackles are about 57 a match against roughly 28–45;
+       - take-ons succeed 81% of the time against about half: the attacker usually runs at whoever is nearest, often a forward or midfielder with poor tackling, and `take_on_edge` favours him.
+       - These belong to the duel volume and choice of opponent: Phase D's defending (D6) and transitions.
    - [ ] 2.3c switched on, with the decision values calibrated (long-ball and cross shares in range): after D2 and D6.
    - [ ] 2.3e, control by rating: after D2 and D6.
 2. - [ ] **B2, the fast engine** as a surrogate of the agent engine: the same goal, shot and home-advantage rates for the same ratings, checked by cross-engine tests. Moved up from Step 5.

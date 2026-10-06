@@ -27,15 +27,15 @@ keep_after_tackle: [0.6, 0.75]   # chance the tackler keeps the ball: in midfiel
 foul_chance: 0.27         # of a challenge, before aggression, sliding and position
 aerial_foul_chance: 0.08  # of a contested header (mostly pushing by attackers)
 tactical_foul_chance: 0.3 # a beaten defender stopping a counter-attack
-booked_caution: 0.15      # a booked player's chance of fouling in a duel, whoever starts it, is
-                          # scaled by this: about 1-2% of booked players see a second yellow.
-                          # (Until 2.4 it scaled his tackle rate and his foul chance, 0.3 each, so
+booked_caution: 0.07      # a booked player's chance of fouling in a duel, whoever starts it, is
+                          # scaled by this, so few booked players see a second yellow (0.08 a
+                          # match in the Premier League, 0.02 in League Two: step2.4/cards3).
+                          # Until 2.4 it scaled his tackle rate and his foul chance, 0.3 each, so
                           # second yellows almost never happened; on his tackle rate alone,
-                          # booked defenders kept fouling attackers who ran at them: 0.33 second
-                          # yellows a match in the Premier League, step2.4/cards1)
+                          # booked defenders kept fouling attackers who ran at them (0.33 a match)
 
 yellow: {base: 0.13, sliding: 0.08, aggressive: 0.06, from_behind: 0.05, tactical: 0.75}
-red: {base: 0.001, reckless: 0.005}  # straight reds per foul (0.0015 until 2.4's DOGSO reds)
+red: {base: 0.0007, reckless: 0.005}  # straight reds per foul (0.0015 until 2.4's DOGSO reds)
 aggression_cards: [60, 100]  # a foul's card risk from aggression grows from nothing at 60 to the
                              # full `aggressive` (and the reckless red) at 100. It was a step at 80.
 dogso:                    # denying an obvious goal-scoring opportunity (Law 12): a red card,

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Deploy the newest commit of the checked-out branch, unless the game is in use.
 #
-# footsim-update.timer runs this every ten minutes (install.sh sets it up). To update now, run
-# "systemctl --user start footsim-update", or run this script. In order, it:
-#   1. fetches, and stops quietly if nothing is new;
+# footsim-update.timer runs this shortly after boot and every ten minutes (install.sh sets it
+# up). To update now, run "systemctl --user start footsim-update", or run this script; with
+# --force it rebuilds and restarts even when nothing is new. The port and the rest of this
+# machine's settings come from ~/.config/footsim/deploy.env (deploy/common.sh). In order, it:
+#   1. fetches, and stops (saying so) if nothing is new;
 #   2. refuses to touch a checkout with uncommitted changes to tracked files;
 #   3. stops quietly, to try again next time, if the game is in use (a connection to the port,
 #      or a sim-to-date running);
@@ -16,17 +18,16 @@
 # fast-forward is tried again next time, and so is a checkout that was moved by hand.
 set -euo pipefail
 
-port=8000
-base="http://127.0.0.1:$port"
-unit=footsim.service
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/footsim"
-marker="$state_dir/deployed-commit"
-
 log() { printf 'footsim-update: %s\n' "$*"; }
 fail() { printf 'footsim-update: %s\n' "$*" >&2; exit 1; }
 
+force=no
+[ "${1:-}" != --force ] || force=yes
+
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
+# shellcheck source=deploy/common.sh
+. "$root/deploy/common.sh"
 trap 'rm -rf "$root/frontend/dist-next"' EXIT
 
 # One update at a time: the timer and a hand-started run could overlap.
@@ -39,7 +40,8 @@ export GIT_TERMINAL_PROMPT=0
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" != HEAD ] || fail "the checkout is not on a branch, so there is nothing to follow"
-timeout 120 git fetch --quiet origin "$branch" || fail "could not fetch origin/$branch"
+# The tags come too: the version number the game shows counts commits from the latest v<major>.0.
+timeout 120 git fetch --quiet --tags origin "$branch" || fail "could not fetch origin/$branch"
 
 head=$(git rev-parse HEAD)
 remote=$(git rev-parse "origin/$branch")
@@ -55,7 +57,8 @@ if [ "$head" != "$remote" ]; then
     fail "HEAD and origin/$branch have diverged; leaving the checkout alone"
   fi
 fi
-if [ "$merge" = no ] && [ "$head" = "$deployed" ]; then
+if [ "$merge" = no ] && [ "$head" = "$deployed" ] && [ "$force" = no ]; then
+  log "up to date: $(git describe --tags --match 'v[0-9]*' --always 2>/dev/null) on $branch, port $port"
   exit 0
 fi
 
@@ -82,7 +85,7 @@ if [ "$merge" = yes ]; then
   git merge --quiet --ff-only "origin/$branch" || fail "cannot fast-forward to origin/$branch"
   log "checkout is now at $(git rev-parse --short HEAD) on $branch"
 else
-  log "deploying $(git rev-parse --short HEAD), which is checked out but not deployed"
+  log "deploying $(git rev-parse --short HEAD) on $branch (not deployed yet, or --force)"
 fi
 
 # step <directory> <what> <command...>: run in that directory of the checkout, or give up.
@@ -116,14 +119,15 @@ expected=$(git rev-parse --short HEAD)
 log "restarting $unit"
 systemctl --user restart "$unit" || fail "could not restart $unit"
 
-for _ in $(seq 30); do
-  if body=$(curl -sf --max-time 2 "$base/api/health"); then
-    running=$(sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<<"$body")
+for _ in $(seq 60); do
+  if body=$(health "$port"); then
+    running=$(json_field "$body" commit)
+    version=$(json_field "$body" version)
     [ "$running" = "$expected" ] || fail "the server answers but reports commit '${running:-none}', not $expected"
     git rev-parse HEAD > "$marker"
-    log "deployed: the server is up on commit $running"
+    log "deployed: the server is up on 127.0.0.1:$port, version ${version:-unknown}, commit $running"
     exit 0
   fi
   sleep 1
 done
-fail "the server did not answer on /api/health within 30 s; see: journalctl --user -u footsim"
+fail "the server did not answer on $base/api/health within 60 s; see: journalctl --user -u footsim"

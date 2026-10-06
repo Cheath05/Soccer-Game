@@ -31,7 +31,27 @@
     - `deploy/install.sh` sets it up as systemd user services, and `deploy/update.sh` deploys every push to this branch within ten minutes, unless a match or a sim is running (`deploy/README.md`).
     - **Every push is a deploy:** keep each pushed commit playable.
     - **The version tag** (bottom of the menu, top of the start page) shows the build. It turns orange when the page and the server are on different commits.
-  - **Next task:** Phase D2, the defensive shape, on top of the fitted shot model (see "Behaviour changes, measured as one engine checkpoint" below). Then W3, finances.
+  - **Production on the VM (6 Oct, the user's spec):**
+    - footsim runs on `127.0.0.1:8001` as the systemd **user** service `footsim.service`, reached at `https://cardinal.tailaf3b0c.ts.net:8443` (Tailscale Serve to 8001). Cardinal, another app, owns `127.0.0.1:8000` and HTTPS 443, and is never touched.
+    - The VM's settings are in `~/.config/footsim/deploy.env` (`FOOTSIM_PORT=8001`), read by the service, the updater and `deploy/status.sh`.
+    - `deploy/install.sh` retires the user's hand-made `/etc/systemd/system/footsim.service`:
+      - it checks the unit runs footsim, and keeps its saves;
+      - it backs the unit up, then removes it;
+      - it rolls back by itself if the new service doesn't answer.
+    - Development and tests keep port 8000 and 8765.
+    - Exercised in a stubbed sandbox: migration, rollback, refusal of a non-footsim port, re-run, and the updater (new commit, nothing new, busy, `--force`). It hasn't been run on the VM itself yet.
+  - **Versions:** `v<major>.<minor>`, with the minor counting commits since the latest `v<major>.0` tag. `v1.0` is the commit that brought the deployment fix. The next major (`v2.0`) is for a big change to the simulation (Phase D accepted).
+  - **Each country's cups** (a Sonnet agent's patch, reviewed and tested here):
+    - Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France, Taça de Portugal and Taça da Liga, KNVB Beker, Scottish Cup and League Cup, Türkiye Kupası, Belgian Cup and King's Cup;
+    - each on its own country's calendar, with only clubs in the data (byes for the top-ranked where a bracket doesn't fill).
+    - The Cups page picks a country, defaulting to the user's.
+    - The whole-season test checks every cup finishes.
+  - **Queued for a Sonnet agent** (the user's requests, 6 Oct, after a full-season sim):
+    - the League page shows the finished season's final table until the new season's first matches;
+    - fixtures and results by season;
+    - a clean season summary: champions, promoted and relegated by country, and the user's player development as old → new with green and red arrows;
+    - each player's season-by-season stats (club, competition, apps, minutes, goals, assists, average rating, cards) from `player_match`, the base for awards (Ballon d'Or, players of the year) later.
+  - **Next engine task:** D6, engagement around the box (see D2's reading below). Then W3, finances.
   - **Calibration:** nothing running once this checkpoint's measurement is in.
 - **Before that (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
   - P15, the up/down arrows by a player's overall: e959fe4;

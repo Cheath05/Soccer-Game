@@ -150,14 +150,16 @@ def run_tasks(tasks: Sequence[MatchTask], world: Path | None, workers: int) -> l
 
 
 def division_clubs(world: Path, division: str) -> list[int]:
+    """The division's clubs; ``ENG1+ENG4`` pools several, for fixtures across divisions (as
+    cup ties are)."""
     engine = open_readonly(world)
     try:
         with engine.connect() as conn:
-            rows = conn.execute(text("""
+            rows = [r for key in division.split("+") for r in conn.execute(text("""
                 SELECT m.club_id FROM club_league_membership m
                 JOIN competition c ON c.id = m.competition_id
                 WHERE c.key = :key AND m.season_id = 1 ORDER BY m.club_id
-            """), {"key": division}).all()
+            """), {"key": key}).all()]
     finally:
         engine.dispose()
     clubs = [int(r.club_id) for r in rows]
@@ -444,7 +446,14 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
          "focus": {arm.name: focus_view([r for r in results if r["arm"] == arm.name])
                    for arm in arms} if len(arms) > 1 else {},
          "paired_deltas": {arm: {k: {"mean": m, "ci95": h} for k, (m, h) in d.items()}
-                           for arm, d in deltas.items()}},
+                           for arm, d in deltas.items()},
+         # One row per match, for comparing engines on the same fixtures (B2).
+         "matches": [{"index": r["index"], "arm": r["arm"], "home_club": r["home_club"],
+                      "away_club": r["away_club"], "xi_rating": r["xi_rating"],
+                      "score": list(r["score"]),
+                      "xg": [round(r["teams"][t]["xg"], 3) for t in (0, 1)],
+                      "shots": [r["teams"][t]["shots"] for t in (0, 1)]}
+                     for r in results]},
         indent=1, default=float), "utf-8")
     return path
 

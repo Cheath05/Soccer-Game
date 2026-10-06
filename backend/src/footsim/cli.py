@@ -80,6 +80,20 @@ def _build_world(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cross_engine(args: argparse.Namespace) -> int:
+    from footsim.calibration.cross_engine import compare_engines
+    from footsim.world.context import get_world
+
+    agent, fast = compare_engines(get_world(), args.report, args.world, args.reps, args.seed)
+    print(f"{'engine':8s} {'n':>6s} {'goals':>6s} {'home':>6s} {'draw':>6s} {'away':>6s} "
+          f"{'edge':>7s} {'per pt':>8s}")
+    print(f"{'agent':8s} {agent.row()}")
+    print(f"{'fast':8s} {fast.row()}")
+    print("edge: home goal difference at an even rating gap; per pt: goal difference per point "
+          "of the elevens' rating gap")
+    return 0
+
+
 def _sim_season(args: argparse.Namespace) -> int:
     import shutil
     import tempfile
@@ -196,6 +210,14 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--out", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     build.add_argument("--force", action="store_true", help="overwrite an existing world")
     build.set_defaults(func=_build_world)
+
+    cross = sub.add_parser("cross-engine",
+                           help="the fast engine against the agent engine on a batch's fixtures")
+    cross.add_argument("report", type=Path, help="an agent-engine batch report (.json)")
+    cross.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    cross.add_argument("--reps", type=int, default=20, help="fast-engine plays per fixture")
+    cross.add_argument("--seed", type=int, default=1)
+    cross.set_defaults(func=_cross_engine)
 
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))

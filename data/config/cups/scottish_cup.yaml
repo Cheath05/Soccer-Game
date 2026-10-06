@@ -1,0 +1,20 @@
+# The Scottish Cup. Single matches with extra time and penalties; the semi-finals and the final
+# are at Hampden Park, the semi-finals on a Saturday (no league round is played that day) and
+# the final late in May after the league season. Round dates are in the season calendar
+# (calendars/sco-*.yaml, cups: SCOTTISH_CUP).
+#
+# Real life: the Premiership clubs join in the fourth round, after rounds for Championship and
+# lower-league clubs, and there is a fifth round before the quarter-finals. The game has no
+# clubs outside the Premiership, so its 12 start in the fourth round, of whom the four
+# highest-ranked are exempt (byes), and the fifth round is left out.
+key: SCOTTISH_CUP
+name: Scottish Cup
+short_name: Scottish Cup
+nation: SCO
+entrants:
+  - {league: SCO1, round: 1}
+rounds:
+  - {name: Fourth round, qualifiers: 8}
+  - {name: Quarter-final}
+  - {name: Semi-final, neutral: true, blocks: [SCO1]}
+  - {name: Final, neutral: true}

@@ -14,3 +14,17 @@ international_windows:
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
 blackout:
   - {start: 2026-12-24, end: 2026-12-26}   # Christmas
+# Cup rounds, one date per leg (approximate): both cups on Tuesdays and Wednesdays, three or
+# more days clear of the league's Saturdays. The Taça de Portugal's final is on the Sunday after
+# the league season; the Taça da Liga's Final Four is in January.
+cups:
+  TACA_DA_LIGA:
+    - [2026-12-01]
+    - [2027-01-12]
+    - [2027-01-20]
+  TACA_DE_PORTUGAL:
+    - [2026-10-28]
+    - [2026-12-09]
+    - [2027-02-03]
+    - [2027-03-10, 2027-04-07]
+    - [2027-05-23]

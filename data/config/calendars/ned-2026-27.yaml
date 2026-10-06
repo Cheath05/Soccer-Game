@@ -14,3 +14,12 @@ international_windows:
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
 blackout:
   - {start: 2026-12-21, end: 2027-01-08}   # winter break
+# Cup rounds, one date per leg (approximate): the KNVB Beker on Wednesdays, three or more days
+# clear of the league's Saturdays and the winter break.
+cups:
+  KNVB_BEKER:
+    - [2026-10-28]
+    - [2026-12-16]
+    - [2027-01-20]
+    - [2027-02-17]
+    - [2027-04-21]

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from footsim import __version__
 from footsim.api import routes
 from footsim.api.app import app, create_app
 from footsim.api.session import CareerSession
@@ -31,6 +32,7 @@ def test_health_says_whether_saves_are_the_default(tmp_path: Path,
 def test_health_names_the_build() -> None:
     body = TestClient(app).get("/api/health").json()
     assert body["status"] == "ok"  # the keys the browser tests rely on are still there
-    for key in ("commit", "commit_date", "branch"):
+    for key in ("version", "package_version", "commit", "commit_date", "branch"):
         assert isinstance(body[key], str)
     assert isinstance(body["dirty"], bool)
+    assert body["package_version"] == __version__

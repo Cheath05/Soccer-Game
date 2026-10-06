@@ -115,8 +115,7 @@ def members(conn: Connection, season_id: int, competition_id: int) -> list[int]:
 def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
                            season_id: int) -> list[str]:
     """The season's league fixtures, around the cup rounds that keep leagues out, and the
-    cups' first-round draws. Returns news of the draws."""
-    calendar = season_calendar(world, meta, season_id)
+    first-round draws of every country's cups. Returns news of the draws."""
     news = ensure_leagues(conn, world, season_id)
     for active in active_leagues(conn, world):
         league = active.league
@@ -125,7 +124,7 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
         rounds = round_robin(clubs, league.format.legs, rng)
         own = league_calendar(world, league, season_id)
         dates = league_round_dates(own.competitions[league.key], own, len(rounds),
-                                   blocked_dates(world, calendar, league.key))
+                                   blocked_dates(world, own, league.key))
         conn.execute(fixture.insert(), [
             {"season_id": season_id, "competition_id": active.competition_id, "stage": "league",
              "round": number, "date": day.isoformat(), "home_club_id": home,
@@ -133,7 +132,7 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
             for number, (games, day) in enumerate(zip(rounds, dates, strict=True), start=1)
             for home, away in games
         ])
-    return news + start_cups(conn, world, meta, calendar, meta.current_date)
+    return news + start_cups(conn, world, meta, meta.current_date)
 
 
 def league_results(conn: Connection, competition_id: int, season_id: int) -> list[Result]:
@@ -173,8 +172,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     messages: list[str] = []
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
-    messages += progress_cups(conn, world, meta, season_calendar(world, meta, meta.season_id),
-                              day)
+    messages += progress_cups(conn, world, meta, day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
         if not _finalized(conn, cid, meta.season_id):

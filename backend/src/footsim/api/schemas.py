@@ -80,6 +80,7 @@ class CupRoundOut(BaseModel):
 class CupOut(BaseModel):
     key: str
     name: str
+    nation: str
     season: str
     rounds: list[CupRoundOut]
     winner: ClubRef | None
@@ -88,6 +89,7 @@ class CupOut(BaseModel):
 class CupSummaryOut(BaseModel):
     key: str
     name: str
+    nation: str  # the country it is played in (a nation code: ENG)
     current_round: str | None  # the round being played or next to be played
     user_status: str | None  # the user's club: "In the third round", "Out", "Winners"...
     winner: ClubRef | None

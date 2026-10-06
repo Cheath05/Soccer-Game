@@ -14,3 +14,13 @@ international_windows:
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
 blackout:
   - {start: 2026-12-28, end: 2027-02-07}   # the AFC Asian Cup, in Saudi Arabia (7 Jan-5 Feb 2027)
+# Cup rounds, one date per leg (approximate): the King's Cup on Wednesdays in weeks the league
+# plays no Tuesday round, three or more days clear of its Saturdays, outside the Asian Cup break,
+# with the final on the Wednesday after the league's last round.
+cups:
+  KINGS_CUP:
+    - [2026-10-28]
+    - [2026-12-09]
+    - [2027-03-03]
+    - [2027-04-14]
+    - [2027-05-26]

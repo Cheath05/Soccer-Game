@@ -1,0 +1,20 @@
+# The KNVB Beker. Single matches with extra time and penalties; the final is at De Kuip in
+# Rotterdam, in April. Round dates are in the season calendar (calendars/ned-*.yaml, cups:
+# KNVB_BEKER), all midweeks.
+#
+# Real life: amateur and Eerste Divisie clubs play the first round, and the Eredivisie clubs
+# join in the second. The game has no clubs outside the Eredivisie, so its 18 start in the
+# second round, of whom the 14 highest-ranked are exempt (byes) for the round of 16 to have its
+# 16.
+key: KNVB_BEKER
+name: KNVB Beker
+short_name: KNVB Beker
+nation: NED
+entrants:
+  - {league: NED1, round: 1}
+rounds:
+  - {name: Second round, qualifiers: 16}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

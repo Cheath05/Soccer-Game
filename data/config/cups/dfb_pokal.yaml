@@ -1,0 +1,24 @@
+# The DFB-Pokal. Single matches with extra time and penalties in every round, the lower-ranked
+# club hosting in real life (here the first-drawn club does); the final is at the Olympiastadion
+# in Berlin, in May, the Saturday after the Bundesliga's last round. Round dates are in the
+# season calendar (calendars/ger-*.yaml, cups: DFB_POKAL), midweeks.
+#
+# The real first round has 64 clubs: the Bundesliga's 18, the 2. Bundesliga's 18, the 3. Liga's
+# best four and 24 amateur cup winners. The game has no amateur clubs, and all 20 of the 3. Liga
+# join, so there are 56. The eight highest-ranked (the Bundesliga's) are exempt (byes) for the
+# round of 64 to be a bracket of 32 after it.
+key: DFB_POKAL
+name: DFB-Pokal
+short_name: DFB-Pokal
+nation: GER
+entrants:
+  - {league: GER1, round: 1}
+  - {league: GER2, round: 1}
+  - {league: GER3, round: 1}
+rounds:
+  - {name: First round, qualifiers: 32}
+  - {name: Second round}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

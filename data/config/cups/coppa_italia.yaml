@@ -1,0 +1,24 @@
+# The Coppa Italia. Single matches with extra time and penalties, except the semi-finals over
+# two legs; the final is at the Stadio Olimpico in Rome, in May. Round dates are in the season
+# calendar (calendars/ita-*.yaml, cups: COPPA_ITALIA), all midweeks.
+#
+# Real life: Serie C and amateur clubs play the early rounds, Serie B and the Serie A clubs join
+# along the way, and the top eight Serie A clubs (last season's) join in the round of 16. The game
+# has no clubs below Serie B, so the first round is Serie B's 20 and the twelve lowest-ranked
+# Serie A clubs (32 clubs, no byes); the round of 16 is the eight seeds and the eight clubs who
+# come through two rounds.
+key: COPPA_ITALIA
+name: Coppa Italia
+short_name: Coppa Italia
+nation: ITA
+entrants:
+  - {league: ITA2, round: 1}
+  - {league: ITA1, round: 1, ranks: [9, 20]}
+  - {league: ITA1, round: 3, ranks: [1, 8]}
+rounds:
+  - {name: First round}
+  - {name: Second round}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final, legs: 2}
+  - {name: Final, neutral: true}

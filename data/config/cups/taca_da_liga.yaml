@@ -1,0 +1,18 @@
+# The Taça da Liga, Portugal's league cup. Single matches with extra time and penalties. Round
+# dates are in the season calendar (calendars/por-*.yaml, cups: TACA_DA_LIGA): the quarter-finals
+# in December and the semi-finals and final in January, the last two at a neutral ground as
+# at the real Final Four.
+#
+# Real life: Liga and Liga 2 clubs play group matches first and four reach a Final Four at one
+# ground in January. The game has no Liga 2, so it takes the Liga's top eight (last season's)
+# straight to the quarter-finals.
+key: TACA_DA_LIGA
+name: Taça da Liga
+short_name: Taça da Liga
+nation: POR
+entrants:
+  - {league: POR1, round: 1, ranks: [1, 8]}
+rounds:
+  - {name: Quarter-final}
+  - {name: Semi-final, neutral: true}
+  - {name: Final, neutral: true}

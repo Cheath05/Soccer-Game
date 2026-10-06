@@ -1,0 +1,20 @@
+# The Taça de Portugal. Single matches with extra time and penalties, except the semi-finals
+# over two legs; the final is at the Estádio Nacional (the Jamor), in May. Round dates are in the
+# season calendar (calendars/por-*.yaml, cups: TACA_DE_PORTUGAL), midweeks, with the final on a
+# Sunday after the league season.
+#
+# Real life: lower-league and amateur clubs play several rounds before the Liga clubs join. The
+# game has no clubs outside the Liga, so the Liga's 18 start in the first round, of whom the 14
+# highest-ranked are exempt (byes) for the round of 16 to have its 16.
+key: TACA_DE_PORTUGAL
+name: Taça de Portugal
+short_name: Taça de Portugal
+nation: POR
+entrants:
+  - {league: POR1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 16}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final, legs: 2}
+  - {name: Final, neutral: true}

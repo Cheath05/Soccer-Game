@@ -43,9 +43,16 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-// Which build this is, for saying "I'm on 70b9171". It shows the server's commit; if the page
-// was built from another commit (the server was updated but the frontend wasn't rebuilt, or the
-// other way round) it shows both, in orange. Click to copy a line to paste into a bug report.
+// A version number as shown ("v1.12"), or the commit where there isn't one (a server that
+// predates version numbers, or a copy without git).
+function shown(version: string, commit: string): string {
+  return version !== UNKNOWN ? `v${version}` : commit
+}
+
+// Which build this is, for saying "I'm on v1.12". It shows the server's version number and the
+// date of its commit; if the page was built from another commit (the server was updated but the
+// frontend wasn't rebuilt, or the other way round) it shows both versions, in orange. Click to
+// copy a line to paste into a bug report.
 export default function VersionTag({ truncate = false }: { truncate?: boolean }) {
   const health = useHealth()
   const [copied, setCopied] = useState(false)
@@ -54,20 +61,25 @@ export default function VersionTag({ truncate = false }: { truncate?: boolean })
   const data = health.data
   const server = data?.commit ?? UNKNOWN
   const page = __BUILD_COMMIT__
+  // A server that predates version numbers still sends `version`, but it is the package's own.
+  const serverVersion = data?.package_version !== undefined ? data.version : UNKNOWN
+  const pageVersion = __BUILD_VERSION__
   const mismatch = server !== UNKNOWN && page !== UNKNOWN && server !== page
   const branch = data?.branch ?? UNKNOWN
   const dirty = data?.dirty ? '+' : ''
   const date = data?.commit_date && data.commit_date !== UNKNOWN ? data.commit_date : null
+  const serverName = shown(serverVersion, server)
+  const pageName = shown(pageVersion, page)
 
   let label: string
-  if (!data) label = `page ${page} · server unreachable`
-  else if (mismatch) label = `server ${server}${dirty} · page ${page}`
-  else if (server === UNKNOWN) label = 'version unknown'
-  else label = `v${server}${dirty}${date ? ` · ${dayMonth(date)}` : ''}`
+  if (!data) label = `page ${pageName} · server unreachable`
+  else if (mismatch) label = `server ${serverName}${dirty} · page ${pageName}`
+  else if (server === UNKNOWN && serverVersion === UNKNOWN) label = 'version unknown'
+  else label = `${serverName}${dirty}${date ? ` · ${dayMonth(date)}` : ''}`
 
   const summary = mismatch
-    ? `footsim server ${server}${dirty} / page ${page} (${branch}) built ${__BUILD_TIME__}`
-    : `footsim ${server === UNKNOWN ? page : server}${dirty} (${branch}) built ${__BUILD_TIME__}`
+    ? `footsim server ${serverName}${dirty} (${server}) / page ${pageName} (${page}) (${branch}) built ${__BUILD_TIME__}`
+    : `footsim ${serverName === UNKNOWN ? pageName : serverName}${dirty} (${server === UNKNOWN ? page : server}, ${branch}) built ${__BUILD_TIME__}`
 
   const copy = () => {
     void copyText(summary).then((ok) => {
@@ -79,10 +91,11 @@ export default function VersionTag({ truncate = false }: { truncate?: boolean })
 
   const details = (
     <div>
+      <div>Version: {serverName}{dirty && ' (tracked files changed since)'}</div>
       <div>Branch: {branch}</div>
-      <div>Commit: {server}{dirty && ' (tracked files changed since)'}</div>
+      <div>Commit: {server}</div>
       {date && <div>Committed: {dateTime(date)}</div>}
-      <div>Page built from {page}: {dateTime(__BUILD_TIME__)}</div>
+      <div>Page built at {pageName} ({page}): {dateTime(__BUILD_TIME__)}</div>
       {mismatch && <div>The page and the server are on different commits: rebuild the page, or restart the server.</div>}
       <div>Click to copy.</div>
     </div>

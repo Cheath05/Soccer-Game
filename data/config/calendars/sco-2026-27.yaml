@@ -13,3 +13,18 @@ international_windows:
   - {start: 2027-03-22, end: 2027-03-30}
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
 
+# Cup rounds, one date per leg (approximate): early rounds on Wednesdays, three or more days
+# clear of the league's Saturdays; the semi-finals and the League Cup final on Saturdays (the
+# cups' `blocks` keep the league out), the Scottish Cup final the Saturday after the league
+# season.
+cups:
+  SCOTTISH_CUP:
+    - [2026-11-25]
+    - [2027-03-03]
+    - [2027-04-17]
+    - [2027-05-22]
+  SCOTTISH_LEAGUE_CUP:
+    - [2026-08-19]
+    - [2026-10-14]
+    - [2026-10-31]
+    - [2026-12-12]

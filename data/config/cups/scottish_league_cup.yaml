@@ -1,0 +1,20 @@
+# The Premier Sports Cup, Scotland's league cup. Single matches with extra time and penalties;
+# the semi-finals and the final are at Hampden Park on Saturdays (no league round is played
+# those days), the final in December. Round dates are in the season calendar
+# (calendars/sco-*.yaml, cups: SCOTTISH_LEAGUE_CUP).
+#
+# Real life: a group stage in July and early August (Premiership, Championship and lower-league
+# clubs) comes first, and the last 16 follow. The game simplifies that to a knockout from the
+# last 16: the Premiership's 12 clubs play it, the four highest-ranked exempt (byes) in place of
+# the clubs the game doesn't have.
+key: SCOTTISH_LEAGUE_CUP
+name: Premier Sports Cup
+short_name: League Cup
+nation: SCO
+entrants:
+  - {league: SCO1, round: 1}
+rounds:
+  - {name: Round of 16, qualifiers: 8}
+  - {name: Quarter-final}
+  - {name: Semi-final, neutral: true, blocks: [SCO1]}
+  - {name: Final, neutral: true, blocks: [SCO1]}

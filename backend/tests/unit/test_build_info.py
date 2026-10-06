@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from footsim.core import build_info as module
 from footsim.core.build_info import build_info
 
 
@@ -18,11 +19,15 @@ def test_without_git_the_environment_stands_in(monkeypatch: pytest.MonkeyPatch) 
         raise FileNotFoundError("git")
 
     monkeypatch.setattr(subprocess, "run", no_git)
+    monkeypatch.setenv("FOOTSIM_VERSION", "1.12")
     monkeypatch.setenv("FOOTSIM_COMMIT", "abc1234")
     monkeypatch.delenv("FOOTSIM_COMMIT_DATE", raising=False)
     monkeypatch.setenv("FOOTSIM_BRANCH", "main")
-    assert build_info() == {"commit": "abc1234", "commit_date": "unknown", "branch": "main",
-                            "dirty": False}
+    assert build_info() == {"version": "1.12", "commit": "abc1234", "commit_date": "unknown",
+                            "branch": "main", "dirty": False}
+    build_info.cache_clear()
+    monkeypatch.delenv("FOOTSIM_VERSION")
+    assert build_info()["version"] == "unknown"
 
 
 def test_a_git_that_hangs_or_fails_is_not_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -32,6 +37,35 @@ def test_a_git_that_hangs_or_fails_is_not_an_error(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(subprocess, "run", hangs)
     monkeypatch.delenv("FOOTSIM_COMMIT", raising=False)
     assert build_info()["commit"] == "unknown"
+
+
+def _git_says(monkeypatch: pytest.MonkeyPatch, described: str | None, commits: str | None
+              ) -> None:
+    """Pretend git answers `describe` with ``described`` and `rev-list --count` with ``commits``
+    (None: it fails, as `describe` does with no tag)."""
+
+    def fake(*args: str) -> str | None:
+        return {"describe": described, "rev-list": commits}.get(args[0])
+
+    monkeypatch.setattr(module, "_git", fake)
+
+
+def test_the_version_is_the_tags_major_and_the_commits_since(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    _git_says(monkeypatch, "v1.0-12-gabc1234", "99")
+    assert build_info()["version"] == "1.12"
+    build_info.cache_clear()
+    _git_says(monkeypatch, "v2.0-0-gabc1234", "99")  # on the tag itself
+    assert build_info()["version"] == "2.0"
+    build_info.cache_clear()
+    _git_says(monkeypatch, "v10.0-103-g0123abc", "400")
+    assert build_info()["version"] == "10.103"
+
+
+def test_with_no_tag_the_version_counts_commits_from_zero(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    _git_says(monkeypatch, None, "47")
+    assert build_info()["version"] == "0.47"
 
 
 def test_the_answer_is_read_once(monkeypatch: pytest.MonkeyPatch) -> None:

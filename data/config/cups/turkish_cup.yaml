@@ -1,0 +1,20 @@
+# The Türkiye Kupası. Single matches with extra time and penalties; the final is at a neutral
+# ground, in May after the league season. Round dates are in the season calendar
+# (calendars/tur-*.yaml, cups: TURKISH_CUP), all midweeks.
+#
+# Real life: lower-league clubs play several rounds, the Süper Lig clubs join, and a group stage
+# comes before the knockout rounds. The game has no clubs outside the Süper Lig and leaves the
+# groups out for a plain knockout: its 18 start in the round of 32, of whom the 14
+# highest-ranked are exempt (byes) for the round of 16 to have its 16.
+key: TURKISH_CUP
+name: Türkiye Kupası
+short_name: Turkish Cup
+nation: TUR
+entrants:
+  - {league: TUR1, round: 1}
+rounds:
+  - {name: Round of 32, qualifiers: 16}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

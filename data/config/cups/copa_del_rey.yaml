@@ -1,0 +1,24 @@
+# The Copa del Rey. Single matches with extra time and penalties, except the semi-finals over
+# two legs; the final is at a neutral ground, in April. Round dates are in the season calendar
+# (calendars/esp-*.yaml, cups: COPA_DEL_REY), all midweeks.
+#
+# Real life: the Supercopa clubs (here last season's top four) join after the other Primera
+# clubs, who join after rounds for Segunda and lower-league clubs. The game has no clubs below
+# the Segunda, so its first round is the Segunda's 22 and the other 16 Primera clubs: 38, of
+# whom the 18 highest-ranked are exempt (byes). That leaves 28 for the round of 32, where the
+# Supercopa clubs make up the 32.
+key: COPA_DEL_REY
+name: Copa del Rey
+short_name: Copa del Rey
+nation: ESP
+entrants:
+  - {league: ESP2, round: 1}
+  - {league: ESP1, round: 1, ranks: [5, 20]}
+  - {league: ESP1, round: 2, ranks: [1, 4]}
+rounds:
+  - {name: First round, qualifiers: 28}
+  - {name: Round of 32}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final, legs: 2}
+  - {name: Final, neutral: true}

@@ -1,0 +1,22 @@
+# The Coupe de France. Single matches with extra time and penalties in every round; the final
+# is at the Stade de France, in May after the league season. Round dates are in the season
+# calendar (calendars/fra-*.yaml, cups: COUPE_DE_FRANCE), midweeks.
+#
+# Real life: thousands of amateur clubs play the early rounds, Ligue 2 clubs join before the
+# Ligue 1 clubs, who join in the round of 64 (January). The game has no clubs below Ligue 2, so
+# Ligue 2's 18 start in the round of 64, of whom the 10 highest-ranked are exempt (byes) to
+# leave the 14 who, with Ligue 1's 18, make up the round of 32.
+key: COUPE_DE_FRANCE
+name: Coupe de France
+short_name: Coupe de France
+nation: FRA
+entrants:
+  - {league: FRA2, round: 1}
+  - {league: FRA1, round: 2}
+rounds:
+  - {name: Round of 64, qualifiers: 14}
+  - {name: Round of 32}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

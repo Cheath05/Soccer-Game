@@ -2,7 +2,8 @@
 
 export interface Health {
   status: string
-  version: string
+  version: string // MAJOR.MINOR ("1.12"); a server that predates version numbers sends the package's own, with no package_version
+  package_version?: string
   saves_dir: string
   default_saves: boolean
   // The build the server runs. A server that predates these omits them.
@@ -391,6 +392,7 @@ export interface CupRound {
 export interface Cup {
   key: string
   name: string
+  nation?: string // a nation code such as ENG; a server that predates it omits it (and had only England's cups)
   season: string
   rounds: CupRound[]
   winner: ClubRef | null
@@ -399,6 +401,7 @@ export interface Cup {
 export interface CupSummary {
   key: string
   name: string
+  nation?: string // the country it is played in, as on Cup
   current_round: string | null
   user_status: string | null
   winner: ClubRef | null

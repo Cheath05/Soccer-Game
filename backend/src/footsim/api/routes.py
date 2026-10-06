@@ -53,11 +53,12 @@ Session = Annotated[CareerSession, Depends(get_session)]
 def health(session: Session) -> dict[str, str | bool]:
     """Liveness, where this server keeps its saves, and which build it is. The browser tests
     refuse to run unless it says the saves aren't in the default folder, where the user's own
-    careers live: each test starts a career, which overwrites save slot 1. The build (commit,
-    its date, branch, and whether tracked files have changed since) is what the version tag in
-    the game shows."""
+    careers live: each test starts a career, which overwrites save slot 1. The build (version
+    number such as "1.12", commit, its date, branch, and whether tracked files have changed
+    since) is what the version tag in the game shows; ``package_version`` is the Python package's
+    own."""
     saves = session.saves.root.resolve()
-    return {"status": "ok", "version": __version__, "saves_dir": str(saves),
+    return {"status": "ok", "package_version": __version__, "saves_dir": str(saves),
             "default_saves": saves == DEFAULT_SAVES.resolve(), **build_info()}
 
 

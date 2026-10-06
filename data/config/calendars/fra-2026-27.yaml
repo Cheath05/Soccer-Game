@@ -14,3 +14,14 @@ international_windows:
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
 blackout:
   - {start: 2026-12-21, end: 2027-01-03}   # winter break
+# Cup rounds, one date per leg (approximate): the Coupe de France on Wednesdays, three or more
+# days clear of the leagues' Saturdays and after the winter break, with the final on the
+# Saturday after the leagues' last round.
+cups:
+  COUPE_DE_FRANCE:
+    - [2026-11-25]
+    - [2027-01-06]
+    - [2027-02-10]
+    - [2027-03-03]
+    - [2027-04-14]
+    - [2027-05-29]

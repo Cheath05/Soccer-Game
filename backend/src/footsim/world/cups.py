@@ -1,16 +1,18 @@
-"""Knockout cups through a season (data/config/cups/*.yaml, dates in the season calendar).
+"""Knockout cups through a season (data/config/cups/*.yaml, dates in each country's calendar).
 
-Each round is drawn once the one before it is over. Where a round sends more clubs through
-than half of those in it, the highest-ranked are exempt (a bye). A club's league match within
-two days of a cup match is moved to the nearest free day for both clubs, a midweek where
-possible, as real fixture lists are rearranged; leagues a round ``blocks`` play nothing that
-day in the first place."""
+Every country's cups are played on its own calendar (calendars/<nation>-*.yaml, cups:), so each
+league keeps to its own country's dates. Each round is drawn once the one before it is over.
+Where a round sends more clubs through than half of those in it, the highest-ranked are exempt
+(a bye). A club's league match within two days of a cup match is moved to the nearest free day
+for both clubs, a midweek where possible, as real fixture lists are rearranged; leagues a round
+``blocks`` play nothing that day in the first place."""
 
 from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import Connection, Row, or_, select, update
+from sqlalchemy import Connection, Row, or_, select, text, update
 
+from footsim.competitions.calendars import shifted_calendar
 from footsim.core.rng import derive_rng
 from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.cups import CupDef
@@ -32,12 +34,37 @@ MIDWEEK = (1, 2)  # Tuesday, Wednesday: where a rearranged match goes if it can
 
 
 def cups_in(world: World, calendar: SeasonCalendarDef) -> list[CupDef]:
-    """The cups this season's calendar has dates for."""
+    """The cups this calendar has dates for."""
     return [world.defs.cups[key] for key in calendar.cups if key in world.defs.cups]
 
 
+def season_calendar_of(world: World, calendar_key: str, season_id: int) -> SeasonCalendarDef:
+    """One of the calendars in the data (England's, Spain's...) for season ``season_id``."""
+    return shifted_calendar(world.defs.calendars[calendar_key], season_id - 1)
+
+
+def season_cups(world: World, season_id: int) -> list[tuple[CupDef, SeasonCalendarDef]]:
+    """Every cup with dates in season ``season_id``, each with the calendar that dates it: its
+    own country's, whichever country the career started in."""
+    result = []
+    for key in sorted(world.defs.calendars):
+        calendar = season_calendar_of(world, key, season_id)
+        result += [(cup, calendar) for cup in cups_in(world, calendar)]
+    return result
+
+
+def cups_in_play(conn: Connection, world: World, season_id: int
+                 ) -> list[tuple[CupDef, SeasonCalendarDef]]:
+    """The season's cups whose leagues are all in the career. A save from before a country's
+    league has no clubs for its cups until its next season, when the league is added."""
+    leagues = {r.key for r in conn.execute(select(competition.c.key))}
+    return [(cup, calendar) for cup, calendar in season_cups(world, season_id)
+            if {e.league for e in cup.entrants} <= leagues]
+
+
 def blocked_dates(world: World, calendar: SeasonCalendarDef, league_key: str) -> set[date]:
-    """Days a league plays nothing because a cup round has them (its ``blocks``)."""
+    """Days a league plays nothing because a cup round has them (its ``blocks``). ``calendar``
+    is the league's own country's."""
     days: set[date] = set()
     for cup in cups_in(world, calendar):
         for rnd, legs in zip(cup.rounds, calendar.cups[cup.key], strict=True):
@@ -46,42 +73,34 @@ def blocked_dates(world: World, calendar: SeasonCalendarDef, league_key: str) ->
     return days
 
 
-def competition_ids(conn: Connection, world: World, calendar: SeasonCalendarDef
-                    ) -> dict[str, int]:
-    """Each of the season's cups' competition rows, added the first time it's played."""
-    rows = conn.execute(select(competition.c.id, competition.c.key, competition.c.nation_id))
-    existing = {r.key: (r.id, r.nation_id) for r in rows}
-    ids: dict[str, int] = {}
-    for cup in cups_in(world, calendar):
-        if cup.key not in existing:
-            nation_id = next((nation for key, (_, nation) in existing.items()
-                              if key in world.defs.leagues
-                              and world.defs.leagues[key].nation == cup.nation), None)
-            inserted = conn.execute(competition.insert().values(
-                key=cup.key, name=cup.name, short_name=cup.short_name, nation_id=nation_id,
-                type="cup", tier=None, sim_level="playable"))
-            key = inserted.inserted_primary_key
-            assert key is not None
-            existing[cup.key] = (int(key[0]), nation_id)
-        ids[cup.key] = existing[cup.key][0]
-    return ids
+def cup_competition_id(conn: Connection, cup: CupDef) -> int:
+    """A cup's competition row, added the first time it's played."""
+    existing = conn.execute(select(competition.c.id).where(competition.c.key == cup.key)).first()
+    if existing is not None:
+        return int(existing.id)
+    nation_id = conn.execute(text("SELECT id FROM nation WHERE code = :code"),
+                             {"code": cup.nation}).scalar()
+    inserted = conn.execute(competition.insert().values(
+        key=cup.key, name=cup.name, short_name=cup.short_name, nation_id=nation_id,
+        type="cup", tier=None, sim_level="playable"))
+    key = inserted.inserted_primary_key
+    assert key is not None
+    return int(key[0])
 
 
-def start_cups(conn: Connection, world: World, meta: CareerMeta,
-               calendar: SeasonCalendarDef, today: date) -> list[str]:
-    """Draw the first round of each of the season's cups."""
+def start_cups(conn: Connection, world: World, meta: CareerMeta, today: date) -> list[str]:
+    """Draw the first round of each of the season's cups, in every country."""
     messages: list[str] = []
-    for cup in cups_in(world, calendar):
+    for cup, calendar in cups_in_play(conn, world, meta.season_id):
         messages += _draw(conn, world, meta, calendar, cup, 0, today)
     return messages
 
 
-def progress_cups(conn: Connection, world: World, meta: CareerMeta,
-                  calendar: SeasonCalendarDef, today: date) -> list[str]:
+def progress_cups(conn: Connection, world: World, meta: CareerMeta, today: date) -> list[str]:
     """Settle the ties played so far, and draw the next round once a round is over."""
     messages: list[str] = []
     ids = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
-    for cup in cups_in(world, calendar):
+    for cup, calendar in cups_in_play(conn, world, meta.season_id):
         ties = _ties(conn, meta.season_id, ids[cup.key]) if cup.key in ids else []
         if not ties:
             # A save from before the cups, in a season whose first round is still to come:
@@ -90,6 +109,8 @@ def progress_cups(conn: Connection, world: World, meta: CareerMeta,
                 messages += _draw(conn, world, meta, calendar, cup, 0, today)
             continue
         current = max(t.round for t in ties)
+        if today < calendar.cups[cup.key][current][0]:
+            continue  # none of this round's matches is due yet
         decided = []
         for t in ties:
             if t.round == current and t.winner_club_id is None:
@@ -188,7 +209,7 @@ def _entrants(conn: Connection, cup: CupDef, round_index: int, season_id: int,
 def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCalendarDef,
           cup: CupDef, round_index: int, today: date) -> list[str]:
     season_id = meta.season_id
-    competition_id = competition_ids(conn, world, calendar)[cup.key]
+    competition_id = cup_competition_id(conn, cup)
     rnd = cup.rounds[round_index]
     standing = _standing(conn, world, season_id)
     carried = [t.winner_club_id for t in _ties(conn, season_id, competition_id)
@@ -219,12 +240,12 @@ def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCale
     for a, b in ties:
         for club_id in (a, b):
             for day in days:
-                _clear_way(conn, world, calendar, club_id, day, today)
+                _clear_way(conn, world, club_id, day, today)
     return _draw_news(conn, meta, cup, round_index, ties, exempt, days)
 
 
-def _clear_way(conn: Connection, world: World, calendar: SeasonCalendarDef, club_id: int,
-               cup_day: date, today: date) -> None:
+def _clear_way(conn: Connection, world: World, club_id: int, cup_day: date,
+               today: date) -> None:
     """Move any league match of ``club_id`` too close to his cup match on ``cup_day``."""
     window = ((cup_day - timedelta(days=REST_DAYS)).isoformat(),
               (cup_day + timedelta(days=REST_DAYS)).isoformat())
@@ -233,19 +254,20 @@ def _clear_way(conn: Connection, world: World, calendar: SeasonCalendarDef, club
         or_(fixture.c.home_club_id == club_id, fixture.c.away_club_id == club_id),
         fixture.c.date.between(*window))).all()
     for fx in clashes:
-        day = _free_day(conn, world, calendar, fx, today)
+        day = _free_day(conn, world, fx, today)
         if day is not None:
             conn.execute(update(fixture).where(fixture.c.id == fx.id)
                          .values(date=day.isoformat()))
 
 
-def _free_day(conn: Connection, world: World, calendar: SeasonCalendarDef, fx: Row[Any],
-              today: date) -> date | None:
+def _free_day(conn: Connection, world: World, fx: Row[Any], today: date) -> date | None:
     """The nearest day both clubs are free for a moved league match (a midweek if possible,
-    and later rather than earlier), after today, within the league's season, and clear of the
-    season's cup dates."""
+    and later rather than earlier), after today, within the league's season, outside its
+    country's international windows and winter break, and clear of its country's cup dates.
+    Those are all on the league's own calendar."""
     key: str = conn.execute(select(competition.c.key).where(
         competition.c.id == fx.competition_id)).scalar_one()
+    calendar = season_calendar_of(world, world.defs.leagues[key].calendar, fx.season_id)
     dates = calendar.competitions[key]
     clubs = (fx.home_club_id, fx.away_club_id)
     busy: set[date] = set()
@@ -261,7 +283,8 @@ def _free_day(conn: Connection, world: World, calendar: SeasonCalendarDef, fx: R
     day = max(today + timedelta(days=1), dates.start)
     while day <= dates.end:
         paused = dates.pause_for_international_windows and calendar.in_international_window(day)
-        if day not in busy and not paused:
+        resting = any(b.contains(day) for b in calendar.blackout)
+        if day not in busy and not paused and not resting:
             free.append(day)
         day += timedelta(days=1)
     clear = [d for d in free if d not in cup_days] or free

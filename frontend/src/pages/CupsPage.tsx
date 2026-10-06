@@ -5,16 +5,33 @@ import { useState } from 'react'
 import { useCareer, useCup, useCups, useSeasons } from '../api/hooks'
 import type { CupRound, CupTie } from '../api/types'
 import ClubLink from '../components/ClubLink'
-import { longDate, score } from '../lib/format'
+import NationPicker from '../components/NationPicker'
+import { competitionNation, groupByNation, longDate, score } from '../lib/format'
 
-/** The season's cups: every round, drawn or still to come, with its ties and results. */
+// A cup's country: a server that predates the field only had England's cups.
+const cupNation = (c: { nation?: string }) => c.nation ?? 'ENG'
+
+/** The season's cups, a country's at a time (the user's own to start with): every round, drawn or
+ * still to come, with its ties and results. */
 export default function CupsPage() {
   const career = useCareer().data
-  const cups = useCups().data ?? []
+  const allCups = useCups().data ?? []
   const seasons = useSeasons().data ?? []
+  const [nationCode, setNationCode] = useState<string | null>(null)
   const [key, setKey] = useState<string | null>(null)
   const [seasonId, setSeasonId] = useState<string | null>(null)
-  const active = key ?? cups[0]?.key
+  // The countries with cups (England first, then by name), and the one shown: the one picked, or
+  // the user's club's if it has cups, or else the first.
+  const nations = groupByNation(allCups.map((c) => ({ key: c.key, tier: 1, nation: cupNation(c) })))
+  const home = career?.competition ? competitionNation(career.competition) : undefined
+  const nation = nationCode ?? (nations.some((n) => n.code === home) ? home : nations[0]?.code)
+  const cups = allCups.filter((c) => cupNation(c) === nation)
+  const active = cups.find((c) => c.key === key)?.key ?? cups[0]?.key
+  const cupData = cups.map((c) => ({ value: c.key, label: c.name }))
+  const pickNation = (code: string) => {
+    setNationCode(code)
+    setKey(null)
+  }
   const cup = useCup(active, seasonId ? Number(seasonId) : null).data
   const summary = cups.find((c) => c.key === active)
   const userId = career?.club.id
@@ -44,7 +61,13 @@ export default function CupsPage() {
               data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
             />
           )}
-          {cups.length > 0 && <SegmentedControl value={active ?? ''} onChange={setKey} data={cups.map((c) => ({ value: c.key, label: c.name }))} />}
+          {nation && <NationPicker nations={nations} value={nation} onChange={pickNation} />}
+          {cups.length > 1 && (
+            <>
+              <SegmentedControl aria-label="Cup" visibleFrom="sm" value={active ?? ''} onChange={setKey} data={cupData} />
+              <Select aria-label="Cup" hiddenFrom="sm" w={190} value={active ?? ''} onChange={(value) => value && setKey(value)} allowDeselect={false} data={cupData} />
+            </>
+          )}
         </Group>
       </Group>
 
@@ -59,7 +82,7 @@ export default function CupsPage() {
       {cup && drawn.length === 0 && (
         <Text c="dimmed">
           {summary?.user_status === 'Starts next season'
-            ? 'This career began before cups were in the game: they start with next season.'
+            ? 'This career began before this cup was in the game: it starts with next season.'
             : 'The first round hasn’t been drawn yet.'}
         </Text>
       )}

@@ -145,6 +145,9 @@ class LeagueDef(DefModel):
     clubs: int = Field(ge=2)
     sim_level: SimLevel = SimLevel.PLAYABLE
     calendar: str
+    # The ratings source's names for this league: its clubs are found by them when the league
+    # is first played (a world built before the league existed, or a save from before it).
+    source_leagues: list[str] = []
     format: RoundRobinFormat = RoundRobinFormat()
     points: PointsRule = PointsRule()
     tiebreakers: list[Tiebreaker]

@@ -6,6 +6,7 @@ tier: 2
 clubs: 24
 sim_level: playable
 calendar: ENG-2026-27
+source_leagues: [EFL Championship]
 format: {type: round_robin, legs: 2}
 # EFL tiebreakers: verify against the current EFL regulations before relying on H2H order.
 tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,

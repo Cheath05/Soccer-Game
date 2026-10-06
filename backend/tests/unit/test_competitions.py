@@ -56,6 +56,22 @@ def test_league_dates_fit_the_real_calendar() -> None:
             assert not any(cal.in_international_window(d) for d in days)
 
 
+def test_every_league_fits_its_own_calendar() -> None:
+    """W2: each country's leagues are scheduled on its calendar (winter breaks included)."""
+    from footsim.competitions.fixtures import round_robin as rr
+
+    defs = load_definitions()
+    for key, league in defs.leagues.items():
+        cal = defs.calendars[league.calendar]
+        comp = cal.competitions[key]
+        rounds = len(rr(list(range(league.clubs)), league.format.legs, np.random.default_rng(0)))
+        days = league_round_dates(comp, cal, rounds)
+        assert len(days) == len(set(days)) == rounds, key
+        assert days[0] >= comp.start and days[-1] <= comp.end, key
+        assert not any(b.contains(d) for b in cal.blackout for d in days), key
+        assert cal.season_start == defs.calendars["ENG-2026-27"].season_start, key
+
+
 def test_playoff_dates_end_on_final_day() -> None:
     playoff = load_definitions().leagues["ENG2"].playoffs[0]
     dates = playoff_dates(date(2027, 5, 1), date(2027, 5, 29), playoff.rounds)

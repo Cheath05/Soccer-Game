@@ -670,12 +670,28 @@ The order, each its own checkpoint (or several):
        - average squads 37.7 including youth squads, about 30 senior;
        - the share of 32+ rises from 12% to 21% here, where nobody declines; in a career, decline retires the old sooner.
      - **Tests:** `test_lifecycle.py` (retirement chances); `tests/integration/test_lifecycle_season.py` (a season-end on the real world: retirements mostly from 33+, every club's intake ready to play, computer-run senior squads within the limit, the user's squad untrimmed, the youth news; and Release: own players only).
-4. - [ ] **W2, other leagues:**
-   - the top five (Spain, Italy, Germany, France) with their second divisions and promotion and relegation, then Portugal, the Netherlands, Scotland, Saudi Arabia, MLS and others;
-   - each with its calendar, played on the fast engine;
-   - their quality comes from player ratings. A league-environment setting is added only where real stats show a residual (the calibration principles);
-   - their players get minutes, so they develop (today players abroad barely do);
-   - their domestic cups if cheap.
+4. - [x] **W2, other leagues** (the first four countries; the rest come later in W2b):
+     - **Leagues** (`data/config/competitions/{esp,ita,ger,fra}/`), each on its own country's calendar (`calendars/{esp,ita,ger,fra}-2026-27.yaml`, approximate dates, winter breaks as `blackout`, the same international windows and season boundaries as England):
+       - Spain: La Liga (20) and Segunda (22), with play-offs for 3rd–6th, two legs each round;
+       - Italy: Serie A (20) and Serie B (20), with play-offs for 3rd–8th (single-leg preliminaries, then two legs);
+       - Germany: Bundesliga, 2. Bundesliga (18 each) and 3. Liga (20);
+       - France: Ligue 1 and Ligue 2 (18 each).
+     - **Movements:** three up and down in Spain and Italy, two in Germany (both levels) and France.
+       - Play-offs between leagues (Bundesliga 16th against 2. Bundesliga 3rd, and so on) aren't supported yet, so those countries move two each way.
+       - The lowest league in each country has no relegation, as its next level isn't in the data.
+     - **Their quality comes from their players' ratings:** no league setting (best XI: Premier League 79.7, La Liga 78.0, Serie A 77.0, Bundesliga 76.8, Ligue 1 75.5).
+     - **How a save gets them:** `LeagueDef.source_leagues` names the ratings source's league. `ensure_leagues` (in `create_season_fixtures`) adds a missing league's competition and its clubs for the season, found by that name, and skips a league whose clubs don't add up.
+       - A new career has them from the start; a career under way from its next season (with news).
+       - `league_calendar` schedules each league, and its play-offs, on its own country's dates.
+     - **UI:** the start page and the League page pick a country, then its league. Built by a Sonnet agent, as a patch from a scratch copy (beb267c).
+       - The start page lists the new leagues from the base world by their source names, so a career can start abroad.
+       - Checked in the browser: a Real Madrid career starts in La Liga, with the La Liga table at 1440 px and at phone width.
+       - The API's competitions and leagues carry `nation`.
+     - **Measured:** a whole season of all 13 leagues on the fast engine is 5,242 league matches in 71 s (`footsim sim-season`), with 2.76 goals a match, 45% home wins and 24% draws.
+     - **Tests:**
+       - every league fits its own calendar, clear of its breaks;
+       - `test_cups_season.py` now plays a season of every league and both cups: every league finishes and starts the next season at its size, with clubs moving in every country (it takes about a minute).
+   - [ ] **W2b, more leagues:** Portugal, the Netherlands, Scotland, Saudi Arabia, Turkey, Belgium (closed single divisions), then MLS (conferences) and others.
 5. - [ ] **W3, finances:** TV money, wages, budgets and the board, by league. Most of the gap between leagues that a manager feels is here.
 6. - [ ] **W4, transfers:** valuations, AI buying and selling, bids and negotiation (fee, wage, length), loans, free agents and expiring contracts, and the windows (already in the calendar). Most big transfers cross borders, so this comes after W2.
 7. - [ ] **W5, academies in full:** facilities, youth squads, loaning young players out.

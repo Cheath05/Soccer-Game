@@ -1,0 +1,31 @@
+key: ESP2
+name: Segunda División
+short_name: Segunda
+nation: ESP
+tier: 2
+clubs: 22
+sim_level: simulated
+calendar: ESP-2026-27
+source_leagues: [LALIGA HYPERMOTION]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, h2h_points, h2h_goal_difference, goal_difference, goals_for,
+              drawing_of_lots]
+# Real life: the bottom four go down to Primera Federación, which isn't in the data.
+movements:
+  - {kind: promotion, ranks: [1, 2], to: ESP1}
+playoffs:
+  - key: ESP2_PO
+    name: Segunda Play-offs
+    winner_to: ESP1
+    rounds:
+      - name: Semi-finals
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: SF1, a: {rank: 3}, b: {rank: 6}}
+          - {id: SF2, a: {rank: 4}, b: {rank: 5}}
+      - name: Final
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: F, a: {winner_of: [SF1]}, b: {winner_of: [SF2]}}

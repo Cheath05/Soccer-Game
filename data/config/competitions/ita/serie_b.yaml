@@ -1,0 +1,39 @@
+key: ITA2
+name: Serie B
+short_name: Serie B
+nation: ITA
+tier: 2
+clubs: 20
+sim_level: simulated
+calendar: ITA-2026-27
+source_leagues: [Serie BKT]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, h2h_points, h2h_goal_difference, goal_difference, goals_for,
+              drawing_of_lots]
+# Real life: the bottom three (and a play-out) go down to Serie C, which isn't in the data.
+movements:
+  - {kind: promotion, ranks: [1, 2], to: ITA1}
+playoffs:
+  # 3rd to 8th: single-leg preliminaries at the higher-placed club, two-legged semi-finals
+  # and final.
+  - key: ITA2_PO
+    name: Serie B Play-offs
+    winner_to: ITA1
+    rounds:
+      - name: Preliminary round
+        legs: 1
+        host: higher_ranked
+        ties:
+          - {id: P1, a: {rank: 5}, b: {rank: 8}}
+          - {id: P2, a: {rank: 6}, b: {rank: 7}}
+      - name: Semi-finals
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: SF1, a: {rank: 3}, b: {winner_of: [P1, P2], pick: lowest_ranked}}
+          - {id: SF2, a: {rank: 4}, b: {winner_of: [P1, P2], pick: highest_ranked}}
+      - name: Final
+        legs: 2
+        host: higher_ranked
+        ties:
+          - {id: F, a: {winner_of: [SF1]}, b: {winner_of: [SF2]}}

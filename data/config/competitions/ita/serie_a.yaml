@@ -1,0 +1,14 @@
+key: ITA1
+name: Serie A
+short_name: Serie A
+nation: ITA
+tier: 1
+clubs: 20
+sim_level: simulated
+calendar: ITA-2026-27
+source_leagues: [Serie A Enilive]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, h2h_points, h2h_goal_difference, goal_difference, goals_for,
+              drawing_of_lots]
+movements:
+  - {kind: relegation, ranks: [18, 20], to: ITA2}

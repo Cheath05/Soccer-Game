@@ -20,6 +20,7 @@ class LeagueOption(BaseModel):
     name: str
     tier: int
     clubs: list[ClubOption]
+    nation: str = ""  # the league's country code (ENG, ESP...)
 
 
 class SaveSlotOut(BaseModel):
@@ -165,6 +166,7 @@ class CompetitionOut(BaseModel):
     key: str
     name: str
     tier: int
+    nation: str = ""  # the league's country code (ENG, ESP...); empty for a cup
 
 
 class CareerOut(BaseModel):

@@ -1,0 +1,15 @@
+key: GER3
+name: 3. Liga
+short_name: 3. Liga
+nation: GER
+tier: 3
+clubs: 20
+sim_level: simulated
+calendar: GER-2026-27
+source_leagues: [3. Liga]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_away_goals_for,
+              drawing_of_lots]
+# Real life: the bottom four go down to the Regionalligen, which aren't in the data.
+movements:
+  - {kind: promotion, ranks: [1, 2], to: GER2}

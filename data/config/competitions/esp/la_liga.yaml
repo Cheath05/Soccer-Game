@@ -1,0 +1,15 @@
+key: ESP1
+name: La Liga
+short_name: La Liga
+nation: ESP
+tier: 1
+clubs: 20
+sim_level: simulated
+calendar: ESP-2026-27
+source_leagues: [LALIGA EA SPORTS]
+format: {type: round_robin, legs: 2}
+# La Liga separates clubs level on points by their head-to-head record first.
+tiebreakers: [points, h2h_points, h2h_goal_difference, goal_difference, goals_for,
+              drawing_of_lots]
+movements:
+  - {kind: relegation, ranks: [18, 20], to: ESP2}

@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from typing import Any
 
 import numpy as np
-from sqlalchemy import Connection, Row, func, select, text, update
+from sqlalchemy import Connection, Row, bindparam, func, select, text, update
 
 from footsim.competitions.calendars import shifted_calendar
 from footsim.competitions.fixtures import round_robin
@@ -52,6 +52,48 @@ def season_calendar(world: World, meta: CareerMeta, season_id: int) -> SeasonCal
     return shifted_calendar(world.defs.calendars[meta.base_calendar], season_id - 1)
 
 
+def league_calendar(world: World, league: LeagueDef, season_id: int) -> SeasonCalendarDef:
+    """A league's own calendar for a season: its country's dates. Every calendar shares the
+    career's season boundaries (1 July to 30 June), so every league turns over together."""
+    return shifted_calendar(world.defs.calendars[league.calendar], season_id - 1)
+
+
+def ensure_leagues(conn: Connection, world: World, season_id: int) -> list[str]:
+    """Leagues the definitions have and the save doesn't (a world built before them, or a
+    career from before them): their competitions, and their clubs for the season, found by the
+    ratings source's names for the league. A league whose clubs don't add up is left out, so a
+    rollover can't end up with leagues of the wrong size. Returns news."""
+    existing = {r.key for r in conn.execute(select(competition.c.key))}
+    nation_ids = {r.code: r.id for r in conn.execute(text("SELECT id, code FROM nation"))}
+    taken = {r.club_id for r in conn.execute(select(club_league_membership.c.club_id).where(
+        club_league_membership.c.season_id == season_id))}
+    added = []
+    for key, league in sorted(world.defs.leagues.items(),
+                              key=lambda kv: (kv[1].nation, kv[1].tier)):
+        if key in existing or league.sim_level is SimLevel.DORMANT or not league.source_leagues:
+            continue
+        clubs = [r.id for r in conn.execute(
+            text("SELECT id FROM club WHERE source_league IN :names ORDER BY id")
+            .bindparams(bindparam("names", expanding=True)), {"names": league.source_leagues})
+            if r.id not in taken]
+        if len(clubs) != league.clubs:
+            continue
+        inserted = conn.execute(competition.insert().values(
+            key=key, name=league.name, short_name=league.short_name,
+            nation_id=nation_ids.get(league.nation), type="league", tier=league.tier,
+            sim_level=league.sim_level.value))
+        competition_id = inserted.inserted_primary_key[0] if inserted.inserted_primary_key else None
+        conn.execute(club_league_membership.insert(), [
+            {"club_id": c, "season_id": season_id, "competition_id": competition_id}
+            for c in clubs])
+        taken.update(clubs)
+        added.append(league.name)
+    if not added:
+        return []
+    return [f"New leagues: {', '.join(added)} are played from this season. Their tables are "
+            "on the League page."]
+
+
 def active_leagues(conn: Connection, world: World) -> list[ActiveLeague]:
     rows = conn.execute(select(competition.c.id, competition.c.key)).all()
     result = []
@@ -75,12 +117,14 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
     """The season's league fixtures, around the cup rounds that keep leagues out, and the
     cups' first-round draws. Returns news of the draws."""
     calendar = season_calendar(world, meta, season_id)
+    news = ensure_leagues(conn, world, season_id)
     for active in active_leagues(conn, world):
         league = active.league
         clubs = members(conn, season_id, active.competition_id)
         rng = derive_rng(meta.seed, "fixtures", season_id, league.key)
         rounds = round_robin(clubs, league.format.legs, rng)
-        dates = league_round_dates(calendar.competitions[league.key], calendar, len(rounds),
+        own = league_calendar(world, league, season_id)
+        dates = league_round_dates(own.competitions[league.key], own, len(rounds),
                                    blocked_dates(world, calendar, league.key))
         conn.execute(fixture.insert(), [
             {"season_id": season_id, "competition_id": active.competition_id, "stage": "league",
@@ -89,7 +133,7 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
             for number, (games, day) in enumerate(zip(rounds, dates, strict=True), start=1)
             for home, away in games
         ])
-    return start_cups(conn, world, meta, calendar, meta.current_date)
+    return news + start_cups(conn, world, meta, calendar, meta.current_date)
 
 
 def league_results(conn: Connection, competition_id: int, season_id: int) -> list[Result]:
@@ -172,7 +216,7 @@ def _finalize_league(conn: Connection, world: World, meta: CareerMeta, competiti
 def _create_playoff_round(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
                           league: LeagueDef, playoff: PlayoffDef, round_index: int,
                           ranks: dict[int, int], winners: dict[str, Entrant]) -> None:
-    calendar = season_calendar(world, meta, meta.season_id)
+    calendar = league_calendar(world, league, meta.season_id)
     dates_cfg = calendar.competitions[league.key]
     leg_dates = playoff_dates(dates_cfg.end, dates_cfg.playoffs_end, playoff.rounds)[round_index]
     rnd = playoff.rounds[round_index]

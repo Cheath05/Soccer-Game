@@ -6,6 +6,7 @@ tier: 1
 clubs: 20
 sim_level: playable
 calendar: ENG-2026-27
+source_leagues: [Premier League]
 format: {type: round_robin, legs: 2}
 points: {win: 3, draw: 1, loss: 0}
 # Real rule: a play-off match decides title/relegation/European places if still level after

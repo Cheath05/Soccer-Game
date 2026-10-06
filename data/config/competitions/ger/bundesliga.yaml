@@ -1,0 +1,16 @@
+key: GER1
+name: Bundesliga
+short_name: Bundesliga
+nation: GER
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: GER-2026-27
+source_leagues: [Bundesliga]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_away_goals_for,
+              drawing_of_lots]
+# Real life: 16th plays 2. Bundesliga's 3rd over two legs. Play-offs between leagues aren't
+# supported yet, so two go down and two come up.
+movements:
+  - {kind: relegation, ranks: [17, 18], to: GER2}

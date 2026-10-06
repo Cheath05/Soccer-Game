@@ -117,24 +117,45 @@ def _season_label(conn: Connection, season_id: int) -> str:
 # --- new career -----------------------------------------------------------------------
 
 
+def _competition_out(world: World, comp: Row[Any]) -> CompetitionOut:
+    league = world.defs.leagues.get(comp.key)
+    return CompetitionOut(key=comp.key, name=comp.name, tier=comp.tier or 0,
+                          nation=league.nation if league else "")
+
+
 def world_leagues(base_world: Path, world: World) -> list[LeagueOption]:
+    """Every league a career can start in, with its clubs: those the base world was built with,
+    and those added since (found by the ratings source's league names, as a new career will)."""
     engine = open_database(base_world)
     try:
         with engine.connect() as conn:
-            comps = conn.execute(select(competition).order_by(competition.c.tier)).all()
+            built = {r.key: r.id for r in conn.execute(select(competition.c.id,
+                                                              competition.c.key))}
             result = []
-            for comp in comps:
-                rows = conn.execute(text("""
-                    SELECT c.id, c.name, c.reputation FROM club c
-                    JOIN club_league_membership m ON m.club_id = c.id
-                    WHERE m.competition_id = :comp AND m.season_id = 1
-                """), {"comp": comp.id}).all()
+            for key, league in sorted(world.defs.leagues.items(),
+                                      key=lambda kv: (kv[1].nation != "ENG", kv[1].nation,
+                                                      kv[1].tier)):
+                if key in built:
+                    rows = conn.execute(text("""
+                        SELECT c.id, c.name, c.reputation FROM club c
+                        JOIN club_league_membership m ON m.club_id = c.id
+                        WHERE m.competition_id = :comp AND m.season_id = 1
+                    """), {"comp": built[key]}).all()
+                elif league.source_leagues:
+                    rows = conn.execute(
+                        text("SELECT id, name, reputation FROM club WHERE source_league IN :names")
+                        .bindparams(bindparam("names", expanding=True)),
+                        {"names": league.source_leagues}).all()
+                else:
+                    continue
+                if len(rows) != league.clubs:
+                    continue  # as ensure_leagues: a league whose clubs don't add up isn't played
                 clubs = [ClubOption(id=r.id, name=r.name, reputation=r.reputation,
                                     average_overall=_squad_strength(conn, world, r.id))
                          for r in rows]
                 clubs.sort(key=lambda c: -c.average_overall)
-                result.append(LeagueOption(key=comp.key, name=comp.name, tier=comp.tier,
-                                           clubs=clubs))
+                result.append(LeagueOption(key=key, name=league.name, tier=league.tier,
+                                           clubs=clubs, nation=league.nation))
             return result
     finally:
         engine.dispose()
@@ -188,7 +209,7 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         slot=slot, date=meta.current_date.isoformat(), season=_season_label(conn, meta.season_id),
         season_end=season_calendar(world, meta, meta.season_id).season_end.isoformat(),
         manager=meta.manager_name, club=ClubRef(id=user, name=names[user]),
-        competition=CompetitionOut(key=comp.key, name=comp.name, tier=comp.tier) if comp else None,
+        competition=_competition_out(world, comp) if comp else None,
         position=position,
         next_fixture=fixture_out(upcoming, names, comps) if upcoming else None,
         recent=[fixture_out(r, names, comps) for r in recent],
@@ -196,7 +217,8 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
 
 
 def competitions(conn: Connection, world: World) -> list[CompetitionOut]:
-    return [CompetitionOut(key=a.league.key, name=a.league.name, tier=a.league.tier)
+    return [CompetitionOut(key=a.league.key, name=a.league.name, tier=a.league.tier,
+                           nation=a.league.nation)
             for a in active_leagues(conn, world)]
 
 
@@ -359,8 +381,7 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
     managed = club_id == meta.user_club_id
 
     def competition_of(comp_id: int) -> CompetitionOut:
-        return CompetitionOut(key=comps[comp_id].key, name=comps[comp_id].name,
-                              tier=comps[comp_id].tier or 0)
+        return _competition_out(world, comps[comp_id])
 
     runs = cup_runs(conn, world, club_id)
     rows: list[ClubSeasonOut] = []
@@ -592,7 +613,7 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         wage_bill, budget = _rough(wage_bill), _rough(budget)
     return ClubOverviewOut(
         club=ClubRef(id=club_id, name=row.name), own_club=own, nation=row.nation_name,
-        competition=CompetitionOut(key=comp.key, name=comp.name, tier=comp.tier) if comp else None,
+        competition=_competition_out(world, comp) if comp else None,
         position=position, points=points, played=played, reputation=row.reputation,
         stadium_name=row.stadium_name, stadium_capacity=row.stadium_capacity,
         manager=meta.manager_name if own else None,

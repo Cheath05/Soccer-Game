@@ -1,0 +1,16 @@
+key: GER2
+name: 2. Bundesliga
+short_name: 2. Bundesliga
+nation: GER
+tier: 2
+clubs: 18
+sim_level: simulated
+calendar: GER-2026-27
+source_leagues: [Bundesliga 2]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_away_goals_for,
+              drawing_of_lots]
+# Real life: 3rd and 16th also play off against the leagues above and below (not supported).
+movements:
+  - {kind: promotion, ranks: [1, 2], to: GER1}
+  - {kind: relegation, ranks: [17, 18], to: GER3}

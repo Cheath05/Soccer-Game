@@ -1,0 +1,15 @@
+key: FRA1
+name: Ligue 1
+short_name: Ligue 1
+nation: FRA
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: FRA-2026-27
+source_leagues: ["Ligue 1 McDonald's"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, h2h_points, h2h_goal_difference, goals_for,
+              drawing_of_lots]
+# Real life: 16th plays a Ligue 2 play-off winner (play-offs between leagues aren't supported).
+movements:
+  - {kind: relegation, ranks: [17, 18], to: FRA2}

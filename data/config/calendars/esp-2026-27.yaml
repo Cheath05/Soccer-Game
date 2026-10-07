@@ -13,6 +13,9 @@ international_windows:
   - {start: 2026-11-09, end: 2026-11-17}
   - {start: 2027-03-22, end: 2027-03-30}
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate
+  - {start: 2027-01-02, end: 2027-02-01}   # approximate
 blackout:
   - {start: 2026-12-23, end: 2027-01-02}   # Christmas
 # Cup rounds, one date per leg (approximate): the Copa del Rey on Wednesdays, three or more days

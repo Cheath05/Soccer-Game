@@ -13,6 +13,9 @@ international_windows:
   - {start: 2026-11-09, end: 2026-11-17}
   - {start: 2027-03-22, end: 2027-03-30}
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate
 blackout:
   - {start: 2026-12-21, end: 2027-01-14}   # winter break
 # Cup rounds, one date per leg (approximate, after the 2025-26 pattern): the DFB-Pokal on

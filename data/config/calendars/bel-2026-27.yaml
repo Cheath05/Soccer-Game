@@ -12,6 +12,9 @@ international_windows:
   - {start: 2026-11-09, end: 2026-11-17}
   - {start: 2027-03-22, end: 2027-03-30}
   - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-06-15, end: 2026-09-07}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate
 blackout:
   - {start: 2026-12-28, end: 2027-01-14}   # winter break
 # Cup rounds, one date per leg (approximate): the Belgian Cup on Wednesdays, three or more days

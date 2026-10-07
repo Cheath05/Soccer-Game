@@ -1,0 +1,4 @@
+# The transfer market (W4). Windows come from each country's calendar
+# (data/config/calendars/*: transfer_windows); a club outside the game's leagues follows its own
+# country's calendar, or this country's when the game has no calendar for it.
+default_window_nation: ENG

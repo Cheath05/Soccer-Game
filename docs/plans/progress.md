@@ -16,7 +16,15 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W4-1, the market-value model** (the commit that adds this line; after f1fa0cf).
+- **Latest checkpoint (7 Oct): W4-2, transfer windows per country** (the commit that adds this line; after the W4-1 commit).
+  - **Every country's calendar** now has approximate summer and winter windows: England, France, Belgium, Scotland and Turkey open in June; Spain, Italy, Germany, Portugal, the Netherlands and Saudi Arabia on 1 July.
+  - **`world/windows.py`:**
+    - `open_window` and `window_open(world, nation, season, day)` check the current season's calendar and the next one's, so England's June days (before the 1 July rollover) count;
+    - `club_window_nation` gives the country of the club's league this season, else the club's own;
+    - a country without a calendar follows `transfers/market.yaml`'s `default_window_nation` (ENG, checked by the loader).
+  - **Tests:** `test_windows.py` (12 days across countries and seasons, the default, the closing day) and `test_club_windows.py`; the full backend suite passes. A reviewer agent was skipped for this small, data-led change: it was reviewed here.
+  - **Next:** W4-3, schema 11. It adds `transfer` history, `transfer_offer`, `contract.listed`, the stored value premium, and the unique index for one permanent contract per player, plus `world/transfers.py` `validate_move` and `complete_move`, shared by AI and user.
+- **7 Oct: W4-1, the market-value model** (after f1fa0cf).
   - **`footsim fit-values [--write]`** fits log(value) on the base world's Transfermarkt values (12,390 players) and writes `data/config/transfers/valuation.yaml`. The terms are overall (with a knee at 85), age to the day (youth, decline from 27 and from 31), a young-star premium, goalkeeper, and club reputation as the market level. R² is 0.741, the residual sd 0.788 (log), and it's unbiased by overall band (−0.07 at 86+).
   - **Every value shown** (squad, player, club pages) now comes from the model, computed on demand, so it moves with development, age and moves. A free agent is priced at his own reputation. The static Transfermarkt values and `estimate_value_eur` are gone from the views.
   - **Review** (Sonnet): no blockers. Applied:

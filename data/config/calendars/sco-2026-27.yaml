@@ -17,6 +17,9 @@ international_windows:
 # clear of the league's Saturdays; the semi-finals and the League Cup final on Saturdays (the
 # cups' `blocks` keep the league out), the Scottish Cup final the Saturday after the league
 # season.
+transfer_windows:
+  - {start: 2026-06-10, end: 2026-09-01}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate
 cups:
   SCOTTISH_CUP:
     - [2026-11-25]

@@ -10,7 +10,7 @@ import json
 from collections.abc import Callable
 
 import numpy as np
-from sqlalchemy import Connection, Engine, inspect, text
+from sqlalchemy import Connection, Engine, inspect, select, text
 
 from footsim.persistence.database import SchemaMismatch, read_meta, write_meta
 from footsim.persistence.schema import SCHEMA_VERSION, game_meta, metadata
@@ -89,9 +89,23 @@ def _to_v8(conn: Connection) -> None:
     _add_column(conn, "player", "retired_on", "TEXT")
 
 
+def _to_v9(conn: Connection) -> None:
+    """Each player's overall as a season began, for the season summary's development table. A
+    career already under way starts the record from today, as it can't know the season's start
+    (the summary says so); a world that isn't a career yet has nothing to record."""
+    from footsim.world.context import get_world
+    from footsim.world.meta import read_meta as read_career
+    from footsim.world.overall_history import record_season_start
+
+    metadata.create_all(conn)
+    if conn.execute(select(game_meta.c.key).where(game_meta.c.key == "user_club_id")).first():
+        meta = read_career(conn)
+        record_season_start(conn, get_world(), meta.season_id, meta.current_date)
+
+
 # target version -> step that upgrades from the version before it
 STEPS: dict[int, Callable[[Connection], None]] = {
-    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8}
+    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9}
 
 
 def migrate(engine: Engine) -> int:

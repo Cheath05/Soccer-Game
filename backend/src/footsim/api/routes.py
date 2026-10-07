@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 
 from footsim import __version__
-from footsim.api import queries, sim
+from footsim.api import queries, season_review, sim
 from footsim.api.schemas import (
     AdvanceOut,
     CareerOut,
@@ -23,6 +23,7 @@ from footsim.api.schemas import (
     MatchOut,
     NewCareerIn,
     PlayerDetailOut,
+    PlayerSeasonOut,
     SaveSlotOut,
     SeasonOut,
     SquadPlayerOut,
@@ -137,11 +138,19 @@ def _not_simulating(session: CareerSession) -> None:
 @router.post("/career/advance")
 def advance_career(session: Session) -> AdvanceOut:
     _not_simulating(session)
+    world = get_world()
     with session.write() as conn:
-        result = advance(conn, get_world())
+        result = advance(conn, world)
     session.autosave()
+    final = None
+    if result.stop == "season_end":
+        with session.read() as conn:
+            user = read_meta(conn).user_club_id
+            if user is not None:
+                final = season_review.season_final(conn, world, user, result.messages)
     return AdvanceOut(date=result.date.isoformat(), stop=result.stop,
-                      fixture_id=result.fixture_id, messages=result.messages)
+                      fixture_id=result.fixture_id, messages=result.messages,
+                      season_final=final)
 
 
 @router.get("/competitions")
@@ -224,9 +233,10 @@ def club_history(club_id: int, session: Session) -> ClubHistoryOut:
 
 
 @router.get("/clubs/{club_id}/fixtures")
-def club_fixtures(club_id: int, session: Session) -> list[FixtureOut]:
+def club_fixtures(club_id: int, session: Session, season: int | None = None) -> list[FixtureOut]:
+    """A club's fixtures and results in every competition, this season or ``season``."""
     with session.read() as conn:
-        return queries.fixtures(conn, club_id=club_id)
+        return queries.fixtures(conn, club_id=club_id, season_id=season)
 
 
 @router.get("/players/{player_id}")
@@ -234,6 +244,16 @@ def player(player_id: int, session: Session) -> PlayerDetailOut:
     with session.read() as conn:
         try:
             return queries.player_detail(conn, get_world(), player_id)
+        except KeyError as exc:
+            raise HTTPException(404, "player not found") from exc
+
+
+@router.get("/players/{player_id}/seasons")
+def player_seasons(player_id: int, session: Session) -> list[PlayerSeasonOut]:
+    """A player's record in each season and competition, the current season first."""
+    with session.read() as conn:
+        try:
+            return queries.player_seasons(conn, get_world(), player_id)
         except KeyError as exc:
             raise HTTPException(404, "player not found") from exc
 

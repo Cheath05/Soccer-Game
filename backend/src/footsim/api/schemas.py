@@ -127,6 +127,8 @@ class TableOut(BaseModel):
     name: str
     season: str
     final: bool = False  # the season is over and this is its final table
+    started: bool = True  # at least one match has been played
+    first_match: str | None = None  # the date of its first league match
     rows: list[TableRowOut]
 
 
@@ -134,6 +136,7 @@ class SeasonOut(BaseModel):
     id: int
     label: str
     current: bool
+    finished: bool = True  # its league tables are final (the current season's are, from May)
 
 
 class ClubSeasonOut(BaseModel):
@@ -189,6 +192,7 @@ class AdvanceOut(BaseModel):
     stop: str
     fixture_id: int | None
     messages: list[str]
+    season_final: "SeasonFinalOut | None" = None  # when it stopped at the season's end
 
 
 class SimIn(BaseModel):
@@ -219,6 +223,8 @@ class SeasonFinalOut(BaseModel):
     points: int
     outcome: str | None  # champion | promoted | playoff_winner | relegated | playoffs | None
     cups: list["CupRunOut"] = []  # how far the club went in each cup
+    review: "SeasonReviewOut | None" = None  # how it went everywhere else, and for the squad
+    news: list[str] = []  # the other news from the sim: what the review doesn't cover
 
 
 class SimStatusOut(BaseModel):
@@ -321,6 +327,99 @@ class PotentialOut(BaseModel):
     low: int
     high: int
     label: str
+
+
+class HonourOut(BaseModel):
+    """A competition's winners at a season's end: a league's champions, a play-off's or a cup's."""
+
+    kind: str  # league | playoff | cup
+    key: str
+    name: str
+    nation: str  # the country it belongs to (a nation code: ENG)
+    tier: int  # a league's (and its play-offs'); 0 for a cup
+    winner: ClubRef
+
+
+class ClubMoveOut(BaseModel):
+    """A club going up or down a league at the season's end."""
+
+    club: ClubRef
+    nation: str
+    from_league: str
+    to_league: str
+    position: int | None  # where it finished in the league it left
+    via_playoffs: bool = False
+
+
+class DevelopmentOut(BaseModel):
+    """One of the user's players whose overall changed over the season."""
+
+    player_id: int
+    name: str
+    position: str
+    age: int
+    before: int  # his overall as the season began
+    after: int  # and as it ended
+    change: int
+
+
+class RetirementOut(BaseModel):
+    player_id: int
+    name: str
+    position: str
+    age: int
+    overall: int
+    club: ClubRef | None
+    own_player: bool
+
+
+class YouthIntakeOut(BaseModel):
+    """A youngster who joined the user's academy."""
+
+    player_id: int
+    name: str
+    position: str
+    age: int
+    overall: int
+    potential: PotentialOut  # as the club's coaches see it
+
+
+class SeasonReviewOut(BaseModel):
+    """The season that has just ended, across the game and for the user's squad."""
+
+    season: str
+    next_season: str | None
+    honours: list[HonourOut]
+    promoted: list[ClubMoveOut]
+    relegated: list[ClubMoveOut]
+    development: list[DevelopmentOut]  # best improvement first
+    development_recorded: bool  # False: the season began before the game kept the record
+    development_since: str | None  # the day it began being kept, when that was after the start
+    retired: list[RetirementOut]  # the user's players and the notable ones
+    youth: list[YouthIntakeOut]  # the user's academy intake
+
+
+class PlayerSeasonLineOut(BaseModel):
+    """A player's season in one competition (or, on a total row, in all of them)."""
+
+    club: ClubRef | None  # None on a total row
+    competition_key: str
+    competition: str
+    appearances: int  # starts and substitute appearances
+    starts: int
+    minutes: int
+    goals: int
+    assists: int
+    average_rating: float | None
+    yellow: int
+    red: int
+
+
+class PlayerSeasonOut(BaseModel):
+    season_id: int
+    season: str
+    lines: list[PlayerSeasonLineOut]  # one per competition
+    total: PlayerSeasonLineOut
 
 
 class PlayerDetailOut(SquadPlayerOut):

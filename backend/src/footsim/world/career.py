@@ -14,6 +14,7 @@ from footsim.match.report import MatchReport
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta, read_meta, write_meta
+from footsim.world.overall_history import record_season_start
 from footsim.world.results import daily_recovery, record_result
 from footsim.world.season import (
     after_day,
@@ -58,6 +59,7 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     ))
     refresh_ai_tactics(conn, world, meta, start)
     create_season_fixtures(conn, world, meta, 1)
+    record_season_start(conn, world, 1, start)
 
 
 def _user_fixture(conn: Connection, meta: CareerMeta, day: date) -> Row[Any] | None:

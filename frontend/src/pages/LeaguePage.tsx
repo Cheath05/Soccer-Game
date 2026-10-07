@@ -1,10 +1,10 @@
 import { Badge, Group, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useState } from 'react'
 
-import { useCareer, useCompetitions, useSeasons, useTable } from '../api/hooks'
+import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
-import { OUTCOMES } from '../lib/format'
+import { OUTCOMES, longDate } from '../lib/format'
 
 const ZONE_COLOR: Record<string, string> = {
   champion: 'var(--mantine-color-yellow-light)',
@@ -19,8 +19,19 @@ export default function LeaguePage() {
   const [key, setKey] = useState<string | null>(null)
   const [seasonId, setSeasonId] = useState<string | null>(null)
   const seasons = useSeasons().data ?? []
-  const active = key ?? career?.competition?.key ?? 'ENG1'
-  const table = useTable(active, seasonId ? Number(seasonId) : null)
+  const history = useClubHistory(career?.club.id).data
+  // Between seasons, until the new one's first league match is played, the last finished
+  // season's final table shows (of the league the user's club played in then, as that is the
+  // table it finished in) until a season or league is picked.
+  const current = seasons.find((s) => s.current)
+  const previous = seasons.find((s) => !s.current && s.finished !== false)
+  const homeKey = career?.competition?.key ?? 'ENG1'
+  const unstarted = useTable(key ?? homeKey)
+  const waiting = previous !== undefined && unstarted.data?.started === false
+  const lastLeague = history?.seasons.find((s) => s.season_id === previous?.id)?.competition.key
+  const active = key ?? (waiting && !seasonId && lastLeague ? lastLeague : homeKey)
+  const shownId = seasonId ? Number(seasonId) : waiting ? previous.id : current?.id
+  const table = useTable(active, shownId === undefined || shownId === current?.id ? null : shownId)
 
   return (
     <Stack>
@@ -39,7 +50,7 @@ export default function LeaguePage() {
             <Select
               aria-label="Season"
               w={130}
-              value={seasonId ?? String(seasons.find((s) => s.current)?.id ?? '')}
+              value={String(shownId ?? '')}
               onChange={setSeasonId}
               allowDeselect={false}
               data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
@@ -48,6 +59,12 @@ export default function LeaguePage() {
           {competitions.data && <LeaguePicker leagues={competitions.data} value={active} onChange={setKey} />}
         </Group>
       </Group>
+      {waiting && shownId === previous.id && (
+        <Text size="sm" c="dimmed">
+          Last season&apos;s final table
+          {unstarted.data?.first_match ? `: the ${unstarted.data.season} season starts on ${longDate(unstarted.data.first_match)}.` : '.'}
+        </Text>
+      )}
       <Table.ScrollContainer minWidth={640}>
         <Table highlightOnHover>
           <Table.Thead>

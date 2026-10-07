@@ -1,19 +1,44 @@
-import { Stack, Table, Text, Title } from '@mantine/core'
+import { Group, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 
-import { useCareer, useClubFixtures } from '../api/hooks'
+import { useCareer, useClubFixtures, useSeasons } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
 import { longDate, score, stageLabel } from '../lib/format'
 
 export default function FixturesPage() {
   const career = useCareer().data
-  const fixtures = useClubFixtures(career?.club.id)
+  const seasons = useSeasons().data ?? []
+  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const current = seasons.find((s) => s.current)
+  // The current season to start with; any past season's fixtures and results can be browsed.
+  const shownId = seasonId ? Number(seasonId) : current?.id
+  const fixtures = useClubFixtures(career?.club.id, shownId === undefined || shownId === current?.id ? null : shownId)
   const navigate = useNavigate()
   if (!career) return null
   return (
     <Stack>
-      <Title order={2}>Fixtures & results</Title>
+      <Group justify="space-between">
+        <Title order={2}>
+          Fixtures & results
+          {shownId !== undefined && seasons.length > 1 && (
+            <Text span c="dimmed" fz="lg" ml="xs">
+              {seasons.find((s) => s.id === shownId)?.label}
+            </Text>
+          )}
+        </Title>
+        {seasons.length > 1 && (
+          <Select
+            aria-label="Season"
+            w={130}
+            value={String(shownId ?? '')}
+            onChange={setSeasonId}
+            allowDeselect={false}
+            data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
+          />
+        )}
+      </Group>
       <Table.ScrollContainer minWidth={700}>
         <Table highlightOnHover>
           <Table.Thead>

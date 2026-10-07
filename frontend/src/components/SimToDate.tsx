@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
 import { useSimStatus, useStartSim, useStopSim } from '../api/hooks'
-import type { Career, SeasonFinal, SimResult, SimStatus } from '../api/types'
-import { addDays, addMonths, daysBetween, longDate, shortDate } from '../lib/format'
+import type { Career, SimResult, SimStatus } from '../api/types'
+import { addDays, addMonths, competitionNation, daysBetween, longDate, shortDate } from '../lib/format'
+import SeasonSummary from './SeasonSummary'
 
 const OUTCOME_COLOR = { W: 'teal', D: 'gray', L: 'red' } as const
 const MAX_DAYS = 400 // api/sim.py
@@ -15,40 +16,6 @@ const STOP_TEXT: Record<string, string> = {
   cancelled: 'Stopped.',
   abandoned: 'Another career was loaded.',
   error: 'Something went wrong.',
-}
-
-const OUTCOME_TEXT: Record<string, string> = {
-  champion: 'Champions',
-  promoted: 'Promoted',
-  playoff_winner: 'Promoted through the play-offs',
-  playoffs: 'Play-offs',
-  relegated: 'Relegated',
-}
-
-function ordinal(n: number): string {
-  const tens = n % 100
-  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
-  return `${n}${suffix}`
-}
-
-function Finish({ final }: { final: SeasonFinal }) {
-  return (
-    <Stack gap={2}>
-      <Text fw={700}>
-        {ordinal(final.position)} in the {final.competition}
-        {final.outcome && OUTCOME_TEXT[final.outcome] ? ` · ${OUTCOME_TEXT[final.outcome]}` : ''}
-      </Text>
-      <Text size="sm" c="dimmed">
-        Won {final.won}, drawn {final.drawn}, lost {final.lost} · goals {final.goals_for}–{final.goals_against} ·{' '}
-        {final.points} points
-      </Text>
-      {(final.cups ?? []).map((run) => (
-        <Text key={run.key} size="sm">
-          {run.name}: {run.won ? 'Winners!' : run.reached === 'Final' ? 'Runners-up' : `out in the ${run.reached.toLowerCase()}`}
-        </Text>
-      ))}
-    </Stack>
-  )
 }
 
 function Results({ results }: { results: SimResult[] }) {
@@ -211,19 +178,29 @@ export default function SimToDate({ career, matchToday }: { career: Career; matc
         onClose={() => setNews(null)}
         centered
         size="lg"
+        scrollAreaComponent={ScrollArea.Autosize}
         title={news?.stop === 'season_end' ? 'Season summary' : 'News'}
       >
         {news && (
           <Stack>
-            {news.season_final && <Finish final={news.season_final} />}
-            {news.messages.length > 0 && (
-              <ScrollArea.Autosize mah={360}>
-                <List spacing={4} size="sm">
-                  {news.messages.map((m, i) => (
-                    <List.Item key={`${i}-${m}`}>{m}</List.Item>
-                  ))}
-                </List>
-              </ScrollArea.Autosize>
+            {news.season_final ? (
+              // The summary has its own sections for the season-end news.
+              <SeasonSummary
+                final={news.season_final}
+                userClubId={career.club.id}
+                userNation={career.competition ? competitionNation(career.competition) : undefined}
+                onNavigate={() => setNews(null)}
+              />
+            ) : (
+              news.messages.length > 0 && (
+                <ScrollArea.Autosize mah={360}>
+                  <List spacing={4} size="sm">
+                    {news.messages.map((m, i) => (
+                      <List.Item key={`${i}-${m}`}>{m}</List.Item>
+                    ))}
+                  </List>
+                </ScrollArea.Autosize>
+              )
             )}
             <Button onClick={() => setNews(null)}>OK</Button>
           </Stack>

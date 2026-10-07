@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 8  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 9  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -316,6 +316,20 @@ player_development = Table(
     # recent monthly change in his overall, smoothed (development.yaml trend_memory): the
     # up/down arrow next to his overall
     Column("trend", Float, nullable=False, server_default="0"),
+)
+
+# Each player's overall on the day a season began (world/overall_history.py): the "before" of the
+# season summary's development table. The next season's row is his overall at this one's end.
+player_season_overall = Table(
+    "player_season_overall",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("overall", SmallInteger, nullable=False),  # in his best position's group, as shown
+    # The game date it was taken: the season's first day, unless the career began keeping the
+    # record part-way through a season (an upgraded save).
+    Column("recorded_on", Text, nullable=False),
+    PrimaryKeyConstraint("season_id", "player_id"),
 )
 
 tactic = Table(

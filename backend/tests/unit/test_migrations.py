@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from sqlalchemy import inspect, text
 
+from footsim.api.session import CareerSession
 from footsim.core.paths import data_dir
 from footsim.persistence.database import (
     SchemaMismatch,
@@ -125,3 +126,46 @@ def test_version_7_gains_retirement(tmp_path: Path) -> None:
         columns = {c["name"] for c in inspect(conn).get_columns("player")}
     assert "retired_on" in columns
     engine.dispose()
+
+
+def test_version_8_gains_the_season_overalls(tmp_path: Path) -> None:
+    """Saves from before the season summary's development table get its record table. A world
+    that isn't a career yet has no season to record."""
+    path = tmp_path / "v8.sqlite"
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE player_season_overall"))
+    write_meta(engine, {"schema_version": 8})
+    engine.dispose()
+    engine = open_database(path)
+    assert migrate(engine) == 8
+    assert migrate(engine) == SCHEMA_VERSION
+    with engine.connect() as conn:
+        assert "player_season_overall" in inspect(conn).get_table_names()
+        assert conn.execute(text("SELECT COUNT(*) FROM player_season_overall")).scalar_one() == 0
+    engine.dispose()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_8_starts_the_record_for_a_career_under_way(tmp_path: Path) -> None:
+    """A career already under way has the current season recorded from the day it is upgraded
+    (it can't know the season's start), once, for every player still playing."""
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        playing: int = conn.execute(text(
+            "SELECT COUNT(*) FROM player WHERE retired_on IS NULL")).scalar_one()
+        conn.execute(text("DROP TABLE player_season_overall"))
+        conn.execute(text("UPDATE game_meta SET value = '\"2026-10-14\"' "
+                          "WHERE key = 'game_date'"))
+    write_meta(engine, {"schema_version": 8})
+    assert migrate(engine) == 8
+    for _ in range(2):  # and upgrading again changes nothing
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT season_id, recorded_on, COUNT(*) AS n FROM player_season_overall "
+                "GROUP BY season_id, recorded_on")).all()
+        assert [(r.season_id, r.recorded_on, r.n) for r in rows] == [(1, "2026-10-14", playing)]
+        migrate(engine)
+    session.close()

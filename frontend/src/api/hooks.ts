@@ -15,6 +15,7 @@ import type {
   LeagueOption,
   MatchReport,
   PlayerDetail,
+  PlayerSeason,
   SaveSlot,
   Season,
   SimStatus,
@@ -61,8 +62,8 @@ export const useCup = (key: string | undefined, season?: number | null) =>
 
 export const useSeasons = () => useQuery({ queryKey: ['seasons'], queryFn: () => api.get<Season[]>('/seasons') })
 
-export const useClubHistory = (clubId: number) =>
-  useQuery({ queryKey: ['club-history', clubId], queryFn: () => api.get<ClubHistory>(`/clubs/${clubId}/history`) })
+export const useClubHistory = (clubId: number | undefined) =>
+  useQuery({ queryKey: ['club-history', clubId], queryFn: () => api.get<ClubHistory>(`/clubs/${clubId}/history`), enabled: !!clubId })
 
 export const useSquad = (clubId: number | undefined) =>
   useQuery({ queryKey: ['squad', clubId], queryFn: () => api.get<SquadPlayer[]>(`/clubs/${clubId}/squad`), enabled: !!clubId })
@@ -73,11 +74,18 @@ export const useClub = (clubId: number) =>
 export const useClubPlayers = (clubId: number) =>
   useQuery({ queryKey: ['club-players', clubId], queryFn: () => api.get<ClubPlayer[]>(`/clubs/${clubId}/players`) })
 
-export const useClubFixtures = (clubId: number | undefined) =>
-  useQuery({ queryKey: ['fixtures', clubId], queryFn: () => api.get<Fixture[]>(`/clubs/${clubId}/fixtures`), enabled: !!clubId })
+export const useClubFixtures = (clubId: number | undefined, season?: number | null) =>
+  useQuery({
+    queryKey: ['fixtures', clubId, season ?? null],
+    queryFn: () => api.get<Fixture[]>(`/clubs/${clubId}/fixtures${season ? `?season=${season}` : ''}`),
+    enabled: !!clubId,
+  })
 
 export const usePlayer = (id: number) =>
   useQuery({ queryKey: ['player', id], queryFn: () => api.get<PlayerDetail>(`/players/${id}`) })
+
+export const usePlayerSeasons = (id: number) =>
+  useQuery({ queryKey: ['player-seasons', id], queryFn: () => api.get<PlayerSeason[]>(`/players/${id}/seasons`) })
 
 export const useMatch = (id: number) =>
   useQuery({ queryKey: ['match', id], queryFn: () => api.get<MatchReport>(`/fixtures/${id}`) })

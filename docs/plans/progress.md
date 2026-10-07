@@ -46,11 +46,20 @@
     - each on its own country's calendar, with only clubs in the data (byes for the top-ranked where a bracket doesn't fill).
     - The Cups page picks a country, defaulting to the user's.
     - The whole-season test checks every cup finishes.
-  - **Queued for a Sonnet agent** (the user's requests, 6 Oct, after a full-season sim):
-    - the League page shows the finished season's final table until the new season's first matches;
-    - fixtures and results by season;
-    - a clean season summary: champions, promoted and relegated by country, and the user's player development as old → new with green and red arrows;
-    - each player's season-by-season stats (club, competition, apps, minutes, goals, assists, average rating, cards) from `player_match`, the base for awards (Ballon d'Or, players of the year) later.
+  - **Season-end views** (the user's requests, 6 Oct, after a full-season sim; a Sonnet agent's patch, reviewed and tested here):
+    - **Schema 9:** `player_season_overall` holds every player's overall as each season begins (recorded at career start and each rollover), so the next season's row is also the last one's end.
+      - A save already under way starts the record on the day it's upgraded, and the summary says so.
+    - **The season summary is built from the database,** in sections:
+      - the user's finish and cup runs;
+      - by country (defaulting to the user's): champions (leagues, play-offs, cups), promoted and relegated;
+      - **your squad's development:** start → now, with the squad page's green and red arrows and the change;
+      - retirements, youth intake and other news.
+
+      The season-end lists no longer flood the news.
+    - **League:** shows last season's final table until the new season's first match, with a note; "(now)" switches.
+    - **Fixtures:** a season picker (`GET /clubs/{id}/fixtures?season=`).
+    - **Player:** a "Seasons" table, a row per competition with a total per season (`GET /players/{id}/seasons`, from `player_match`). It's the base for the Ballon d'Or and players of the year later.
+    - The rollover itself is unchanged.
   - **Next engine task:** D6, engagement around the box (see D2's reading below). Then W3, finances.
   - **Calibration:** nothing running once this checkpoint's measurement is in.
 - **Before that (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):

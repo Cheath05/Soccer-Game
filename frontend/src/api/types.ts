@@ -106,6 +106,71 @@ export interface SeasonFinal {
   points: number
   outcome: string | null
   cups?: CupRun[] // how far the club went in each cup
+  review?: SeasonReview | null // how the season went across the game, and for the squad
+  news?: string[] // the sim's other news: what the review doesn't cover
+}
+
+/** A competition's winners at a season's end: a league's champions, a play-off's or a cup's. */
+export interface Honour {
+  kind: 'league' | 'playoff' | 'cup'
+  key: string
+  name: string
+  nation: string // a nation code such as ENG
+  tier: number // a league's (and its play-offs'); 0 for a cup
+  winner: ClubRef
+}
+
+/** A club going up or down a league at the season's end. */
+export interface ClubMove {
+  club: ClubRef
+  nation: string
+  from_league: string
+  to_league: string
+  position: number | null // where it finished in the league it left
+  via_playoffs: boolean
+}
+
+/** One of the user's players whose overall changed over the season. */
+export interface Development {
+  player_id: number
+  name: string
+  position: string
+  age: number
+  before: number // his overall as the season began
+  after: number // and as it ended
+  change: number
+}
+
+export interface Retirement {
+  player_id: number
+  name: string
+  position: string
+  age: number
+  overall: number
+  club: ClubRef | null
+  own_player: boolean
+}
+
+export interface YouthIntake {
+  player_id: number
+  name: string
+  position: string
+  age: number
+  overall: number
+  potential: { low: number; high: number; label: string }
+}
+
+export interface SeasonReview {
+  season: string
+  next_season: string | null
+  honours: Honour[]
+  promoted: ClubMove[]
+  relegated: ClubMove[]
+  development: Development[] // best improvement first
+  development_recorded: boolean // false: the season began before the game kept the record
+  development_since: string | null // the day it began being kept, when that was after the start
+  retired: Retirement[]
+  youth: YouthIntake[]
 }
 
 export interface SimStatus {
@@ -125,6 +190,7 @@ export interface AdvanceResult {
   stop: 'match' | 'season_end' | 'limit'
   fixture_id: number | null
   messages: string[]
+  season_final?: SeasonFinal | null // when it stopped at the season's end
 }
 
 export interface TableRow {
@@ -148,6 +214,8 @@ export interface Table {
   name: string
   season: string
   final: boolean // the season is over and this is its final table
+  started?: boolean // a match has been played (a server that predates it omits it)
+  first_match?: string | null // the date of its first league match
   rows: TableRow[]
 }
 
@@ -157,6 +225,7 @@ export interface Season {
   id: number
   label: string
   current: boolean
+  finished?: boolean // its league tables are final (a server that predates it omits it)
 }
 
 /** A club's league season: its final position, or its position so far this season. */
@@ -271,6 +340,28 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   traits: string[]
   own_player: boolean
   retired?: boolean
+}
+
+/** A player's season in one competition (or, on a total row, in all of them). */
+export interface PlayerSeasonLine {
+  club: ClubRef | null // null on a total row
+  competition_key: string
+  competition: string
+  appearances: number // starts and substitute appearances
+  starts: number
+  minutes: number
+  goals: number
+  assists: number
+  average_rating: number | null
+  yellow: number
+  red: number
+}
+
+export interface PlayerSeason {
+  season_id: number
+  season: string
+  lines: PlayerSeasonLine[]
+  total: PlayerSeasonLine
 }
 
 export interface MatchEvent {

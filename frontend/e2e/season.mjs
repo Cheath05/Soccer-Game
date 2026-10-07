@@ -1,5 +1,6 @@
 // Sims a new career to the end of its season from the browser and checks what follows: the
-// results first, then a separate season summary leading with the club's finish. Takes several
+// results first, then a separate season summary leading with the club's finish, in sections, and
+// the finished season's table on the League page. Takes several
 // minutes (a whole season of the user's matches), so it isn't part of `just e2e`.
 // Usage: node e2e/season.mjs <url> <dir>
 import { chromium } from 'playwright'
@@ -43,8 +44,16 @@ await shot('season-2-summary')
 const text = await summary.innerText()
 console.log(`summary: ${text.split('\n').slice(0, 6).join(' | ')} …`)
 if (!/^\d+(st|nd|rd|th) in the /m.test(text)) errors.push('no finishing position in the summary')
+for (const section of ['Champions', 'Promoted', 'Relegated', "Your squad's development", 'Retirements'])
+  if (!text.includes(section)) errors.push(`no "${section}" section in the summary`)
+if (/Player development\./.test(text)) errors.push('the summary lists the monthly development news')
 await summary.getByRole('button', { name: 'OK' }).click()
 await page.waitForTimeout(500)
 if (await summary.isVisible()) errors.push('the season summary did not close')
+
+// The new season has no match yet: the League page shows last season's final table.
+await page.goto(new URL('/league', base).href)
+await page.getByText(/Last season's final table/).waitFor({ timeout: 10000 })
+await shot('season-3-league')
 console.log(errors.length ? `ERRORS:\n${errors.join('\n')}` : 'no browser errors')
 await browser.close()

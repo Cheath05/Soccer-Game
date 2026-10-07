@@ -2,9 +2,10 @@ import { Badge, Button, Card, Grid, Group, Loader, Modal, SimpleGrid, Stack, Tab
 import { useParams } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { usePlayer, useReleasePlayer } from '../api/hooks'
+import { usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
+import type { PlayerSeasonLine } from '../api/types'
 import ClubLink from '../components/ClubLink'
-import { attributeLabel, money, positionColor, ratingColor, wage } from '../lib/format'
+import { attributeLabel, matchRatingColor, money, positionColor, ratingColor, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
   technical: 'Technical',
@@ -170,7 +171,84 @@ export default function PlayerPage() {
           </Stack>
         </Grid.Col>
       </Grid>
+
+      <SeasonRecord playerId={p.id} />
     </Stack>
+  )
+}
+
+/** The player's record season by season, the current one first: a line for each competition
+ * and a total. A retired player keeps his. */
+function SeasonRecord({ playerId }: { playerId: number }) {
+  const seasons = usePlayerSeasons(playerId).data
+  if (!seasons) return null
+  const cells = (line: PlayerSeasonLine) => (
+    <>
+      <Table.Td ta="right">{line.appearances}</Table.Td>
+      <Table.Td ta="right">{line.starts}</Table.Td>
+      <Table.Td ta="right">{line.minutes}</Table.Td>
+      <Table.Td ta="right">{line.goals}</Table.Td>
+      <Table.Td ta="right">{line.assists}</Table.Td>
+      <Table.Td ta="right">
+        {line.average_rating !== null && (
+          <Text size="sm" fw={600} c={matchRatingColor(line.average_rating)} span>
+            {line.average_rating.toFixed(2)}
+          </Text>
+        )}
+      </Table.Td>
+      <Table.Td ta="right">{line.yellow}</Table.Td>
+      <Table.Td ta="right">{line.red}</Table.Td>
+    </>
+  )
+  return (
+    <Card withBorder padding="sm" aria-label="Seasons">
+      <Title order={4} mb={4}>
+        Seasons
+      </Title>
+      {seasons.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No matches played yet.
+        </Text>
+      ) : (
+        <Table.ScrollContainer minWidth={760}>
+          <Table verticalSpacing={4}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Season</Table.Th>
+                <Table.Th>Club</Table.Th>
+                <Table.Th>Competition</Table.Th>
+                <Table.Th ta="right">Apps</Table.Th>
+                <Table.Th ta="right">Starts</Table.Th>
+                <Table.Th ta="right">Mins</Table.Th>
+                <Table.Th ta="right">Goals</Table.Th>
+                <Table.Th ta="right">Assists</Table.Th>
+                <Table.Th ta="right">Rating</Table.Th>
+                <Table.Th ta="right">YC</Table.Th>
+                <Table.Th ta="right">RC</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {seasons.flatMap((s) => [
+                ...s.lines.map((line, i) => (
+                  <Table.Tr key={`${s.season_id}-${line.competition_key}-${line.club?.id}`}>
+                    <Table.Td fw={600}>{i === 0 ? s.season : ''}</Table.Td>
+                    <Table.Td>{line.club ? <ClubLink club={line.club} /> : '–'}</Table.Td>
+                    <Table.Td>{line.competition}</Table.Td>
+                    {cells(line)}
+                  </Table.Tr>
+                )),
+                <Table.Tr key={`${s.season_id}-total`} fw={700} bg="var(--mantine-color-default-hover)">
+                  <Table.Td />
+                  <Table.Td />
+                  <Table.Td>Total {s.season}</Table.Td>
+                  {cells(s.total)}
+                </Table.Tr>,
+              ])}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      )}
+    </Card>
   )
 }
 

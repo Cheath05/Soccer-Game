@@ -1,11 +1,13 @@
-import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Modal, NavLink, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
-import { longDate } from '../lib/format'
+import type { SeasonFinal } from '../api/types'
+import { competitionNation, longDate } from '../lib/format'
+import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
 import VersionTag from './VersionTag'
 import StartPage from '../pages/StartPage'
@@ -28,6 +30,8 @@ export default function Layout() {
   const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
   const [messages, setMessages] = useState<string[]>([])
+  // How the season went, when Continue ran on to its end.
+  const [seasonFinal, setSeasonFinal] = useState<SeasonFinal | null>(null)
   const [saved, setSaved] = useState(false)
 
   if (career.isPending) {
@@ -52,7 +56,8 @@ export default function Layout() {
     }
     advance.mutate(undefined, {
       onSuccess: (result) => {
-        if (result.messages.length) setMessages(result.messages)
+        if (result.stop === 'season_end' && result.season_final) setSeasonFinal(result.season_final)
+        else if (result.messages.length) setMessages(result.messages)
         if (result.stop === 'match') void navigate({ to: '/matchday' })
       },
     })
@@ -132,6 +137,26 @@ export default function Layout() {
         )}
         <Outlet />
       </AppShell.Main>
+      <Modal
+        opened={seasonFinal !== null}
+        onClose={() => setSeasonFinal(null)}
+        title="Season summary"
+        centered
+        size="lg"
+        scrollAreaComponent={ScrollArea.Autosize}
+      >
+        {seasonFinal && (
+          <Stack>
+            <SeasonSummary
+              final={seasonFinal}
+              userClubId={data.club.id}
+              userNation={data.competition ? competitionNation(data.competition) : undefined}
+              onNavigate={() => setSeasonFinal(null)}
+            />
+            <Button onClick={() => setSeasonFinal(null)}>OK</Button>
+          </Stack>
+        )}
+      </Modal>
       <Modal opened={messages.length > 0} onClose={() => setMessages([])} title="News" centered>
         <Stack>
           <List spacing="xs">

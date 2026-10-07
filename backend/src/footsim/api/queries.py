@@ -32,6 +32,8 @@ from footsim.api.schemas import (
     MatchOut,
     PlayerDetailOut,
     PlayerLineOut,
+    PlayerSeasonLineOut,
+    PlayerSeasonOut,
     PotentialOut,
     RoleOut,
     RoleRatingOut,
@@ -58,6 +60,7 @@ from footsim.persistence.schema import (
     fixture,
     league_final,
     nation,
+    person,
     player_attr,
     player_position,
     player_trait,
@@ -253,13 +256,18 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
         zone=zones.get(r.position), form=form.get(r.club_id, []),
         outcome=outcomes.get(r.club_id),
     ) for r in ordered]
+    first_match = conn.execute(select(func.min(fixture.c.date)).where(
+        fixture.c.competition_id == comp.id, fixture.c.season_id == season_id,
+        fixture.c.stage == "league")).scalar()
     return TableOut(competition=key, name=comp.name, season=_season_label(conn, season_id),
-                    final=bool(outcomes), rows=rows)
+                    final=bool(outcomes), started=any(r.played for r in ordered),
+                    first_match=first_match, rows=rows)
 
 
 def seasons(conn: Connection) -> list[SeasonOut]:
     current = read_meta(conn).season_id
-    return [SeasonOut(id=r.id, label=r.label, current=r.id == current)
+    finished = {r.season_id for r in conn.execute(select(league_final.c.season_id).distinct())}
+    return [SeasonOut(id=r.id, label=r.label, current=r.id == current, finished=r.id in finished)
             for r in conn.execute(select(season).order_by(season.c.id.desc()))]
 
 
@@ -675,6 +683,64 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
         traits=traits, own_player=own, retired=r.retired_on is not None,
     )
+
+
+_SEASON_LINES_SQL = """
+    SELECT f.season_id, f.competition_id, f.stage, pm.club_id, COUNT(*) AS apps,
+           SUM(pm.started) AS starts, SUM(pm.minutes) AS minutes, SUM(pm.goals) AS goals,
+           SUM(pm.assists) AS assists, SUM(pm.rating) AS rating_sum, SUM(pm.yellow) AS yellow,
+           SUM(pm.red) AS red
+    FROM player_match pm JOIN fixture f ON f.id = pm.fixture_id
+    WHERE pm.player_id = :pid
+    GROUP BY f.season_id, f.competition_id, f.stage, pm.club_id
+"""
+
+
+def _season_line(club_ref: ClubRef | None, key: str, name: str, apps: int, starts: int,
+                 minutes: int, goals: int, assists: int, rating_sum: float, yellow: int,
+                 red: int) -> PlayerSeasonLineOut:
+    return PlayerSeasonLineOut(
+        club=club_ref, competition_key=key, competition=name, appearances=apps, starts=starts,
+        minutes=minutes, goals=goals, assists=assists,
+        average_rating=round(rating_sum / apps, 2) if apps else None, yellow=yellow, red=red)
+
+
+def player_seasons(conn: Connection, world: World, player_id: int) -> list[PlayerSeasonOut]:
+    """A player's record season by season, the current one first: a line for each competition
+    he played in (a league's play-offs count as a competition of their own) and a total. A
+    retired player keeps his history."""
+    if conn.execute(select(person.c.id).where(person.c.id == player_id)).first() is None:
+        raise KeyError(player_id)
+    names = _club_names(conn)
+    comps = _competitions(conn)
+    labels = {r.id: r.label for r in conn.execute(select(season))}
+    # (season) -> [(sort key, competition key, competition name, row)]
+    found: dict[int, list[tuple[tuple[int, int, str], str, str, Row[Any]]]] = defaultdict(list)
+    for r in conn.execute(text(_SEASON_LINES_SQL), {"pid": player_id}):
+        comp = comps[r.competition_id]
+        league = world.defs.leagues.get(comp.key)
+        if r.stage == "league" or r.stage == comp.key or league is None:
+            key, name = comp.key, comp.name
+        else:  # a play-off, named as the league's definition has it
+            playoff = next((p for p in league.playoffs if p.key == r.stage), None)
+            key, name = r.stage, playoff.name if playoff else f"{comp.name} play-offs"
+        kind = 2 if comp.type == "cup" else 0 if r.stage == "league" else 1
+        found[r.season_id].append(((kind, comp.tier or 0, name), key, name, r))
+    result = []
+    for season_id in sorted(found, reverse=True):
+        entries = sorted(found[season_id], key=lambda e: e[0])
+        rows = [r for _, _, _, r in entries]
+        result.append(PlayerSeasonOut(
+            season_id=season_id, season=labels[season_id],
+            lines=[_season_line(ClubRef(id=r.club_id, name=names[r.club_id]), key, name, r.apps,
+                                r.starts, r.minutes, r.goals, r.assists, r.rating_sum, r.yellow,
+                                r.red) for _, key, name, r in entries],
+            total=_season_line(None, "", "All competitions", sum(r.apps for r in rows),
+                               sum(r.starts for r in rows), sum(r.minutes for r in rows),
+                               sum(r.goals for r in rows), sum(r.assists for r in rows),
+                               sum(r.rating_sum for r in rows), sum(r.yellow for r in rows),
+                               sum(r.red for r in rows))))
+    return result
 
 
 class SquadTooSmall(Exception):

@@ -4,9 +4,20 @@ import type { MantineSize } from '@mantine/core'
 import { ratingColor } from '../lib/format'
 
 /** A player's overall, with a green up or red down arrow while it's been rising or falling
- * over the past few months. Steady players get an empty slot, so the numbers stay aligned. */
-export default function Overall({ value, trend, size = 'sm' }: { value: number; trend?: number; size?: MantineSize }) {
-  const label = trend && trend > 0 ? 'Rising lately' : 'Falling lately'
+ * over the past few months. Steady players get an empty slot, so the numbers stay aligned.
+ * ``hint`` words the arrow's tooltip when it means something else, as in a season's summary. */
+export default function Overall({
+  value,
+  trend,
+  size = 'sm',
+  hint,
+}: {
+  value: number
+  trend?: number
+  size?: MantineSize
+  hint?: { up: string; down: string }
+}) {
+  const label = trend && trend > 0 ? (hint?.up ?? 'Rising lately') : (hint?.down ?? 'Falling lately')
   return (
     <Group gap={2} wrap="nowrap" justify="flex-end" component="span" display="inline-flex">
       <Text fw={700} c={ratingColor(value)} size={size} span>

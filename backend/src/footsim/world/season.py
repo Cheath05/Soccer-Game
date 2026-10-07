@@ -37,6 +37,7 @@ from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.lifecycle import season_turnover
 from footsim.world.meta import CareerMeta
+from footsim.world.overall_history import record_season_start
 from footsim.world.squads import club_name, display_name, load_squad
 
 DEVELOPMENT_SHARE = 1 / 12  # of a year's development, applied on the first of each month
@@ -376,6 +377,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
         messages.append(f"{club_name(conn, club_id)} {verb} the {new_league.name}.")
 
     messages += season_turnover(conn, world, meta, calendar.season_start)
+    record_season_start(conn, world, new, calendar.season_start)
     _renew_contracts(conn, meta, calendar.season_start, calendar.season_end)
     conn.execute(text("UPDATE player_state SET season_yellows = 0"))
     meta.season_id = new

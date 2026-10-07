@@ -190,3 +190,34 @@ def test_a_defender_under_pressure_in_his_box_clears_first_time(world: World) ->
     assert clears((60.0, 34.0), (60.5, 34.0)) == 0.0        # not his danger zone
     assert clears((8.0, 34.0), (8.5, 34.0)) > 0.5           # pressed in his own box
     assert 0.0 < clears((28.0, 34.0), (28.5, 34.0)) < clears((8.0, 34.0), (8.5, 34.0))
+
+
+def test_a_counter_is_on_only_after_winning_it_against_an_unset_defence(world: World) -> None:
+    """Phase E: a side that won the ball in open play in its own half is on a counter for the
+    counter window, while fewer than ``counter_unset`` outfield opponents are goal-side of
+    the ball; never from a restart, and not once the defence is set."""
+    from footsim.match.engine.log import Possession
+
+    engine = _engine(world)
+    rules = world.defs.tactics.transition
+    opps = engine.outfield_indices(1)
+    engine.t = 100.0
+
+    def place(goal_side: int) -> None:  # that many of them between the ball (40 m) and goal
+        for n, k in enumerate(opps):
+            x = 70.0 + n if n < goal_side else 20.0 + n
+            engine.pos[k] = engine.to_pitch(0, x, 30.0)
+
+    engine.possessions[:] = [Possession(0, 98.0, 30.0, "interception")]
+    place(rules.counter_unset - 2)
+    assert actions._countering(engine, 0, 40.0)
+    place(rules.counter_unset + 1)
+    assert not actions._countering(engine, 0, 40.0)               # the defence is set
+    place(rules.counter_unset - 2)
+    engine.t = 98.0 + rules.counter_window + 0.1
+    assert not actions._countering(engine, 0, 40.0)               # too late
+    engine.t = 100.0
+    engine.possessions[:] = [Possession(0, 98.0, 30.0, "goal_kick")]
+    assert not actions._countering(engine, 0, 40.0)               # not from a restart
+    engine.possessions[:] = [Possession(0, 98.0, 70.0, "interception")]
+    assert not actions._countering(engine, 0, 40.0)               # won in their half

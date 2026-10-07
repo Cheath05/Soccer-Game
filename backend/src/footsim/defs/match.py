@@ -340,6 +340,8 @@ class TransitionDef(DefModel):
     reaction: tuple[float, float]
     counter_hold: float = Field(gt=0)
     counter_window: float = Field(gt=0)
+    counter_unset: int = Field(ge=0, le=10)
+    counter_forward: float = Field(ge=0)
 
 
 class ManagerDef(DefModel):

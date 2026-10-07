@@ -54,6 +54,8 @@ _FURTHER = np.array([0.0, 3.0, 6.0, 10.0])  # m beyond the nearest point a recei
 KEEPER_REACH = 2.4  # arms: keepers gather balls further away in their own box
 KEEPER_DIVE = 2.5  # how far a keeper can throw himself to catch a shot
 NO_OFFSIDE = frozenset({"throw_in", "goal_kick", "corner"})  # restarts (Law 11)
+# How a counter can start: the ball won in open play, never from a restart.
+COUNTER_SOURCES = frozenset({"tackle", "interception", "recovery", "loose", "save", "claim"})
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,21 @@ def gain_possession(eng: "MatchEngine", i: int, delay: float | None = None,
             hold = eng.defs.tactics.transition.counter_hold  # win it and go
         delay = hold + 0.35 * (1 - eng.a(i, "first_touch") / 100) + float(eng.rng.uniform(0, 0.2))
     eng.decide_at = eng.t + delay
+
+
+def _countering(eng: "MatchEngine", team: int, bx: float) -> bool:
+    """Is ``team`` on a counter (Phase E)? It won the ball in its own half within the counter
+    window, and fewer than ``counter_unset`` outfield opponents are goal-side of the ball
+    (tactics.yaml transition)."""
+    if not eng.possessions:
+        return False
+    poss = eng.possessions[-1]
+    rules = eng.defs.tactics.transition
+    if (poss.team != team or poss.source not in COUNTER_SOURCES or poss.start_x >= LENGTH / 2
+            or eng.t - poss.start_t >= rules.counter_window):
+        return False
+    opps = eng.att_points(team, eng.pos[eng.outfield_indices(1 - team)])
+    return int(np.sum(opps[:, 0] > bx)) < rules.counter_unset
 
 
 def _counter_chance(eng: "MatchEngine", i: int) -> bool:
@@ -306,6 +323,9 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
     if directness < 0:
         utility -= 0.012 * (length > 25)
     utility += 0.01 * eng.role[i].on_ball.pass_risk * (value - float(threat(bx, by)))
+    countering = mode is None and _countering(eng, team, bx)
+    if countering:  # the defence isn't set: get it forward while it's on
+        utility += eng.defs.tactics.transition.counter_forward * np.maximum(forward, 0.0) / 10
     # Offside (Law 11) is judged on where the receiver is when the ball is played. The passer
     # notices anyone offside by more than his blind spot, which good decision-makers keep
     # small: only marginal ones slip past him (and the assistant referee flags them). None from
@@ -320,9 +340,10 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
         if (not restart_free and receiver_x > line + 0.3 + blind and receiver_x > bx
                 and receiver_x > 52.5):
             continue  # he sees the offside and doesn't play it
-        # A stopgap until defenders track runners (Phase D): a ball in behind the line is
-        # played only now and then. Without it, through balls are close to free goals.
-        if (kinds[k] == "through" and in_behind[k]
+        # A stopgap until defenders track runners (Phase D): in settled play a ball in behind
+        # the line is played only now and then. Without it, through balls are close to free
+        # goals. On a counter the defence isn't set, and that ball is the counter (Phase E).
+        if (kinds[k] == "through" and in_behind[k] and not countering
                 and eng.rng.random() < 0.3 + 0.65 * decisions / 100):
             continue
         options.append((float(utility[k]), kinds[k],

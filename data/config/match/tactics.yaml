@@ -45,6 +45,18 @@ transition:
                           # anticipation and work rate); until then he carries on
   counter_hold: 0.6       # s on the ball for a player who has just won it in his own half
   counter_window: 6.0     # s after winning the ball that runners break forward
+  # Phase E: a counter is on while a side that won the ball in its own half is inside the
+  # counter window and fewer than ``counter_unset`` outfield opponents are goal-side of the
+  # ball. Then balls in behind are played (the stopgap that holds them back in settled play
+  # doesn't apply: the defence isn't set), and a pass is worth ``counter_forward`` more per 10 m
+  # it goes forward. Calibrated on the share of shots from fast breaks: real 5-10% (Opta, 21/22
+  # and 24/25), 2% in the engine before (D6). At an open-play regain in a side's own half the
+  # opponents usually have 7-10 outfield players goal-side, so 6 almost never applied (0.6% of
+  # regains). 32 matches each at quality 78, forward 0.05: unset 6 gave 2.0%, 8 gave 5.3%, 9
+  # gave 6.0%, goals and shots unchanged within noise. Here: on when at least two of them are
+  # caught upfield of the ball.
+  counter_unset: 9
+  counter_forward: 0.05
 
 # The in-match manager of a computer-controlled side (match/engine/manager.py). He reviews the
 # game every few minutes and after every goal or red card, and only ever changes instructions.

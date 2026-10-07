@@ -57,7 +57,9 @@ three lines placed from the ball (back line, midfield goal-side of it, forwards 
 with the wide players dropping into the midfield line (Phase D2, Mac only); the take-on
 duel at the real success rate with carriers daring as often as real ones, interceptions at
 the real count, and defenders clearing first time under pressure in their danger zone
-(Phase D6, Mac only).
+(Phase D6, Mac only); counters: after an open-play regain in their own half with at least
+two opponents caught upfield, sides play balls in behind and value forward passes more
+(Phase E, Mac only).
 """
 
 import json

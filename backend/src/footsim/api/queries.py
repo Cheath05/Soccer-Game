@@ -63,6 +63,7 @@ from footsim.persistence.schema import (
     person,
     player_attr,
     player_position,
+    player_season_overall,
     player_trait,
     season,
     tactic,
@@ -509,8 +510,19 @@ def _season_stats(conn: Connection, ids: list[int], season_id: int) -> dict[int,
     return {r.player_id: r for r in rows}
 
 
+def _season_start_overalls(conn: Connection, ids: list[int], season_id: int) -> dict[int, int]:
+    """Each player's overall as ``season_id`` began (world/overall_history.py); players with no
+    record (youth who joined part-way through, a save from before the record) are left out."""
+    if not ids:
+        return {}
+    return {r.player_id: r.overall for r in conn.execute(select(player_season_overall).where(
+        player_season_overall.c.season_id == season_id,
+        player_season_overall.c.player_id.in_(ids)))}
+
+
 def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, int],
-                 stats: Row[Any] | None, day: date) -> SquadPlayerOut:
+                 stats: Row[Any] | None, day: date,
+                 season_start: int | None = None) -> SquadPlayerOut:
     primary = max(fams, key=lambda pos: fams[pos]) if fams else "CM"
     overall = float(world.model.group_overalls(attrs)[world.defs.positions[primary].group])
     age = age_on(date.fromisoformat(r.birth_date), day)
@@ -524,6 +536,7 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
         positions=[p for p, f in sorted(fams.items(), key=lambda kv: -kv[1]) if f >= 15],
         age=age, nationality=r.nation, overall=round(overall),
         trend=1 if trend >= shown else -1 if trend <= -shown else 0,
+        season_start_overall=season_start,
         condition=round(r.condition if r.condition is not None else 100),
         form=round(r.form if r.form is not None else 6.5, 1), injury=r.injury if injured else None,
         injured_until=injured, suspended=r.suspended_matches or 0, value_eur=int(value),
@@ -541,9 +554,10 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
     ids = [r.id for r in rows]
     attrs, positions = _attributes(conn, ids), _positions(conn, ids)
     stats = _season_stats(conn, ids, meta.season_id)
+    started = _season_start_overalls(conn, ids, meta.season_id)
     order = list(world.defs.positions)
     entries = [_squad_entry(world, r, attrs[r.id], positions[r.id], stats.get(r.id),
-                            meta.current_date) for r in rows]
+                            meta.current_date, started.get(r.id)) for r in rows]
     return sorted(entries, key=lambda e: (order.index(e.position), -e.overall))
 
 
@@ -651,7 +665,9 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     attrs = _attributes(conn, [player_id])[player_id]
     fams = _positions(conn, [player_id])[player_id]
     stats = _season_stats(conn, [player_id], meta.season_id).get(player_id)
-    entry = _squad_entry(world, r, attrs, fams, stats, meta.current_date)
+    started = _season_start_overalls(conn, [player_id], meta.season_id)
+    entry = _squad_entry(world, r, attrs, fams, stats, meta.current_date,
+                         started.get(player_id))
     values = {a: int(v) for a, v in zip(ATTRIBUTES, attrs, strict=True)}
     grouped: dict[str, list[AttributeOut]] = defaultdict(list)
     for a in ATTRIBUTES:

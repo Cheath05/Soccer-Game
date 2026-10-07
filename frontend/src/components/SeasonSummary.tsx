@@ -1,9 +1,9 @@
-import { Accordion, Badge, Group, List, Stack, Table, Text } from '@mantine/core'
+import { Accordion, Badge, Group, List, Paper, Stack, Table, Text } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 
-import type { ClubMove, Honour, SeasonFinal } from '../api/types'
+import type { ClubMove, Headline, Honour, SeasonFinal } from '../api/types'
 import { longDate, nationName, ordinal, positionColor, ratingColor } from '../lib/format'
 import ClubLink from './ClubLink'
 import NationPicker from './NationPicker'
@@ -78,11 +78,9 @@ function Position({ position }: { position: string }) {
   )
 }
 
-const KIND_ORDER = { league: 0, playoff: 1, cup: 2 } as const
-
 function Champions({ honours }: { honours: Honour[] }) {
   if (honours.length === 0) return <Text size="sm" c="dimmed">No competitions here.</Text>
-  const rows = [...honours].sort((a, b) => Number(a.kind === 'cup') - Number(b.kind === 'cup') || a.tier - b.tier || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.name.localeCompare(b.name))
+  const rows = [...honours].sort((a, b) => Number(a.kind === 'cup') - Number(b.kind === 'cup') || a.tier - b.tier || a.name.localeCompare(b.name))
   return (
     <Table verticalSpacing={4}>
       <Table.Tbody>
@@ -103,7 +101,7 @@ function Champions({ honours }: { honours: Honour[] }) {
   )
 }
 
-function Moves({ moves, userClubId, none }: { moves: ClubMove[]; userClubId: number; none: string }) {
+function Moves({ moves, userClubId, none, promotion }: { moves: ClubMove[]; userClubId: number; none: string; promotion?: boolean }) {
   if (moves.length === 0) return <Text size="sm" c="dimmed">{none}</Text>
   return (
     <Table verticalSpacing={4}>
@@ -121,9 +119,17 @@ function Moves({ moves, userClubId, none }: { moves: ClubMove[]; userClubId: num
             <Table.Td>
               <Group gap="xs" wrap="nowrap">
                 <Text size="sm">→ {m.to_league}</Text>
-                {m.via_playoffs && (
+                {m.via_playoffs ? (
                   <Badge size="xs" variant="light" color="teal">
                     Play-offs
+                  </Badge>
+                ) : !promotion ? null : m.position === 1 ? (
+                  <Badge size="xs" variant="light" color="yellow">
+                    Champions
+                  </Badge>
+                ) : (
+                  <Badge size="xs" variant="light" color="gray">
+                    Automatic
                   </Badge>
                 )}
               </Group>
@@ -132,6 +138,49 @@ function Moves({ moves, userClubId, none }: { moves: ClubMove[]; userClubId: num
         ))}
       </Table.Tbody>
     </Table>
+  )
+}
+
+const HEADLINE_STYLE: Record<string, { label: string; color: string }> = {
+  league_title: { label: 'Champions', color: 'yellow' },
+  cup_upset: { label: 'Cup upset', color: 'grape' },
+  continental_title: { label: 'Europe', color: 'blue' },
+}
+
+/** The season's notable results (the major leagues' champions, cup upsets), as highlights. */
+function Headlines({ headlines }: { headlines: Headline[] }) {
+  return (
+    <Stack gap={6}>
+      {headlines.map((h, i) => {
+        const style = HEADLINE_STYLE[h.kind] ?? { label: 'News', color: 'gray' }
+        return (
+          <Paper
+            key={`${h.kind}-${h.competition}-${i}`}
+            withBorder
+            p="xs"
+            radius="sm"
+            style={{ borderLeft: `4px solid var(--mantine-color-${style.color}-6)` }}
+            bg={`var(--mantine-color-${style.color}-light)`}
+          >
+            <Group gap="xs" wrap="nowrap" align="flex-start">
+              <Badge size="xs" variant="filled" color={style.color} w={74} style={{ flexShrink: 0 }}>
+                {style.label}
+              </Badge>
+              <div>
+                <Text size="sm" fw={600}>
+                  {h.text}
+                </Text>
+                {h.detail && (
+                  <Text size="xs" c="dimmed">
+                    {h.detail}
+                  </Text>
+                )}
+              </div>
+            </Group>
+          </Paper>
+        )
+      })}
+    </Stack>
   )
 }
 
@@ -166,6 +215,7 @@ export default function SeasonSummary({
   const nation = picked ?? (nations.some((n) => n.code === userNation) ? userNation : nations[0]?.code) ?? ''
   const country = nationName(nation)
   const news = final.news ?? []
+  const headlines = review?.headlines ?? []
 
   // Following a link from inside closes the window holding the summary.
   const closeOnLink = (e: MouseEvent<HTMLElement>) => {
@@ -190,12 +240,12 @@ export default function SeasonSummary({
               </Group>
             )}
           </Group>
-          <Accordion multiple variant="separated" defaultValue={['champions', 'development']}>
+          <Accordion multiple variant="separated" defaultValue={['champions', 'promoted', 'development']}>
             <Section value="champions" title={`Champions${country ? ` · ${country}` : ''}`}>
               <Champions honours={review.honours.filter((h) => h.nation === nation)} />
             </Section>
             <Section value="promoted" title={`Promoted${country ? ` · ${country}` : ''}`}>
-              <Moves moves={review.promoted.filter((m) => m.nation === nation)} userClubId={userClubId} none="No club went up." />
+              <Moves moves={review.promoted.filter((m) => m.nation === nation)} userClubId={userClubId} none="No club went up." promotion />
             </Section>
             <Section value="relegated" title={`Relegated${country ? ` · ${country}` : ''}`}>
               <Moves moves={review.relegated.filter((m) => m.nation === nation)} userClubId={userClubId} none="No club went down." />
@@ -338,13 +388,18 @@ export default function SeasonSummary({
                 </Table>
               )}
             </Section>
-            {news.length > 0 && (
-              <Section value="news" title="Other news" count={news.length}>
-                <List spacing={4} size="sm">
-                  {news.map((m, i) => (
-                    <List.Item key={`${i}-${m}`}>{m}</List.Item>
-                  ))}
-                </List>
+            {headlines.length + news.length > 0 && (
+              <Section value="news" title="Other news" count={headlines.length + news.length}>
+                <Stack gap="sm">
+                  {headlines.length > 0 && <Headlines headlines={headlines} />}
+                  {news.length > 0 && (
+                    <List spacing={4} size="sm">
+                      {news.map((m, i) => (
+                        <List.Item key={`${i}-${m}`}>{m}</List.Item>
+                      ))}
+                    </List>
+                  )}
+                </Stack>
               </Section>
             )}
           </Accordion>

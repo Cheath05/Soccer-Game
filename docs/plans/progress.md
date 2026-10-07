@@ -16,7 +16,17 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W3-1, the finances foundation** (the commit that adds this line; it follows 4e1efc8). The design is `docs/plans/w3-w4-finances-transfers.md`, approved with the user's choices (currency a display setting, sim stops on bids, a basic board in W3, loans and expiring contracts in W4).
+- **7 Oct: B1, the user's UI requests, part 1** (a Sonnet agent's work, reviewed here; the commit that adds this line, after cbee86e):
+  - **Season summary:**
+    - the automatic promotions were always in the data, but the "Promoted" section was collapsed, and play-off winners were listed under Champions;
+    - now Champions holds league and cup winners only;
+    - Promoted is open, and each club is badged Champions, Automatic or Play-offs.
+  - **Other news** leads with headlines built from the database: the champions of every country's top flight where the game has several divisions, and cup upsets (a lower-tier winner, or one ≥ 20 reputation below the 3 favourites). Builders are kept in a list, so continental winners can be added later.
+  - **Squad and player pages:** the overall at the start of the season and the change (▲/▼), from `player_season_overall`; "new" when there's no record.
+  - **Tactics:** each name tag is as wide as the gap to its nearest neighbour (44–84 px), so centre-back pairs and front twos don't clash.
+  - **Tests:** `test_season_views.py` (honours, headlines, the squad's start overall), `npm run build` and lint, and the full backend suite (with W3-2 in the tree) pass. Checked in a browser on :8765 (4-4-2, 5-3-2, 3-5-2).
+  - **B2, the match viewer** (goal timing and animation, a modern look, a more visible ball), is with a Sonnet agent.
+- **Latest checkpoint (7 Oct): W3-1, the finances foundation** (cbee86e, after 4e1efc8). The design is `docs/plans/w3-w4-finances-transfers.md`, approved with the user's choices (currency a display setting, sim stops on bids, a basic board in W3, loans and expiring contracts in W4).
   - **Schema 10:**
     - `club_finance`: balance, own income, transfer and weekly wage budgets, the board's target and confidence;
     - `finance_ledger`: append-only. **A club's balance is always the sum of its ledger** (`world/finance.post`).

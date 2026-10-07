@@ -5,9 +5,10 @@ import { useMemo, useState } from 'react'
 import { useCareer, useSquad } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
 import Overall from '../components/Overall'
+import SeasonStart from '../components/SeasonStart'
 import { money, positionColor, wage } from '../lib/format'
 
-type SortKey = 'position' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
+type SortKey = 'position' | 'name' | 'age' | 'overall' | 'season_start' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
 
 const GROUPS: Record<string, string[]> = {
   All: [],
@@ -22,6 +23,7 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: 'name', label: 'Name' },
   { key: 'age', label: 'Age', numeric: true },
   { key: 'overall', label: 'Ovr', numeric: true },
+  { key: 'season_start', label: 'Season start', numeric: true },
   { key: 'condition', label: 'Condition', numeric: true },
   { key: 'form', label: 'Form', numeric: true },
   { key: 'appearances', label: 'Apps', numeric: true },
@@ -50,7 +52,7 @@ export default function SquadPage() {
         <Title order={2}>Squad</Title>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
-      <Table.ScrollContainer minWidth={900}>
+      <Table.ScrollContainer minWidth={980}>
         <Table highlightOnHover striped>
           <Table.Thead>
             <Table.Tr>
@@ -98,6 +100,9 @@ export default function SquadPage() {
                 <Table.Td ta="right">
                   <Overall value={p.overall} trend={p.trend} />
                 </Table.Td>
+                <Table.Td ta="right">
+                  <SeasonStart start={p.season_start_overall} now={p.overall} />
+                </Table.Td>
                 <Table.Td>
                   <Progress value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size="sm" />
                 </Table.Td>
@@ -119,6 +124,13 @@ export default function SquadPage() {
 }
 
 function compare(a: SquadPlayer, b: SquadPlayer, key: SortKey): number {
+  if (key === 'season_start') {
+    // By how far the overall has moved since the season began; players with no record last.
+    const change = (p: SquadPlayer) => (p.season_start_overall == null ? -Infinity : p.overall - p.season_start_overall)
+    const cx = change(a)
+    const cy = change(b)
+    return cx === cy ? 0 : cx < cy ? -1 : 1
+  }
   const x = a[key]
   const y = b[key]
   if (typeof x === 'number' && typeof y === 'number') return x - y

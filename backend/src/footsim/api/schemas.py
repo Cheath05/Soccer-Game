@@ -249,6 +249,7 @@ class SquadPlayerOut(BaseModel):
     nationality: str | None
     overall: int
     trend: int  # his overall lately: 1 rising, -1 falling, 0 steady
+    season_start_overall: int | None = None  # his overall as this season began; None if unknown
     condition: int
     form: float
     injury: str | None
@@ -330,14 +331,27 @@ class PotentialOut(BaseModel):
 
 
 class HonourOut(BaseModel):
-    """A competition's winners at a season's end: a league's champions, a play-off's or a cup's."""
+    """A competition's winners at a season's end: a league's champions or a cup's. (A play-off's
+    winners are not champions: they show as promoted clubs.)"""
 
-    kind: str  # league | playoff | cup
+    kind: str  # league | cup
     key: str
     name: str
     nation: str  # the country it belongs to (a nation code: ENG)
-    tier: int  # a league's (and its play-offs'); 0 for a cup
+    tier: int  # a league's; 0 for a cup
     winner: ClubRef
+
+
+class HeadlineOut(BaseModel):
+    """A notable result of the season, built from the database: the champions of a major
+    league, a cup won by a far weaker club. Continental titles will be another kind."""
+
+    kind: str  # league_title | cup_upset (| continental_title, once those competitions exist)
+    text: str
+    club: ClubRef
+    competition: str
+    nation: str  # a nation code, or "" for a competition that has none
+    detail: str | None = None
 
 
 class ClubMoveOut(BaseModel):
@@ -390,6 +404,7 @@ class SeasonReviewOut(BaseModel):
     season: str
     next_season: str | None
     honours: list[HonourOut]
+    headlines: list[HeadlineOut] = []  # notable results: shown first in the other news
     promoted: list[ClubMoveOut]
     relegated: list[ClubMoveOut]
     development: list[DevelopmentOut]  # best improvement first

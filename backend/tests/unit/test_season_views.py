@@ -165,16 +165,54 @@ def test_the_summary_names_every_champion_and_the_moves(engine: Engine, world: W
     with engine.connect() as conn:
         review = season_review(conn, world, 1, A)
     assert (review.season, review.next_season) == ("2026-27", "2027-28")
+    # Champions are the leagues' and the cups' winners: the play-off winners (Eastry) aren't.
     assert [(h.kind, h.key, h.winner.name) for h in review.honours] == [
-        ("league", "ENG1", "Bexley"), ("league", "ENG2", "Carlow"),
-        ("playoff", "ENG2_PO", "Eastry"), ("cup", "FA_CUP", "Bexley")]
+        ("league", "ENG1", "Bexley"), ("league", "ENG2", "Carlow"), ("cup", "FA_CUP", "Bexley")]
     assert {h.nation for h in review.honours} == {"ENG"}
+    # Every promoted club is listed: the champions (automatic) and the play-off winners.
     assert [(m.club.name, m.from_league, m.to_league, m.position, m.via_playoffs)
             for m in review.promoted] == [
         ("Carlow", "EFL Championship", "Premier League", 1, False),
         ("Eastry", "EFL Championship", "Premier League", 3, True)]
     assert [(m.club.name, m.from_league, m.to_league, m.position)
             for m in review.relegated] == [("Alton", "Premier League", "EFL Championship", 2)]
+
+
+def test_the_headlines_are_the_major_league_champions_and_the_cup_upsets(
+        engine: Engine, world: World) -> None:
+    with engine.connect() as conn:
+        review = season_review(conn, world, 1, A)
+    # The Premier League's champions; not the Championship's, and Bexley's cup win is no upset.
+    assert [(h.kind, h.club.name, h.competition) for h in review.headlines] == [
+        ("league_title", "Bexley", "Premier League")]
+
+    with engine.begin() as conn:  # a Championship club wins the cup
+        conn.execute(update(cup_tie).values(winner_club_id=C))
+    with engine.connect() as conn:
+        review = season_review(conn, world, 1, A)
+    upset = [h for h in review.headlines if h.kind == "cup_upset"]
+    assert [(h.club.name, h.competition) for h in upset] == [("Carlow", "FA Cup")]
+    assert upset[0].detail is not None and "EFL Championship" in upset[0].detail
+
+    with engine.begin() as conn:  # a top-flight club far weaker than the favourites wins it
+        conn.execute(update(cup_tie).values(winner_club_id=B))
+        conn.execute(update(club).where(club.c.id == C).values(reputation=90))
+    with engine.connect() as conn:
+        review = season_review(conn, world, 1, A)
+    assert [h.club.name for h in review.headlines if h.kind == "cup_upset"] == ["Bexley"]
+
+
+def test_the_squad_shows_each_players_overall_as_the_season_began(engine: Engine,
+                                                                  world: World) -> None:
+    with engine.begin() as conn:  # P3 has no record, as a youngster who joined part-way would
+        conn.execute(delete(player_season_overall).where(
+            player_season_overall.c.season_id == 2, player_season_overall.c.player_id == P3))
+    with engine.connect() as conn:
+        squad = {p.id: p for p in queries.squad(conn, world, A)}
+        detail = queries.player_detail(conn, world, P1)
+    assert (squad[P1].season_start_overall, squad[P2].season_start_overall) == (63, 68)
+    assert squad[P3].season_start_overall is None
+    assert detail.season_start_overall == 63
 
 
 def test_the_summary_shows_how_the_squad_developed(engine: Engine, world: World) -> None:
@@ -229,7 +267,7 @@ def test_the_season_final_carries_the_finish_the_review_and_the_other_news(
         final = season_final(conn, world, A, messages)
     assert final is not None
     assert (final.competition, final.position, final.outcome) == ("Premier League", 2, "relegated")
-    assert final.review is not None and len(final.review.honours) == 4
+    assert final.review is not None and len(final.review.honours) == 3
     assert final.news == [messages[-2], messages[-1]]  # what no section of the review shows
     assert other_news([]) == []
 

@@ -6,7 +6,7 @@ the season ended. ``other_news`` keeps what the review doesn't cover out of thos
 
 import re
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Any
 
@@ -17,6 +17,7 @@ from footsim.api.schemas import (
     ClubMoveOut,
     ClubRef,
     DevelopmentOut,
+    HeadlineOut,
     HonourOut,
     PotentialOut,
     RetirementOut,
@@ -26,13 +27,13 @@ from footsim.api.schemas import (
 )
 from footsim.importers.generate import age_on
 from footsim.persistence.schema import (
+    club,
     club_league_membership,
     competition,
     contract,
     cup_tie,
     league_final,
     player_season_overall,
-    playoff_tie,
     season,
 )
 from footsim.scouting.estimates import OWN_CLUB_KNOWLEDGE, potential_label, potential_range
@@ -61,6 +62,8 @@ def other_news(messages: Iterable[str]) -> list[str]:
 
 def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
              names: dict[int, str]) -> list[HonourOut]:
+    """The champions of each league and the winners of each cup. A play-off's winners aren't
+    champions: they show among the promoted clubs (``_moves``, ``via_playoffs``)."""
     comp_ids = {c.key: cid for cid, c in comps.items()}
 
     def ref(club_id: int) -> ClubRef:
@@ -75,20 +78,6 @@ def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Ro
             honours.append(HonourOut(kind="league", key=comp.key, name=comp.name,
                                      nation=league.nation, tier=league.tier,
                                      winner=ref(r.club_id)))
-    for league in world.defs.leagues.values():
-        for playoff in league.playoffs:
-            if league.key not in comp_ids:
-                continue
-            final = conn.execute(select(playoff_tie.c.winner_club_id).where(
-                playoff_tie.c.season_id == season_id,
-                playoff_tie.c.competition_id == comp_ids[league.key],
-                playoff_tie.c.playoff_key == playoff.key,
-                playoff_tie.c.round == len(playoff.rounds) - 1,
-                playoff_tie.c.winner_club_id.is_not(None))).first()
-            if final is not None:
-                honours.append(HonourOut(kind="playoff", key=playoff.key, name=playoff.name,
-                                         nation=league.nation, tier=league.tier,
-                                         winner=ref(final.winner_club_id)))
     for cup in world.defs.cups.values():
         if cup.key not in comp_ids:
             continue
@@ -99,9 +88,101 @@ def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Ro
         if final is not None:
             honours.append(HonourOut(kind="cup", key=cup.key, name=cup.name, nation=cup.nation,
                                      tier=0, winner=ref(final.winner_club_id)))
-    order = {"league": 0, "playoff": 1, "cup": 2}
     return sorted(honours, key=lambda h: (h.nation != "ENG", h.nation, h.kind == "cup", h.tier,
-                                          order[h.kind], h.key))
+                                          h.key))
+
+
+# --- headlines ------------------------------------------------------------------------
+#
+# Notable results, found in the database rather than in the news text. Each kind is a builder
+# in ``_HEADLINE_BUILDERS``; a continental competition (the Champions League, once it exists)
+# is one more builder returning kind "continental_title" headlines.
+
+# A country's top flight makes the headlines when the country has at least this many
+# divisions in the game: the big leagues, not a one-division country's only league.
+MAJOR_LEAGUE_MIN_DIVISIONS = 2
+# A cup win is an upset when the winner's club reputation is at least this far below the mean
+# reputation of the cup's strongest entrants (the favourites). For scale, top-flight clubs'
+# reputations run about 63-89, second-tier clubs' about 46-67.
+UPSET_REPUTATION_GAP = 20
+UPSET_FAVOURITES = 3  # how many of the strongest entrants (by reputation) are the favourites
+
+
+def _league_titles(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
+                   names: dict[int, str]) -> list[HeadlineOut]:
+    """The champions of the top flight of every country with several divisions in the game."""
+    divisions: dict[str, int] = defaultdict(int)
+    for lg in world.defs.leagues.values():
+        divisions[lg.nation] += 1
+    headlines = []
+    for r in conn.execute(select(league_final).where(league_final.c.season_id == season_id,
+                                                     league_final.c.position == 1)):
+        comp = comps[r.competition_id]
+        league = world.defs.leagues.get(comp.key)
+        if (league is None or divisions[league.nation] < MAJOR_LEAGUE_MIN_DIVISIONS
+                or league.tier != min(lg.tier for lg in world.defs.leagues.values()
+                                      if lg.nation == league.nation)):
+            continue
+        headlines.append((league.nation, HeadlineOut(
+            kind="league_title", text=f"{names[r.club_id]} are {comp.name} champions.",
+            club=ClubRef(id=r.club_id, name=names[r.club_id]), competition=comp.name,
+            nation=league.nation)))
+    headlines.sort(key=lambda h: (h[0] != "ENG", h[0], h[1].competition))
+    return [h for _, h in headlines]
+
+
+def _cup_upsets(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
+                names: dict[int, str]) -> list[HeadlineOut]:
+    """Cups won by a club from below the country's top flight, or far weaker than the
+    favourites (``UPSET_REPUTATION_GAP``)."""
+    comp_ids = {c.key: cid for cid, c in comps.items()}
+    reputation = {r.id: r.reputation for r in conn.execute(select(club.c.id, club.c.reputation))}
+    tier_of: dict[int, int] = {}
+    for r in conn.execute(select(club_league_membership).where(
+            club_league_membership.c.season_id == season_id)):
+        tier_of[r.club_id] = comps[r.competition_id].tier or 0
+    league_of = {r.club_id: comps[r.competition_id].name for r in conn.execute(
+        select(club_league_membership).where(club_league_membership.c.season_id == season_id))}
+    headlines = []
+    for cup in world.defs.cups.values():
+        if cup.key not in comp_ids:
+            continue
+        cid = comp_ids[cup.key]
+        final = conn.execute(select(cup_tie.c.winner_club_id).where(
+            cup_tie.c.season_id == season_id, cup_tie.c.competition_id == cid,
+            cup_tie.c.round == len(cup.rounds) - 1,
+            cup_tie.c.winner_club_id.is_not(None))).first()
+        if final is None:
+            continue
+        winner = final.winner_club_id
+        entrants = {club_id for r in conn.execute(select(cup_tie.c.club_a_id, cup_tie.c.club_b_id)
+                                                  .where(cup_tie.c.season_id == season_id,
+                                                         cup_tie.c.competition_id == cid))
+                    for club_id in (r.club_a_id, r.club_b_id) if club_id is not None}
+        top_flight = min((lg.tier for lg in world.defs.leagues.values()
+                          if lg.nation == cup.nation), default=1)
+        favourites = sorted((reputation[c] for c in entrants), reverse=True)[:UPSET_FAVOURITES]
+        lower = tier_of.get(winner, top_flight) > top_flight
+        weaker = bool(favourites) and (sum(favourites) / len(favourites)
+                                       - reputation[winner] >= UPSET_REPUTATION_GAP)
+        if not (lower or weaker):
+            continue
+        origin = league_of.get(winner)
+        headlines.append(HeadlineOut(
+            kind="cup_upset", text=f"{names[winner]} win the {cup.name}.",
+            club=ClubRef(id=winner, name=names[winner]), competition=cup.name, nation=cup.nation,
+            detail=(f"A shock: they play in the {origin}." if lower and origin
+                    else "Far weaker than the favourites on paper.")))
+    return sorted(headlines, key=lambda h: (h.nation != "ENG", h.nation, h.competition))
+
+
+_HEADLINE_BUILDERS: list[Callable[[Connection, World, int, dict[int, Row[Any]], dict[int, str]],
+                                  list[HeadlineOut]]] = [_league_titles, _cup_upsets]
+
+
+def _headlines(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
+               names: dict[int, str]) -> list[HeadlineOut]:
+    return [h for build in _HEADLINE_BUILDERS for h in build(conn, world, season_id, comps, names)]
 
 
 def _moves(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
@@ -243,7 +324,8 @@ def season_review(conn: Connection, world: World, season_id: int, user: int | No
             youth = _youth(conn, world, following.start_date, user, meta.seed)
     return SeasonReviewOut(
         season=seasons[season_id].label, next_season=following.label if following else None,
-        honours=_honours(conn, world, season_id, comps, names), promoted=promoted,
+        honours=_honours(conn, world, season_id, comps, names),
+        headlines=_headlines(conn, world, season_id, comps, names), promoted=promoted,
         relegated=relegated, development=development, development_recorded=recorded,
         development_since=since, retired=retired, youth=youth)
 

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
 import type { PlayerSeasonLine } from '../api/types'
 import ClubLink from '../components/ClubLink'
+import { SeasonChange } from '../components/SeasonStart'
 import { attributeLabel, matchRatingColor, money, positionColor, ratingColor, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
@@ -57,6 +58,17 @@ export default function PlayerPage() {
             {!!p.trend && (
               <Text size="xs" fw={600} c={p.trend > 0 ? 'green.7' : 'red.7'}>
                 {p.trend > 0 ? '▲ Rising lately' : '▼ Falling lately'}
+              </Text>
+            )}
+            {p.season_start_overall != null && (
+              <Text size="xs" c="dimmed">
+                Start of season {p.season_start_overall}
+                {p.overall !== p.season_start_overall && (
+                  <>
+                    {' · '}
+                    <SeasonChange start={p.season_start_overall} now={p.overall} />
+                  </>
+                )}
               </Text>
             )}
           </Card>

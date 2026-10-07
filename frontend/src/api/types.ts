@@ -110,14 +110,26 @@ export interface SeasonFinal {
   news?: string[] // the sim's other news: what the review doesn't cover
 }
 
-/** A competition's winners at a season's end: a league's champions, a play-off's or a cup's. */
+/** A competition's winners at a season's end: a league's champions or a cup's. (Play-off winners
+ * are among the promoted clubs, not champions.) */
 export interface Honour {
-  kind: 'league' | 'playoff' | 'cup'
+  kind: 'league' | 'cup'
   key: string
   name: string
   nation: string // a nation code such as ENG
-  tier: number // a league's (and its play-offs'); 0 for a cup
+  tier: number // a league's; 0 for a cup
   winner: ClubRef
+}
+
+/** A notable result of the season: a major league's champions, a cup upset. Continental titles
+ * will be another kind. */
+export interface Headline {
+  kind: 'league_title' | 'cup_upset' | 'continental_title'
+  text: string
+  club: ClubRef
+  competition: string
+  nation: string
+  detail: string | null
 }
 
 /** A club going up or down a league at the season's end. */
@@ -164,6 +176,7 @@ export interface SeasonReview {
   season: string
   next_season: string | null
   honours: Honour[]
+  headlines?: Headline[] // notable results, shown first in the other news
   promoted: ClubMove[]
   relegated: ClubMove[]
   development: Development[] // best improvement first
@@ -265,6 +278,7 @@ export interface SquadPlayer {
   nationality: string | null
   overall: number
   trend: number // his overall lately: 1 rising, -1 falling, 0 steady
+  season_start_overall?: number | null // his overall as this season began; null if not recorded
   condition: number
   form: number
   injury: string | null

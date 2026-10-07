@@ -277,10 +277,15 @@ class LiveSession:
             return []
         every = max(1, math.ceil(self.play_rate * 10 / self.p.max_frames_per_second))
         picked = []
+        goal_times = [h.t for h in self.holds]
         for f in frames:
             # Every frame where the ball changes hands is kept, so a pass is seen from the
             # foot that plays it to the one that takes it even when most frames are skipped.
-            if round(f[0] * 10) % every == 0 or f[4] != self.last_owner:
+            # So are the frames around a goal (the last ones before the ball crosses the line
+            # and the one after), so the viewer can carry the ball into the net from where it
+            # really was, at any speed. Frames only: the match itself is untouched.
+            near_goal = any(-0.35 <= f[0] - g <= 0.25 for g in goal_times)
+            if round(f[0] * 10) % every == 0 or f[4] != self.last_owner or near_goal:
                 picked.append(f)
             self.last_owner = f[4]
         if not picked or picked[-1] is not frames[-1]:

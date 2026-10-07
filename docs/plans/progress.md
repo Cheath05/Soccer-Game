@@ -16,7 +16,29 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W3-2, the money moves** (the commit that adds this line; after 59277c9).
+- **7 Oct: B2, the match viewer** (a Sonnet agent's work, reviewed here; the commit that adds this line, after d7fd793):
+  - **The goal moment** had three causes:
+    - the picture held on the frame before the ball crossed the line;
+    - the banner keyed on the server's hold, while the picture eased in about 1.5 s behind it at 8×;
+    - at high speed, the frames around a goal were dropped.
+
+    **The fixes:**
+    - the playhead runs on at the match's rate to a hold;
+    - the viewer carries the ball over the line and into the net (visual only) and holds it there until the kick-off frame;
+    - the banner, score and commentary appear when the ball is shown in the net, at every speed;
+    - `LiveSession._drain` always sends the frames from 0.35 s before to 0.25 s after a goal. That changes which frames are sent, not the result: the golden values are unchanged.
+  - **A modern look:**
+    - a mown-stripe pitch with softer lines, arcs and drawn nets;
+    - player markers with rings, shadows and name pills;
+    - a dark scoreboard with team colour bars and a live clock;
+    - rounded controls and glass overlays.
+  - **The ball** has a dark outline, panels that turn as it travels, and a shadow that shrinks as it rises, so it stands out on the white lines.
+  - **Tests:**
+    - the golden and live-session tests, `npm run build` and lint;
+    - the full backend suite;
+    - `e2e/live.mjs` on :8765: the goal banner shows only once the ball is in, and there are no browser errors.
+  - **Not viewed:** light mode. A 1× goal was not watched end to end; the logic doesn't depend on speed.
+- **7 Oct: W3-2, the money moves** (d7fd793, after 59277c9).
   - **On each 1st** (`after_day`, after development), `settle_month` runs once per day (`settled_on`). Every club gets its league's equal share ÷ 12, its own income ÷ 12, its wages (bill × 52 ÷ 12) and running costs (`operating_costs` × projected revenue ÷ 12).
     - The user's club gets these itemised; every other club gets one net `month` row.
     - Then the board's confidence moves: (target − position) × `per_place`, capped at `max_step`, once `min_played` league matches are played.

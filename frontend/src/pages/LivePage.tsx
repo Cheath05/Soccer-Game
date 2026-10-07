@@ -2,9 +2,12 @@ import { Alert, Box, Button, Card, Checkbox, Group, ScrollArea, SegmentedControl
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { useCareer } from '../api/hooks'
+
 import GoalBanner from '../match-viewer/GoalBanner'
 import HalfTimePanel from '../match-viewer/HalfTimePanel'
 import PitchView from '../match-viewer/PitchView'
+import type { GoalView } from '../match-viewer/PitchView'
 import PlaybackControls from '../match-viewer/PlaybackControls'
 import PlayerCard from '../match-viewer/PlayerCard'
 import ScoreBar from '../match-viewer/ScoreBar'
@@ -24,6 +27,12 @@ export default function LivePage() {
   const [debug, setDebug] = useState(false)
   const debugAvailable = new URLSearchParams(window.location.search).get('debug') === '1'
   const [selected, setSelected] = useState<number | null>(null)
+  // What the pitch shows of a goal (the ball in the net, or on its way): the banner and the
+  // score and commentary follow it.
+  const [goalView, setGoalView] = useState<GoalView>({ banner: null, unseenT: null })
+  const career = useCareer()
+  const fixture = career.data?.next_fixture
+  const competition = fixture && String(fixture.id) === fixtureId ? (fixture.stage_name ? `${fixture.competition_name} · ${fixture.stage_name}` : fixture.competition_name) : null
 
   if (error) {
     return (
@@ -39,17 +48,21 @@ export default function LivePage() {
   const user = live?.userTeam ?? 0
   const playhead = match.playhead.current ?? 0
   // Commentary follows the picture: nothing is told before it has been seen.
-  const feed = (live?.feed ?? []).filter((f) => live?.finished || f.t <= playhead + 0.5)
+  const feed = (live?.feed ?? []).filter(
+    (f) =>
+      live?.finished ||
+      (f.t <= playhead + 0.5 && !(f.type === 'goal' && goalView.unseenT !== null && Math.abs(f.t - goalView.unseenT) < 0.01)),
+  )
   const selectedStatus = selected !== null ? live?.status.players.find((p) => p.index === selected) : undefined
 
   return (
     <Stack gap="sm">
-      <ScoreBar match={match} />
+      <ScoreBar match={match} competition={competition} unseenGoalT={goalView.unseenT} />
       <Group align="start" gap="sm" wrap="wrap">
-        <Stack gap="xs" style={{ flex: '3 1 560px', minWidth: 320 }}>
+        <Stack gap="xs" style={{ flex: '3 1 560px', minWidth: 'min(320px, 100%)' }}>
           <Box pos="relative">
-            <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} />
-            <GoalBanner match={match} />
+            <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} onGoalView={setGoalView} />
+            <GoalBanner goal={goalView.banner} live={live} />
             {selectedStatus && (
               <Box pos="absolute" top={8} left={8}>
                 <PlayerCard player={selectedStatus} onClose={() => setSelected(null)} />
@@ -96,8 +109,8 @@ export default function LivePage() {
           )}
         </Stack>
 
-        <Card withBorder padding="xs" style={{ flex: '1 1 340px', minWidth: 320 }}>
-          <Tabs defaultValue="feed">
+        <Card withBorder radius="lg" padding="xs" style={{ flex: '1 1 340px', minWidth: 'min(320px, 100%)' }}>
+          <Tabs defaultValue="feed" variant="pills" radius="xl">
             <Tabs.List grow>
               <Tabs.Tab value="feed">Commentary</Tabs.Tab>
               <Tabs.Tab value="stats">Stats</Tabs.Tab>

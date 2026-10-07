@@ -13,7 +13,16 @@ export default function HalfTimePanel({ match }: { match: LiveMatch }) {
   const tired = [...mine].sort((a, b) => a.energy - b.energy).slice(0, 3)
   const best = [...mine].sort((a, b) => b.rating - a.rating).slice(0, 3)
   return (
-    <Paper shadow="xl" p="md" radius="md" withBorder w={460} maw="92%" style={{ opacity: 0.97 }}>
+    <Paper
+      shadow="xl"
+      p="md"
+      radius="lg"
+      withBorder
+      w={460}
+      maw="94%"
+      mah="96%"
+      style={{ overflowY: 'auto', backdropFilter: 'blur(12px)', background: 'color-mix(in srgb, var(--mantine-color-body) 90%, transparent)' }}
+    >
       <Stack gap="sm">
         <Group justify="space-between">
           <Title order={3}>{live.clock.period === 1 ? 'Half-time' : 'Break'}</Title>
@@ -47,7 +56,7 @@ export default function HalfTimePanel({ match }: { match: LiveMatch }) {
         <Text size="xs" c="dimmed">
           Make any changes in the Tactics and Subs tabs before the restart.
         </Text>
-        <Button color="teal" onClick={() => send({ type: 'start_period' })}>
+        <Button color="teal" radius="xl" onClick={() => send({ type: 'start_period' })}>
           {next}
         </Button>
       </Stack>

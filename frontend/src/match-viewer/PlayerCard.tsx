@@ -21,7 +21,15 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 export default function PlayerCard({ player, onClose }: { player: PlayerStatus; onClose: () => void }) {
   const keeper = player.position === 'GK'
   return (
-    <Paper shadow="md" p="xs" radius="md" withBorder w={270} style={{ opacity: 0.96 }}>
+    <Paper
+      shadow="md"
+      p="xs"
+      radius="lg"
+      withBorder
+      w={270}
+      maw="calc(100vw - 48px)"
+      style={{ backdropFilter: 'blur(10px)', background: 'color-mix(in srgb, var(--mantine-color-body) 90%, transparent)' }}
+    >
       <Group justify="space-between" wrap="nowrap" mb={4}>
         <Group gap={6} wrap="nowrap">
           <Box w={10} h={10} style={{ background: TEAM_COLORS[player.team].shirt, borderRadius: 2 }} />

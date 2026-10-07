@@ -274,16 +274,56 @@ Its numbers would go in YAML, with a test that reputation follows a sustained ch
 - **Sim-to-date stops** when an AI club bids for one of the user's players.
 - **UI:** a Transfers page (search, my offers, offers received, history), "Make an offer" on player pages, and listing on the squad page. Budgets show on the Finances page.
 
-### Contracts and loans (W4-7, W4-8)
+### Contracts and loans (W4-7, W4-8; detailed 8 Oct, at Opus Max, so they can be built at High)
 
-- **W4-7: renewals replace `_renew_contracts`.**
-  - **AI clubs** renew players still in their plans (by importance and age) at a new wage. Others run down and leave free on 30 June.
-  - **The user** gets a list of expiring players to renew or release.
-  - Free agents are signed by W4-5's market. The yearly "half leave the game" rule stays for the unsigned.
-- **W4-8: loans keep the invariant.**
-  - The permanent contract stays with the parent club.
-  - A `loan` row (player, parent, borrower, start, end, wage share, fee) changes where he plays: squad reads go through one helper/view, the club he plays for = the borrower if a loan is active, else his contract's club.
-  - Every squad query moves to that helper, with tests that no player appears in two squads.
+**W4-7: renewals replace `_renew_contracts`** (`world/season.py`, at the rollover where it runs now).
+- **An AI club's expiring contracts** (ending by the season's end) are renewed when the player is still in its plans:
+  - a key player, starter or rotation player (`decisions.squad_roles` on its formation, as the market's view), aged up to 33 (key players up to 35);
+  - or a surplus player aged up to 21 whose potential estimate is above the club's level.
+
+  Everyone else runs down and leaves on 30 June as a free agent: his contract ends, with a `release`-like history row of kind `expired`. The market can then sign him; the yearly "half of the unsigned free agents leave the game" rule stays.
+- **The renewal:**
+  - wage `decisions.wage_demand(going rate in the club's league, current wage)` (a raise or the going rate), length `decisions.contract_years(age)`;
+  - a key player at a club well below his level (`reach`) may refuse (the player's answer with `reputation_step` = his level − the club's), and then he leaves free;
+  - all keyed draws via `derive_rng(seed, "renewal", player, season)`.
+- **The user's club:**
+  - expiring players are listed (the squad page and a "Contracts" section of the transfers page, W4-6), with the wage and years each asks;
+  - the user renews (`POST /api/players/{id}/renew`, the same rules, the cost through `validate_move`-style budget checks: the wage rise × weeks left) or lets him go;
+  - news reminders on 1 April, 1 May and 1 June;
+  - **unrenewed players leave on 30 June** (as in real football). The squad page shows "contract ends 30 Jun" badges from 1 January.
+- **Tests:** AI keeps its starters and lets old surplus go; nobody is left with an expired active contract; free agents have no active contract; the user's unrenewed player leaves; determinism; a season's rollover still passes the season tests.
+
+**W4-8: loans** (the ownership invariant stays: one permanent contract per player).
+- **The model:** a loan is a `contract` row of kind `loan` at the borrowing club, active for the loan's length (to the season's end, or to the winter window's end), with `wage_weekly_cents` = the borrower's share of his wage.
+  - His permanent contract stays active at the parent club, unchanged. `ux_contract_owner` already ignores loans; at most one active loan per player is a new partial unique index (`kind = 'loan'`).
+  - History: a `transfer` row of kind `loan`, and one of kind `loan_return` when it ends.
+  - A loan fee (optional) is a `transfer` ledger entry like any fee.
+- **Where he plays:** a SQL view `playing` (created in the migration). It holds each active contract, except a permanent one whose player has an active loan, so every player plays for exactly one club.
+  - **These queries move from `contract ... is_active = 1` to `playing`:**
+    - `world/squads.py` `_SQUAD_SQL` (match squads, line-ups);
+    - `api/queries.py` `_overalls` and `squad` (the club the user sees him at, showing "on loan from X" or "on loan at Y");
+    - `world/results.py:55` (who played for whom);
+    - `world/lifecycle.py` `_players` (`trim_squads` counts the squad he plays in, and never releases a player out on loan);
+    - `world/finance.py` `squad_strengths`;
+    - `world/market.py` (a loaned-out player isn't in the parent's squad view, and can't be bought until he's back).
+  - **These stay on ownership** (the permanent contract): transfers and `validate_move` (a loaned-out player can't be sold until recalled or returned), values (the owner's reputation, so a loan never changes a value), renewals, releases, and season-review ownership.
+- **Wages:** `world/finance.py` `wage_bills` becomes Σ(the wages of a club's active contracts, its loans-in included) − Σ(the loan shares paid by others for its loaned-out players). The parent pays only the rest, and every euro of a wage is paid exactly once (a test: the sum of all clubs' bills = the sum of all permanent wages).
+- **Rules** (`validate_loan`, the same for AI and user):
+  - the borrower's window is open;
+  - the borrower can afford the fee + share × the loan's weeks left this season;
+  - the parent keeps its floors (counted on `playing`), and the borrower stays within `max_players`;
+  - the loan ends no later than his permanent contract;
+  - he isn't already on loan.
+- **Ending:** on the loan's end date (`after_day`), the loan contract ends and a `loan_return` row is written. He's back in the parent's squad by the view, with no write to the permanent contract.
+- **The AI**, in this first version, loans out young surplus players (age up to 21, potential above their club's level) to clubs that need depth and are at least `loan_level_gap` below them, and borrows them for depth needs before buying cheap. The user loans out and in through W4-6's flows.
+- **Tests:**
+  - no player appears in two squads (the `playing` view is unique by person, and every squad query agrees);
+  - wages are paid exactly once;
+  - a loan ends and he's back;
+  - a loaned-out player can't be sold;
+  - the market and rollovers with loans in place;
+  - the migration is idempotent;
+  - determinism.
 
 ## Performance and determinism
 

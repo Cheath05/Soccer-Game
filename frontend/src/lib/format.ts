@@ -1,7 +1,57 @@
+import { useSyncExternalStore } from 'react'
+
+// Money is kept in euros everywhere; the player picks the currency it's shown in. The rates are
+// fixed (display only), so a figure never changes with a market.
+export type Currency = 'EUR' | 'GBP' | 'USD'
+export const CURRENCIES: Record<Currency, { symbol: string; perEuro: number; label: string }> = {
+  EUR: { symbol: '€', perEuro: 1, label: '€' },
+  GBP: { symbol: '£', perEuro: 0.85, label: '£' },
+  USD: { symbol: '$', perEuro: 1.1, label: '$' },
+}
+const CURRENCY_KEY = 'footsim.currency'
+const listeners = new Set<() => void>()
+let shown: Currency = readCurrency()
+
+function readCurrency(): Currency {
+  try {
+    const stored = localStorage.getItem(CURRENCY_KEY)
+    return stored === 'GBP' || stored === 'USD' ? stored : 'EUR'
+  } catch {
+    return 'EUR'
+  }
+}
+
+export function setCurrency(next: Currency) {
+  shown = next
+  try {
+    localStorage.setItem(CURRENCY_KEY, next)
+  } catch {
+    // private window: the choice lasts for this visit
+  }
+  listeners.forEach((listener) => listener())
+}
+
+/** The currency money is shown in; re-renders the caller when the player changes it. */
+export function useCurrency(): Currency {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => shown,
+  )
+}
+
+/** An amount in euros, shown in the chosen currency: €1.2B, −£35M, $850K. */
 export function money(eur: number): string {
-  if (eur >= 1_000_000) return `€${(eur / 1_000_000).toFixed(eur >= 10_000_000 ? 0 : 1)}M`
-  if (eur >= 1_000) return `€${Math.round(eur / 1_000)}K`
-  return `€${eur}`
+  const { symbol, perEuro } = CURRENCIES[shown]
+  const value = eur * perEuro
+  const sign = value < 0 ? '−' : ''
+  const size = Math.abs(value)
+  if (size >= 1_000_000_000) return `${sign}${symbol}${(size / 1_000_000_000).toFixed(size >= 10_000_000_000 ? 1 : 2)}B`
+  if (size >= 1_000_000) return `${sign}${symbol}${(size / 1_000_000).toFixed(size >= 10_000_000 ? 0 : 1)}M`
+  if (size >= 1_000) return `${sign}${symbol}${Math.round(size / 1_000)}K`
+  return `${sign}${symbol}${Math.round(size)}`
 }
 
 export function wage(eurPerWeek: number): string {
@@ -152,4 +202,13 @@ export function groupByNation<T extends { key: string; tier: number; nation?: st
   return [...groups]
     .map(([code, list]) => ({ code, name: nationName(code), leagues: list.sort((a, b) => a.tier - b.tier || a.key.localeCompare(b.key)) }))
     .sort((a, b) => rank(a.code) - rank(b.code) || a.name.localeCompare(b.name))
+}
+
+/** The board's confidence colour: green when pleased, red when unhappy. */
+export function confidenceColor(confidence: number | null): string {
+  if (confidence === null) return 'gray'
+  if (confidence >= 65) return 'green'
+  if (confidence >= 45) return 'teal'
+  if (confidence >= 30) return 'orange'
+  return 'red'
 }

@@ -269,6 +269,19 @@ def set_budgets(conn: Connection, world: World, season_id: int,
             "budget_season_id = :season, board_target = :target WHERE club_id = :club"), updates)
 
 
+def set_sandbox_budget(conn: Connection, meta: CareerMeta, club_id: int,
+                       budget_cents: int) -> None:
+    """The sandbox: a new career's club starts with this transfer budget. When the club's cash
+    doesn't cover it, the owner puts in the rest (an ``adjustment``), so the money is really
+    there; a smaller budget only lowers the board's."""
+    balance = int(conn.execute(select(club_finance.c.balance_cents)
+                               .where(club_finance.c.club_id == club_id)).scalar_one())
+    post(conn, meta.current_date, meta.season_id,
+         [Entry(club_id, "adjustment", max(0, budget_cents - balance))])
+    conn.execute(update(club_finance).where(club_finance.c.club_id == club_id)
+                 .values(transfer_budget_cents=budget_cents))
+
+
 def squad_strengths(conn: Connection, world: World) -> dict[int, float]:
     """Each club's squad strength: the mean overall of its best ``SQUAD_STRENGTH_PLAYERS``."""
     overalls = player_overalls(conn, world)

@@ -16,7 +16,25 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **7 Oct: B2, the match viewer** (a Sonnet agent's work, reviewed here; the commit that adds this line, after d7fd793):
+- **Latest checkpoint (7 Oct): W3-3, what the user sees of the money** (the commit that adds this line; after af58faf). **W3 is complete.**
+  - **`GET /api/finances`** (`api/finances.py`) returns the user's club's:
+    - balance, transfer budget, wage budget against wage bill, and expected revenue;
+    - income and spending this season by kind;
+    - the latest 20 ledger rows;
+    - the board: its target, the club's position, confidence, and a mood word.
+  - **The club page** shows real budgets and balances, replacing the guessed `BUDGET_SHARE_*`. Other clubs' figures are rounded to two significant figures.
+  - **A Finances page** (in the menu) and a **dashboard card** (balance, transfer budget, wage room, the board's mood).
+  - **The currency** is a display setting (€ default, £ or $, at fixed rates), kept in the browser and applied on every page. `money()` now handles negatives and billions.
+  - **The sandbox:** a new career can set a starting transfer budget up to €10bn (in €M on the start page). The owner puts in whatever cash the balance lacks, as an `adjustment` row, so the budget is real money.
+  - **Tests:**
+    - `test_finances_api.py`: the page at the start and after the first settled month, the sandbox (including over €10bn refused), and no page without a club;
+    - `test_clubs.py`: the real figures, rounded;
+    - the full backend suite, `npm run build` and lint;
+    - e2e `smoke.mjs` and `live.mjs` on :8765. The smoke run's first attempt timed out after a cold start waiting for the sim progress bar (it stayed at 0% for 10 s); it passed on the rerun.
+    - Screenshots of the Finances page and dashboard were checked, and the € → £ switch survives a reload.
+  - **Next: W4-1, the valuation fit,** which is under way. `footsim fit-values` fits a log-linear value model (R² 0.74 on 12,390 Transfermarkt values; `docs/calibration/value-model.md`). Then it replaces the static values in the squad and player views.
+  - **Play-test:** the user's VM picks up each push. :8000 locally isn't running.
+- **7 Oct: B2, the match viewer** (af58faf, after d7fd793):
   - **The goal moment** had three causes:
     - the picture held on the frame before the ball crossed the line;
     - the banner keyed on the server's hold, while the picture eased in about 1.5 s behind it at 8×;

@@ -14,6 +14,8 @@ from footsim.persistence.migrations import migrate
 from footsim.persistence.saves import SaveManager
 from footsim.world.career import initialize_career
 from footsim.world.context import get_world
+from footsim.world.finance import set_sandbox_budget
+from footsim.world.meta import read_meta
 
 
 class NoCareer(Exception):
@@ -57,13 +59,16 @@ class CareerSession:
         self._engine = engine
         self.slot = slot
 
-    def new_career(self, slot: int, club_id: int, manager_name: str) -> None:
+    def new_career(self, slot: int, club_id: int, manager_name: str,
+                   transfer_budget_eur: int | None = None) -> None:
         with self.lock:
             self.close()
             working = self.saves.new_career(slot, self.base_world, overwrite=True)
             self._open(slot, working)
             with self.engine.begin() as conn:
                 initialize_career(conn, get_world(), club_id, manager_name)
+                if transfer_budget_eur is not None:
+                    set_sandbox_budget(conn, read_meta(conn), club_id, transfer_budget_eur * 100)
             self.saves.save(slot)
 
     def load(self, slot: int, autosave: bool = False) -> None:

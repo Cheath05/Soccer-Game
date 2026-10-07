@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 
 from footsim import __version__
-from footsim.api import queries, season_review, sim
+from footsim.api import finances, queries, season_review, sim
 from footsim.api.schemas import (
     AdvanceOut,
     CareerOut,
@@ -18,6 +18,7 @@ from footsim.api.schemas import (
     CompetitionOut,
     CupOut,
     CupSummaryOut,
+    FinancesOut,
     FixtureOut,
     LeagueOption,
     MatchOut,
@@ -107,7 +108,8 @@ def _record_club_name(session: CareerSession) -> None:
 def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     if not session.base_world.exists():
         raise HTTPException(503, "No base world built yet: run `just build-world`.")
-    session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager")
+    session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
+                       body.transfer_budget_eur)
     _record_club_name(session)
     session.save()
     return _career(session)
@@ -151,6 +153,17 @@ def advance_career(session: Session) -> AdvanceOut:
     return AdvanceOut(date=result.date.isoformat(), stop=result.stop,
                       fixture_id=result.fixture_id, messages=result.messages,
                       season_final=final)
+
+
+@router.get("/finances")
+def club_finances(session: Session) -> FinancesOut:
+    """The user's club's money: balance, budgets, this season's income and expenses, the latest
+    ledger rows and the board's view."""
+    with session.read() as conn:
+        try:
+            return finances.finances(conn, get_world())
+        except finances.NoClub as exc:
+            raise HTTPException(404, "watching only: no club of your own") from exc
 
 
 @router.get("/competitions")

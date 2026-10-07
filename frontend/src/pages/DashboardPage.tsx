@@ -1,16 +1,17 @@
 import { Badge, Button, Card, Grid, Group, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
-import { useCareer, useSquad, useTable } from '../api/hooks'
+import { useCareer, useFinances, useSquad, useTable } from '../api/hooks'
 import type { Fixture } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
-import { longDate, score, shortDate, stageLabel } from '../lib/format'
+import { confidenceColor, longDate, money, score, shortDate, stageLabel } from '../lib/format'
 
 export default function DashboardPage() {
   const career = useCareer().data
   const table = useTable(career?.competition?.key)
   const squad = useSquad(career?.club.id)
+  const finances = useFinances(!!career).data
   const navigate = useNavigate()
   if (!career) return null
 
@@ -128,6 +129,42 @@ export default function DashboardPage() {
             </Stack>
           </Card>
         </Grid.Col>
+        {finances && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/finances' })}>
+              <Group justify="space-between">
+                <Text c="dimmed" size="sm">
+                  Finances
+                </Text>
+                <Badge color={confidenceColor(finances.board.confidence)} variant="light">
+                  Board: {finances.board.mood}
+                </Badge>
+              </Group>
+              <Group mt="xs" grow>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Balance
+                  </Text>
+                  <Text fw={700} c={finances.balance_eur < 0 ? 'red.7' : undefined}>
+                    {money(finances.balance_eur)}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Transfer budget
+                  </Text>
+                  <Text fw={700}>{money(finances.transfer_budget_eur)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Wage room
+                  </Text>
+                  <Text fw={700}>{money(finances.wage_budget_weekly_eur - finances.wage_bill_weekly_eur)}/wk</Text>
+                </div>
+              </Group>
+            </Card>
+          </Grid.Col>
+        )}
       </Grid>
     </Stack>
   )

@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ClubRef(BaseModel):
@@ -37,6 +37,9 @@ class SaveSlotOut(BaseModel):
 class NewCareerIn(BaseModel):
     club_id: int
     manager_name: str
+    # The sandbox: the club's transfer budget to start with, up to EUR 10bn (the owner puts in
+    # the cash to back it). None: the board's own budget.
+    transfer_budget_eur: int | None = Field(default=None, ge=0, le=10_000_000_000)
 
 
 class FixtureOut(BaseModel):
@@ -302,7 +305,8 @@ class ClubOverviewOut(BaseModel):
     stadium_capacity: int | None
     manager: str | None  # None until computer managers exist
     wage_bill_weekly_eur: int
-    budget_estimate_eur: int  # a rough guess from the wage bill and reputation
+    transfer_budget_eur: int  # rounded for clubs other than the user's
+    balance_eur: int  # likewise
     squad_size: int
     average_age: float
     average_overall: float
@@ -551,3 +555,48 @@ class TacticsIn(BaseModel):
     roles: dict[str, str]
     lineup: dict[str, int] | None
     instructions: dict[str, str]
+
+
+class FinanceLineOut(BaseModel):
+    """Money of one kind this season (the user's club)."""
+
+    kind: str
+    label: str
+    amount_eur: int
+
+
+class LedgerRowOut(BaseModel):
+    date: str
+    kind: str
+    label: str
+    amount_eur: int
+
+
+class BoardOut(BaseModel):
+    """The board's view (display only): where it expects the club to finish, where it is, and
+    how confident it is (0-100)."""
+
+    target: int | None
+    position: int | None
+    played: int
+    league_size: int | None
+    confidence: int | None
+    mood: str
+
+
+class FinancesOut(BaseModel):
+    """The user's club's money (W3). Amounts in euros; the page converts for display."""
+
+    club: ClubRef
+    season: str
+    league: str | None
+    balance_eur: int
+    transfer_budget_eur: int
+    wage_budget_weekly_eur: int
+    wage_bill_weekly_eur: int
+    projected_revenue_eur: int  # this season's, as the club plans it
+    income: list[FinanceLineOut]  # this season so far
+    expenses: list[FinanceLineOut]
+    net_eur: int
+    recent: list[LedgerRowOut]
+    board: BoardOut

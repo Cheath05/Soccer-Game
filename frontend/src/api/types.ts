@@ -328,7 +328,8 @@ export interface ClubOverview {
   stadium_capacity: number | null
   manager: string | null
   wage_bill_weekly_eur: number
-  budget_estimate_eur: number
+  transfer_budget_eur: number // rounded for other clubs
+  balance_eur: number
   squad_size: number
   average_age: number
   average_overall: number
@@ -518,4 +519,42 @@ export interface CupRun {
   reached: string
   won: boolean
   out: boolean
+}
+
+export interface FinanceLine {
+  kind: string
+  label: string
+  amount_eur: number
+}
+
+export interface LedgerRow {
+  date: string
+  kind: string
+  label: string
+  amount_eur: number
+}
+
+export interface Board {
+  target: number | null
+  position: number | null
+  played: number
+  league_size: number | null
+  confidence: number | null
+  mood: string
+}
+
+export interface Finances {
+  club: ClubRef
+  season: string
+  league: string | null
+  balance_eur: number
+  transfer_budget_eur: number
+  wage_budget_weekly_eur: number
+  wage_bill_weekly_eur: number
+  projected_revenue_eur: number
+  income: FinanceLine[]
+  expenses: FinanceLine[]
+  net_eur: number
+  recent: LedgerRow[]
+  board: Board
 }

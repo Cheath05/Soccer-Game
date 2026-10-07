@@ -5,6 +5,7 @@ import type {
   AdvanceResult,
   Career,
   ClubHistory,
+  Finances,
   ClubOverview,
   ClubPlayer,
   Competition,
@@ -90,6 +91,9 @@ export const usePlayerSeasons = (id: number) =>
 export const useMatch = (id: number) =>
   useQuery({ queryKey: ['match', id], queryFn: () => api.get<MatchReport>(`/fixtures/${id}`) })
 
+export const useFinances = (enabled = true) =>
+  useQuery({ queryKey: ['finances'], queryFn: () => api.get<Finances>('/finances'), enabled })
+
 export const useTactics = () => useQuery({ queryKey: ['tactics'], queryFn: () => api.get<Tactics>('/tactics') })
 
 /** Anything that moves the game on invalidates every cached view of it. */
@@ -146,8 +150,12 @@ export function useSaveTactics() {
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number; manager: string }) =>
-      api.post<Career>(`/saves/${args.slot}/new`, { club_id: args.clubId, manager_name: args.manager }),
+    mutationFn: (args: { slot: number; clubId: number; manager: string; transferBudget?: number | null }) =>
+      api.post<Career>(`/saves/${args.slot}/new`, {
+        club_id: args.clubId,
+        manager_name: args.manager,
+        transfer_budget_eur: args.transferBudget ?? null,
+      }),
     onSuccess: invalidate,
   })
 }

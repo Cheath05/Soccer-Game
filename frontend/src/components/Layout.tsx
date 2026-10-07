@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
-import { competitionNation, longDate } from '../lib/format'
+import { competitionNation, longDate, useCurrency } from '../lib/format'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
 import VersionTag from './VersionTag'
@@ -16,6 +16,7 @@ const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/squad', label: 'Squad' },
   { to: '/tactics', label: 'Tactics' },
+  { to: '/finances', label: 'Finances' },
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
   { to: '/cups', label: 'Cups' },
@@ -29,6 +30,7 @@ export default function Layout() {
   const saveGame = useSaveGame()
   const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
+  const currency = useCurrency() // pages re-render in a newly chosen currency
   const [messages, setMessages] = useState<string[]>([])
   // How the season went, when Continue ran on to its end.
   const [seasonFinal, setSeasonFinal] = useState<SeasonFinal | null>(null)
@@ -135,7 +137,7 @@ export default function Layout() {
             {advance.error.message}
           </Text>
         )}
-        <Outlet />
+        <Outlet key={currency} />
       </AppShell.Main>
       <Modal
         opened={seasonFinal !== null}

@@ -53,6 +53,7 @@ from footsim.match.teams import TeamSheet
 from footsim.persistence.database import open_database
 from footsim.persistence.schema import (
     club,
+    club_finance,
     club_league_membership,
     competition,
     contract,
@@ -563,11 +564,6 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
 
 # --- other clubs ----------------------------------------------------------------------
 
-# Until clubs have finances, the budget shown for a club is a rough guess: this share of its
-# annual wage bill, rising with reputation (relative to the most famous club in the world).
-BUDGET_SHARE_BASE = 0.1
-BUDGET_SHARE_REPUTATION = 0.3
-
 
 class ClubNotFound(LookupError):
     pass
@@ -628,24 +624,28 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
             position, points, played = mine.position, mine.points, mine.played
     players = squad(conn, world, club_id)
     wage_bill = sum(p.wage_weekly_eur for p in players)
-    top_reputation = conn.execute(select(func.max(club.c.reputation))).scalar() or 1
-    share = BUDGET_SHARE_BASE + BUDGET_SHARE_REPUTATION * row.reputation / top_reputation
+    money = conn.execute(select(club_finance.c.transfer_budget_cents,
+                                club_finance.c.balance_cents)
+                         .where(club_finance.c.club_id == club_id)).first()
     involved = or_(fixture.c.home_club_id == club_id, fixture.c.away_club_id == club_id)
     recent = conn.execute(select(fixture).where(fixture.c.status == "played", involved)
                           .order_by(fixture.c.date.desc(), fixture.c.id.desc()).limit(5)).all()
     upcoming = conn.execute(select(fixture).where(fixture.c.status == "scheduled", involved)
                             .order_by(fixture.c.date, fixture.c.id).limit(5)).all()
     own = club_id == meta.user_club_id
-    budget = wage_bill * 52 * share
-    if not own:
+    budget = money.transfer_budget_cents / 100 if money else 0.0
+    balance = money.balance_cents / 100 if money else 0.0
+    if not own:  # what another club's accounts reveal from the outside
         wage_bill, budget = _rough(wage_bill), _rough(budget)
+        balance = _rough(balance) if balance >= 0 else -_rough(-balance)
     return ClubOverviewOut(
         club=ClubRef(id=club_id, name=row.name), own_club=own, nation=row.nation_name,
         competition=_competition_out(world, comp) if comp else None,
         position=position, points=points, played=played, reputation=row.reputation,
         stadium_name=row.stadium_name, stadium_capacity=row.stadium_capacity,
         manager=meta.manager_name if own else None,
-        wage_bill_weekly_eur=int(wage_bill), budget_estimate_eur=int(budget),
+        wage_bill_weekly_eur=int(wage_bill), transfer_budget_eur=int(budget),
+        balance_eur=int(balance),
         squad_size=len(players),
         average_age=round(float(np.mean([p.age for p in players])), 1) if players else 0.0,
         average_overall=round(float(np.mean([p.overall for p in players])), 1) if players else 0.0,

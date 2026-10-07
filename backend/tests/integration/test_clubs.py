@@ -37,8 +37,10 @@ def test_another_clubs_profile_and_squad(client: TestClient) -> None:
     assert overview["manager"] is None and overview["recent_transfers"] == []
     assert overview["squad_size"] >= 18 and 16 < overview["average_age"] < 35
     assert len(overview["top_players"]) == 5
-    assert overview["budget_estimate_eur"] > 0 and overview["wage_bill_weekly_eur"] > 0
-    assert _significant_figures(overview["wage_bill_weekly_eur"]) <= 2  # only a rough figure
+    assert overview["transfer_budget_eur"] > 0 and overview["wage_bill_weekly_eur"] > 0
+    assert overview["balance_eur"] > 0
+    for figure in ("wage_bill_weekly_eur", "transfer_budget_eur", "balance_eur"):
+        assert _significant_figures(overview[figure]) <= 2, figure  # only a rough figure
     dates = [f["date"] for f in overview["upcoming"]]
     assert len(dates) == 5 and dates == sorted(dates) and overview["recent"] == []
 

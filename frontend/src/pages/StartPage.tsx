@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Container, Group, Loader, Select, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Container, Group, Loader, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -14,6 +14,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const loadCareer = useLoadCareer()
   const navigate = useNavigate()
   const [manager, setManager] = useState('')
+  const [budgetMillions, setBudgetMillions] = useState<number | string>('')
   const [league, setLeague] = useState('ENG1')
   const [clubId, setClubId] = useState<number | null>(null)
   const [slot, setSlot] = useState('1')
@@ -88,6 +89,17 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           <Group align="end">
             <TextInput label="Manager name" placeholder="Your name" value={manager} onChange={(e) => setManager(e.currentTarget.value)} />
             <Select label="Save slot" data={['1', '2', '3']} value={slot} onChange={(v) => setSlot(v ?? '1')} w={110} allowDeselect={false} />
+            <NumberInput
+              label="Sandbox: transfer budget (€M)"
+              description="Optional. Leave empty for the board's budget"
+              placeholder="Board's budget"
+              min={0}
+              max={10_000}
+              thousandSeparator=","
+              value={budgetMillions}
+              onChange={setBudgetMillions}
+              w={230}
+            />
           </Group>
           {leagues.isPending && <Loader />}
           {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
@@ -126,7 +138,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               size="md"
               disabled={clubId === null}
               loading={newCareer.isPending}
-              onClick={() => clubId !== null && void newCareer.mutateAsync({ slot: Number(slot), clubId, manager: manager || 'Manager' }).then(goHome, ignore)}
+              onClick={() => clubId !== null && void newCareer.mutateAsync({ slot: Number(slot), clubId, manager: manager || 'Manager', transferBudget: budgetMillions === '' ? null : Math.round(Number(budgetMillions) * 1_000_000) }).then(goHome, ignore)}
             >
               Start career
             </Button>

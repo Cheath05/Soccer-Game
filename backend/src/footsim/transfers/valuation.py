@@ -58,6 +58,11 @@ def _rounded(value: NDArray[np.float64]) -> NDArray[np.int64]:
     return rounded
 
 
+def quote_eur(value: float) -> int:
+    """One amount in euros, quoted in market steps (as values are)."""
+    return int(_rounded(np.array([float(value)]))[0])
+
+
 def plain_values(model: ValuationDef, overall: ArrayLike, age: ArrayLike,
                  goalkeeper: ArrayLike, reputation: ArrayLike) -> NDArray[np.float64]:
     """The model's values in euros, unrounded and without a player's own premium."""

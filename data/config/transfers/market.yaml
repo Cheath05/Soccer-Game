@@ -1,4 +1,69 @@
-# The transfer market (W4). Windows come from each country's calendar
-# (data/config/calendars/*: transfer_windows); a club outside the game's leagues follows its own
-# country's calendar, or this country's when the game has no calendar for it.
+# The transfer market (W4; docs/plans/w3-w4-finances-transfers.md, "Decisions" and "The AI
+# market"). Money in euros. These are first settings, to be measured with `footsim
+# market-report` against approximate real targets (a Premier League club makes 3-8 senior
+# signings in a summer, most clubs sign someone, no squad runs short).
+
+# Windows come from each country's calendar (data/config/calendars/*: transfer_windows); a club
+# outside the game's leagues follows its own country's, or this country's when the game has no
+# calendar for it.
 default_window_nation: ENG
+
+# --- when clubs act ---
+interval_days: 4            # a club looks at the market every this many days of its window
+deadline_days: 7            # ... and, in the window's last this many days,
+deadline_activity: 0.5      # with this chance each day
+outside_league_activity: 0.5   # clubs outside the game's leagues act this much as often
+
+# --- how much they do ---
+max_in_summer: 5            # signings a club makes in a summer window, at most
+max_in_winter: 2            # ... in a winter one
+max_out: 5                  # sales a club makes in a window, at most
+needs_per_day: 2            # needs a club works on in one market day
+candidates_per_need: 4      # players it tries for one need, best first
+
+# --- squad shape ---
+depth_per_slot: 2           # players a club wants in a position group per formation slot there
+keepers_wanted: 3
+squad_max: 28               # seniors above this: the surplus is listed
+weak_gap: 3                 # a starter this far below his club's level is a weak spot
+min_improvement: 2          # an upgrade beats the starter he'd replace by this much
+upgrade_band: [0, 6]        # an upgrade's overall, relative to the club's level
+depth_band: [-8, -2]        # cover's overall, relative to the club's level
+ageing_from: 32             # a starter this old with no younger cover within 3 needs a successor
+key_margin: 3               # a starter this far above his club's level is a key player
+reach: 12                   # an unlisted player at a club this much bigger (reputation) won't come
+
+# --- prices ---
+role_multiplier: {key: 1.8, starter: 1.4, rotation: 1.1, surplus: 0.85}
+contract_multiplier:        # (years left under, multiplier of value)
+  - [1, 0.6]
+  - [2, 0.85]
+  - [3, 1.0]
+  - [99, 1.15]
+listed_multiplier: 0.8
+distressed_multiplier: 0.85 # a club in debt asks less
+counter_from: 0.75          # a bid at least this share of the asking price gets a counter at it
+bid_eagerness: [0.85, 1.05] # a buyer's opening bid, as a share of value (keyed draw)
+max_premium: 1.3            # a buyer pays up to this many times the value ...
+urgent_premium: 0.3         # ... plus this much more for an urgent need
+max_deal_share: 0.6         # of its budget a club spends on one signing, at most
+
+# --- wages and contracts ---
+move_raise: 1.15            # a player moving wants this many times his wage, at least ...
+free_agent_discount: 0.85   # ... his new league's going rate (a free agent: this share of it)
+max_wage_share: 0.15        # of its weekly wage capacity a club pays one player, at most
+wage_slack: 0.05            # a club keeps its wage bill within its capacity plus this share
+contract_years:             # (age up to, years)
+  - [23, 5]
+  - [27, 4]
+  - [30, 3]
+  - [32, 2]
+  - [99, 1]
+
+# --- the player's answer: he joins when the sum is at least 0 ---
+answer:
+  reputation: 0.08          # per point of reputation the buying club has over his own
+  wage: 1.2                 # per unit of log(offered wage / current wage)
+  starting: 0.6             # for going from not starting to starting (or back, negative)
+  listed: 0.4               # when his club has listed him
+  noise: 0.3                # sd of his own, keyed, mood

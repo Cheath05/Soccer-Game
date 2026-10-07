@@ -16,7 +16,21 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W4-3, one owner per player and the move domain** (the commit that adds this line; after 46ec5fc).
+- **Latest checkpoint (8 Oct): W4-4, the market's decisions** (the commit that adds this line; after 2a573e2).
+  - **`transfers/decisions.py`**, pure functions:
+    - a player's role at his club (key, starter, rotation, surplus, from his rank in his position group against the formation's demand);
+    - the asking price (value × role × contract time left × listed × in debt, quoted in market steps);
+    - the seller's answer (accept; counter at the asking price from 75% of it; reject);
+    - the buyer's opening bid and its ceiling (rising with urgency);
+    - the wage he asks (the going rate in his new league, or a raise on his current wage; free agents settle for less);
+    - contract length by age;
+    - the player's answer (reputation step, wage, starting, listed, keyed mood);
+    - a free agent's reach.
+  - **The numbers** are in `data/config/transfers/market.yaml` (`MarketDef`). The design ("Decisions", "The AI market") was detailed on 8 Oct in `docs/plans/w3-w4-finances-transfers.md`, together with the user's 8 Oct finance requests ("W3-4: simpler money").
+  - **Tests:** `test_decisions.py` (8), plus the definitions, valuation and window tests. The full suite was deferred to W4-5's checkpoint, because two agents are editing the tree; this change only adds files.
+  - **Running alongside** (Sonnet agents, 8 Oct): F (W3-4, simpler money: one budget, $ default, the month's profit and changes, one-off transactions, optional board, cup prize money) and D (development: bench credit, an academy potential boost, schema 12).
+  - **Next:** W4-5, the AI market (`world/market.py`, `footsim market-report`), at Opus Max.
+- **7 Oct: W4-3, one owner per player and the move domain** (2a573e2, after 46ec5fc).
   - **Schema 11:**
     - `transfer` (the history: from, to, kind transfer|free|release|loan|loan_return, fee, wage, contract end, by_user);
     - `transfer_offer` (for W4-6);

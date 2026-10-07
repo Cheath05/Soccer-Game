@@ -100,6 +100,41 @@ From the W3-2 review, which put `finance.yaml` against the base world's wage bil
 - **Clubs outside the 19 leagues** (302 in the base world) net +20% of their own revenue a year. The AI market must include them as buyers and sellers, or their cash just piles up.
 - **The board's target** is set on 1 July. Decide whether a window's transfers refresh it.
 
+### W3-4: simpler money (the user's requests, 8 Oct)
+
+The user asked for:
+- one budget for fees and wages;
+- dollars by default;
+- recurring money shown once, as the month's profit, rather than as repeated transactions;
+- an optional board.
+
+**Decided 8 Oct (Opus):**
+
+- **One budget** (`club_finance.transfer_budget_cents`, called "budget" everywhere it's shown) is the money a club may commit this season to transfer fees and new wages.
+  - A signing costs **its fee + its weekly wage × the weeks left in the season**.
+  - A sale gives back `reinvest` × the fee, plus the wage the club no longer pays for the rest of the season.
+  - A release gives back nothing (no severance yet, and no free money from dumping wages).
+  - The players already under contract are paid from income, so they aren't charged to the budget.
+  - `validate_move` refuses a signing whose cost is beyond the budget. The separate weekly wage-budget limit goes.
+- **Wage capacity** (`club_finance.wage_budget_cents`, weekly) = revenue × `wage_budget_ratio` ÷ 52: the wage bill the club's income supports.
+  - It's shown ("wages €Y a week, your income supports €Z") and used by the AI's own prudence, but it isn't a hard rule.
+  - Going over it costs next season's budget instead (below).
+- **Each season's budget, at the rollover:**
+  - **Board on** (every AI club, and the user unless they turn the board off): `budget_share` × revenue + `cash_share` × max(0, balance) − the wage overshoot. The overshoot is max(0, wage bill × 52 − capacity × 52): what the club already pays beyond its means comes out of the budget first.
+  - **Board off** (the user's choice): the budget is all of the club's cash, max(0, balance).
+  - Monthly profits go to the balance, and reach the budget at the next season's start.
+- **The sandbox:** a new career's budget of X (up to $/€10bn) is X to spend on fees and wages. The owner puts in whatever cash the balance lacks.
+- **The board is optional** (`board_enabled` in the career's meta, chosen at career start and switchable on the Finances page).
+  - When it's off, there are no expectations, no confidence and (later) no sacking, and the budget is the club's cash.
+  - Switching it recomputes the user's budget at once.
+  - AI clubs always have one.
+- **Dollars by default:** the display currency defaults to $ (money is still kept in euros).
+- **Recurring money is shown once:**
+  - the Finances page shows **this month's profit**, with its parts (TV, commercial and matchday, wages, running costs) at current rates;
+  - a short list of **changes** to them (e.g. "Jul 2027: league TV money $5.2M → $0.8M a month", after relegation) is derived from consecutive monthly settlements;
+  - **transactions** lists only one-off money: the opening balance, transfers, prize money, parachutes, and owner investment.
+- **Cup prize money:** a cup tie's winner earns that round's prize (`cup_prizes` in finance.yaml: by cup, rising each round, with the final the biggest). It's a one-off `prize` transaction.
+
 ## W4: transfers
 
 ### Valuation (W4-1)
@@ -136,37 +171,80 @@ From the W3-2 review, which put `finance.yaml` against the base world's wage bil
 
   The same functions serve AI and user moves.
 
-### Decisions (W4-4: pure functions, tested alone)
+### Decisions (W4-4: pure functions, tested alone; detailed 8 Oct)
 
-- **The seller's asking price** = value × importance (a starter, rotation, surplus, or listed; depth left after the sale) × contract time left × the seller's money need.
-  - It accepts at or above the asking price;
-  - it counters at the asking price from 75% of it;
-  - otherwise it rejects.
-  - It never sells below its own squad floor or its last keeper.
-- **The buyer's bid:** value × eagerness, up to what it can afford.
-- **The player's answer** depends on the buyer's reputation and league level against his club's, the wage against his current one, whether he'd start, and his age. There's a small, keyed random factor.
-- **His wage demand:** the buying league's `wage_for(overall)` and his current wage, whichever is higher, within the buyer's wage room.
-- **His contract length** depends on age.
+All numbers live in `data/config/transfers/market.yaml`. The functions are in `transfers/decisions.py`, which has no database.
 
-### The AI market (W4-5)
+- **A player's role at his club:** found from his rank in his position group against the formation's demand. The demand is the number of formation slots in that group (`depth_per_slot` × the slots counts as cover).
+  - The first `demand` players are **starters**. A starter more than `key_margin` above the club's level is **key**.
+  - The next `demand` players are **rotation**.
+  - The rest are **surplus**.
+- **The seller's asking price** = value × role multiplier (key 1.8, starter 1.4, rotation 1.1, surplus 0.85) × contract multiplier (under 1 year left 0.6, under 2 years 0.85, under 3 years 1.0, more 1.15) × 0.8 if listed × 0.85 if the seller is in debt. It's quoted in market steps.
+- **The seller's answer** to a bid: it accepts at or above the asking price, counters at the asking price from `counter_from` (75%) of it, and otherwise rejects. The squad and keeper floors are `validate_move`'s, so they apply to everyone.
+- **The buyer:**
+  - it opens at value × a keyed eagerness in `bid_eagerness` (0.85–1.05);
+  - it pays a counter up to value × (`max_premium` + `urgent_premium` × urgency);
+  - it never spends more than `max_deal_share` of its budget on one signing, and always within the budget (cost = fee + wage × weeks left: W3-4).
+- **The wage he asks** = max(his new league's going rate for his overall (`wage_levels`), his current wage × `move_raise`). A free agent asks the going rate × `free_agent_discount`.
+  - A club pays one player at most `max_wage_share` of its weekly wage capacity.
+  - It keeps its bill within capacity × (1 + `wage_slack`). (Prudence is the AI's; the hard rule is the budget.)
+- **Contract length** comes from age: up to 23 five years, 27 four, 30 three, 32 two, then one.
+- **The player's answer:** he accepts when this is at least 0:
+  - `reputation` × (the buyer's reputation − his club's);
+  - plus `wage` × ln(the offered wage ÷ his current one);
+  - plus `starting` × (he'd start there − he starts now);
+  - plus `listed` if his club lists him;
+  - plus keyed noise (sd `noise`).
 
-- **Cadence:** market days only inside a window, every few days, and daily in the last week. Each club acts on a deterministic subset of those days (`derive_rng(seed, "market", day, club)`). Clubs act in a fixed order (reputation, then id).
-- **Needs** come from `LineupPicker` on the club's formation:
-  - depth per position group;
-  - weak starters (slot rating below the club's own level);
-  - ageing starters;
-  - squad size against limits;
-  - the club's budget and wage room.
-- **Targets** come from one market snapshot per market day (numpy over every player under contract and every free agent): the position, an overall band around the club's level, an affordable value, a wage within room, and a reachable club (reputation).
-  - At most one bid per need, and a few deals per club per window.
-- **Selling:** clubs over their limit, or with surplus (old, low-rated, behind two in their position), list players. Listed players are cheaper and are offered to smaller clubs first. Clubs short of money sell more readily.
-- **Free agents** fill gaps cheaply.
-- **Tools:** `footsim market-report` runs a watch-only window or season. It reports:
-  - deals, fees and spending by league;
+  A free agent accepts the asked wage from any club within `reach` reputation of his own level.
+
+### The AI market (W4-5; detailed 8 Oct)
+
+- **Who acts:**
+  - every club except the user's, including the 302 outside the leagues (they act at `outside_league_activity`, so their cash circulates);
+  - each in its own country's window.
+- **When:** a club looks at the market every `interval_days` of its window, on its own phase ((days since the window opened + club id) mod interval), and with `deadline_activity` chance on each of the last `deadline_days`.
+  - Clubs act in reputation order, then by id.
+  - `after_day` runs the market at most once a day (the day is recorded in game_meta).
+- **Snapshot:** one set of numpy arrays per market day over every player under contract or free. It holds:
+  - owner, position group, overall, age, value (with premium), wage, contract years left, listed;
+  - whether he has moved this window (a player moves at most once a window).
+
+  It's updated in place after each deal.
+- **Needs** come from the club's formation (its tactic; `best_formation` for clubs without one), by position group:
+  - **short:** fewer than demand × `depth_per_slot` (keepers: `keepers_wanted`); urgent below demand;
+  - **weak:** the weakest starter is more than `weak_gap` below the club's level (the mean of its starters);
+  - **ageing:** a starter aged `ageing_from` or more with no younger cover within 3.
+
+  A club acts on at most `needs_per_day`, most urgent first.
+- **Targets for a need:**
+  - in the group, overall in the need's band around the club's level (upgrade `upgrade_band` with at least `min_improvement` over the starter he'd replace; depth `depth_band`);
+  - not his own club's, not the user's (W4-6 adds bids for the user's players), not moved this window;
+  - an unlisted player at a club more than `reach` above the buyer in reputation isn't approached;
+  - affordable at an estimated cost.
+
+  They're scored by improvement + youth − cost share, and the best `candidates_per_need` are tried in order: the seller's answer, then the player's, then `validate_move` and `complete_move`. Depth needs prefer free agents.
+- **Selling:**
+  - on a club's first market day in a window, it lists its surplus beyond `squad_max` seniors and its old non-starters well below its level;
+  - a club in trouble (in debt, or wages over capacity × 1.2) also lists its best-paid non-key players and takes counters down to `counter_from`.
+
+  Listed players are cheaper and readier to go.
+- **Limits:** `max_in_summer` and `max_in_winter` signings a window, and `max_out` sales.
+- **Tool:** `footsim market-report` runs a watch-only career through a window (or a season) and prints:
+  - deals and fees by league;
   - the top deals;
-  - age and overall distributions;
-  - squad sizes and budgets;
-  - any shortages.
+  - who moved (age, overall);
+  - squad sizes (no club below the floors);
+  - budgets and balances;
+  - free agents;
+  - the change in total value.
+
+  **The first targets** are approximate real ones:
+  - a Premier League club makes 3–8 senior signings in a summer;
+  - most clubs sign someone;
+  - fees concentrate at the top;
+  - no squad shortages after a window;
+  - money flows down the leagues.
 
 ### The user (W4-6)
 

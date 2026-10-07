@@ -21,6 +21,8 @@ goalkeeper: -0.43075
 reference_reputation: 70.0
 reputation: 0.02858
 minimum_eur: 10000
+premium_share: 0.7
+premium_cap: 1.0
 fit:
   players: 12390.0
   r2: 0.7407

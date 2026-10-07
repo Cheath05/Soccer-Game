@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sqlalchemy import Connection, Row, bindparam, func, or_, select, text, update
+from sqlalchemy import Connection, Row, bindparam, func, or_, select, text
 
 from footsim.api.schemas import (
     AttributeOut,
@@ -56,7 +56,6 @@ from footsim.persistence.schema import (
     club_finance,
     club_league_membership,
     competition,
-    contract,
     cup_tie,
     fixture,
     league_final,
@@ -82,6 +81,7 @@ from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.season import active_leagues, season_calendar, standings
 from footsim.world.squads import display_name, short_name, team_sheet
+from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
 
 # --- helpers --------------------------------------------------------------------------
 
@@ -471,11 +471,12 @@ _PLAYER_SQL = """
            pl.height_cm, pl.weight_kg, pl.preferred_foot, pl.weak_foot, pl.skill_moves,
            pl.pa_hidden, pl.value_eur_cents, k.club_id, k.wage_weekly_cents, k.end_date,
            s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend,
-           pl.retired_on, c.reputation AS club_reputation, pl.reputation AS player_reputation
+           pl.retired_on, c.reputation AS club_reputation, pl.reputation AS player_reputation,
+           pl.value_premium
     FROM person p
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN nation n ON n.id = p.nation_id
-    LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1
+    LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1 AND k.kind != 'loan'
     LEFT JOIN club c ON c.id = k.club_id
     LEFT JOIN player_state s ON s.player_id = p.id
     LEFT JOIN player_development d ON d.player_id = p.id
@@ -532,7 +533,8 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
     # A free agent is priced at his own reputation, not his old club's (he carries it with him).
     value = value_eur(world.defs.valuation, round(overall), years_old(r.birth_date, day),
                       primary == "GK",
-                      r.club_reputation if r.club_reputation is not None else r.player_reputation)
+                      r.club_reputation if r.club_reputation is not None else r.player_reputation,
+                      r.value_premium or 0.0)
     shown = world.defs.development.trend_shown
     trend = r.trend or 0.0
     return SquadPlayerOut(
@@ -770,28 +772,15 @@ class SquadTooSmall(Exception):
 def release_player(conn: Connection, world: World, player_id: int, day: date) -> None:
     """End the user's contract with one of their players: he becomes a free agent. Refused
     (SquadTooSmall) when it would leave fewer senior players or keepers than the lifecycle
-    rules' floor, as there are no transfers yet to replace them."""
+    rules' floor: the same rule as any move (world/transfers.py)."""
     meta = read_meta(conn)
-    rules = world.defs.lifecycle.squads
-    seniors = conn.execute(text("""
-        SELECT k.person_id,
-               (SELECT position FROM player_position pp WHERE pp.player_id = k.person_id
-                ORDER BY familiarity DESC LIMIT 1) AS position
-        FROM contract k WHERE k.club_id = :club AND k.is_active = 1 AND k.kind != 'youth'
-    """), {"club": meta.user_club_id}).all()
-    leaving = [r for r in seniors if r.person_id == player_id]
-    if leaving:
-        if len(seniors) - 1 < rules.user_min_players:
-            raise SquadTooSmall(f"You need at least {rules.user_min_players} senior players.")
-        keepers = sum(r.position == "GK" for r in seniors)
-        if leaving[0].position == "GK" and keepers - 1 < rules.user_min_keepers:
-            raise SquadTooSmall(f"You need at least {rules.user_min_keepers} keepers.")
-    updated = conn.execute(update(contract).where(
-        contract.c.person_id == player_id, contract.c.is_active == 1,
-        contract.c.club_id == meta.user_club_id,
-    ).values(is_active=0, end_date=day.isoformat())).rowcount
-    if not updated:
+    owner = owner_contract(conn, player_id)
+    if owner is None or owner.club_id != meta.user_club_id:
         raise KeyError(player_id)
+    try:
+        complete_move(conn, world, meta, Move(player_id, None, by_user=True), day)
+    except MoveRefused as exc:
+        raise SquadTooSmall(str(exc)) from exc
 
 
 # --- matches --------------------------------------------------------------------------

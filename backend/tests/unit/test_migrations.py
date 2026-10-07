@@ -224,3 +224,46 @@ def test_version_9_starts_finances_for_a_career_under_way(tmp_path: Path) -> Non
             STEPS[10](conn)
     assert snapshots[0] == snapshots[1]
     session.close()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_10_gains_the_market_and_one_owner_per_player(tmp_path: Path) -> None:
+    """A career from before the transfer market gets its tables, listing, players' market
+    premiums and the one-owner rule; a player with two active contracts (there shouldn't be
+    any) keeps the latest one. Running the step again changes nothing."""
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP INDEX ux_contract_owner"))
+        conn.execute(text("DROP TABLE transfer"))
+        conn.execute(text("UPDATE player SET value_premium = NULL"))
+        doubled = conn.execute(text(
+            "SELECT id, person_id FROM contract WHERE is_active = 1 ORDER BY id LIMIT 1")).one()
+        conn.execute(text(
+            "INSERT INTO contract (person_id, club_id, kind, start_date, end_date, "
+            "wage_weekly_cents, is_active, listed) VALUES (:p, 1, 'player', '2026-08-01', "
+            "'2028-06-30', 100, 1, 0)"), {"p": doubled.person_id})
+    write_meta(engine, {"schema_version": 10})
+    assert migrate(engine) == 10
+    snapshots = []
+    for _ in range(2):
+        with engine.connect() as conn:
+            owners = conn.execute(text(
+                "SELECT club_id, start_date FROM contract WHERE person_id = :p "
+                "AND is_active = 1"), {"p": doubled.person_id}).all()
+            assert [(r.club_id, r.start_date) for r in owners] == [(1, "2026-08-01")]
+            assert "ux_contract_owner" in {i["name"] for i in inspect(conn).get_indexes(
+                "contract")}
+            assert conn.execute(text("SELECT COUNT(*) FROM transfer")).scalar_one() == 0
+            assert conn.execute(text(
+                "SELECT COUNT(*) FROM player WHERE value_premium IS NULL "
+                "AND retired_on IS NULL")).scalar_one() == 0
+            assert conn.execute(text(
+                "SELECT COUNT(*) FROM player WHERE value_premium != 0")).scalar_one() > 5000
+            snapshots.append(conn.execute(text(
+                "SELECT person_id, value_premium FROM player ORDER BY person_id")).all())
+        with engine.begin() as conn:
+            STEPS[11](conn)
+    assert snapshots[0] == snapshots[1]
+    session.close()

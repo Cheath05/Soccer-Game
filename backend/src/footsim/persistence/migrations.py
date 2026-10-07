@@ -118,8 +118,38 @@ def _to_v10(conn: Connection) -> None:
 
 
 # target version -> step that upgrades from the version before it
+def _to_v11(conn: Connection) -> None:
+    """The transfer market (W4-3): its history and offers, transfer-listing, players' market
+    premiums, and one club per player made a rule. A player can't have two active contracts
+    that aren't loans; should a save hold any (it shouldn't), the latest one is kept. A career
+    already under way gets the premiums from today."""
+    from footsim.world.context import get_world
+    from footsim.world.meta import read_meta as read_career
+    from footsim.world.transfers import initialize_value_premiums
+
+    metadata.create_all(conn)
+    _add_column(conn, "contract", "listed", "INTEGER NOT NULL DEFAULT 0")
+    _add_column(conn, "player", "value_premium", "REAL")
+    doubled: list[int] = list(conn.execute(text(
+        "SELECT person_id FROM contract WHERE is_active = 1 AND kind != 'loan' "
+        "GROUP BY person_id HAVING COUNT(*) > 1 ORDER BY person_id")).scalars())
+    for person_id in doubled:
+        rows: list[int] = list(conn.execute(text(
+            "SELECT id FROM contract WHERE person_id = :p AND is_active = 1 AND kind != 'loan' "
+            "ORDER BY start_date DESC, id DESC"), {"p": person_id}).scalars())
+        conn.execute(text("UPDATE contract SET is_active = 0 WHERE id = :id"),
+                     [{"id": stale} for stale in rows[1:]])
+    conn.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_contract_owner ON contract (person_id) "
+        "WHERE is_active = 1 AND kind != 'loan'"))
+    if conn.execute(select(game_meta.c.key).where(game_meta.c.key == "user_club_id")).first():
+        meta = read_career(conn)
+        initialize_value_premiums(conn, get_world(), meta.current_date)
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
-    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10}
+    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
+    11: _to_v11}
 
 
 def migrate(engine: Engine) -> int:

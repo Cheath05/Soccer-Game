@@ -28,4 +28,8 @@ class ValuationDef(DefModel):
     reference_reputation: float = 70.0
     reputation: float  # per point of his club's reputation (the league's market level)
     minimum_eur: int = Field(gt=0)
+    # A player's own market premium (his fame): this share of how far his Transfermarkt value
+    # sits from the model's, at most premium_cap either way (log). Kept for good.
+    premium_share: float = Field(ge=0, le=1)
+    premium_cap: float = Field(ge=0)
     fit: dict[str, float] = {}  # the fit's record: players, R², residual sd (log)

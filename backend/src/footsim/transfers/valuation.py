@@ -58,16 +58,26 @@ def _rounded(value: NDArray[np.float64]) -> NDArray[np.int64]:
     return rounded
 
 
+def plain_values(model: ValuationDef, overall: ArrayLike, age: ArrayLike,
+                 goalkeeper: ArrayLike, reputation: ArrayLike) -> NDArray[np.float64]:
+    """The model's values in euros, unrounded and without a player's own premium."""
+    result: NDArray[np.float64] = np.exp(
+        features(model, overall, age, goalkeeper, reputation) @ coefficients(model))
+    return result
+
+
 def values_eur(model: ValuationDef, overall: ArrayLike, age: ArrayLike, goalkeeper: ArrayLike,
-               reputation: ArrayLike) -> NDArray[np.int64]:
-    """Market values in euros, vectorised. ``reputation`` is the club's (use the model's
-    ``free_agent_reputation`` for a player without one)."""
-    raw = np.exp(features(model, overall, age, goalkeeper, reputation) @ coefficients(model))
+               reputation: ArrayLike, premium: ArrayLike = 0.0) -> NDArray[np.int64]:
+    """Market values in euros, vectorised and quoted. ``reputation`` is the owning club's (a
+    free agent's own); ``premium`` his stored market premium (log)."""
+    raw = plain_values(model, overall, age, goalkeeper, reputation) * np.exp(
+        np.asarray(premium, dtype=float))
     return np.maximum(_rounded(raw), model.minimum_eur)
 
 
 def value_eur(model: ValuationDef, overall: float, age: float, goalkeeper: bool,
-              reputation: float) -> int:
+              reputation: float, premium: float = 0.0) -> int:
     """One player's market value in euros."""
-    return int(values_eur(model, [overall], [age], [float(goalkeeper)], [reputation])[0])
+    return int(values_eur(model, [overall], [age], [float(goalkeeper)], [reputation],
+                          [premium])[0])
 

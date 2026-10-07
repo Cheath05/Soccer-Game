@@ -27,6 +27,7 @@ from footsim.world.season import (
     season_complete,
 )
 from footsim.world.squads import team_sheet
+from footsim.world.transfers import initialize_value_premiums
 
 MAX_ADVANCE_DAYS = 400
 
@@ -61,7 +62,8 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     refresh_ai_tactics(conn, world, meta, start)
     create_season_fixtures(conn, world, meta, 1)
     record_season_start(conn, world, 1, start)
-    initialize_finances(conn, world, meta, start)  # after the leagues have their clubs
+    initialize_finances(conn, world, meta, start)
+    initialize_value_premiums(conn, world, start)  # after the leagues have their clubs
 
 
 def _user_fixture(conn: Connection, meta: CareerMeta, day: date) -> Row[Any] | None:

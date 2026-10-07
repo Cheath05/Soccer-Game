@@ -16,12 +16,13 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    text,
 )
 
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 10  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 11  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -107,8 +108,11 @@ player = Table(
     Column("skill_moves", SmallInteger, nullable=False),
     Column("pa_hidden", SmallInteger, nullable=False),
     Column("reputation", SmallInteger, nullable=False),
-    Column("value_eur_cents", Integer),
+    Column("value_eur_cents", Integer),  # Transfermarkt's, from the world build (W4-1's fit)
     Column("retired_on", Text),  # the day he retired (or left the professional game)
+    # His market premium over the value model (log), from his Transfermarkt value: the fame the
+    # ratings don't see (transfers/valuation.py). None until worked out; 0 for none.
+    Column("value_premium", Float),
 )
 
 player_attr = Table(
@@ -154,8 +158,12 @@ contract = Table(
     Column("wage_weekly_cents", Integer, nullable=False),
     Column("release_clause_cents", Integer),
     Column("is_active", Integer, nullable=False),
+    Column("listed", Integer, nullable=False, server_default="0"),  # transfer-listed (W4)
     Index("ix_contract_club_active", "club_id", "is_active"),
     Index("ix_contract_person", "person_id"),
+    # One club owns a player: at most one active contract per person that isn't a loan (W4-3).
+    Index("ux_contract_owner", "person_id", unique=True,
+          sqlite_where=text("is_active = 1 AND kind != 'loan'")),
 )
 
 external_id = Table(
@@ -335,6 +343,43 @@ player_season_overall = Table(
 # A club's money (W3, world/finance.py). The balance is the source of truth for cash and always
 # equals the sum of the club's ledger; the wage bill is never stored (it's the sum of the active
 # contracts).
+transfer = Table(
+    "transfer",  # every completed move (W4): the history, and the reference for the money
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("from_club_id", ForeignKey("club.id")),  # None: he was a free agent
+    Column("to_club_id", ForeignKey("club.id")),  # None: released into free agency
+    Column("date", Text, nullable=False),
+    Column("season_id", Integer, nullable=False),
+    Column("kind", Text, nullable=False),  # transfer | free | release | loan | loan_return
+    Column("fee_cents", Integer, nullable=False),
+    Column("wage_weekly_cents", Integer, nullable=False),
+    Column("contract_end", Text),
+    Column("by_user", Integer, nullable=False),  # 1 when the user's club made the move
+    Index("ix_transfer_player", "player_id"),
+    Index("ix_transfer_season", "season_id"),
+)
+
+transfer_offer = Table(
+    "transfer_offer",  # offers that outlive a click: bids for the user's players, and replies due
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("bidder_club_id", ForeignKey("club.id"), nullable=False),
+    Column("owner_club_id", ForeignKey("club.id")),  # None: a free agent
+    Column("kind", Text, nullable=False),  # transfer | loan
+    Column("status", Text, nullable=False),  # pending | accepted | rejected | countered | ...
+    Column("fee_cents", Integer, nullable=False),
+    Column("counter_fee_cents", Integer),
+    Column("wage_weekly_cents", Integer),
+    Column("years", SmallInteger),
+    Column("created", Text, nullable=False),
+    Column("expires", Text, nullable=False),
+    Column("by_user", Integer, nullable=False),
+    Index("ix_transfer_offer_owner", "owner_club_id", "status"),
+)
+
 club_finance = Table(
     "club_finance",
     metadata,

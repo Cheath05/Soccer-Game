@@ -16,7 +16,50 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W4-2, transfer windows per country** (the commit that adds this line; after the W4-1 commit).
+- **Latest checkpoint (7 Oct): W4-3, one owner per player and the move domain** (the commit that adds this line; after 46ec5fc).
+  - **Schema 11:**
+    - `transfer` (the history: from, to, kind transfer|free|release|loan|loan_return, fee, wage, contract end, by_user);
+    - `transfer_offer` (for W4-6);
+    - `contract.listed`;
+    - `player.value_premium`;
+    - **`ux_contract_owner`**, a partial unique index: at most one active non-loan contract per person.
+
+    `_to_v11` adds them idempotently. A doubled owner (none exist) keeps the latest contract. Careers under way get premiums from their game day.
+  - **`world/transfers.py`:** `validate_move` refuses, with a reason, before any write. `complete_move`:
+    1. ends the old contract;
+    2. starts the new one;
+    3. records the history;
+    4. moves the fee through the ledger (buyer −fee, seller +fee, `ref_id` = the transfer) and the budgets (buyer −fee, seller +`reinvest`×fee);
+    5. clears him from the seller's saved line-up;
+    6. returns the news.
+
+    **One set of rules for AI and user:**
+    - the buyer's country has a window open;
+    - the fee is within the transfer budget, and the wage within the wage budget and at least the minimum;
+    - the seller keeps 16 seniors (adult youth-contract players count, as in the squad trim) and its keepers;
+    - the buyer stays within `max_players`;
+    - a release has no fee;
+    - a free agent costs no fee.
+  - **`release_player`** (the API) now goes through the same function.
+  - **Market premiums:** each player's premium is 0.7 × his Transfermarkt residual, capped at ±1 (log), stored once. Values come out with it (`player_values`), so the stars keep recognisable prices: the top 60's median is within 25% of Transfermarkt's.
+  - **Checked:** no other contract write can break the index at rollover. Renewals extend in place, retirements and trims only end contracts, and youth intake creates new people.
+  - **Tests:**
+    - `test_transfers.py` (8): the move and its money and history, the database refusing a second owner, every refusal, squad and keeper floors, release → free agent → free signing, premiums, a fee-free deal, grown-up youngsters;
+    - `test_migrations` (v10 → v11, run twice);
+    - the release test;
+    - the full suite.
+  - **Saves:** copies of the three careers went through migrate to 11 → sim → save → reload, with no doubled owners, every player's premium set, the index present, balance = ledger, and the real files unchanged.
+  - **Review** (Sonnet, partial: its shell was unavailable): no blockers. Applied:
+    - the senior count matching the squad trim;
+    - a per-club wage-bill query;
+    - SQL filtering for value lookups;
+    - releases with a fee or wage refused;
+    - a minimum wage;
+    - the fee text at €1M.
+
+    **Noted for W4-8:** several squad queries (`lifecycle._players`, `squads._SQUAD_SQL`, `queries._overalls`, `finance.squad_strengths`) will need the one "club he plays for" helper once loans exist.
+  - **Next:** W4-4, the decision functions (asking price, bids, the player's answer, wage demand, contract length), then **W4-5, the AI market. That step is worth switching to Very High or Max:** it sets how the whole world's squads evolve.
+- **7 Oct: W4-2, transfer windows per country** (46ec5fc).
   - **Every country's calendar** now has approximate summer and winter windows: England, France, Belgium, Scotland and Turkey open in June; Spain, Italy, Germany, Portugal, the Netherlands and Saudi Arabia on 1 July.
   - **`world/windows.py`:**
     - `open_window` and `window_open(world, nation, season, day)` check the current season's calendar and the next one's, so England's June days (before the 1 July rollover) count;

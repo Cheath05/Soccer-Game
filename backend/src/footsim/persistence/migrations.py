@@ -103,9 +103,23 @@ def _to_v9(conn: Connection) -> None:
         record_season_start(conn, get_world(), meta.season_id, meta.current_date)
 
 
+def _to_v10(conn: Connection) -> None:
+    """Club finances (W3). A career already under way gets them from today, as if they began
+    now: each club's own income from its current wage bill, the budgets for the rest of this
+    season. A world that isn't a career yet gets them when a career starts."""
+    from footsim.world.context import get_world
+    from footsim.world.finance import initialize_finances
+    from footsim.world.meta import read_meta as read_career
+
+    metadata.create_all(conn)
+    if conn.execute(select(game_meta.c.key).where(game_meta.c.key == "user_club_id")).first():
+        meta = read_career(conn)
+        initialize_finances(conn, get_world(), meta, meta.current_date)
+
+
 # target version -> step that upgrades from the version before it
 STEPS: dict[int, Callable[[Connection], None]] = {
-    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9}
+    3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10}
 
 
 def migrate(engine: Engine) -> int:

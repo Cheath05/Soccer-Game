@@ -1,0 +1,57 @@
+# Club finances (W3: world/finance.py; docs/plans/w3-w4-finances-transfers.md). Money is EUR.
+#
+# A club's size is already in its wage bill, which the world build set from its players
+# (wage_levels.yaml): the average Premier League club pays about €100m a year, the average
+# League Two club about €2.4m. So a club's own income (commercial and matchday) is derived from
+# its wage bill once, when its finances are created; league income comes on top, by the league
+# it plays in each season. Nothing here is random.
+
+# League income per club per season (EUR), by competition key: an equal share (`base`), and
+# `merit`, which the champion gets in full and the last club none of (linear in between). Set
+# from the game's own wage scale, so a league's money matches what its clubs pay: a mid-table
+# club's league income is a share of its league's typical revenue (the mean wage bill / 0.6,
+# measured on a new career, 7 Oct): half in top flights, 0.35 in second tiers, 0.2 below; merit
+# is half of it in top flights and a fifth below. So promotion to the Premier League is worth
+# about €73m a season more, and to the Championship about €8m. A club in no played league gets
+# none.
+league_income:
+  ENG1: {base: 62_000_000, merit: 41_000_000}   # mean wage bill €99.5m
+  ENG2: {base: 9_000_000, merit: 2_000_000}     # €17.1m
+  ENG3: {base: 1_400_000, merit: 310_000}       # €4.7m
+  ENG4: {base: 720_000, merit: 160_000}         # €2.4m
+  ESP1: {base: 33_000_000, merit: 22_000_000}   # €52.9m
+  ESP2: {base: 3_600_000, merit: 800_000}       # €6.9m
+  ITA1: {base: 28_000_000, merit: 19_000_000}   # €45.0m
+  ITA2: {base: 3_600_000, merit: 800_000}       # €6.9m
+  GER1: {base: 37_000_000, merit: 25_000_000}   # €59.8m
+  GER2: {base: 7_400_000, merit: 1_600_000}     # €14.0m
+  GER3: {base: 1_200_000, merit: 260_000}       # €3.9m
+  FRA1: {base: 23_000_000, merit: 15_000_000}   # €37.1m
+  FRA2: {base: 3_100_000, merit: 700_000}       # €6.0m
+  POR1: {base: 7_500_000, merit: 5_000_000}     # €12.0m
+  NED1: {base: 8_600_000, merit: 5_700_000}     # €13.7m
+  SCO1: {base: 5_400_000, merit: 3_600_000}     # €8.7m
+  KSA1: {base: 35_000_000, merit: 23_000_000}   # €55.8m
+  TUR1: {base: 14_000_000, merit: 9_400_000}    # €22.6m
+  BEL1: {base: 7_900_000, merit: 5_200_000}     # €12.6m
+
+wage_ratio_start: 0.6     # a club's wage bill was this share of its revenue when its finances
+                          # began (its own income is derived from it)...
+club_income_floor: 0.1    # ...but its own income is at least this share of its league income
+wage_budget_ratio: 0.7    # the board lets the wage bill grow to this share of revenue
+operating_costs: 0.2      # everything else a club spends (staff, facilities, matchdays), as a
+                          # share of revenue: with wages at 0.6, a club keeps about a fifth of a
+                          # season's revenue before transfers
+starting_cash: 0.25       # opening balance, as a share of a season's revenue
+budget_share: 0.2         # the transfer budget at a season's start: this share of the season's
+cash_share: 0.4           # revenue, plus this share of the cash in hand (none while in debt)
+reinvest: 0.7             # share of a sale's fee added back to the transfer budget (W4)
+parachute: 0.5            # a relegated club gets this share of the league income it lost, once
+
+# The board (display only for now: no sackings). It expects the club to finish where its squad
+# ranks in its league, and its confidence moves each month with the club's position against
+# that: `per_place` points a place better or worse, at most `max_step` a month.
+board:
+  confidence_start: 60
+  per_place: 2.0
+  max_step: 8.0

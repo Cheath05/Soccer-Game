@@ -21,7 +21,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 9  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 10  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -330,6 +330,38 @@ player_season_overall = Table(
     # record part-way through a season (an upgraded save).
     Column("recorded_on", Text, nullable=False),
     PrimaryKeyConstraint("season_id", "player_id"),
+)
+
+# A club's money (W3, world/finance.py). The balance is the source of truth for cash and always
+# equals the sum of the club's ledger; the wage bill is never stored (it's the sum of the active
+# contracts).
+club_finance = Table(
+    "club_finance",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("balance_cents", Integer, nullable=False),
+    Column("club_income_cents", Integer, nullable=False),  # a season's commercial and matchday
+    Column("transfer_budget_cents", Integer, nullable=False),
+    Column("wage_budget_cents", Integer, nullable=False),  # a week's wages the board allows
+    Column("budget_season_id", Integer, nullable=False),  # the season the budgets were set for
+    Column("board_target", SmallInteger),  # the league position the board expects
+    Column("board_confidence", SmallInteger),  # 0-100
+    Column("settled_on", Text),  # the last monthly settlement (so a day is never paid twice)
+)
+
+# Every change to a club's balance, with what it was for: opening | broadcast | club_income |
+# wages | operating | prize | parachute | transfer | adjustment. Append-only.
+finance_ledger = Table(
+    "finance_ledger",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("date", Text, nullable=False),
+    Column("season_id", Integer, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("amount_cents", Integer, nullable=False),
+    Column("ref_id", Integer),  # what it refers to (a competition, a transfer)
+    Index("ix_finance_ledger_club", "club_id", "season_id"),
 )
 
 tactic = Table(

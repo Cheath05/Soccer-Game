@@ -16,7 +16,43 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (6 Oct): the engine review fixes**, a behaviour change measured on real squads ("Review of 2.3f, 2.4 and W1" below). The commit before it, ca2447e, holds the review's behaviour-neutral fixes.
+- **Latest checkpoint (7 Oct): W3-1, the finances foundation** (the commit that adds this line; it follows 4e1efc8). The design is `docs/plans/w3-w4-finances-transfers.md`, approved with the user's choices (currency a display setting, sim stops on bids, a basic board in W3, loans and expiring contracts in W4).
+  - **Schema 10:**
+    - `club_finance`: balance, own income, transfer and weekly wage budgets, the board's target and confidence;
+    - `finance_ledger`: append-only. **A club's balance is always the sum of its ledger** (`world/finance.post`).
+  - **`data/config/finance/finance.yaml`:**
+    - each league's income (base plus merit), derived from that league's own mean wage bill, so it's on the game's wage scale;
+    - the budget, cost and board parameters.
+  - **`world/finance.py`:**
+    - `initialize_finances` at career start, and in `_to_v10` for careers already under way (dated the save's game day);
+    - a club's own income is derived from its wage bill;
+    - an opening balance;
+    - `set_budgets`;
+    - the board's target: the club's rank by squad strength within its league.
+  - **Tests:**
+    - `test_finance.py` (new): ordering by league and by club, balance = ledger, budgets, targets, finances begin only once;
+    - two migration tests;
+    - `just lint` clean; the full backend suite passes.
+  - **The review** (a Sonnet reviewer) found no blockers. The fixes made:
+    - `post` refuses an unknown club or kind;
+    - finances begin "settled" on their first day, so a migrated save isn't billed for months before it;
+    - the loader rejects `league_income` for unknown leagues and checks the ratios are solvent;
+    - the tests re-run the v10 step, check whole cents and determinism, and test `post`.
+
+    The focused tests and lint pass after the fixes.
+  - **Noted for W3-2:** a club that first joins a league mid-career (a league the save activates later) must have its own income re-derived, or it would count its league income twice.
+  - **A sanity check on a new career:**
+
+    | League | Mean revenue | Mean wage budget |
+    |---|---|---|
+    | Premier League | €166m | €116m a year |
+    | League Two | €4.0m | €2.8m a year |
+
+    Their wage bills are €99.5m and €2.4m. Man City's transfer budget is €78m; Grimsby's is €1.2m.
+  - **Running alongside:** a Sonnet agent is fixing the user's 7 Oct UI requests (track B1: season summary promotions, notable "other news", season-start rating on the squad page, tactics name tags). It works only on its own files, and is reviewed and committed separately.
+  - **Next:** W3-2, the money moves (monthly settlement, merit, parachutes, budgets at rollover, the board's confidence). Then W3-3 (the API and pages), then W4-1 to W4-8, then the user's play-test.
+  - **Calibration:** none running. **Play-test:** nothing new to see in-game until W3-3.
+- **Before that (6 Oct): the engine review fixes**, a behaviour change measured on real squads ("Review of 2.3f, 2.4 and W1" below). The commit before it, ca2447e, holds the review's behaviour-neutral fixes.
   - **Since 1 Oct, in the approved order** ("The approved order (1 Oct)" below), each its own commit:
     - the plan: aea59dc;
     - 2.3f, attack against defence by rating: 8170f0e and 24265b2 (WIP), 77b4cd2;

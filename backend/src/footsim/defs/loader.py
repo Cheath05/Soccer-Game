@@ -17,7 +17,7 @@ from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
 from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
-from footsim.defs.finance import WageLevelsFile
+from footsim.defs.finance import FinanceDef, WageLevelsFile
 from footsim.defs.formations import FormationDef
 from footsim.defs.lifecycle import LifecycleDef
 from footsim.defs.match import (
@@ -59,6 +59,7 @@ class GameDefinitions:
     nations: dict[str, NationDef]
     world_build: WorldBuildRules
     wage_levels: WageLevelsFile
+    finance: FinanceDef
     quick_engine: QuickEngineParams
     instructions: dict[str, InstructionDef]
     presentation: PresentationDef
@@ -123,6 +124,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         nations={n.code: n for n in _parse(NationsFile, root / "nations.yaml").nations},
         world_build=_parse(WorldBuildRules, root / "world_build.yaml"),
         wage_levels=_parse(WageLevelsFile, root / "finance" / "wage_levels.yaml"),
+        finance=_parse(FinanceDef, root / "finance" / "finance.yaml"),
         quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
         instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
         presentation=_parse(PresentationDef, root / "match" / "presentation.yaml"),
@@ -203,6 +205,10 @@ def _cross_validate(defs: GameDefinitions) -> None:
             errors.append(f"quick_engine: unknown {key} levels {set(levels) - set(known.options)}")
 
     for league in defs.leagues.values():
+        if league.key not in defs.finance.league_income:
+            errors.append(f"league {league.key}: no league_income in finance/finance.yaml")
+    for key in sorted(set(defs.finance.league_income) - set(defs.leagues)):
+        errors.append(f"finance/finance.yaml: league_income for unknown league {key}")
         if league.nation not in defs.nations:
             errors.append(f"league {league.key}: unknown nation code {league.nation}")
         if league.calendar not in defs.calendars:

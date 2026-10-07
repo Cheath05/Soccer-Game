@@ -16,7 +16,7 @@ from footsim.persistence.database import (
     read_meta,
     write_meta,
 )
-from footsim.persistence.migrations import migrate
+from footsim.persistence.migrations import STEPS, migrate
 from footsim.persistence.schema import SCHEMA_VERSION
 
 
@@ -168,4 +168,59 @@ def test_version_8_starts_the_record_for_a_career_under_way(tmp_path: Path) -> N
                 "GROUP BY season_id, recorded_on")).all()
         assert [(r.season_id, r.recorded_on, r.n) for r in rows] == [(1, "2026-10-14", playing)]
         migrate(engine)
+    session.close()
+
+
+def test_version_9_gains_club_finances(tmp_path: Path) -> None:
+    """Saves from before club finances (W3) get their tables. A world that isn't a career yet
+    has no finances until a career begins."""
+    path = tmp_path / "v9.sqlite"
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE finance_ledger"))
+        conn.execute(text("DROP TABLE club_finance"))
+    write_meta(engine, {"schema_version": 9})
+    engine.dispose()
+    engine = open_database(path)
+    assert migrate(engine) == 9
+    assert migrate(engine) == SCHEMA_VERSION
+    with engine.connect() as conn:
+        tables = inspect(conn).get_table_names()
+        assert "club_finance" in tables and "finance_ledger" in tables
+        assert conn.execute(text("SELECT COUNT(*) FROM club_finance")).scalar_one() == 0
+    engine.dispose()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_9_starts_finances_for_a_career_under_way(tmp_path: Path) -> None:
+    """A career already under way gets every club's finances from the day it's upgraded, with
+    each balance its ledger, once."""
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        clubs: int = conn.execute(text("SELECT COUNT(*) FROM club")).scalar_one()
+        conn.execute(text("DROP TABLE finance_ledger"))
+        conn.execute(text("DROP TABLE club_finance"))
+        conn.execute(text("UPDATE game_meta SET value = '\"2026-10-14\"' "
+                          "WHERE key = 'game_date'"))
+    write_meta(engine, {"schema_version": 9})
+    assert migrate(engine) == 9
+    snapshots = []
+    for _ in range(2):  # and running the step again changes nothing
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT date, kind, COUNT(*) AS n FROM finance_ledger GROUP BY date, kind")).all()
+            assert [(r.date, r.kind, r.n) for r in rows] == [("2026-10-14", "opening", clubs)]
+            assert conn.execute(text(
+                "SELECT COUNT(*) FROM club_finance f JOIN (SELECT club_id, SUM(amount_cents) s "
+                "FROM finance_ledger GROUP BY club_id) l ON l.club_id = f.club_id "
+                "WHERE f.balance_cents = l.s AND f.budget_season_id = 1 "
+                "AND f.wage_budget_cents > 0 AND f.settled_on = '2026-10-14'")
+            ).scalar_one() == clubs
+            snapshots.append(conn.execute(text(
+                "SELECT * FROM club_finance ORDER BY club_id")).all())
+        with engine.begin() as conn:
+            STEPS[10](conn)
+    assert snapshots[0] == snapshots[1]
     session.close()

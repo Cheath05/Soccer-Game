@@ -16,6 +16,30 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **Latest checkpoint (7 Oct): W3-2, the money moves** (the commit that adds this line; after 59277c9).
+  - **On each 1st** (`after_day`, after development), `settle_month` runs once per day (`settled_on`). Every club gets its league's equal share ÷ 12, its own income ÷ 12, its wages (bill × 52 ÷ 12) and running costs (`operating_costs` × projected revenue ÷ 12).
+    - The user's club gets these itemised; every other club gets one net `month` row.
+    - Then the board's confidence moves: (target − position) × `per_place`, capped at `max_step`, once `min_played` league matches are played.
+  - **When a league ends** (`_finalize_league`), merit is paid by position, from the full `merit` for the champion falling linearly to none for the last club.
+  - **At rollover** (`start_season_finances`, after the fixtures):
+    - relegated clubs get `parachute` × the expected league income they lost, once;
+    - a club playing in a league for the first time (one the save only now starts) has its own income worked out again, so league income isn't counted twice;
+    - the board's confidence goes halfway back to 60;
+    - new budgets and targets are set.
+  - **Tests:**
+    - `test_finance.py`: a watched season and its rollover. It checks balance = ledger, 11 settlements in a 1 July career's first season, the exact merit shares, the parachute amounts and who gets them, the seasons and dates money is booked to, the budgets and targets for season 2, bounds on balances, the user's itemised month booked only once, and which way confidence moves (clamped);
+    - the whole-season cups test;
+    - `just lint` clean; the full backend suite passes.
+  - **Saves:** checked on copies of the user's three careers, a temporary folder each time:
+    - Grimsby (Sep 2026), Wrexham (Jan 2028) and Chelsea (Jul 2028) each went through migrate → load → sim past a 1st → save → reload, with balance = ledger every time and the real files unchanged;
+    - Chelsea's copy was then simulated through its rollover to 2029-30 (89 steps). The 15 leagues the save hadn't started joined, taking clubs in leagues from 92 to 368, and the joining clubs' own income was re-derived (e.g. La Liga: own income €88m → €39m, revenue €83m, so nothing is counted twice). Merit went to 88 clubs and parachutes to 10, with no ledger mismatches.
+  - **Review** (Sonnet): no blockers. Applied:
+    - `min_played` moved to YAML;
+    - one rounding rule for confidence;
+    - the extra tests above.
+
+    Its economic findings are now W4 requirements in the design doc ("What W3 leaves for W4"): relegated big clubs bleed about €30m a season, promoted clubs get a windfall, and clubs outside the leagues keep accumulating cash. A typical club nets about +20% of its revenue a season, and W4's market is the sink.
+  - **Next:** W3-3, the finances API and pages, real figures on the club page, the currency setting and the sandbox budget.
 - **7 Oct: B1, the user's UI requests, part 1** (a Sonnet agent's work, reviewed here; the commit that adds this line, after cbee86e):
   - **Season summary:**
     - the automatic promotions were always in the data, but the "Promoted" section was collapsed, and play-off winners were listed under Champions;
@@ -26,7 +50,7 @@
   - **Tactics:** each name tag is as wide as the gap to its nearest neighbour (44–84 px), so centre-back pairs and front twos don't clash.
   - **Tests:** `test_season_views.py` (honours, headlines, the squad's start overall), `npm run build` and lint, and the full backend suite (with W3-2 in the tree) pass. Checked in a browser on :8765 (4-4-2, 5-3-2, 3-5-2).
   - **B2, the match viewer** (goal timing and animation, a modern look, a more visible ball), is with a Sonnet agent.
-- **Latest checkpoint (7 Oct): W3-1, the finances foundation** (cbee86e, after 4e1efc8). The design is `docs/plans/w3-w4-finances-transfers.md`, approved with the user's choices (currency a display setting, sim stops on bids, a basic board in W3, loans and expiring contracts in W4).
+- **7 Oct: W3-1, the finances foundation** (cbee86e, after 4e1efc8). The design is `docs/plans/w3-w4-finances-transfers.md`, approved with the user's choices (currency a display setting, sim stops on bids, a basic board in W3, loans and expiring contracts in W4).
   - **Schema 10:**
     - `club_finance`: balance, own income, transfer and weekly wage budgets, the board's target and confidence;
     - `finance_ledger`: append-only. **A club's balance is always the sum of its ledger** (`world/finance.post`).

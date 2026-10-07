@@ -50,6 +50,7 @@ class BoardRules(DefModel):
     confidence_start: int = Field(ge=0, le=100)
     per_place: float = Field(ge=0)
     max_step: float = Field(ge=0)
+    min_played: int = Field(ge=0)  # league matches before the board judges the position
 
 
 class FinanceDef(DefModel):

@@ -38,7 +38,7 @@ Installments, add-ons, sell-ons, buy-backs, agents, persisted multi-day haggling
   - `budget_season_id`;
   - the board's `board_target` (a league position) and `board_confidence` (0–100).
 - **`finance_ledger`**, append-only: `(id, club_id, date, season_id, kind, amount_cents, ref_id)`.
-  - `kind` is opening, broadcast, club_income, wages, operating, prize, parachute, transfer, or adjustment.
+  - `kind` is opening, broadcast, club_income, wages, operating, month (an AI club's net month, one row), prize, parachute, transfer, or adjustment. The user's club gets its month itemised; every other club gets one `month` row.
   - **Invariant:** a club's balance is always the sum of its ledger. The opening balance is a ledger row, and every balance change writes its row in the same statement group.
 - **The wage bill is never stored:** it's always the sum of the active contracts.
 
@@ -85,6 +85,20 @@ Installments, add-ons, sell-ons, buy-backs, agents, persisted multi-day haggling
    - A Finances page, a dashboard card, and the currency display setting.
    - The sandbox budget at career start.
    - **Tests:** the API, plus the e2e smoke run.
+
+### What W3 leaves for W4 to absorb
+
+From the W3-2 review, which put `finance.yaml` against the base world's wage bills. Each season a typical club nets about +20% of its revenue. W4's market is the sink.
+
+- **Relegated big clubs bleed.**
+  - A Premier League club with a €56–92m bill loses €27–39m a season in the Championship. Its parachute is €36m, once.
+  - W4 must react:
+    - the wage budget drives shedding: sales, and letting contracts run down;
+    - no transfer budget while in debt (`set_budgets` does this already);
+    - possibly an owner injection (ledger kind `adjustment`) as a last resort.
+- **Promoted clubs get a windfall,** because their wages don't rise. A promoted Championship club with a €10–28m bill nets about +€61–67m a year in the Premier League. Yo-yo clubs keep accumulating. W4's buying and the higher wages its signings demand must spend that.
+- **Clubs outside the 19 leagues** (302 in the base world) net +20% of their own revenue a year. The AI market must include them as buyers and sellers, or their cash just piles up.
+- **The board's target** is set on 1 July. Decide whether a window's transfers refresh it.
 
 ## W4: transfers
 

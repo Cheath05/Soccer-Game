@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import date
 
 import numpy as np
-from sqlalchemy import Connection, select, text
+from sqlalchemy import Connection, or_, select, text, update
 
 from footsim.persistence.schema import club, club_finance, finance_ledger
 from footsim.world.context import World
@@ -97,10 +97,7 @@ def initialize_finances(conn: Connection, world: World, meta: CareerMeta, day: d
         if club_id in existing:
             continue
         key = leagues[club_id][0] if club_id in leagues else None
-        league = rules.league_income.get(key) if key else None
-        expected = league.expected * 100 if league else 0.0
-        own = bills.get(club_id, 0) * 52 / rules.wage_ratio_start - expected
-        club_income = round(max(own, rules.club_income_floor * expected, 0.0))
+        club_income = _own_income(world, key, bills.get(club_id, 0))
         revenue = projected_revenue_cents(world, key, club_income)
         new_rows.append({"club_id": club_id, "balance_cents": 0, "club_income_cents": club_income,
                          "transfer_budget_cents": 0, "wage_budget_cents": 0,
@@ -113,6 +110,136 @@ def initialize_finances(conn: Connection, world: World, meta: CareerMeta, day: d
     conn.execute(club_finance.insert(), new_rows)
     post(conn, day, meta.season_id, opening)
     set_budgets(conn, world, meta.season_id, {r["club_id"] for r in new_rows})
+
+
+def _own_income(world: World, league_key: str | None, weekly_bill_cents: int) -> int:
+    """A club's own yearly income (commercial and matchday): what its wage bill says it earns,
+    less the league income it gets anyway (a club's size is already in what it pays)."""
+    rules = world.defs.finance
+    league = rules.league_income.get(league_key) if league_key else None
+    expected = league.expected * 100 if league else 0.0
+    own = weekly_bill_cents * 52 / rules.wage_ratio_start - expected
+    return round(max(own, rules.club_income_floor * expected, 0.0))
+
+
+def settle_month(conn: Connection, world: World, meta: CareerMeta, day: date,
+                 positions: dict[int, tuple[int, int]]) -> None:
+    """The first of each month, once: every club's month of league income (its equal share;
+    merit comes when the league ends), its own income, its wages and its running costs. The
+    user's club gets them itemised for its finances page, every other club one net row, which
+    keeps a long career's save small. Then the board's confidence moves with the league table
+    (``positions``: club -> (position, league matches played)).
+
+    Finances begin settled on their first day (the opening balance covers that month), so a
+    career that starts on 1 July has 11 settlements in its first season and 12 after."""
+    rules = world.defs.finance
+    due_clause = or_(club_finance.c.settled_on.is_(None),
+                     club_finance.c.settled_on < day.isoformat())
+    due = conn.execute(select(club_finance).where(due_clause).order_by(club_finance.c.club_id)
+                       ).all()
+    if not due:
+        return
+    bills = wage_bills(conn)
+    leagues = club_leagues(conn, meta.season_id)
+    entries = []
+    for r in due:
+        key = leagues[r.club_id][0] if r.club_id in leagues else None
+        league = rules.league_income.get(key) if key else None
+        broadcast = round(league.base * 100 / 12) if league else 0
+        own = round(r.club_income_cents / 12)
+        wages = round(bills.get(r.club_id, 0) * 52 / 12)
+        operating = round(rules.operating_costs
+                          * projected_revenue_cents(world, key, r.club_income_cents) / 12)
+        if r.club_id == meta.user_club_id:
+            entries += [Entry(r.club_id, "broadcast", broadcast),
+                        Entry(r.club_id, "club_income", own),
+                        Entry(r.club_id, "wages", -wages),
+                        Entry(r.club_id, "operating", -operating)]
+        else:
+            entries.append(Entry(r.club_id, "month", broadcast + own - wages - operating))
+    post(conn, day, meta.season_id, entries)
+    conn.execute(update(club_finance).where(due_clause).values(settled_on=day.isoformat()))
+    _move_confidence(conn, world, positions)
+
+
+def _move_confidence(conn: Connection, world: World,
+                     positions: dict[int, tuple[int, int]]) -> None:
+    """The board's confidence after a month: up while the club is above its target, down while
+    below, once it has played a few league matches."""
+    rules = world.defs.finance.board
+    updates = []
+    for r in conn.execute(select(club_finance.c.club_id, club_finance.c.board_target,
+                                 club_finance.c.board_confidence)):
+        if r.board_target is None or r.board_confidence is None or r.club_id not in positions:
+            continue
+        position, played = positions[r.club_id]
+        if played < rules.min_played:
+            continue
+        step = max(-rules.max_step,
+                   min(rules.max_step, (r.board_target - position) * rules.per_place))
+        updates.append({"club": r.club_id,
+                        "confidence": round(max(0.0, min(100.0, r.board_confidence + step)))})
+    if updates:
+        conn.execute(text("UPDATE club_finance SET board_confidence = :confidence "
+                          "WHERE club_id = :club"), updates)
+
+
+def _halfway(confidence: int | None, start: int) -> int:
+    """Halfway back to ``start``, rounding towards it (so it always gets there in the end)."""
+    if confidence is None:
+        return start
+    return start + int((confidence - start) / 2)
+
+
+def pay_merit(conn: Connection, world: World, meta: CareerMeta, league_key: str,
+              competition_id: int, finishers: list[tuple[int, int]], day: date) -> None:
+    """A league's merit payments when it ends, by final position (``finishers``: (position,
+    club)): the full merit for the champion, falling linearly to none for the last club."""
+    league = world.defs.finance.league_income.get(league_key)
+    if league is None or not finishers:
+        return
+    size = len(finishers)
+    post(conn, day, meta.season_id, [
+        Entry(club_id, "prize", round((league.for_position(position, size) - league.base) * 100),
+              competition_id) for position, club_id in sorted(finishers)])
+
+
+def start_season_finances(conn: Connection, world: World, meta: CareerMeta, old_season: int,
+                          day: date) -> None:
+    """A new season's money, once promotion and relegation are done (``meta.season_id`` is the
+    new season):
+    - a club that dropped to a poorer league gets a share of the league income it lost, once;
+    - a club playing in a league for the first time (one the save has just started) has its own
+      income worked out again, so it doesn't count its new league income twice;
+    - the board's confidence goes halfway back to neutral;
+    - every club's budgets and the board's targets are set for the season."""
+    rules = world.defs.finance
+    before = club_leagues(conn, old_season)
+    after = club_leagues(conn, meta.season_id)
+    parachutes = []
+    for club_id, (old_key, _) in sorted(before.items()):
+        old_income = rules.league_income.get(old_key)
+        new_key = after[club_id][0] if club_id in after else None
+        new_income = rules.league_income.get(new_key) if new_key else None
+        lost = ((old_income.expected if old_income else 0.0)
+                - (new_income.expected if new_income else 0.0))
+        if lost > 0:
+            parachutes.append(Entry(club_id, "parachute", round(rules.parachute * lost * 100)))
+    post(conn, day, meta.season_id, parachutes)
+    newcomers = sorted(set(after) - set(before))
+    if newcomers:
+        bills = wage_bills(conn)
+        conn.execute(text("UPDATE club_finance SET club_income_cents = :income "
+                          "WHERE club_id = :club"),
+                     [{"club": c, "income": _own_income(world, after[c][0], bills.get(c, 0))}
+                      for c in newcomers])
+    start = rules.board.confidence_start
+    conn.execute(text("UPDATE club_finance SET board_confidence = :confidence "
+                      "WHERE club_id = :club"),
+                 [{"club": r.club_id, "confidence": _halfway(r.board_confidence, start)}
+                  for r in conn.execute(select(club_finance.c.club_id,
+                                               club_finance.c.board_confidence))])
+    set_budgets(conn, world, meta.season_id)
 
 
 def set_budgets(conn: Connection, world: World, season_id: int,

@@ -35,6 +35,7 @@ from footsim.persistence.schema import (
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
+from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.lifecycle import season_turnover
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import record_season_start
@@ -169,24 +170,35 @@ def _finalized(conn: Connection, competition_id: int, season_id: int) -> bool:
 
 def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
     """Close finished leagues, start and advance play-offs, and on the first of each month let
-    players develop. Returns news messages."""
+    players develop and settle every club's month of money. Returns news messages."""
     messages: list[str] = []
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
+        settle_month(conn, world, meta, day, _league_positions(conn, world, meta))
     messages += progress_cups(conn, world, meta, day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
         if not _finalized(conn, cid, meta.season_id):
             if _scheduled(conn, cid, meta.season_id, "league") == 0:
-                messages += _finalize_league(conn, world, meta, cid, league)
+                messages += _finalize_league(conn, world, meta, cid, league, day)
             continue
         for playoff in league.playoffs:
             messages += _progress_playoff(conn, world, meta, cid, league, playoff)
     return messages
 
 
+def _league_positions(conn: Connection, world: World,
+                      meta: CareerMeta) -> dict[int, tuple[int, int]]:
+    """Every league club's place this season, and its league matches played."""
+    result: dict[int, tuple[int, int]] = {}
+    for active in active_leagues(conn, world):
+        for row in standings(conn, world, meta, active.competition_id, meta.season_id):
+            result[row.club_id] = (row.position, row.played)
+    return result
+
+
 def _finalize_league(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
-                     league: LeagueDef) -> list[str]:
+                     league: LeagueDef, day: date) -> list[str]:
     table = standings(conn, world, meta, competition_id, meta.season_id)
     outcome: dict[int, str] = {}
     for mv in league.movements:
@@ -204,6 +216,8 @@ def _finalize_league(conn: Connection, world: World, meta: CareerMeta, competiti
          "points": row.points, "outcome": outcome.get(row.position)}
         for row in table
     ])
+    pay_merit(conn, world, meta, league.key, competition_id,
+              [(row.position, row.club_id) for row in table], day)
     champion = club_name(conn, table[0].club_id)
     messages = [f"{champion} are {league.name} champions."]
     ranks = {row.position: row.club_id for row in table}
@@ -383,6 +397,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     meta.season_id = new
     refresh_ai_tactics(conn, world, meta, calendar.season_start)
     messages += create_season_fixtures(conn, world, meta, new)
+    start_season_finances(conn, world, meta, old, calendar.season_start)
     messages.insert(0, f"The {calendar.season} season begins.")
     return messages
 

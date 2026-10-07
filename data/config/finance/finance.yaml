@@ -50,8 +50,10 @@ parachute: 0.5            # a relegated club gets this share of the league incom
 
 # The board (display only for now: no sackings). It expects the club to finish where its squad
 # ranks in its league, and its confidence moves each month with the club's position against
-# that: `per_place` points a place better or worse, at most `max_step` a month.
+# that: `per_place` points a place better or worse, at most `max_step` a month, once the club
+# has played `min_played` league matches. Each new season it goes halfway back to the start.
 board:
   confidence_start: 60
   per_place: 2.0
   max_step: 8.0
+  min_played: 3

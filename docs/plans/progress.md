@@ -924,6 +924,47 @@ The user allowed agents for work that doesn't need the CPU. A reviewer read the 
     - The volume is still about 1.6 times real: once inside the box, a possession still ends in a shot 70% of the time.
     - The final-third block is very short (19 m): the lines close up, but nobody closes the man on the ball.
     - **Next is D6, engagement:** pressure on the ball carrier in and around the box, cover, the take-on duel (82% success against about half), and markers staying on their man in the box.
+- [x] **D6, turnovers at real rates** (43675a4, 7 Oct).
+  - **Real references measured first** (StatsBomb Premier League 2015/16, 380 matches, `scratchpad/sb_possessions.py` and `sb_defense.py`):
+    - 18.5 open-play possessions per team reach the box, and 38% of those end in a shot;
+    - 95 possessions per team;
+    - take-ons: 32 a match, 61% succeed;
+    - per team: 11.7 interceptions, 20.3 tackles (60% won), 28.5 clearances (14.7 in their own box), 19.5 blocks.
+  - **The diagnosis** (`scratchpad/box_diag2.py`):
+    - an attack that reached the box kept the ball for a median 28 s;
+    - the defence made about 1.5 duels a match in its own box;
+    - possessions averaged about 47 s against a real ~18 s.
+
+    The ball rarely changed hands, so every possession had time to make a chance.
+  - **The changes, each calibrated to a real rate:**
+    - **take-ons:** the defender's edge in the duel 1.75 (was −0.25, 86% success), with carriers' appetite 1.0 (was 0.35) so they still try as often as real ones;
+    - **interceptions:** `intercept_scale` 0.3 (was 0.2);
+    - **first-time clearances:** a defender reaching the ball in his danger zone under pressure clears it (`defending.yaml clearances`). These are starting values: most real clearances are crosses headed away, and the engine plays a third of the real crosses.
+  - **Measured** (200 per division, seed 21, `reports/engine/d6/`; League Two re-run on 3 workers after the Mac swapped at load 40):
+
+    | | PL D2 | PL D6 | L2 D2 | L2 D6 | Real (PL / EFL) |
+    |---|---|---|---|---|---|
+    | Goals | 4.63 | **2.85** | 3.71 | **2.48** | 2.65–3.05 / 2.45–2.85 |
+    | Shots | 41.6 | **27.4** | 30.6 | **20.0** | 23–27.5 / 22–26 |
+    | Shots on target | 12.2 | 7.8 | 8.3 | 5.3 | |
+    | xG per shot | .095 | .087 | .103 | .097 | .09–.12 |
+    | Shots from outside the box | .415 | .481 | .322 | .399 | .30–.42 |
+    | Box entries per team | 29.1 | 21.6 | 22.8 | 16.4 | 18.5 (PL 15/16) |
+    | Shots per box entry | .71 | .62 | .67 | .61 | .38 |
+    | Take-on success | .82 | **.65** | .83 | **.63** | .61 |
+    | Interceptions | 16.6 | **24.5** | 17.5 | **25.0** | 23 (PL 15/16) |
+    | Fouls / yellows | 23.8 / 4.2 | 20.0 / 3.9 | 18.2 / 3.3 | 15.5 / 2.7 | 20–24 / 3.4–4.3 |
+    | Ball in play (min) | 61.4 | 66.9 | 70.5 | 74.2 | 54–60 |
+    | Home / draw / away | .40 .21 .39 | .325 .34 .335 | .415 .235 .35 | .365 .34 .295 | .41–.47 / .22–.29 |
+
+  - **Reading:** goals are in range in both divisions, and shots in the Premier League (League Two a little under).
+  - **Still off:**
+    - **home wins too few and draws too many:** with real scoring, the provisional home-advantage values show. That's step 2.1's fit;
+    - **League Two's fouls and yellows a little low** (fewer duels now);
+    - **ball in play too long;**
+    - **corners and penalties low:** fewer crosses and blocked shots;
+    - **shots per box entry still high;**
+    - **fast breaks 2% of shots** (real 5–10%). That's Phase E.
   - **Still open for D6:**
     - shots per box entry .69–.72;
     - take-ons succeeding about 82% (real 45–60%), mostly against whoever is nearest;

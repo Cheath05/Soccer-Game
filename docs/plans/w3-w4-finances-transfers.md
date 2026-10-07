@@ -246,6 +246,23 @@ All numbers live in `data/config/transfers/market.yaml`. The functions are in `t
   - no squad shortages after a window;
   - money flows down the leagues.
 
+### Reputation that moves (proposed 8 Oct, after W4-5)
+
+Today a club's reputation (1–99) is set once, at the world build: 10 + 2.8 × (the mean overall of its best 18 − 55). It never changes.
+
+Since W4 it matters more:
+- it is the market level in every player's value;
+- it decides which players will come;
+- it sets the size and quality of youth intake;
+- it seeds the cups.
+
+**Proposal:**
+- At each rollover, reputation moves `reputation_drift` (about 0.25) of the way towards a target, plus small one-off steps for honours.
+- The target is the same build formula on the club's squad now, blended with its league's standing (the mean reputation of the league's clubs).
+- So a club that builds a better squad and climbs gains stature over a few seasons, and a club that sells its best players and drops loses it, without one good season making a giant.
+
+Its numbers would go in YAML, with a test that reputation follows a sustained change of squad and division.
+
 ### The user (W4-6)
 
 - **API:**

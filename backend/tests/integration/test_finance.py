@@ -296,16 +296,23 @@ def test_the_new_season_has_budgets_targets_and_a_calmer_board(season: Engine) -
 
 
 def test_no_balance_explodes_or_collapses_in_a_season(season: Engine) -> None:
+    """The recurring money (income, wages, costs, prizes) keeps every balance in bounds. Fees
+    are left out: a club that sells well can bank several years' revenue (the market's own
+    tests cover transfers)."""
     world = get_world()
     with season.connect() as conn:
         leagues = club_leagues(conn, 1)
         rows = conn.execute(select(club_finance)).all()
+        fees = dict(conn.execute(text(
+            "SELECT club_id, SUM(amount_cents) FROM finance_ledger WHERE kind = 'transfer' "
+            "GROUP BY club_id")).all())
     for r in rows:
         key = leagues[r.club_id][0] if r.club_id in leagues else None
         revenue = projected_revenue_cents(world, key, r.club_income_cents)
         if revenue == 0:
             continue
-        assert -0.25 * revenue < r.balance_cents < 1.5 * revenue, (r.club_id, key)
+        recurring = r.balance_cents - fees.get(r.club_id, 0)
+        assert -0.25 * revenue < recurring < 1.5 * revenue, (r.club_id, key)
 
 
 def test_the_users_club_gets_its_month_itemised_and_only_once(season: Engine) -> None:

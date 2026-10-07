@@ -16,7 +16,32 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (8 Oct): W4-4, the market's decisions** (the commit that adds this line; after 2a573e2).
+- **Latest checkpoint (8 Oct): W4-5, the AI transfer market** (the commit that adds this line; after 916d512).
+  - **`world/market.py`**, run from `after_day` at most once a day in any open window.
+    - Every club but the user's trades in its own country's window: every 4 days on its own phase, and with a 50% chance each day of the last week.
+    - **Needs** come from a greedy fit of the squad to its formation, using familiarity (≥15). They are: short, upgrade, depth, succession, and **improve** (a club with money improves its weakest starter).
+    - **Candidates** come from one numpy snapshot a day, with ratings and positions cached for the month. The best affordable 4 per need are tried: the seller's answer, then the player's (`decisions.py`), then `complete_move`.
+    - On its first look a club lists its surplus, its old non-starters and (in trouble) its best-paid spare players.
+    - The user's club and players are left out until W4-6 (bids as offers).
+  - **`footsim market-report`** (`calibration/market_report.py`): a watch-only career through a window. It reports deals by league, top deals, ages, fee bands, squads before and after, money, free agents, total value, and the invariants.
+  - **Measured** (`docs/calibration/market.md`, 4 runs). The prices were retuned (a starter at 1.25× value, a key player at 1.5×; a buyer goes to 1.45×, +0.35 when urgent), and the **board's budget share is 35% of revenue** (was 20%). That makes the market the sink for W3's 20% margin, and stars affordable.
+    - **v4's summer:** 1,534 deals, €5.9B in fees, 10 deals over €50M (the biggest Valverde to Man City for €109M), and 2.0 Premier League signings a club.
+    - **Money flows:** the Premier League, the Bundesliga and Saudi Arabia buy; Portugal, the Netherlands and the outside clubs sell.
+    - **Health:** no squad fell below the floors, total value is flat, and 21 s for the window.
+  - **Tests:**
+    - `test_market.py`: trading happens, the invariants hold (one owner, fees paid exactly once and summing to zero, no negative budget, no player moved twice, sellers keep 16), the market runs once a day, and the same career trades identically.
+    - `test_cups_season` and `test_finance`'s balance bounds were adjusted for the market (news on window days; transfer money left out of the recurring-money bounds).
+    - The full suite passes in the measurement worktree (HEAD + W4-5), except `test_importers`, which that worktree's old environment can't load (`rapidfuzz`); the main tree's full run waits for the agents' work.
+  - **Proposed** (the design doc): reputation that moves with the squad and the division each season. Today it's frozen at the world build.
+  - **The user's UI requests** of 8 Oct are specified for agents in `docs/plans/ui-requests-8oct.md` (U1: squad, player navigation, tactics clarity, drag and drop, bench and reserves, in-match subs on a pitch; U2: club search, sim to the next cup match, competition names in results, the big five first, real Italian club names). Launch them after F is committed.
+  - **Next:**
+    1. Review and commit F (W3-4) and D (development) when they report.
+    2. Launch U1, then U2.
+    3. W4-6, the user's transfers (search, offers, bids for the user's players stopping sim-to-date), at Opus High.
+    4. W4-7, renewals.
+    5. W4-8, loans.
+    6. A multi-season `market-report` to check free agents, winter windows and relegated clubs shedding wages.
+- **8 Oct: W4-4, the market's decisions** (916d512, after 2a573e2).
   - **`transfers/decisions.py`**, pure functions:
     - a player's role at his club (key, starter, rotation, surplus, from his rank in his position group against the formation's demand);
     - the asking price (value × role × contract time left × listed × in debt, quoted in market steps);

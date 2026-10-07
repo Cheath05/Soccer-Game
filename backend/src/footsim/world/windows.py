@@ -23,11 +23,22 @@ def _base_calendar(world: World, nation: str) -> SeasonCalendarDef:
     return by_nation.get(nation) or by_nation[world.defs.market.default_window_nation]
 
 
+_SHIFTED: dict[tuple[str, int], SeasonCalendarDef] = {}
+
+
+def _season_calendar(base: SeasonCalendarDef, season_id: int) -> SeasonCalendarDef:
+    """``shifted_calendar``, kept: the market asks every day of a window."""
+    key = (base.key, season_id)
+    if key not in _SHIFTED:
+        _SHIFTED[key] = shifted_calendar(base, season_id - 1)
+    return _SHIFTED[key]
+
+
 def open_window(world: World, nation: str, season_id: int, day: date) -> DateRange | None:
     """The window open for ``nation`` on ``day`` in season ``season_id``, if any."""
     base = _base_calendar(world, nation)
     for season in (season_id, season_id + 1):
-        calendar = shifted_calendar(base, season - 1)
+        calendar = _season_calendar(base, season)
         for window in calendar.transfer_windows:
             if window.contains(day):
                 return window

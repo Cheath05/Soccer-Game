@@ -131,5 +131,8 @@ def test_a_save_from_before_the_cups_starts_them_if_their_first_round_is_ahead(
         assert drawn == sum(cup.sizes(sizes)[0][1] for cup in world.defs.cups.values())
         assert conn.execute(text(f"SELECT COUNT(*) FROM fixture WHERE stage IN ({stages})")
                             ).scalar_one() > 0
-        assert after_day(conn, world, meta, meta.current_date) == messages == []  # once only
+        # The day's only news is the AI transfer market's (its window is open): starting the
+        # cups makes none, and running the day again adds nothing.
+        assert all(" joins " in m for m in messages)
+        assert after_day(conn, world, meta, meta.current_date) == []  # once only
     engine.dispose()

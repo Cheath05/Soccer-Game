@@ -34,11 +34,15 @@ class MarketDef(DefModel):
     max_in_winter: int = Field(ge=0)
     max_out: int = Field(ge=0)
     needs_per_day: int = Field(ge=1)
+    moved_rest_days: int = Field(ge=0)
+    max_news: int = Field(ge=0)
+    news_fee: float = Field(ge=0)
     candidates_per_need: int = Field(ge=1)
     depth_per_slot: int = Field(ge=1)
     keepers_wanted: int = Field(ge=1)
     squad_max: int = Field(ge=11)
     weak_gap: float = Field(ge=0)
+    improve_urgency: float = Field(ge=0, le=1)
     min_improvement: float = Field(ge=0)
     upgrade_band: tuple[float, float]
     depth_band: tuple[float, float]

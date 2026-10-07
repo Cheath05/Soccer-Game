@@ -19,6 +19,9 @@ max_in_summer: 5            # signings a club makes in a summer window, at most
 max_in_winter: 2            # ... in a winter one
 max_out: 5                  # sales a club makes in a window, at most
 needs_per_day: 2            # needs a club works on in one market day
+moved_rest_days: 60         # a player who has just moved isn't sold on within this many days
+max_news: 8                 # deals a day that make the news (the biggest, and the user's league's)
+news_fee: 20000000          # a fee this big always makes the news
 candidates_per_need: 4      # players it tries for one need, best first
 
 # --- squad shape ---
@@ -26,6 +29,7 @@ depth_per_slot: 2           # players a club wants in a position group per forma
 keepers_wanted: 3
 squad_max: 28               # seniors above this: the surplus is listed
 weak_gap: 3                 # a starter this far below his club's level is a weak spot
+improve_urgency: 0.2        # with nothing missing, a club with money improves its weakest starter
 min_improvement: 2          # an upgrade beats the starter he'd replace by this much
 upgrade_band: [0, 6]        # an upgrade's overall, relative to the club's level
 depth_band: [-8, -2]        # cover's overall, relative to the club's level
@@ -34,19 +38,22 @@ key_margin: 3               # a starter this far above his club's level is a key
 reach: 12                   # an unlisted player at a club this much bigger (reputation) won't come
 
 # --- prices ---
-role_multiplier: {key: 1.8, starter: 1.4, rotation: 1.1, surplus: 0.85}
+# A normal buyer meets a starter's price (1.25 x 1.1 < 1.45); a key player's (1.6 x 1.1) takes an
+# urgent need. (v1, 8 Oct: starters at 1.4 x 1.15 were beyond every buyer's 1.3, so only spare
+# players ever moved.)
+role_multiplier: {key: 1.5, starter: 1.25, rotation: 1.05, surplus: 0.85}
 contract_multiplier:        # (years left under, multiplier of value)
   - [1, 0.6]
   - [2, 0.85]
   - [3, 1.0]
-  - [99, 1.15]
+  - [99, 1.1]
 listed_multiplier: 0.8
 distressed_multiplier: 0.85 # a club in debt asks less
 counter_from: 0.75          # a bid at least this share of the asking price gets a counter at it
 bid_eagerness: [0.85, 1.05] # a buyer's opening bid, as a share of value (keyed draw)
-max_premium: 1.3            # a buyer pays up to this many times the value ...
-urgent_premium: 0.3         # ... plus this much more for an urgent need
-max_deal_share: 0.6         # of its budget a club spends on one signing, at most
+max_premium: 1.45           # a buyer pays up to this many times the value ...
+urgent_premium: 0.35        # ... plus this much more for an urgent need
+max_deal_share: 0.8         # of its budget a club spends on one signing, at most
 
 # --- wages and contracts ---
 move_raise: 1.15            # a player moving wants this many times his wage, at least ...

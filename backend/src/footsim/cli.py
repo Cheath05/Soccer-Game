@@ -104,6 +104,19 @@ def _fit_values(args: argparse.Namespace) -> int:
     return 0
 
 
+def _market_report(args: argparse.Namespace) -> int:
+    from datetime import date
+
+    from footsim.calibration.market_report import market_report
+    from footsim.world.context import get_world
+
+    report = market_report(args.world, get_world(), args.seed, date.fromisoformat(args.until))
+    print(report)
+    if args.out:
+        args.out.write_text(report + "\n")
+    return 0
+
+
 def _cross_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.cross_engine import compare_engines
     from footsim.world.context import get_world
@@ -256,6 +269,14 @@ def main(argv: list[str] | None = None) -> int:
     values.add_argument("--day", default="2026-07-01", help="the date the values are from")
     values.add_argument("--write", action="store_true", help="write valuation.yaml")
     values.set_defaults(func=_fit_values)
+
+    market = sub.add_parser("market-report",
+                            help="run a watch-only career through the market and report it")
+    market.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    market.add_argument("--seed", type=int, default=5)
+    market.add_argument("--until", default="2026-09-03", help="simulate up to this day")
+    market.add_argument("--out", type=Path, help="also write the report here")
+    market.set_defaults(func=_market_report)
 
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))

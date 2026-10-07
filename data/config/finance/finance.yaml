@@ -43,7 +43,9 @@ operating_costs: 0.2      # everything else a club spends (staff, facilities, ma
                           # share of revenue: with wages at 0.6, a club keeps about a fifth of a
                           # season's revenue before transfers
 starting_cash: 0.25       # opening balance, as a share of a season's revenue
-budget_share: 0.2         # the transfer budget at a season's start: this share of the season's
+# budget_share was 0.2 before the AI market (W4-5): 0.35 makes the market the sink for
+# clubs' yearly surplus and stars affordable (docs/calibration/market.md).
+budget_share: 0.35        # the transfer budget at a season's start: this share of the season's
 cash_share: 0.4           # revenue, plus this share of the cash in hand (none while in debt)
 reinvest: 0.7             # share of a sale's fee added back to the transfer budget (W4)
 parachute: 0.5            # a relegated club gets this share of the league income it lost, once

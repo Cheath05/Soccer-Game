@@ -16,7 +16,17 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (7 Oct): W3-3, what the user sees of the money** (the commit that adds this line; after af58faf). **W3 is complete.**
+- **Latest checkpoint (7 Oct): W4-1, the market-value model** (the commit that adds this line; after f1fa0cf).
+  - **`footsim fit-values [--write]`** fits log(value) on the base world's Transfermarkt values (12,390 players) and writes `data/config/transfers/valuation.yaml`. The terms are overall (with a knee at 85), age to the day (youth, decline from 27 and from 31), a young-star premium, goalkeeper, and club reputation as the market level. R² is 0.741, the residual sd 0.788 (log), and it's unbiased by overall band (−0.07 at 86+).
+  - **Every value shown** (squad, player, club pages) now comes from the model, computed on demand, so it moves with development, age and moves. A free agent is priced at his own reputation. The static Transfermarkt values and `estimate_value_eur` are gone from the views.
+  - **Review** (Sonnet): no blockers. Applied:
+    - fractional ages (no birthday jumps);
+    - free agents priced at their own reputation (no overnight collapse);
+    - the fit test covers every term, and the runtime model reproduces the fit's R² end to end (the signs).
+  - **Decided:** the stars' fame premium (Transfermarkt's top 100 sit a median 1.5× above the model) becomes a stored per-player premium in W4-3's schema, rather than a fit weighted towards the top that would damage the bulk. The notes are in `docs/calibration/value-model.md`.
+  - **Tests:** `test_valuation.py`; the full backend suite passes.
+  - **Next:** W4-2, transfer windows per country (written and tested, to be committed next), then W4-3, the contract invariant and the move domain.
+- **7 Oct: W3-3, what the user sees of the money** (the commit that adds this line; after af58faf). **W3 is complete.**
   - **`GET /api/finances`** (`api/finances.py`) returns the user's club's:
     - balance, transfer budget, wage budget against wage bill, and expected revenue;
     - income and spending this season by kind;

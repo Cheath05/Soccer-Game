@@ -88,6 +88,22 @@ def _fit_shots(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fit_values(args: argparse.Namespace) -> int:
+    from datetime import date
+
+    from footsim.calibration.value_fit import fit_base_world, write_model
+    from footsim.world.context import get_world
+
+    world = get_world()
+    fit = fit_base_world(args.world, world, world.defs.valuation, date.fromisoformat(args.day))
+    print(fit.report())
+    if args.write:
+        path = config_dir() / "transfers" / "valuation.yaml"
+        write_model(fit, path)
+        print(f"wrote {path}")
+    return 0
+
+
 def _cross_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.cross_engine import compare_engines
     from footsim.world.context import get_world
@@ -233,6 +249,13 @@ def main(argv: list[str] | None = None) -> int:
                        help="competition:season ids (default 2:27, the Premier League 2015/16)")
     shots.add_argument("--cache", type=Path, default=_default("raw/statsbomb"))
     shots.set_defaults(func=_fit_shots)
+
+    values = sub.add_parser("fit-values",
+                            help="fit the market-value model to the base world's values")
+    values.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    values.add_argument("--day", default="2026-07-01", help="the date the values are from")
+    values.add_argument("--write", action="store_true", help="write valuation.yaml")
+    values.set_defaults(func=_fit_values)
 
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))

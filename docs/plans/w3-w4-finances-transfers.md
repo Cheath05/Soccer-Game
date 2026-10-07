@@ -104,6 +104,7 @@ From the W3-2 review, which put `finance.yaml` against the base world's wage bil
 
 ### Valuation (W4-1)
 
+- **Done (W4-1):** see `docs/calibration/value-model.md`. Two deviations: the terms are overall (with a knee), age, a young-star term, keeper and club reputation, with no potential term (it added nothing); and a stored per-player premium (W4-3) keeps the stars' fame.
 - `transfers/valuation.py` is fitted on the base world's Transfermarkt values (`footsim fit-values`, log-linear).
   - **Its terms:** overall, age (young premium, decline after the late 20s), the public potential estimate for players up to 23, position (keepers cheaper), and the league's market level.
   - The fitted coefficients go in `valuation.yaml`, with the fit recorded in `docs/calibration/`.

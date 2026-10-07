@@ -37,6 +37,7 @@ from footsim.defs.nations import NationDef, NationsFile
 from footsim.defs.overall import OverallDef
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
 from footsim.defs.roles import RoleDef
+from footsim.defs.valuation import ValuationDef
 from footsim.defs.world_build import WorldBuildRules
 from footsim.domain.personality import PERSONALITY_TRAITS
 from footsim.ratings.face import GOALKEEPER_FACE, OUTFIELD_FACE
@@ -60,6 +61,7 @@ class GameDefinitions:
     world_build: WorldBuildRules
     wage_levels: WageLevelsFile
     finance: FinanceDef
+    valuation: ValuationDef
     quick_engine: QuickEngineParams
     instructions: dict[str, InstructionDef]
     presentation: PresentationDef
@@ -125,6 +127,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         world_build=_parse(WorldBuildRules, root / "world_build.yaml"),
         wage_levels=_parse(WageLevelsFile, root / "finance" / "wage_levels.yaml"),
         finance=_parse(FinanceDef, root / "finance" / "finance.yaml"),
+        valuation=_parse(ValuationDef, root / "transfers" / "valuation.yaml"),
         quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
         instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
         presentation=_parse(PresentationDef, root / "match" / "presentation.yaml"),

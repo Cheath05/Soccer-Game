@@ -76,7 +76,7 @@ from footsim.scouting.estimates import (
     potential_label,
     potential_range,
 )
-from footsim.transfers.valuation import estimate_value_eur
+from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.meta import CareerMeta, read_meta
@@ -471,11 +471,12 @@ _PLAYER_SQL = """
            pl.height_cm, pl.weight_kg, pl.preferred_foot, pl.weak_foot, pl.skill_moves,
            pl.pa_hidden, pl.value_eur_cents, k.club_id, k.wage_weekly_cents, k.end_date,
            s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend,
-           pl.retired_on
+           pl.retired_on, c.reputation AS club_reputation, pl.reputation AS player_reputation
     FROM person p
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN nation n ON n.id = p.nation_id
     LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1
+    LEFT JOIN club c ON c.id = k.club_id
     LEFT JOIN player_state s ON s.player_id = p.id
     LEFT JOIN player_development d ON d.player_id = p.id
 """
@@ -528,7 +529,10 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
     overall = float(world.model.group_overalls(attrs)[world.defs.positions[primary].group])
     age = age_on(date.fromisoformat(r.birth_date), day)
     injured = r.injured_until if r.injured_until and r.injured_until > day.isoformat() else None
-    value = (r.value_eur_cents // 100) if r.value_eur_cents else estimate_value_eur(overall, age)
+    # A free agent is priced at his own reputation, not his old club's (he carries it with him).
+    value = value_eur(world.defs.valuation, round(overall), years_old(r.birth_date, day),
+                      primary == "GK",
+                      r.club_reputation if r.club_reputation is not None else r.player_reputation)
     shown = world.defs.development.trend_shown
     trend = r.trend or 0.0
     return SquadPlayerOut(

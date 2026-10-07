@@ -12,6 +12,10 @@
 >    alongside the management phases: their calibration batches run while management code is
 >    written.
 >
+> **6 Oct additions:** a play-test gate after D6/E, W3 and W4; then W5, W6, W7 (other
+> continental competitions), W8 (international football), integration and polish; then
+> **Phase P, simulation performance** (`docs/plans/performance.md`), which is late on purpose.
+>
 > League quality comes from player ratings, as the principles below say. The EA FC 27 data
 > already ranks the leagues (best-XI averages: Premier League 79.7, La Liga 78.0, Serie A 77.0,
 > Bundesliga 76.8, Ligue 1 75.5). A league-environment setting is added only where real stats

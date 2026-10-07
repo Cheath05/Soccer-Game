@@ -749,6 +749,23 @@ The order, each its own checkpoint (or several):
 7. - [ ] **W5, academies in full:** facilities, youth squads, loaning young players out.
 8. - [ ] **W6, European competitions:** the Champions League (league phase), the Europa League and the Conference League, where the leagues meet on the pitch.
 
+**Added by the user on 6 Oct:**
+- **The play-test gate** comes after the engine's defending (D6, E as needed), W3 and W4: believable matches, more leagues, finances and a working transfer market. Stop there for a substantial play-test by the user before investing in W5–W8.
+- [ ] **W7, other continental competitions:** the Libertadores, the AFC Champions League and the rest, reusing W6's machinery.
+- [ ] **W8, international football:** national teams, call-ups, qualifiers and the World Cup.
+- [ ] **Integration and polish** of those systems.
+- [ ] **Phase P, simulation performance:** a late phase, planned in `docs/plans/performance.md` and not to be implemented before its turn.
+  - P1 profiles first (`footsim bench`, on the M3 and the VM);
+  - P2 makes behaviour-neutral single-core improvements;
+  - P3 adds multi-core, only if the measurements show it pays: per day, workers compute the AI matches and the user's match, and the parent records them in fixture-id order.
+  - Results must stay identical for a seed (a new career-level determinism test).
+  - D-pre, vectorising `update_targets`, stays in Phase D as its own gate (the 8 s budget per agent match).
+
+**Findings from the performance study (6 Oct), to check separately (not fixed):**
+- Nothing asserts that a club plays at most once a day. `cups._free_day` can fail to find a date and leave a clash. Add a check, and decide what to do when it happens.
+- One sim-to-date step can span many days in one transaction (`advance` until the user's next match), so a cancel waits for it.
+- `player_match` grows without bound (about 28 rows a match), so `develop_players`' monthly minutes query slows as a career lengthens. The season-stats views (queued) read the same table.
+
 **Alongside, in the time the management phases leave the CPU:** Phase D (D-pre to D7), Phase E, and the remaining engine steps: 2.3d, C1, 2.1, 2.6, C2, F2, G, J and K. Their measurement batches run while management code is written, as the cups were written during 2.3c's batches.
 
 ## Review of 2.3f, 2.4 and W1 (6 Oct, a Sonnet reviewer agent)

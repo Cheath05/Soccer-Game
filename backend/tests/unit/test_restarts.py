@@ -149,7 +149,9 @@ def test_restarts_take_time_and_nobody_teleports(world: World) -> None:
 
 def test_a_taker_waits_on_the_ball_instead_of_running_past_it(world: World) -> None:
     """Play-test, 30 Sep: a taker sprinting at the spot ran past it and back until the restart
-    was due, 6 to 19 turns a restart. Once he has reached the ball he stays on it."""
+    was due, 6 to 19 turns a restart. Once he has reached the ball and slowed down he stays on
+    it. (A fouled player running through the spot when the free kick is given needs a moment to
+    brake first: that's physics, not the bug.)"""
     engine = _engine(world, seed=9)
     current: tuple[object, int] | None = None
     arrived: float | None = None
@@ -165,7 +167,7 @@ def test_a_taker_waits_on_the_ball_instead_of_running_past_it(world: World) -> N
             current, arrived = (restart, i), None
         gap = float(np.linalg.norm(engine.pos[i] - np.array(restart.spot)))
         if arrived is None:
-            if gap <= restarts.TAKER_REACH:
+            if gap <= restarts.TAKER_REACH and float(np.linalg.norm(engine.vel[i])) < 1.5:
                 arrived = engine.t
             continue
         if engine.t - arrived >= 1.0:

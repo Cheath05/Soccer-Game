@@ -1076,7 +1076,33 @@ def _take(eng: "MatchEngine", c: int, info: PassInfo | None) -> None:
                 eng.emit("pass_result", passer_team, info.passer, result="recovered",
                          kind=info.kind, by=c, by_xa=round(won_at, 1))
                 how = "recovery"
+    if how != "pass" and _clears_first_time(eng, c):
+        _clear(eng, c, headed=eng.ball_z > 1.2)
+        return
     gain_possession(eng, c, how=how)
+
+
+def _clears_first_time(eng: "MatchEngine", c: int) -> bool:
+    """Does outfield player ``c``, reaching a ball that wasn't passed to him, clear it first
+    time? Only in his own danger zone with an attacker closing in: likelier in his box, the
+    closer the attacker, and the less composed he is (defending.yaml clearances)."""
+    if eng.group[c] is PositionGroup.GK:
+        return False
+    rules = eng.defs.defending.clearances
+    team = int(eng.team_of[c])
+    x, y = eng.to_att(team, float(eng.ball[0]), float(eng.ball[1]))
+    base = rules.box if in_own_box(x, y) else rules.third if x < 35 else 0.0
+    if base <= 0:
+        return False
+    opps = eng.outfield_indices(1 - team)
+    if not len(opps):
+        return False
+    nearest = float(np.min(norms(eng.pos[opps] - eng.ball, axis=1)))
+    closeness = max(0.0, (rules.radius - nearest) / rules.radius)
+    if closeness <= 0:
+        return False
+    composure = (1.2 - eng.a(c, "composure") / 100) / (1.2 - rules.composure_reference / 100)
+    return bool(eng.rng.random() < min(1.0, base * closeness * composure))
 
 
 def cut_out(eng: "MatchEngine", info: PassInfo) -> bool:

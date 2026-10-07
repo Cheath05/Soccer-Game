@@ -57,3 +57,17 @@ touch_pressure:
   per_point: 0.015          # an opponent at a receiver's first touch puts him off this much
                             # more per point of marking above the reference (1.3x at 80, 0.85x
                             # at 50), as his own first touch makes it matter less
+clearances:
+  # A defender who reaches a loose ball, an interception or a stray pass in his own danger zone
+  # with an attacker closing in often clears it first time instead of controlling it
+  # (actions._clears_first_time): real defending breaks attacks up this way. Real clearances
+  # (Premier League 2015/16, StatsBomb open data) are 28.5 a team a match: 14.7 in their own box
+  # and 8.8 in the rest of the defensive third; the engine made about 3. These values double it.
+  # Most real clearances are crosses headed away, and the engine plays a third of the real
+  # number of crosses (2.3c's decision values), so the count can't be matched yet: starting
+  # values, not fitted.
+  box: 0.8                  # chance in his own box with an attacker on top of him...
+  third: 0.4                # ...elsewhere in the defensive third (35 m from his goal)...
+  radius: 6.0               # ...falling to nothing with the nearest attacker this far away
+  composure_reference: 70   # a calmer defender controls it more often: (1.2 - composure / 100)
+                            # against (1.2 - this / 100)

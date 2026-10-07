@@ -170,3 +170,23 @@ def test_the_pass_estimate_reads_markers_as_the_physics_does(world: World) -> No
     engine.defs = replace(engine.defs, passing=engine.defs.passing.model_copy(
         update={"estimate": estimate}))  # the first touch alone
     assert secure() <= marked < nobody
+
+
+def test_a_defender_under_pressure_in_his_box_clears_first_time(world: World) -> None:
+    """D6: in his own box with an attacker on him a defender often clears first time; with
+    nobody near, or out of his danger zone, he never does (he controls it)."""
+    engine = _engine(world)
+    defender, attacker = 14, 9
+    team = int(engine.team_of[defender])
+
+    def clears(ball_att: tuple[float, float], attacker_att: tuple[float, float] | None) -> float:
+        engine.ball[:] = engine.to_pitch(team, *ball_att)
+        engine.pos[defender] = engine.ball
+        engine.pos[attacker] = (engine.to_pitch(team, *attacker_att) if attacker_att
+                                else (-50.0, -50.0))
+        return sum(actions._clears_first_time(engine, defender) for _ in range(200)) / 200
+
+    assert clears((8.0, 34.0), None) == 0.0                 # nobody near
+    assert clears((60.0, 34.0), (60.5, 34.0)) == 0.0        # not his danger zone
+    assert clears((8.0, 34.0), (8.5, 34.0)) > 0.5           # pressed in his own box
+    assert 0.0 < clears((28.0, 34.0), (28.5, 34.0)) < clears((8.0, 34.0), (8.5, 34.0))

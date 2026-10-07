@@ -54,7 +54,10 @@ freeze frames (place, header, defenders in the cone, pressure), blocks at the re
 finishing and keeping centred on Premier League averages, and shots an option from xG .015
 worth twice their xG against keeping the ball (S1 and S2, Mac only); out of possession,
 three lines placed from the ball (back line, midfield goal-side of it, forwards upfield)
-with the wide players dropping into the midfield line (Phase D2, Mac only).
+with the wide players dropping into the midfield line (Phase D2, Mac only); the take-on
+duel at the real success rate with carriers daring as often as real ones, interceptions at
+the real count, and defenders clearing first time under pressure in their danger zone
+(Phase D6, Mac only).
 """
 
 import json

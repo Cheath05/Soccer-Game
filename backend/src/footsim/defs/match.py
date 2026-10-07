@@ -271,6 +271,13 @@ class TouchPressureDef(DefModel):
     per_point: float = Field(ge=0)
 
 
+class ClearancesDef(DefModel):
+    box: float = Field(ge=0, le=1)
+    third: float = Field(ge=0, le=1)
+    radius: float = Field(gt=0)
+    composure_reference: float = Field(ge=0, le=100)
+
+
 class DefendingDef(DefModel):
     """How defenders' ratings decide their marking, blocks and pressure on shooters
     (data/config/match/defending.yaml)."""
@@ -279,6 +286,7 @@ class DefendingDef(DefModel):
     blocks: BlocksDef
     shot_pressure: ShotPressureDef
     touch_pressure: TouchPressureDef
+    clearances: ClearancesDef
 
 
 class PassingDef(DefModel):

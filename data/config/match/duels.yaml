@@ -19,9 +19,14 @@ beaten_recovery: 1.6      # seconds a defender who has been beaten needs to reco
 take_on_cooldown: 2.0     # a carrier can't take on the same defender again for this long
 contact_radius: 1.3       # metres: a carrier running into a defender this close must act
 take_on_speed: 2.0        # m/s: only a carrier running with the ball takes a man on
-take_on_appetite: 0.35    # chance he tries it (scaled by dribbling, flair, role); else checks back
+take_on_appetite: 1.0     # chance he tries it (scaled by dribbling, flair, role); else checks back.
+                          # Was 0.35. With the edge below he weighs his real odds, so this sets how
+                          # often he dares: 29 take-ons a match (real 32, StatsBomb Premier League
+                          # 2015/16), 16 matches at quality 78 (D6, 6 Oct)
 tackle_edge: 0.35         # a set defender who picks his moment starts with this edge
-take_on_edge: -0.25       # a take-on is the attacker's choice: he starts ahead
+take_on_edge: 1.75        # the defender's edge when a carrier runs at him. Was -0.25 ("the attacker
+                          # starts ahead"), which let 86% of take-ons succeed; real take-ons succeed
+                          # 61% (StatsBomb Premier League 2015/16). Calibrated on that rate: 67% (D6)
 keep_after_tackle: [0.6, 0.75]   # chance the tackler keeps the ball: in midfield, near own goal
 
 foul_chance: 0.27         # of a challenge, before aggression, sliding and position

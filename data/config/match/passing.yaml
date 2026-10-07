@@ -66,11 +66,13 @@ loss_where_lost: 0.5         # a failed pass is costed this far from the passer'
 clearance_wide_share: 0.45   # clearances under pressure aimed out wide, often out of play
 aerial_contest_radius: 3.0   # an opponent this close to where a long ball drops contests it
 header_to_feet: 0.7          # a receiver who wins the header keeps it (else it runs loose)
-intercept_scale: 0.2         # how readily an opponent in a pass's path cuts it out. It scales
+intercept_scale: 0.3         # how readily an opponent in a pass's path cuts it out. It scales
                              # both the physics and the passer's reading of the lane. 1.0 was
                              # the original model: 64-74 interceptions a match (round 5, 200
                              # matches per division; real 14-26). 0.2 is round 5's f020e2, which
-                             # every Step 2.3 measurement uses; provisional until 2.3e
+                             # every Step 2.3 measurement uses. 0.3 since D6 (6 Oct): with the
+                             # compact shape, 0.2 gave 17-18 a match against a real 23 (StatsBomb
+                             # Premier League 2015/16, 11.7 a team); 0.3 gave 24.6 (16 matches)
 target_area: 3.0             # m around a pass's target. An opponent who takes the ball while
                              # it's still on course for this area intercepts it; one it comes to
                              # (overhit or off target) recovers it. Stats and commentary only.

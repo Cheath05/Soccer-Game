@@ -94,4 +94,13 @@ Out of possession a side stands in three lines, each placed from the ball (`data
 
 ## Measured
 
-(Filled in as each step is measured.)
+All figures are 200 matches per division, seed 21. The tables are in `progress.md`.
+
+| Step | Premier League goals | Premier League shots | League Two goals | League Two shots | What changed |
+|---|---|---|---|---|---|
+| Before D2 (S1+S2) | 5.30 | 47.2 | 4.54 | 35.5 | |
+| D2 | 4.63 | 41.6 | 3.71 | 30.6 | goal-side, ball in the final third: 4.3 → 6 |
+| D6 | **2.85** | **27.4** | **2.48** | 20.0 | take-ons 82% → 65%, interceptions 17 → 25 |
+| E | 2.88 | 28.2 | 2.42 | 20.8 | fast breaks 2% → 7% / 6% of shots |
+
+Real: Premier League 2.65–3.05 goals and 23–27.5 shots; EFL 2.45–2.85 goals and 22–26 shots.

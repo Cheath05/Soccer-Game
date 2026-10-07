@@ -60,7 +60,7 @@
     - **Fixtures:** a season picker (`GET /clubs/{id}/fixtures?season=`).
     - **Player:** a "Seasons" table, a row per competition with a total per season (`GET /players/{id}/seasons`, from `player_match`). It's the base for the Ballon d'Or and players of the year later.
     - The rollover itself is unchanged.
-  - **Next engine task:** D6, engagement around the box (see D2's reading below). Then W3, finances.
+  - **Engine step one done (7 Oct):** D6 (43675a4) and E (2a0b606) are measured and pushed. **Next:** W3, finances, then W4, transfers, designed first at the top model level. Open engine items are listed under Phase E below.
   - **Calibration:** nothing running once this checkpoint's measurement is in.
 - **Before that (1 Oct, 14:55):** P17, the cups: d5c1d9d, with the follow-up 7376d17. Round 4 of the user's play-test ("Play-test round 4" below):
   - P15, the up/down arrows by a player's overall: e959fe4;
@@ -965,6 +965,22 @@ The user allowed agents for work that doesn't need the CPU. A reviewer read the 
     - **corners and penalties low:** fewer crosses and blocked shots;
     - **shots per box entry still high;**
     - **fast breaks 2% of shots** (real 5–10%). That's Phase E.
+- [x] **Phase E, counter-attacks** (2a0b606, 7 Oct).
+  - **The diagnosis:**
+    - A settled-play stopgap held back balls in behind 76–85% of the time, including on counters.
+    - "Unset" can't mean fewer than 6 opponents goal-side: at an open-play regain in a side's own half the opponents usually have 7–10 there (`scratchpad/regain_diag.py`), so 6 applied to 0.6% of regains.
+  - **The change:** a side that wins the ball in open play in its own half is on a counter for the counter window, while at least two opponents are caught upfield of the ball (`tactics.yaml transition`: `counter_unset` 9, `counter_forward` 0.05). It plays balls in behind, and values forward passes more.
+  - **Calibrated** on 32-match sweeps at quality 78: unset 6 gave 2.0%, 8 gave 5.3%, 9 gave 6.0%, with goals and shots unchanged.
+  - **Measured** (200 per division, seed 21, 3 workers, `reports/engine/e/`): fast breaks **2.2% → 7.2%** of shots in the Premier League and **2.4% → 6.2%** in League Two (real 5–10%). Every other figure stayed within its CI of D6: PL goals 2.88 and shots 28.2; L2 goals 2.42 and shots 20.8.
+  - **Tests:** the counter state (on, set, too late, from a restart, won in their half); all 240 backend tests pass.
+- **Step one (D6, then E) is done.** The engine is in or near range for goals, shots, shot quality, take-ons, interceptions, cards and fast breaks.
+  - **Open engine items, for later rounds:**
+    - home advantage: home wins .36 against .41–.47, and draws .31–.34 against .22–.29 (step 2.1's fit);
+    - ball in play long: 66–74 minutes against 54–60;
+    - corners low: 4.3 against about 10. Crosses are a third of real, which is 2.3c's decision values;
+    - League Two's fouls a little low;
+    - shots per box entry .62 against .38;
+    - runner-tracking, which would let the settled-play through-ball stopgap go.
   - **Still open for D6:**
     - shots per box entry .69–.72;
     - take-ons succeeding about 82% (real 45–60%), mostly against whoever is nearest;

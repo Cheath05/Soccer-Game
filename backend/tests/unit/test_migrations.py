@@ -267,3 +267,61 @@ def test_version_10_gains_the_market_and_one_owner_per_player(tmp_path: Path) ->
             STEPS[11](conn)
     assert snapshots[0] == snapshots[1]
     session.close()
+
+
+def _v11_database(path: Path) -> None:
+    """A database as version 11 wrote it: a player, his state and development row, and none of
+    the first-team rewards' columns (the bench minutes, the academy boost)."""
+    engine = create_database(path)
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO person (id, first_name, last_name, birth_date) "
+                          "VALUES (1, 'Young', 'Player', '2008-03-01')"))
+        conn.execute(text("INSERT INTO player (person_id, preferred_foot, weak_foot, "
+                          "skill_moves, pa_hidden, reputation) VALUES (1, 'Right', 3, 2, 80, 40)"))
+        conn.execute(text("INSERT INTO player_state (player_id, condition, form, "
+                          "suspended_matches, season_yellows) VALUES (1, 100.0, 6.5, 0, 0)"))
+        conn.execute(text("INSERT INTO player_development (player_id, peak_age, decline_age, "
+                          "ceiling_bonus, ageless, progress, trend) "
+                          "VALUES (1, 27.0, 32.0, 0, 0, 0.3, 0.1)"))
+        conn.execute(text("ALTER TABLE player_state DROP COLUMN bench_minutes"))
+        conn.execute(text("ALTER TABLE player_development DROP COLUMN potential_boost"))
+    write_meta(engine, {"schema_version": 11})
+    engine.dispose()
+
+
+def test_version_11_gains_the_first_team_rewards(tmp_path: Path) -> None:
+    """Saves from before the bench credit and the academy boost get their two columns; every
+    player starts with nothing credited. Running the step again, or after a crash left one
+    column added, changes nothing."""
+    path = tmp_path / "v11.sqlite"
+    _v11_database(path)
+    engine = open_database(path)
+    assert migrate(engine) == 11
+    assert read_meta(engine)["schema_version"] == SCHEMA_VERSION
+    with engine.connect() as conn:
+        state = {c["name"]: c for c in inspect(conn).get_columns("player_state")}
+        development = {c["name"]: c for c in inspect(conn).get_columns("player_development")}
+        assert "bench_minutes" in state and "potential_boost" in development
+        assert conn.execute(text("SELECT bench_minutes FROM player_state")).scalar_one() == 0
+        assert conn.execute(text(
+            "SELECT potential_boost, progress, trend FROM player_development")
+        ).one() == (0, 0.3, 0.1)  # the rest of his row is untouched
+    # What a career then credits survives running the step again...
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE player_state SET bench_minutes = 40.5"))
+        conn.execute(text("UPDATE player_development SET potential_boost = 2.25"))
+        STEPS[12](conn)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT bench_minutes FROM player_state")).scalar_one() == 40.5
+        assert conn.execute(text(
+            "SELECT potential_boost FROM player_development")).scalar_one() == 2.25
+    # ...and a crash that left one column added, the other not, is made good.
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE player_state DROP COLUMN bench_minutes"))
+        STEPS[12](conn)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT bench_minutes FROM player_state")).scalar_one() == 0
+        assert conn.execute(text(
+            "SELECT potential_boost FROM player_development")).scalar_one() == 2.25
+    assert migrate(engine) == SCHEMA_VERSION  # nothing left to do
+    engine.dispose()

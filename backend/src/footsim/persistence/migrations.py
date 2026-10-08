@@ -147,9 +147,18 @@ def _to_v11(conn: Connection) -> None:
         initialize_value_premiums(conn, get_world(), meta.current_date)
 
 
+def _to_v12(conn: Connection) -> None:
+    """Development rewards a place in the first team: the bench minutes a player is credited
+    for being named a substitute without coming on, and the potential the academy boost has
+    added. Both start at 0 in a save under way (nobody has been credited yet)."""
+    metadata.create_all(conn)  # a world that never had the development table gets it whole
+    _add_column(conn, "player_state", "bench_minutes", "REAL NOT NULL DEFAULT 0")
+    _add_column(conn, "player_development", "potential_boost", "REAL NOT NULL DEFAULT 0")
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
-    11: _to_v11}
+    11: _to_v11, 12: _to_v12}
 
 
 def migrate(engine: Engine) -> int:

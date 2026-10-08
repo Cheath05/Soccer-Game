@@ -16,7 +16,13 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (8 Oct): W4-5, the AI transfer market** (the commit that adds this line; after 916d512).
+- **Latest checkpoint (8 Oct): D, first-team rewards in development** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 16d5dcc). The user asked for a bench boost and an academy boost.
+  - **Bench credit:** an unused substitute is credited 20 development minutes a match. It's a running total on `player_state.bench_minutes` that keeps 0.917 of itself each month, and it counts with real minutes in the growth bands. A player benched all season settles near 900 credit minutes: band ×0.8 instead of ×0.55, still short of a starter's ×1.0–1.1.
+  - **Academy boost:** an academy product (he has or had a youth contract with his current club), aged 21 or under, with 1,800 or more real minutes in 12 months, gains 3 potential a year, up to 8 in all and never past 94. It's kept as a fraction in `player_development.potential_boost`, and whole points go to `pa_hidden`. It fires from the first youth intake (Jul 2027).
+  - **Schema 12** adds the two columns (`_to_v12`, idempotent).
+  - **The engine:** both engines list their bench in `MatchReport.bench` (a passive field: no draws, no change to play; golden values unchanged). `record_result` credits the unused substitutes.
+  - **Tests:** `test_development_first_team.py` (12), `test_first_team_rewards.py` (4), the v11 → v12 migration, the golden test unchanged; the full suite (with F's work in the tree too) passes.
+- **8 Oct: W4-5, the AI transfer market** (299372d, after 916d512).
   - **`world/market.py`**, run from `after_day` at most once a day in any open window.
     - Every club but the user's trades in its own country's window: every 4 days on its own phase, and with a 50% chance each day of the last week.
     - **Needs** come from a greedy fit of the squad to its formation, using familiarity (≥15). They are: short, upgrade, depth, succession, and **improve** (a club with money improves its weakest starter).

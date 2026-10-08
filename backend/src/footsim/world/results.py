@@ -1,5 +1,5 @@
 """Writes a finished match into the save: result, events, player stats, fitness, form,
-injuries and suspensions."""
+injuries, suspensions and the development credit for unused substitutes."""
 
 import json
 from dataclasses import asdict
@@ -9,6 +9,7 @@ from sqlalchemy import Connection, select, text, update
 
 from footsim.match.report import RED_DOGSO, RED_SECOND_YELLOW, MatchReport
 from footsim.persistence.schema import fixture, match_event, player_match, player_state
+from footsim.world.context import get_world
 
 YELLOWS_FOR_BAN = 5
 SECOND_YELLOW_BAN = 1
@@ -43,6 +44,7 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
              "yellow": ln.yellow, "red": ln.red, "rating": ln.rating}
             for ln in lines
         ])
+    credit_bench(conn, report)
 
     # Suspended players can't play, so every club member with a ban has now served a game.
     # (Bans picked up in this match are added below, after this decrement.)
@@ -79,6 +81,18 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
         conn.execute(update(player_state).where(player_state.c.player_id == injury.player_id)
                      .values(injured_until=(day + timedelta(days=injury.days)).isoformat(),
                              injury=injury.name))
+
+
+def credit_bench(conn: Connection, report: MatchReport) -> None:
+    """Every substitute named for the match who never came on is credited a few development
+    minutes (development.yaml bench_credit_minutes): he trained and travelled with the first
+    team. It's a running total on his player_state row that fades each month, when development
+    runs (world/season.py develop_players). Both engines name their bench in the report."""
+    unused = [pid for pid in report.bench if pid not in report.players]
+    if unused:
+        credit = get_world().defs.development.bench_credit_minutes
+        conn.execute(update(player_state).where(player_state.c.player_id.in_(unused))
+                     .values(bench_minutes=player_state.c.bench_minutes + credit))
 
 
 def daily_recovery(conn: Connection, day: date) -> None:

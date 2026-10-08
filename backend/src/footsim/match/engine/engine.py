@@ -874,5 +874,6 @@ class MatchEngine:
             events=sorted(self.events, key=lambda e: e.minute),
             players=dict(self.lines), home_stats=self.stats[0], away_stats=self.stats[1],
             injuries=list(self.injuries), fitness=fitness,
+            bench=[sp.player_id for sheet in self.sheets for sp in sheet.bench],
         )
         return report

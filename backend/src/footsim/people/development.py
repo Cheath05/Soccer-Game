@@ -13,6 +13,14 @@ A month's change in overall is split (data/config/rules/development.yaml):
     attribute moves together by one.
 So a growing player picks up the odd point here and there each month, and every so often his
 whole game steps up.
+
+A place in the first team is rewarded two ways, the same for every club:
+  - minutes speed a young player's growth. A player named among the substitutes who doesn't
+    come on is credited ``bench_credit_minutes`` for the match (a running total, ``bench_minutes``,
+    that fades by ``bench_decay`` each month), counted with the minutes he really played, so
+    sitting on the bench is worth more than being left out and far less than playing;
+  - an academy product (``academy_boost``) aged 21 or younger who plays regularly has his
+    potential, the ceiling he grows towards, raised a little every month, up to a cap.
 """
 
 import math
@@ -33,6 +41,7 @@ _PHYSICAL_DECLINE = {"acceleration": 1.6, "sprint_speed": 1.7, "agility": 1.4, "
 _MENTAL = [ATTR_INDEX[a] for a in attributes_in(AttrGroup.MENTAL)]
 _GOALKEEPING = [ATTR_INDEX[a] for a in attributes_in(AttrGroup.GOALKEEPING)]
 MONTH = 1 / 12
+_WHOLE_POINT = 1e-9  # a boost this close below a whole point has reached it (rounding)
 
 
 @dataclass(frozen=True)
@@ -42,6 +51,16 @@ class DevelopmentInput:
     potential: FloatArray
     groups: list[PositionGroup]
     minutes: FloatArray  # minutes played in the past twelve months
+    # Minutes credited for being named a substitute without coming on (None: none for anyone).
+    # They count towards his growth like minutes played, but never as real minutes.
+    bench_minutes: FloatArray | None = None
+
+    @property
+    def growth_minutes(self) -> FloatArray:
+        """The minutes that speed his growth: those he played, and his bench credit."""
+        if self.bench_minutes is None:
+            return self.minutes
+        return self.minutes + self.bench_minutes
 
 
 @dataclass(frozen=True)
@@ -90,13 +109,14 @@ def monthly_change(rules: DevelopmentDef, inp: DevelopmentInput, overall: FloatA
                    traits: Traits, rng: np.random.Generator) -> FloatArray:
     """Each player's change in overall this month."""
     change = np.zeros(len(inp.ages))
+    minutes = inp.growth_minutes
     for i, age in enumerate(inp.ages):
         start = traits.decline_age[i] + (rules.ageless_delay if traits.ageless[i] else 0.0)
         if age < start:  # growing towards his ceiling, then holding it
             gap = max(0.0, inp.potential[i] + traits.ceiling_bonus[i] - overall[i])
             if age <= traits.peak_age[i]:
                 yearly = _lookup(rules.growth_by_age, age, rules.late_growth)
-                yearly *= _lookup(rules.minutes, inp.minutes[i], rules.heavy_minutes)
+                yearly *= _lookup(rules.minutes, minutes[i], rules.heavy_minutes)
             else:
                 yearly = rules.late_growth
             change[i] = gap * (1 - (1 - min(0.95, yearly)) ** MONTH)
@@ -107,6 +127,30 @@ def monthly_change(rules: DevelopmentDef, inp: DevelopmentInput, overall: FloatA
                 yearly *= rules.ageless_slowdown
             change[i] = yearly * MONTH
     return change + rng.normal(0.0, rules.noise * math.sqrt(MONTH), size=len(change))
+
+
+def academy_boost(rules: DevelopmentDef, ages: FloatArray, minutes: FloatArray,
+                  academy: npt.NDArray[np.bool_], potential: FloatArray, boost: FloatArray
+                  ) -> tuple[FloatArray, npt.NDArray[np.int64]]:
+    """One month of the academy boost. Returns each player's boost so far (the potential it has
+    added, fractions and all) and the whole points to add to his potential this month.
+
+    A player qualifies when he came up through his club's academy (``academy``), is
+    ``academy_max_age`` or younger in whole years, and has played ``academy_regular_minutes`` of
+    real minutes in the past twelve months (bench credit doesn't count). A qualifier's boost
+    grows by a twelfth of ``academy_boost_per_year`` a month, to ``academy_boost_cap`` in all,
+    and never so far that his potential would pass ``academy_potential_ceiling``. Only whole
+    points reach his potential; the fraction carries to the next month. A player who stops
+    qualifying keeps what he has. No randomness: the same inputs give the same boost."""
+    qualifies = (academy & (np.floor(ages) <= rules.academy_max_age)
+                 & (minutes >= rules.academy_regular_minutes))
+    whole = np.floor(boost + _WHOLE_POINT)  # the points his potential already holds
+    room = np.maximum(0.0, rules.academy_potential_ceiling - potential)
+    grown = np.minimum(np.minimum(boost + rules.academy_boost_per_year * MONTH,
+                                  rules.academy_boost_cap), whole + room)
+    new: FloatArray = np.where(qualifies, np.maximum(boost, grown), boost)
+    points: npt.NDArray[np.int64] = (np.floor(new + _WHOLE_POINT) - whole).astype(np.int64)
+    return new, points
 
 
 def _group_weights(model: RatingModel, group: PositionGroup) -> FloatArray:

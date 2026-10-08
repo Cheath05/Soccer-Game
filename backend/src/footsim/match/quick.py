@@ -101,7 +101,8 @@ class QuickEngine:
     def play(self, home: TeamSheet, away: TeamSheet, rng: np.random.Generator,
              neutral: bool = False, decider: Decider | None = None) -> MatchReport:
         p = self.p
-        report = MatchReport(home.club_id, away.club_id)
+        report = MatchReport(home.club_id, away.club_id,
+                             bench=[sp.player_id for sheet in (home, away) for sp in sheet.bench])
         sides = [self._side(home), self._side(away)]
         lam = self.expected_goals(home, away, neutral)
         fatigue = [self._effects(home)[2], self._effects(away)[2]]

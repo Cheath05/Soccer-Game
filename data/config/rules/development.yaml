@@ -20,6 +20,35 @@ minutes:                  # (minutes in the past twelve months up to, growth fac
   - [1350, 0.8]
   - [2700, 1.0]
 heavy_minutes: 1.1        # a regular starter's
+
+# A place in the first team counts for more than the minutes on the pitch. Two rewards, the same
+# for every club (the user's and the computer's):
+#
+# Bench credit. A player named among the substitutes who isn't used is still training and
+# travelling with the first team, so each such match counts as a few minutes in the table above,
+# as if he had played them. The credit is a running total that fades a little every month (it
+# keeps about 11/12 of itself), so it never piles up. Named on the bench for every league match,
+# season after season, a player carries about 900 minutes of credit: enough to lift him from the
+# lowest band (450 or fewer, growth x0.55) into the next (x0.8), but a long way short of a regular
+# starter's (x1.0 to x1.1). Minutes he really plays count in full, on top of it.
+bench_credit_minutes: 20  # minutes credited each match he is named a substitute and stays on
+bench_decay: 0.917        # the share of that credit still there a month later (about 11/12)
+
+# Academy boost. A young player who came up through his own club's academy (he has, or had, a
+# youth contract with the club he plays for now) and plays in its first team week after week
+# turns out better than his scouting report said: each month he qualifies, his potential, the
+# ceiling he is growing towards, rises a little. To qualify he must be 21 or younger and have
+# played 1,800 minutes or more in the past twelve months (about twenty full matches). Only real
+# minutes count here, not bench credit. At 3 points a year it takes nearly three years to add the
+# most it ever will (8 points), and it never lifts a potential past 94. The boost is kept as a
+# fraction that carries from month to month and reaches his potential in whole points. The points
+# stay if he stops playing or moves on; he just stops gaining more.
+academy_max_age: 21               # in whole years, as shown: 21 until his 22nd birthday
+academy_regular_minutes: 1800     # real minutes in the past twelve months to count as a regular
+academy_boost_per_year: 3         # potential points a year while he qualifies
+academy_boost_cap: 8              # the most it ever adds to one player's potential, in all
+academy_potential_ceiling: 94     # and it never lifts a potential above this
+
 peak_age: [26, 29]        # each player's own peak age, drawn from this range
 beyond_potential:         # (chance, low, high): how far above his potential his ceiling sits
   - [0.20, 1, 2]

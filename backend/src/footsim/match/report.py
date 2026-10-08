@@ -89,6 +89,9 @@ class MatchReport:
     away_pens: int | None = None
     events: list[MatchEvent] = field(default_factory=list)
     players: dict[int, PlayerLine] = field(default_factory=dict)
+    # Everyone named among the substitutes (the home side's, then the away side's), whether or
+    # not he came on. Those who did are in ``players`` as well; the rest never played.
+    bench: list[int] = field(default_factory=list)
     home_stats: TeamStats = field(default_factory=TeamStats)
     away_stats: TeamStats = field(default_factory=TeamStats)
     injuries: list[Injury] = field(default_factory=list)

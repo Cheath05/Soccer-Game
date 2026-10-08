@@ -10,6 +10,13 @@ class DevelopmentDef(DefModel):
     late_growth: float = Field(ge=0, le=1)  # the share once past his peak age
     minutes: list[tuple[int, float]]  # (minutes in the past year up to, growth factor)
     heavy_minutes: float = Field(gt=0)  # factor beyond the last minutes band
+    bench_credit_minutes: float = Field(ge=0)  # minutes credited per match as an unused sub
+    bench_decay: float = Field(ge=0, le=1)  # share of the bench credit kept from month to month
+    academy_max_age: int = Field(ge=0)  # the academy boost lasts to this age (whole years)
+    academy_regular_minutes: float = Field(ge=0)  # real minutes in a year that make a regular
+    academy_boost_per_year: float = Field(ge=0)  # potential points a year while he is one
+    academy_boost_cap: float = Field(ge=0)  # the most the boost ever adds to a potential
+    academy_potential_ceiling: int = Field(ge=1, le=99)  # potential the boost never lifts past
     peak_age: tuple[float, float]  # a player's own peak age is drawn from this range
     beyond_potential: list[tuple[float, int, int]]  # (chance, low, high) extra on his ceiling
     decline_start: tuple[float, float]  # the age his decline starts, drawn from this range

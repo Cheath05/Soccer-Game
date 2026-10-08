@@ -22,7 +22,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 11  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 12  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -294,6 +294,10 @@ player_state = Table(
     Column("injury", Text),
     Column("suspended_matches", Integer, nullable=False, default=0),
     Column("season_yellows", Integer, nullable=False, default=0),
+    # Development minutes credited for being named a substitute without coming on, a running
+    # total that fades every month (development.yaml bench_credit_minutes, bench_decay). Every
+    # player has a row here from the day a career starts, so results can credit it at once.
+    Column("bench_minutes", Float, nullable=False, server_default="0"),
 )
 
 # A player's development traits, drawn once (people/development.py), and the progress he has
@@ -324,6 +328,9 @@ player_development = Table(
     # recent monthly change in his overall, smoothed (development.yaml trend_memory): the
     # up/down arrow next to his overall
     Column("trend", Float, nullable=False, server_default="0"),
+    # The potential the academy boost has added so far (development.yaml academy_*), fractions
+    # included: the whole points of it are already in his pa_hidden.
+    Column("potential_boost", Float, nullable=False, server_default="0"),
 )
 
 # Each player's overall on the day a season began (world/overall_history.py): the "before" of the

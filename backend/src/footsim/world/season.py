@@ -20,7 +20,13 @@ from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef, MovementKind, PlayoffDef, SimLevel
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.match.report import Decider
-from footsim.people.development import DevelopmentInput, Traits, apply_month, draw_traits
+from footsim.people.development import (
+    DevelopmentInput,
+    Traits,
+    academy_boost,
+    apply_month,
+    draw_traits,
+)
 from footsim.persistence.schema import (
     club_league_membership,
     competition,
@@ -409,17 +415,21 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
 def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
                     share: float) -> list[str]:
     """A month of development for every player (people/development.py): the young grow
-    towards their ceilings, faster with minutes played in the past twelve months, and the old
-    decline. Traits are drawn the first time a player needs them. Returns news of the user's
-    players whose overall moved. ``share`` is kept for callers; a step is always a month."""
+    towards their ceilings, faster with minutes played in the past twelve months (and a little
+    for being named a substitute without coming on: the bench credit, which then fades), and
+    the old decline. Academy products who play regularly have their potential raised a little.
+    Traits are drawn the first time a player needs them. Returns news of the user's players
+    whose overall moved. ``share`` is kept for callers; a step is always a month."""
     rows = conn.execute(text("""
         SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date, pl.pa_hidden,
                (SELECT position FROM player_position pp WHERE pp.player_id = p.id
                 ORDER BY familiarity DESC LIMIT 1) AS position,
                COALESCE((SELECT SUM(minutes) FROM player_match pm JOIN fixture f
                          ON f.id = pm.fixture_id WHERE pm.player_id = p.id
-                         AND f.date > :since AND f.date <= :day), 0) AS minutes
+                         AND f.date > :since AND f.date <= :day), 0) AS minutes,
+               COALESCE(s.bench_minutes, 0) AS bench_minutes
         FROM person p JOIN player pl ON pl.person_id = p.id
+        LEFT JOIN player_state s ON s.player_id = p.id
         WHERE pl.retired_on IS NULL
         ORDER BY p.id
     """), {"since": (day - timedelta(days=365)).isoformat(), "day": day.isoformat()}).all()
@@ -428,18 +438,22 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     matrix = np.array([[getattr(attrs_rows[i], a) for a in ATTRIBUTES] for i in ids], dtype=float)
     groups = [world.defs.positions[r.position or "CM"].group for r in rows]
     potential = np.array([r.pa_hidden for r in rows], dtype=float)
-    traits, progress, trend = _development_state(conn, world, meta, day, ids, potential)
+    traits, progress, trend, boost = _development_state(conn, world, meta, day, ids, potential)
+    rules = world.defs.development
+    ages = np.array([(day - date.fromisoformat(r.birth_date)).days / 365.25 for r in rows])
+    minutes = np.array([r.minutes for r in rows], dtype=float)
+    boost, points = academy_boost(rules, ages, minutes, _academy_products(conn, ids), potential,
+                                  boost)
     inp = DevelopmentInput(
         attrs=matrix,
-        ages=np.array([(day - date.fromisoformat(r.birth_date)).days / 365.25 for r in rows]),
-        potential=potential,
+        ages=ages,
+        potential=potential + points,  # this month's growth already aims at the raised ceiling
         groups=groups,
-        minutes=np.array([r.minutes for r in rows], dtype=float),
+        minutes=minutes,
+        bench_minutes=np.array([r.bench_minutes for r in rows], dtype=float),
     )
-    new, progress, moves = apply_month(world.defs.development, world.model, inp, traits,
-                                       progress, derive_rng(meta.seed, "development",
-                                                            day.isoformat()))
-    rules = world.defs.development
+    new, progress, moves = apply_month(rules, world.model, inp, traits, progress,
+                                       derive_rng(meta.seed, "development", day.isoformat()))
     moved = _own_overalls(world, new, groups) - _own_overalls(world, matrix, groups)
     trend = rules.trend_memory * trend + (1 - rules.trend_memory) * moved
     changed = np.any(new != matrix, axis=1)
@@ -448,10 +462,17 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     if params:
         assignments = ", ".join(f"{a} = :{a}" for a in ATTRIBUTES)
         conn.execute(text(f"UPDATE player_attr SET {assignments} WHERE player_id = :pid"), params)
-    conn.execute(text("UPDATE player_development SET progress = :progress, trend = :trend "
-                      "WHERE player_id = :pid"),
-                 [{"pid": pid, "progress": float(p), "trend": float(t)}
-                  for pid, p, t in zip(ids, progress, trend, strict=True)])
+    conn.execute(text("UPDATE player_development SET progress = :progress, trend = :trend, "
+                      "potential_boost = :boost WHERE player_id = :pid"),
+                 [{"pid": pid, "progress": float(p), "trend": float(t), "boost": float(b)}
+                  for pid, p, t, b in zip(ids, progress, trend, boost, strict=True)])
+    raised = [{"pid": ids[i], "points": int(points[i])} for i in np.flatnonzero(points)]
+    if raised:  # the academy boost's whole points reach his potential
+        conn.execute(text("UPDATE player SET pa_hidden = pa_hidden + :points "
+                          "WHERE person_id = :pid"), raised)
+    # This month's growth has counted the bench credit; now it fades, so it can't pile up.
+    conn.execute(text("UPDATE player_state SET bench_minutes = bench_minutes * :decay "
+                      "WHERE bench_minutes > 0"), {"decay": rules.bench_decay})
     return _development_news(conn, world, meta, rows, groups, matrix, new, moves)
 
 
@@ -461,13 +482,29 @@ def _own_overalls(world: World, attrs: np.ndarray, groups: list[Any]) -> np.ndar
     return np.array([overalls[g][i] for i, g in enumerate(groups)])
 
 
+def _academy_products(conn: Connection, ids: list[int]) -> np.ndarray:
+    """Which of ``ids`` came up through the academy of the club they play for now: they have, or
+    had, a youth contract with it. A player plays for the club holding his current contract; on
+    loan, that is the borrower (a loaned-out player's own contract doesn't count while the loan
+    runs), so he isn't an academy product there. Players sold on, or who never had a youth
+    contract, aren't."""
+    products = {r.person_id for r in conn.execute(text("""
+        SELECT DISTINCT y.person_id FROM contract y
+        JOIN contract k ON k.person_id = y.person_id AND k.club_id = y.club_id AND k.is_active = 1
+        WHERE y.kind = 'youth' AND (k.kind = 'loan' OR NOT EXISTS (
+            SELECT 1 FROM contract l
+            WHERE l.person_id = k.person_id AND l.kind = 'loan' AND l.is_active = 1))"""))}
+    return np.array([pid in products for pid in ids], dtype=bool)
+
+
 def _development_state(conn: Connection, world: World, meta: CareerMeta, day: date,
                        ids: list[int], potential: np.ndarray
-                       ) -> tuple[Traits, np.ndarray, np.ndarray]:
-    """Every player's traits, progress and trend, drawing traits for those who have none yet."""
-    known: dict[int, tuple[float, float, float, bool, float, float]] = {
+                       ) -> tuple[Traits, np.ndarray, np.ndarray, np.ndarray]:
+    """Every player's traits, progress, trend and academy boost so far, drawing traits for those
+    who have none yet."""
+    known: dict[int, tuple[float, float, float, bool, float, float, float]] = {
         r.player_id: (r.peak_age, r.decline_age, float(r.ceiling_bonus), bool(r.ageless),
-                      r.progress, r.trend)
+                      r.progress, r.trend, r.potential_boost)
         for r in conn.execute(select(player_development))}
     missing = [k for k, pid in enumerate(ids) if pid not in known]
     if missing:
@@ -476,16 +513,16 @@ def _development_state(conn: Connection, world: World, meta: CareerMeta, day: da
         rows = []
         for n, k in enumerate(missing):
             entry = (float(drawn.peak_age[n]), float(drawn.decline_age[n]),
-                     float(drawn.ceiling_bonus[n]), bool(drawn.ageless[n]), 0.0, 0.0)
+                     float(drawn.ceiling_bonus[n]), bool(drawn.ageless[n]), 0.0, 0.0, 0.0)
             known[ids[k]] = entry
             rows.append({"player_id": ids[k], "peak_age": entry[0], "decline_age": entry[1],
                          "ceiling_bonus": int(entry[2]), "ageless": int(entry[3]),
-                         "progress": 0.0, "trend": 0.0})
+                         "progress": 0.0, "trend": 0.0, "potential_boost": 0.0})
         conn.execute(player_development.insert(), rows)
     state = np.array([known[pid] for pid in ids], dtype=float)
     traits = Traits(peak_age=state[:, 0], decline_age=state[:, 1], ceiling_bonus=state[:, 2],
                     ageless=state[:, 3] > 0.5)
-    return traits, state[:, 4].copy(), state[:, 5].copy()
+    return traits, state[:, 4].copy(), state[:, 5].copy(), state[:, 6].copy()
 
 
 def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Sequence[Row[Any]],

@@ -70,8 +70,10 @@ def test_the_summary_after_a_rollover(tmp_path: Path) -> None:
         (d.change for d in review.development), reverse=True)  # best improvement first
     # The season's record was taken at the start, and the next one now, after the turnover.
     assert [r[0] for r in recorded] == [1, 2] and recorded[1][1] == playing
-    # Of dozens of messages, only the first-round cup draws are news the sections don't cover.
-    assert len(news) > 20 and final.news and all(" draw: " in m for m in final.news)
+    # Of dozens of messages, only the first-round cup draws and the user's contracts running
+    # out (W4-7) are news the sections don't cover.
+    assert len(news) > 20 and final.news and all(
+        " draw: " in m or "contract runs out" in m or "another year" in m for m in final.news)
 
 
 def test_the_api_serves_a_players_seasons_and_fixtures_by_season(tmp_path: Path) -> None:

@@ -16,7 +16,13 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): U1, squad, player, tactics and subs UI** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 0a950ac). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U1).
+- **Latest checkpoint (9 Oct): W4-7, contracts running out** (the commit that adds this line; after 3763cdb). This replaces the blanket auto-renewal (`world/renewals.py`, at the rollover).
+  - **AI clubs** renew whom they plan to keep (key players up to 35; starters and rotation up to 33; young surplus with potential above the club's level), at the asked wage (`wage_demand`) and length (`contract_years`). A key player well above his club's level may refuse.
+  - **The rest leave** as free agents on 30 June, with a history row of kind `expired`. The market can sign them.
+  - **The user's club** keeps only those renewed during the season: Transfers → Contracts (`GET /api/transfers/contracts`, `POST /contracts/{id}/renew`). The wage he asks or more; the raise is charged to the budget for the weeks left. News reminders on 1 April, 1 May and 1 June.
+  - **The squad floor:** no club, AI or user, drops below 16 seniors through expiries. Its best leavers sign on for a year, with news for the user.
+  - **Tests:** `test_renewals.py` (4: AI keeps the team and lets the rest go, with nobody on an expired contract; determinism; the user's renewal and its budget; reminders), plus the season-review test updated (contract news counts as "other news"). Renewal, finance, lifecycle and season-review tests pass.
+- **9 Oct: U1, squad, player, tactics and subs UI** (3763cdb, after 0a950ac; a Sonnet agent's work, reviewed here). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U1).
   - **Squad:** the overall shows its change since the season began beside it ("90 ▲+1"); the separate column is gone. A Team column shows XI, Bench or Reserve.
   - **Player page:** Back, plus Previous and Next (← and →) through the list he was clicked from.
   - **Tactics:**

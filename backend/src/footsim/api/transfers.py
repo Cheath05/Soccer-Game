@@ -21,6 +21,7 @@ from footsim.world.market import (
     season_calendar_end,
 )
 from footsim.world.meta import read_meta
+from footsim.world.renewals import RenewalRefused, expiring_for_user, renew
 from footsim.world.squads import display_name
 from footsim.world.transfers import MoveRefused, owner_contract
 
@@ -274,3 +275,47 @@ def listed(session: Session) -> list[int]:
         return [int(r.person_id) for r in conn.execute(text(
             "SELECT person_id FROM contract WHERE club_id = :u AND is_active = 1 AND listed = 1 "
             "ORDER BY person_id"), {"u": meta.user_club_id})]
+
+
+class ExpiringOut(BaseModel):
+    player_id: int
+    name: str
+    age: int
+    overall: int
+    end_date: str
+    wage_eur: int
+    asks_eur: int
+    years: int
+    willing: bool
+
+
+class RenewIn(BaseModel):
+    wage_eur: int | None = Field(default=None, ge=0)
+    years: int | None = Field(default=None, ge=1, le=5)
+
+
+@router.get("/contracts")
+def contracts(session: Session) -> list[ExpiringOut]:
+    """The user's players whose contracts end with this season, and what each asks to stay.
+    Those not renewed leave on 30 June."""
+    world = get_world()
+    with session.read() as conn:
+        meta = read_meta(conn)
+        rows = expiring_for_user(conn, world, meta, meta.current_date,
+                                 season_calendar_end(world, meta))
+    return [ExpiringOut(**vars(e)) for e in rows]
+
+
+@router.post("/contracts/{player_id}/renew")
+def renew_contract(player_id: int, body: RenewIn, session: Session) -> dict[str, str]:
+    _not_simulating(session)
+    world = get_world()
+    with session.write() as conn:
+        meta = read_meta(conn)
+        try:
+            news = renew(conn, world, meta, meta.current_date, season_calendar_end(world, meta),
+                         player_id, body.wage_eur, body.years)
+        except RenewalRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+    session.autosave()
+    return {"message": news}

@@ -46,6 +46,7 @@ from footsim.world.lifecycle import season_turnover
 from footsim.world.market import run_market
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import record_season_start
+from footsim.world.renewals import contract_reminders, settle_expiring
 from footsim.world.squads import club_name, display_name, load_squad
 
 DEVELOPMENT_SHARE = 1 / 12  # of a year's development, applied on the first of each month
@@ -183,6 +184,8 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
         settle_month(conn, world, meta, day, _league_positions(conn, world, meta))
+        messages += contract_reminders(conn, world, meta, day,
+                                       season_calendar(world, meta, meta.season_id).season_end)
     messages += progress_cups(conn, world, meta, day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
@@ -402,7 +405,8 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
 
     messages += season_turnover(conn, world, meta, calendar.season_start)
     record_season_start(conn, world, new, calendar.season_start)
-    _renew_contracts(conn, meta, calendar.season_start, calendar.season_end)
+    messages += settle_expiring(conn, world, meta, calendar.season_start - timedelta(days=1),
+                                calendar.season_end)
     conn.execute(text("UPDATE player_state SET season_yellows = 0"))
     meta.season_id = new
     refresh_ai_tactics(conn, world, meta, calendar.season_start)
@@ -558,18 +562,6 @@ def _development_news(conn: Connection, world: World, meta: CareerMeta, rows: Se
     if down:
         parts.append(f"Declined: {', '.join(down)}.")
     return ["Player development. " + " ".join(parts)]
-
-
-def _renew_contracts(conn: Connection, meta: CareerMeta, season_start: date,
-                     season_end: date) -> None:
-    """Until the transfer market exists, expiring contracts are simply extended."""
-    expiring = conn.execute(select(contract.c.id, contract.c.person_id).where(
-        contract.c.is_active == 1, contract.c.end_date < season_end.isoformat())).all()
-    for row in expiring:
-        years = 1 + int(derive_rng(meta.seed, "renewal", row.id, season_start).integers(0, 3))
-        end = date(season_end.year + years - 1, 6, 30)
-        conn.execute(update(contract).where(contract.c.id == row.id).values(
-            end_date=end.isoformat()))
 
 
 def refresh_ai_tactics(conn: Connection, world: World, meta: CareerMeta, day: date) -> None:

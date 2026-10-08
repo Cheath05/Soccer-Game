@@ -131,3 +131,26 @@ export function useSetListed() {
     onSuccess: () => void client.invalidateQueries({ queryKey: ['listed'] }),
   })
 }
+
+export interface Expiring {
+  player_id: number
+  name: string
+  age: number
+  overall: number
+  end_date: string
+  wage_eur: number
+  asks_eur: number
+  years: number
+  willing: boolean
+}
+
+export const useExpiring = () => useQuery({ queryKey: ['expiring'], queryFn: () => api.get<Expiring[]>('/transfers/contracts') })
+
+export function useRenew() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (args: { playerId: number; wage_eur?: number; years?: number }) =>
+      api.post<{ message: string }>(`/transfers/contracts/${args.playerId}/renew`, { wage_eur: args.wage_eur ?? null, years: args.years ?? null }),
+    onSuccess: () => void invalidate(),
+  })
+}

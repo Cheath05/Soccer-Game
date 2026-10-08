@@ -9,9 +9,11 @@ import {
   type SearchFilters,
   useAnswerBid,
   useBids,
+  useExpiring,
   useListed,
   useMakeOffer,
   useMarketSearch,
+  useRenew,
   useSetListed,
   useTerms,
   useTransferHistory,
@@ -270,6 +272,65 @@ function SellTab() {
   )
 }
 
+function ContractsTab() {
+  const currency = useCurrency()
+  const { symbol, perEuro } = CURRENCIES[currency]
+  const expiring = useExpiring().data ?? []
+  const renewal = useRenew()
+  const [wages, setWages] = useState<Record<number, number | string>>({})
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  return (
+    <Stack>
+      <Text size="sm" c="dimmed">
+        These players' contracts end on 30 June. Renew the ones you want to keep; the others leave as free agents.
+      </Text>
+      {note && (
+        <Alert color={note.ok ? 'green' : 'red'} withCloseButton onClose={() => setNote(null)}>
+          {note.text}
+        </Alert>
+      )}
+      {expiring.length === 0 && <Text c="dimmed">No contracts end this season.</Text>}
+      <Table striped>
+        <Table.Tbody>
+          {expiring.map((e) => {
+            const shown = wages[e.player_id] ?? Math.round((e.asks_eur * perEuro) / 100) / 10
+            return (
+              <Table.Tr key={e.player_id}>
+                <Table.Td>{e.name}</Table.Td>
+                <Table.Td ta="right">{e.age}</Table.Td>
+                <Table.Td ta="right" fw={700}>
+                  {e.overall}
+                </Table.Td>
+                <Table.Td>now {wage(e.wage_eur)}</Table.Td>
+                <Table.Td>
+                  {e.willing ? `asks ${wage(e.asks_eur)} for ${e.years} ${e.years === 1 ? 'year' : 'years'}` : <Text c="red" size="sm">won't sign</Text>}
+                </Table.Td>
+                <Table.Td>
+                  <Group gap="xs" wrap="nowrap">
+                    <NumberInput size="xs" w={110} decimalScale={1} disabled={!e.willing} value={shown} onChange={(v) => setWages({ ...wages, [e.player_id]: v })} rightSection={<Text size="xs">{symbol}K</Text>} />
+                    <Button
+                      size="xs"
+                      disabled={!e.willing}
+                      loading={renewal.isPending}
+                      onClick={() =>
+                        void renewal
+                          .mutateAsync({ playerId: e.player_id, wage_eur: toEuros(Number(shown) * 1e3) })
+                          .then((r) => setNote({ ok: true, text: r.message }), (err: Error) => setNote({ ok: false, text: err.message }))
+                      }
+                    >
+                      Renew
+                    </Button>
+                  </Group>
+                </Table.Td>
+              </Table.Tr>
+            )
+          })}
+        </Table.Tbody>
+      </Table>
+    </Stack>
+  )
+}
+
 function HistoryTab() {
   const [mine, setMine] = useState(true)
   const rows = useTransferHistory(mine).data ?? []
@@ -308,6 +369,7 @@ export default function TransfersPage() {
             Offers for your players
           </Tabs.Tab>
           <Tabs.Tab value="sell">Sell</Tabs.Tab>
+          <Tabs.Tab value="contracts">Contracts</Tabs.Tab>
           <Tabs.Tab value="history">History</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="search" pt="md">
@@ -318,6 +380,9 @@ export default function TransfersPage() {
         </Tabs.Panel>
         <Tabs.Panel value="sell" pt="md">
           <SellTab />
+        </Tabs.Panel>
+        <Tabs.Panel value="contracts" pt="md">
+          <ContractsTab />
         </Tabs.Panel>
         <Tabs.Panel value="history" pt="md">
           <HistoryTab />

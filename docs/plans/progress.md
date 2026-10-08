@@ -16,7 +16,11 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): W4-8a, where a player plays** (loans' groundwork; the commit that adds this line, after 1370b66). There's no change of behaviour until loans exist.
+- **Latest checkpoint (9 Oct): the updater waits only for real use** (the commit that adds this line; after ee46a4a). The user's VM stayed on v1.19 for over ten minutes after a push.
+  - **Likely cause:** `deploy/update.sh` counted any established connection on the port as busy, so an open game tab (or Tailscale Serve's idle connection) held updates back indefinitely.
+  - **Fix:** `/api/health` now says `in_use` (a match played live, or a sim-to-date running), and the updater waits only for that. An older server, without the field, keeps the old connection rule. This one update still needs the tabs closed, because the VM runs the old check until it has it.
+  - **Asked the user** for `journalctl --user -u footsim-update -n 30` if it still doesn't update.
+- **9 Oct: W4-8a, where a player plays** (ee46a4a, after 1370b66; loans' groundwork). There's no change of behaviour until loans exist.
   - **Schema 13:**
     - `ux_contract_loan`: at most one active loan per player;
     - the **`playing` view**: each player's active loan if he has one, else his permanent contract. It's created by the schema (an after-create DDL) and by `_to_v13`.

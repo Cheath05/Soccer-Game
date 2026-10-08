@@ -66,10 +66,17 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   fail "tracked files have uncommitted changes; not updating (commit or discard them by hand)"
 fi
 
-# In use: a browser connected (a match being watched holds a WebSocket open), or a sim-to-date
-# running in the background, which needs no connection.
+# In use: a match being played live, or a sim-to-date running. A server that knows says so in
+# /api/health ("in_use"), and an open page or a proxy's idle connection doesn't hold an update
+# back. An older server doesn't say: then any connection counts (a watched match holds a
+# WebSocket open), as before.
 busy() {
-  local connections sim
+  local health_body connections sim
+  health_body=$(curl -sf --max-time 5 "$base/api/health" || true)
+  if grep -Eq '"in_use"[[:space:]]*:[[:space:]]*(true|false)' <<<"$health_body"; then
+    grep -Eq '"in_use"[[:space:]]*:[[:space:]]*true' <<<"$health_body"
+    return
+  fi
   connections=$(ss -Htn state established "( sport = :$port )") || fail "cannot list connections with ss"
   [ -z "$connections" ] || return 0
   sim=$(curl -sf --max-time 5 "$base/api/career/sim" || true)

@@ -62,10 +62,12 @@ def health(session: Session) -> dict[str, str | bool]:
     careers live: each test starts a career, which overwrites save slot 1. The build (version
     number such as "1.12", commit, its date, branch, and whether tracked files have changed
     since) is what the version tag in the game shows; ``package_version`` is the Python package's
-    own."""
+    own. ``in_use`` says whether a match is being played live or a sim-to-date is running: the
+    updater waits for neither (an open page doesn't count; it reconnects after a restart)."""
     saves = session.saves.root.resolve()
+    in_use = bool(session.live_matches) or sim.running(session)
     return {"status": "ok", "package_version": __version__, "saves_dir": str(saves),
-            "default_saves": saves == DEFAULT_SAVES.resolve(), **build_info()}
+            "default_saves": saves == DEFAULT_SAVES.resolve(), "in_use": in_use, **build_info()}
 
 
 @cache

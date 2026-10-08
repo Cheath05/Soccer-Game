@@ -36,3 +36,9 @@ def test_health_names_the_build() -> None:
         assert isinstance(body[key], str)
     assert isinstance(body["dirty"], bool)
     assert body["package_version"] == __version__
+
+
+def test_health_says_whether_the_game_is_in_use() -> None:
+    """The updater waits only while a match is played live or a sim runs (deploy/update.sh)."""
+    body = TestClient(app).get("/api/health").json()
+    assert body["in_use"] is False

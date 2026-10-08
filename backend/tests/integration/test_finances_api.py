@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from match_day import advance_to_match
 from sqlalchemy import select, text
 
 from footsim.api import sim
@@ -61,7 +62,7 @@ def test_the_finances_page_follows_the_clubs_money(client: TestClient) -> None:
 
     # To the first match day, past the 1st of August: one month is settled. It is the season's
     # profit so far, not a list of transactions, and with only one settlement nothing has changed.
-    stop = client.post("/api/career/advance").json()
+    stop = advance_to_match(client)
     assert stop["stop"] == "match"
     later = client.get("/api/finances").json()
     assert abs(later["season_profit_so_far_eur"] - month["profit_eur"]) <= 4  # rounding

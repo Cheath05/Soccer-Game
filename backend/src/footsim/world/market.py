@@ -432,23 +432,27 @@ class _Market:
             self.season_end.year + 1)
         move = Move(player_id, club.id, fee * 100, wage * 100, date(first + years - 1, 6, 30))
         try:
-            news = complete_move(self.conn, self.world, meta, move, self.day)
+            complete_move(self.conn, self.world, meta, move, self.day)
         except MoveRefused:
             return None
         self._moved(k, club, owner, wage, years)
-        notable = fee >= rules.news_fee
-        return news[0] if notable else ""
+        return ""  # AI clubs' deals stay out of the user's news (the history has them)
 
     def bid_for_user(self, club: _Club, need: _Need, k: int, window: DateRange) -> str | None:
         """An AI club wants one of the user's players: it doesn't buy him, it makes an offer
         that stands ``offer_days`` and stops sim-to-date. Returns the news, or None."""
         p, rules, meta = self.players, self.rules, self.meta
         player_id = int(p.ids[k])
-        pending = self.conn.execute(text(
-            "SELECT COUNT(*) AS n, SUM(player_id = :p AND bidder_club_id = :c) AS mine "
-            "FROM transfer_offer WHERE owner_club_id = :u AND status = 'pending'"),
-            {"p": player_id, "c": club.id, "u": meta.user_club_id}).one()
-        if pending.n >= rules.max_bids_for_user or pending.mine:
+        # Bids are an event, not a stream: a few a window, and a club turned down for a player
+        # doesn't come back for him in the same window.
+        made = self.conn.execute(text(
+            "SELECT SUM(status = 'pending') AS waiting, COUNT(*) AS window, "
+            "SUM(player_id = :p AND bidder_club_id = :c) AS again FROM transfer_offer "
+            "WHERE owner_club_id = :u AND by_user = 0 AND created >= :start"),
+            {"p": player_id, "c": club.id, "u": meta.user_club_id,
+             "start": window.start.isoformat()}).one()
+        if ((made.waiting or 0) >= rules.max_bids_for_user or made.window >= rules.bids_per_window
+                or made.again):
             return None
         user = self.clubs[int(self.owner[k])]
         role = self.view(user).roles.get(k, Role.SURPLUS)
@@ -584,8 +588,6 @@ def run_market(conn: Connection, world: World, meta: CareerMeta, day: date,
         if window is not None and _acts(world, meta, club, window, day):
             acting.append((club, window))
     acting.sort(key=lambda cw: (-cw[0].reputation, cw[0].id))
-    user = market.clubs.get(meta.user_club_id) if meta.user_club_id is not None else None
-    user_league = user.league if user else None
     news: list[tuple[int, str]] = []
     for club, window in acting:
         market.counts(club, window)
@@ -597,32 +599,15 @@ def run_market(conn: Connection, world: World, meta: CareerMeta, day: date,
             if club.signed >= limit:
                 break
             for k in market.candidates(club, need, meta.user_club_id):
-                seller = market.clubs.get(int(market.owner[k]))
                 story = market.attempt(club, need, k, window)
                 if story is None:
                     continue
-                ours = user_league is not None and user_league in (
-                    club.league, seller.league if seller else None)
-                if story or ours:
-                    news.append((0 if story else 1, story or _plain_news(conn, k, market)))
+                if story:  # only what concerns the user's club: a bid for one of their players
+                    news.append((0, story))
                 break
     news.sort(key=lambda n: n[0])
     return [text_ for _, text_ in news[:world.defs.market.max_news] if text_]
 
-
-def _plain_news(conn: Connection, k: int, market: _Market) -> str:
-    """The news line of a smaller deal in the user's league (the latest transfer of the
-    player)."""
-    row = conn.execute(text(
-        "SELECT t.fee_cents, t.kind, pe.first_name, pe.last_name, pe.known_as, b.name AS buyer, "
-        "s.name AS seller FROM transfer t JOIN person pe ON pe.id = t.player_id "
-        "JOIN club b ON b.id = t.to_club_id LEFT JOIN club s ON s.id = t.from_club_id "
-        "WHERE t.player_id = :p ORDER BY t.id DESC LIMIT 1"),
-        {"p": int(market.players.ids[k])}).one()
-    name = display_name(row.first_name, row.last_name, row.known_as)
-    if row.kind == "free" or row.seller is None:
-        return f"{name} joins {row.buyer} on a free transfer."
-    return f"{name} joins {row.buyer} from {row.seller} for {fee_text(row.fee_cents)}."
 
 
 # --- the user's side (W4-6): the same rules, asked for by the user ------------------------

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from match_day import advance_to_match
 
 from footsim.api.app import create_app
 from footsim.api.session import CareerSession
@@ -67,7 +68,7 @@ def test_another_clubs_profile_and_squad(client: TestClient) -> None:
     assert ours["wage_weekly_eur"] is not None
 
     # Match day one: play the user's game too, so every club has played once.
-    stop = client.post("/api/career/advance").json()
+    stop = advance_to_match(client)
     assert stop["stop"] == "match"
     client.post(f"/api/fixtures/{stop['fixture_id']}/play")
     played = client.get(f"/api/clubs/{other['id']}").json()

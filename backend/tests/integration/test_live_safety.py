@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from match_day import advance_to_match
 
 from footsim.api.app import create_app
 from footsim.api.session import CareerSession
@@ -25,7 +26,7 @@ def _start(client: TestClient, slot: int, league: str = "ENG2", pick: int = 0) -
     leagues = client.get("/api/world/leagues").json()
     club = [c for lg in leagues if lg["key"] == league for c in lg["clubs"]][pick]
     client.post(f"/api/saves/{slot}/new", json={"club_id": club["id"], "manager_name": "T"})
-    stop = client.post("/api/career/advance").json()
+    stop = advance_to_match(client)
     assert stop["stop"] == "match"
     fixture_id: int = stop["fixture_id"]
     return fixture_id

@@ -16,7 +16,11 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (8 Oct): W4-6, the user's transfers** (the commit that adds this line; after f4fa66d).
+- **Latest checkpoint (9 Oct): W4-6 follow-up: fewer bids, quieter news** (the commit that adds this line; after b1cfa33).
+  - **Bids for the user's players were a stream:** a League Two club got one every two days in July, each stopping sim-to-date. Now there are at most `bids_per_window` (4) a window, and a club turned down doesn't bid for the same player again in that window.
+  - **News:** AI clubs' deals stay out of the user's news (the user asked: only what concerns their club). The market's news is just bids for the user's players; the transfer history still lists every deal.
+  - **Tests:** the tests that advance to a match now turn down bids on the way (`tests/integration/match_day.py`), as a player would. They had failed on `stop: "offer"` in the W4-6 full run. The sim-to-date tests sim on after a bid.
+- **8 Oct: W4-6, the user's transfers** (b1cfa33, after f4fa66d).
   - **Your offers** (`world/market.py` `make_offer`, by the same rules as every AI club):
     - the window and the budget are checked first;
     - then the club answers (asking price: accept, counter "They want €X", or reject);

@@ -21,9 +21,9 @@ max_out: 5                  # sales a club makes in a window, at most
 needs_per_day: 2            # needs a club works on in one market day
 offer_days: 3               # an AI club's bid for one of the user's players stands this many days
 max_bids_for_user: 3        # bids for the user's players waiting at once, at most
+bids_per_window: 4          # bids for the user's players in one window, at most (each stops the sim)
 moved_rest_days: 60         # a player who has just moved isn't sold on within this many days
-max_news: 8                 # deals a day that make the news (the biggest, and the user's league's)
-news_fee: 20000000          # a fee this big always makes the news
+max_news: 8                 # news lines a day from the market (bids for the user's players)
 candidates_per_need: 4      # players it tries for one need, best first
 
 # --- squad shape ---

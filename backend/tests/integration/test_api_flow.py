@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from match_day import advance_to_match
 
 from footsim.api.app import create_app
 from footsim.api.session import CareerSession
@@ -30,7 +31,7 @@ def test_career_flow(client: TestClient) -> None:
                          json={"club_id": arsenal["id"], "manager_name": "Tester"}).json()
     assert career["club"]["name"] == "Arsenal" and career["position"] is None  # pre-season
 
-    stop = client.post("/api/career/advance").json()
+    stop = advance_to_match(client)
     assert stop["stop"] == "match" and stop["fixture_id"]
     assert client.get("/api/career").json()["date"] == stop["date"]
 
@@ -59,7 +60,7 @@ def test_career_flow(client: TestClient) -> None:
     slots = client.get("/api/saves").json()
     assert slots[0]["has_save"] and slots[0]["club"] == "Arsenal"
 
-    after = client.post("/api/career/advance").json()
+    after = advance_to_match(client)
     assert after["stop"] == "match" and after["date"] > stop["date"]
 
     reloaded = client.post("/api/saves/1/load").json()
@@ -70,7 +71,7 @@ def test_live_match_over_websocket(client: TestClient) -> None:
     leagues = client.get("/api/world/leagues").json()
     club = next(c for lg in leagues if lg["key"] == "ENG2" for c in lg["clubs"])
     client.post("/api/saves/2/new", json={"club_id": club["id"], "manager_name": "Live"})
-    stop = client.post("/api/career/advance").json()
+    stop = advance_to_match(client)
     assert stop["stop"] == "match"
 
     with client.websocket_connect(f"/api/fixtures/{stop['fixture_id']}/live") as ws:

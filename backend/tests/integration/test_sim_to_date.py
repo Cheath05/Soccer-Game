@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from match_day import advance_to_match, reject_bids
 
 from footsim.api.app import create_app
 from footsim.api.session import CareerSession
@@ -44,7 +45,7 @@ def _wait(client: TestClient, timeout: float = 240.0) -> dict[str, Any]:
 
 def test_sim_to_a_date_plays_the_users_matches_on_the_way(client: TestClient) -> None:
     _career(client)
-    first = client.post("/api/career/advance").json()  # to the first match day
+    first = advance_to_match(client)  # to the first match day
     assert first["stop"] == "match"
     until = date.fromisoformat(first["date"]) + timedelta(days=10)
 
@@ -52,6 +53,13 @@ def test_sim_to_a_date_plays_the_users_matches_on_the_way(client: TestClient) ->
     assert started["running"]
     assert client.post("/api/career/advance").status_code == 409  # one thing at a time
     status = _wait(client)
+    results = list(status["results"])
+    while status["stop"] == "offer":  # a club bid for one of ours: turn it down, sim on
+        reject_bids(client)
+        client.post("/api/career/sim", json={"until": until.isoformat()})
+        status = _wait(client)
+        results += status["results"]
+    status["results"] = results
 
     assert status["stop"] == "date" and status["error"] is None
     career = client.get("/api/career").json()
@@ -71,6 +79,10 @@ def test_a_sim_can_be_stopped_and_the_game_carries_on(client: TestClient) -> Non
     deadline = time.monotonic() + 120
     while not client.get("/api/career/sim").json()["results"]:
         assert time.monotonic() < deadline, "no match was played"
+        status = client.get("/api/career/sim").json()
+        if not status["running"] and status["stop"] == "offer":  # a bid: turn it down, sim on
+            reject_bids(client)
+            client.post("/api/career/sim", json={"until": career["season_end"]})
         time.sleep(0.2)
     client.post("/api/career/sim/stop")
 

@@ -72,12 +72,18 @@ function OfferModal({ player, onClose }: { player: MarketPlayer; onClose: () => 
         <NumberInput label={`Wage (${symbol}K a week)`} min={0} decimalScale={1} value={wageShown} onChange={setWeekly} />
         {result && (
           <Alert color={resultColor(result)} title={result.status === 'accepted' ? 'Done' : result.status === 'countered' ? 'They want more' : 'No deal'}>
-            {result.message}
-            {result.status === 'countered' && (
-              <Button size="xs" mt="xs" onClick={() => send(result.fee_eur)}>
-                Offer {money(result.fee_eur)}
-              </Button>
-            )}
+            <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+              <Text size="sm">
+                {result.message}
+                {result.status === 'countered' && ` Their price: ${money(result.fee_eur)}.`}
+                {result.status === 'rejected' && result.wage_eur > 0 && ` He asks ${wage(result.wage_eur)}.`}
+              </Text>
+              {result.status === 'countered' && (
+                <Button size="xs" style={{ flexShrink: 0 }} onClick={() => send(result.fee_eur)}>
+                  Offer {money(result.fee_eur)}
+                </Button>
+              )}
+            </Group>
           </Alert>
         )}
         <Group justify="flex-end">

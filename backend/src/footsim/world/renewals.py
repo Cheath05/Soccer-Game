@@ -225,7 +225,7 @@ def renew(conn: Connection, world: World, meta: CareerMeta, day: date, season_en
         raise RenewalRefused(f"{terms.name} won't sign a new contract with you.")
     wage = terms.asks_eur if wage_eur is None else wage_eur
     if wage < terms.asks_eur:
-        raise RenewalRefused(f"{terms.name} wants at least {terms.asks_eur:,} a week (EUR).")
+        raise RenewalRefused(f"{terms.name} wants at least the wage he asked.")
     length = years or terms.years
     if not 1 <= length <= 5:
         raise RenewalRefused("A contract runs 1 to 5 years.")

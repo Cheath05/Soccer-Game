@@ -806,7 +806,8 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
             return OfferResult("rejected", "They turned it down: it's well short of what they "
                                "want.")
         if answer.kind == "counter":
-            return OfferResult("countered", f"They want {fee_text(ask * 100)}.", fee_eur=ask)
+            # Amounts go as numbers: the page shows them in the user's currency.
+            return OfferResult("countered", "They want more for him.", fee_eur=ask)
         asked = wage_demand(going, float(market.wage[k]), False, rules)
         group = str(market.players.primary[k])
         starters = market.view(club).starters.get(group, [])
@@ -825,7 +826,7 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
             return OfferResult("rejected", "He doesn't want to move to your club.")
     wage = wage_eur if wage_eur is not None else asked
     if wage < asked:
-        return OfferResult("rejected", f"He wants {fee_text(asked * 100)} a week.",
+        return OfferResult("rejected", "He wants a higher wage.",
                            wage_eur=asked)
     length = years or contract_years(float(market.age[k]), rules)
     move = Move(player_id, club.id, fee_eur * 100, wage * 100, _contract_end(market, length),

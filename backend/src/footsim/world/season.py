@@ -48,6 +48,7 @@ from footsim.world.market import run_market
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import record_season_start
 from footsim.world.renewals import contract_reminders, settle_expiring
+from footsim.world.reputation import drift_reputations
 from footsim.world.squads import club_name, display_name, load_squad
 
 DEVELOPMENT_SHARE = 1 / 12  # of a year's development, applied on the first of each month
@@ -413,6 +414,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     meta.season_id = new
     refresh_ai_tactics(conn, world, meta, calendar.season_start)
     messages += create_season_fixtures(conn, world, meta, new)
+    messages += drift_reputations(conn, world, meta, old, new)
     start_season_finances(conn, world, meta, old, calendar.season_start)
     messages.insert(0, f"The {calendar.season} season begins.")
     return messages

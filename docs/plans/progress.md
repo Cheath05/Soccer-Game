@@ -16,7 +16,12 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): W4-8b, loans** (the commit that adds this line; after 2487c44). W4 is complete.
+- **Latest checkpoint (9 Oct): reputation that moves** (the commit that adds this line; after b24ad81, which made wages visibly scale with a sandbox budget: no wage limit without a board, the budget's weekly wage room shown, and the board off by default for sandbox careers).
+  - **At each rollover** (`world/reputation.py`, after the fixtures), every club's reputation closes `drift` (25%) of the gap to what its squad is worth now: the world build's formula on its best 18 players' overalls, from the `playing` view. It adds `title_bonus` (2, half for a lower division) and `cup_bonus` (1) for silverware, and gives the user news when their club's reputation moves 2 or more.
+  - **`league_weight` is 0:** the value model was fitted on squad-based reputations, and a pull towards a league's mean would deflate the top clubs and their players' values every season. At the build, reputation equals the squad formula (today's gap is within about ±1.5), so it only moves as squads change: buying better players lifts a club over a few seasons, and selling its best lowers it.
+  - **Tests:** `test_reputation.py` (drifts to the target without overshooting; a club stripped of its best players falls); the definitions tests.
+  - **Running alongside:** U2 (Sonnet): club search, sim to the next cup match, competition names in sim results, the big five first, real Italian club names (schema 14).
+- **9 Oct: W4-8b, loans** (79e9f71, after 2487c44). W4 is complete.
   - **`world/loans.py`:**
     - `validate_loan` and `start_loan`, the same for AI and user: the borrower's window is open; it pays its share × weeks left from the budget; the parent keeps its floors; the borrower stays within the limit; the loan ends before his contract; he isn't already on loan.
     - A loan writes a `loan` contract at the borrower and a `loan` history row, and clears him from the parent's line-up.

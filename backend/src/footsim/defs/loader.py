@@ -37,6 +37,7 @@ from footsim.defs.match import (
 from footsim.defs.nations import NationDef, NationsFile
 from footsim.defs.overall import OverallDef
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
+from footsim.defs.reputation import ReputationDriftDef
 from footsim.defs.roles import RoleDef
 from footsim.defs.valuation import ValuationDef
 from footsim.defs.world_build import WorldBuildRules
@@ -77,6 +78,7 @@ class GameDefinitions:
     home_advantage: HomeAdvantageDef
     development: DevelopmentDef
     lifecycle: LifecycleDef
+    reputation_drift: ReputationDriftDef
     overall: OverallDef
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
@@ -144,6 +146,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         home_advantage=_parse(HomeAdvantageDef, root / "match" / "home_advantage.yaml"),
         development=_parse(DevelopmentDef, root / "rules" / "development.yaml"),
         lifecycle=_parse(LifecycleDef, root / "rules" / "lifecycle.yaml"),
+        reputation_drift=_parse(ReputationDriftDef, root / "rules" / "reputation.yaml"),
         overall=_parse(OverallDef, root / "overall.yaml"),
     )
     _cross_validate(defs)

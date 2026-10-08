@@ -1,0 +1,15 @@
+# Clubs' reputations move (world/reputation.py). A club's reputation (1-99) is its stature: it
+# sets the market it's priced in, which players will come, its youth intake and cup seeding. It
+# began at the world build from its best 18 players; now, at each season's turn, it drifts part of
+# the way towards where the club stands (with no league pull, it equals its squad's worth at the
+# build, so it only moves as the squad changes):
+#   target = (1 - league_weight) x what its squad is worth (the build's formula, on the best 18
+#            now) + league_weight x its league's standing (the mean reputation of its league),
+# plus a little for silverware. A good season doesn't make a giant; a few do.
+drift: 0.25            # of the gap to the target closed each season
+league_weight: 0.0     # the league's pull. Kept at 0: the value model was fitted on squad-based
+                       # reputations, and a pull towards the league's mean would deflate the top
+                       # clubs (and their players' values) season after season
+title_bonus: 2         # a top-flight title (a lower division's: half)
+cup_bonus: 1           # a cup won
+news_change: 2         # the user hears about their club's reputation moving this much

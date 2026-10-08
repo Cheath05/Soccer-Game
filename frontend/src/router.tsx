@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 
 import Layout from './components/Layout'
+import CalendarPage from './pages/CalendarPage'
 import ClubPage from './pages/ClubPage'
 import CupsPage from './pages/CupsPage'
 import DashboardPage from './pages/DashboardPage'
@@ -26,6 +27,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/tactics', component: TacticsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/finances', component: FinancesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/transfers', component: TransfersPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/fixtures', component: FixturesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/league', component: LeaguePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/cups', component: CupsPage }),

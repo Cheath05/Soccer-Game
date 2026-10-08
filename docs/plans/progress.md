@@ -16,7 +16,12 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): W4-7, contracts running out** (the commit that adds this line; after 3763cdb). This replaces the blanket auto-renewal (`world/renewals.py`, at the rollover).
+- **Latest checkpoint (9 Oct): the calendar** (a Sonnet agent's work, reviewed and browser-checked here; the commit that adds this line, after c1e4289). The user asked for a calendar to sim from.
+  - **A Calendar page:** a Monday-first month grid with previous, next and Today. It shows the user's fixtures (home or away, opponent, competition; score and a win/draw/loss tint once played, linking to the report), shading for transfer-window days and international breaks, and the season's start and end.
+  - **Clicking a coming day** asks "Sim to <date>?" and starts the existing sim-to-date, with its progress and summary from the header.
+  - **API:** `GET /api/calendar?from=&to=` (`api/calendar.py`; 422 for a backwards range or more than 400 days). Tested in `test_calendar_api.py`.
+  - **Browser check on :8765:** July is shaded as England's window; August shows the Carabao Cup and league fixtures; clicking 20 Aug opens the confirmation; no browser errors.
+- **9 Oct: W4-7, contracts running out** (c1e4289, after 3763cdb). This replaces the blanket auto-renewal (`world/renewals.py`, at the rollover).
   - **AI clubs** renew whom they plan to keep (key players up to 35; starters and rotation up to 33; young surplus with potential above the club's level), at the asked wage (`wage_demand`) and length (`contract_years`). A key player well above his club's level may refuse.
   - **The rest leave** as free agents on 30 June, with a history row of kind `expired`. The market can sign them.
   - **The user's club** keeps only those renewed during the season: Transfers → Contracts (`GET /api/transfers/contracts`, `POST /contracts/{id}/renew`). The wage he asks or more; the raise is charged to the budget for the weeks left. News reminders on 1 April, 1 May and 1 June.

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api } from './client'
 import type {
   AdvanceResult,
+  CalendarData,
   Career,
   ClubHistory,
   Finances,
@@ -113,6 +114,14 @@ export const useSimStatus = () =>
     queryKey: ['sim'],
     queryFn: () => api.get<SimStatus | null>('/career/sim'),
     refetchInterval: (query) => (query.state.data?.running ? 500 : false),
+  })
+
+/** The user's calendar between two ISO dates. */
+export const useCalendar = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['calendar', from, to],
+    queryFn: () => api.get<CalendarData>(`/calendar?from=${from}&to=${to}`),
+    placeholderData: (previous) => previous,
   })
 
 export function useStartSim() {

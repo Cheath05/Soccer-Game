@@ -18,6 +18,7 @@ const NAV = [
   { to: '/tactics', label: 'Tactics' },
   { to: '/transfers', label: 'Transfers' },
   { to: '/finances', label: 'Finances' },
+  { to: '/calendar', label: 'Calendar' },
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
   { to: '/cups', label: 'Cups' },

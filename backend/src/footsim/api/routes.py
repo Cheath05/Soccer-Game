@@ -1,13 +1,15 @@
 """REST endpoints. Thin: validation and orchestration only; logic lives in world/ and match/."""
 
+from datetime import date
 from functools import cache
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 
 from footsim import __version__
+from footsim.api import calendar as calendar_view
 from footsim.api import finances, queries, season_review, sim
 from footsim.api.schemas import (
     AdvanceOut,
@@ -262,6 +264,18 @@ def club_history(club_id: int, session: Session) -> ClubHistoryOut:
             return queries.club_history(conn, get_world(), club_id)
         except queries.ClubNotFound as exc:
             raise HTTPException(404, "club not found") from exc
+
+
+@router.get("/calendar")
+def calendar_range(session: Session, start: Annotated[date, Query(alias="from")],
+                   to: date) -> calendar_view.CalendarOut:
+    """The user's fixtures, window days and breaks from ``from`` to ``to``."""
+    if to < start or (to - start).days > calendar_view.MAX_RANGE_DAYS:
+        raise HTTPException(422, "a range of at most 400 days, ending after it starts")
+    if session.slot is None:
+        raise NoCareer("no career loaded")
+    with session.read() as conn:
+        return calendar_view.calendar(conn, get_world(), start, to)
 
 
 @router.get("/clubs/{club_id}/fixtures")

@@ -591,3 +591,15 @@ export interface Finances {
   board_enabled: boolean
   board: Board | null // null when the board is off
 }
+
+// GET /api/calendar: the user's fixtures, window days and breaks in a date range.
+export interface CalendarData {
+  start: string
+  end: string
+  today: string
+  season_start: string
+  season_end: string
+  fixtures: Fixture[]
+  window_days: string[]
+  international_breaks: { start: string; end: string }[]
+}

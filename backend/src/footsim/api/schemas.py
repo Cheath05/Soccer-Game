@@ -641,6 +641,9 @@ class FinancesOut(BaseModel):
     budget_eur: int  # for transfer fees and new wages this season
     wage_bill_weekly_eur: int
     wage_capacity_weekly_eur: int  # the weekly wage bill the club's income supports
+    # the weekly wages the budget could still pay for the rest of the season (wages scale
+    # with the budget: a signing's cost is his fee and his wage for the weeks left)
+    wage_room_weekly_eur: int
     monthly: MonthlyOut
     season_profit_so_far_eur: int  # the months settled this season
     changes: list[ChangeOut]  # notable changes in the month's parts, the latest first

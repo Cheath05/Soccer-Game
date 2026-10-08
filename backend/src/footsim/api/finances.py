@@ -27,6 +27,7 @@ from footsim.world.finance import (
     rate_changes,
     season_profit_cents,
     wage_bills,
+    weeks_left,
 )
 from footsim.world.meta import read_meta
 from footsim.world.season import standings
@@ -94,6 +95,8 @@ def finances(conn: Connection, world: World) -> FinancesOut:
         budget_eur=_cents_to_eur(row.transfer_budget_cents),
         wage_bill_weekly_eur=_cents_to_eur(bill),
         wage_capacity_weekly_eur=_cents_to_eur(row.wage_budget_cents),
+        wage_room_weekly_eur=_cents_to_eur(max(0, row.transfer_budget_cents) / weeks_left(
+            conn, meta.season_id, meta.current_date)),
         monthly=MonthlyOut(tv_eur=tv, commercial_eur=commercial, wages_eur=wages,
                            running_eur=running, profit_eur=tv + commercial + wages + running),
         season_profit_so_far_eur=_cents_to_eur(

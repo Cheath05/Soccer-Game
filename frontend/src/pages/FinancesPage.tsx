@@ -100,11 +100,22 @@ export default function FinancesPage() {
           <Text fw={700} size="xl">
             {wage(f.wage_bill_weekly_eur)}
           </Text>
-          <Progress mt={6} value={used} color={over > 0 ? 'red' : used > 95 ? 'orange' : 'teal'} />
-          <Text size="xs" c={over > 0 ? 'red.7' : 'dimmed'} mt={4}>
-            {over > 0
-              ? `${wage(over)} more than your income supports (${wage(f.wage_capacity_weekly_eur)}): that comes off next season’s budget`
-              : `Your income supports ${wage(f.wage_capacity_weekly_eur)}`}
+          {f.board_enabled ? (
+            <>
+              <Progress mt={6} value={used} color={over > 0 ? 'red' : used > 95 ? 'orange' : 'teal'} />
+              <Text size="xs" c={over > 0 ? 'red.7' : 'dimmed'} mt={4}>
+                {over > 0
+                  ? `${wage(over)} more than your income supports (${wage(f.wage_capacity_weekly_eur)}): the board takes that off next season’s budget`
+                  : `Your income supports ${wage(f.wage_capacity_weekly_eur)}`}
+              </Text>
+            </>
+          ) : (
+            <Text size="xs" c="dimmed" mt={4}>
+              Paid from your budget: no wage limit without a board
+            </Text>
+          )}
+          <Text size="xs" c="dimmed">
+            Your budget could pay {wage(f.wage_room_weekly_eur)} more for the rest of the season
           </Text>
         </Card>
       </SimpleGrid>

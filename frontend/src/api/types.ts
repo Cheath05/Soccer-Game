@@ -584,6 +584,7 @@ export interface Finances {
   budget_eur: number // for transfer fees and new wages this season
   wage_bill_weekly_eur: number
   wage_capacity_weekly_eur: number // the weekly wage bill the club's income supports
+  wage_room_weekly_eur: number // what the budget could still pay a week, to the season's end
   monthly: Monthly
   season_profit_so_far_eur: number
   changes: FinanceChange[] // the latest first

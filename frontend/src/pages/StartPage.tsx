@@ -20,6 +20,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   // The sandbox budget, typed in millions of the money shown (dollars unless changed here).
   const [budgetMillions, setBudgetMillions] = useState<number | string>('')
   const [board, setBoard] = useState(true)
+  const [boardTouched, setBoardTouched] = useState(false)
   const [league, setLeague] = useState('ENG1')
   const [clubId, setClubId] = useState<number | null>(null)
   const [slot, setSlot] = useState('1')
@@ -102,7 +103,11 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               max={Math.floor((MAX_BUDGET_EUR / 1_000_000) * CURRENCIES[currency].perEuro)}
               thousandSeparator=","
               value={budgetMillions}
-              onChange={setBudgetMillions}
+              onChange={(v) => {
+                setBudgetMillions(v)
+                // A sandbox is for fun: no board unless asked for (it would trim the budget each season).
+                if (!boardTouched) setBoard(v === '')
+              }}
               w={300}
             />
             <SegmentedControl
@@ -116,7 +121,10 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
             label="Board expectations"
             description="Off means no targets and no sacking, and your budget is all your cash."
             checked={board}
-            onChange={(e) => setBoard(e.currentTarget.checked)}
+            onChange={(e) => {
+              setBoardTouched(true)
+              setBoard(e.currentTarget.checked)
+            }}
           />
           {leagues.isPending && <Loader />}
           {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}

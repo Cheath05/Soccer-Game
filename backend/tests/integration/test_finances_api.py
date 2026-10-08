@@ -81,6 +81,8 @@ def test_a_sandbox_career_can_start_with_billions(client: TestClient) -> None:
     assert money["budget_eur"] == 2_000_000_000
     assert money["balance_eur"] >= 2_000_000_000  # the owner puts the cash in
     assert {t["kind"] for t in money["transactions"]} == {"opening", "adjustment"}
+    # Wages scale with the budget: it could pay tens of millions a week more for the season.
+    assert money["wage_room_weekly_eur"] > 2_000_000_000 / 60 > money["wage_capacity_weekly_eur"]
     overview = client.get(f"/api/clubs/{club_id}").json()
     assert overview["budget_eur"] == 2_000_000_000  # exact: it's the user's own
     # The budget used to be called the transfer budget: a client that still says so is heard.

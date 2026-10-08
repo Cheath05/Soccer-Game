@@ -48,6 +48,7 @@ from footsim.transfers.decisions import (
 from footsim.transfers.valuation import values_eur, years_old
 from footsim.world.context import AI_FORMATIONS, World
 from footsim.world.finance import wage_bills
+from footsim.world.loans import Loan, start_loan
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import display_name
 from footsim.world.transfers import Move, MoveRefused, complete_move, fee_text
@@ -445,6 +446,78 @@ class _Market:
         self._moved(k, club, owner, wage, years)
         return ""  # AI clubs' deals stay out of the user's news (the history has them)
 
+    def loan_end(self) -> date:
+        """A loan runs to the end of the season (next season's, in the summer window's June)."""
+        year = self.season_end.year if (self.season_end - self.day).days > 30 else (
+            self.season_end.year + 1)
+        return date(year, 6, 30)
+
+    def loan_candidates(self, club: _Club, need: _Need) -> list[int]:
+        """Young players at clubs well above this one who'd cover the need (their clubs decide
+        whether they're spare)."""
+        p, rules = self.players, self.rules
+        rating = p.in_group[need.group]
+        mask = (p.can_play[need.group] & (self.owner != club.id) & (self.owner != FREE)
+                & ~self.moved & ~self.on_loan & (self.age <= rules.loan_max_age)
+                & (rating >= need.low) & (rating <= need.high + 2)
+                & (self.market_rep >= club.reputation + rules.loan_level_gap))
+        rows = np.nonzero(mask)[0]
+        order = sorted(rows, key=lambda k: (-rating[k], int(p.ids[k])))
+        return [int(k) for k in order[:rules.candidates_per_need]]
+
+    def attempt_loan(self, club: _Club, k: int, window: DateRange) -> str | None:
+        """Try to borrow the player at row ``k``: his club lends only a player it has spare (a
+        loan offer if he's the user's). Returns the news ("" for none), or None."""
+        p, rules, meta = self.players, self.rules, self.meta
+        player_id, owner = int(p.ids[k]), int(self.owner[k])
+        parent = self.clubs.get(owner)
+        if parent is None:
+            return None
+        if owner == meta.user_club_id:
+            return self.loan_offer_for_user(club, k, window)
+        if self.view(parent).roles.get(k, Role.SURPLUS) is not Role.SURPLUS:
+            return None
+        try:
+            start_loan(self.conn, self.world, meta,
+                       Loan(player_id, club.id, self.loan_end(), rules.loan_share), self.day)
+        except MoveRefused:
+            return None
+        self.on_loan[k], self.moved[k] = True, True
+        self.by_club.get(int(self.plays_for[k]), set()).discard(k)
+        self.plays_for[k] = club.id
+        self.by_club.setdefault(club.id, set()).add(k)
+        club.signed += 1
+        self._refresh_money(club)
+        self.views.pop(club.id, None)
+        self.views.pop(owner, None)
+        return ""
+
+    def loan_offer_for_user(self, club: _Club, k: int, window: DateRange) -> str | None:
+        """An AI club asks to borrow one of the user's young players: an offer like a bid."""
+        p, rules, meta = self.players, self.rules, self.meta
+        player_id = int(p.ids[k])
+        made = self.conn.execute(text(
+            "SELECT SUM(status = 'pending') AS waiting, COUNT(*) AS window, "
+            "SUM(player_id = :p AND bidder_club_id = :c) AS again FROM transfer_offer "
+            "WHERE owner_club_id = :u AND by_user = 0 AND created >= :start"),
+            {"p": player_id, "c": club.id, "u": meta.user_club_id,
+             "start": window.start.isoformat()}).one()
+        if ((made.waiting or 0) >= rules.max_bids_for_user or made.window >= rules.bids_per_window
+                or made.again):
+            return None
+        share = round(rules.loan_share * float(self.wage[k])) * 100
+        self.conn.execute(transfer_offer.insert().values(
+            player_id=player_id, bidder_club_id=club.id, owner_club_id=meta.user_club_id,
+            kind="loan", status="pending", fee_cents=0, counter_fee_cents=None,
+            wage_weekly_cents=share, years=None, created=self.day.isoformat(),
+            expires=(self.day + timedelta(days=rules.offer_days)).isoformat(), by_user=0))
+        names = self.conn.execute(text(
+            "SELECT pe.first_name, pe.last_name, pe.known_as, c.name FROM person pe, club c "
+            "WHERE pe.id = :p AND c.id = :c"), {"p": player_id, "c": club.id}).one()
+        name = display_name(names.first_name, names.last_name, names.known_as)
+        return (f"{names.name} want {name} on loan until the end of the season. Answer them on "
+                "the Transfers page.")
+
     def bid_for_user(self, club: _Club, need: _Need, k: int, window: DateRange) -> str | None:
         """An AI club wants one of the user's players: it doesn't buy him, it makes an offer
         that stands ``offer_days`` and stops sim-to-date. Returns the news, or None."""
@@ -606,8 +679,13 @@ def run_market(conn: Connection, world: World, meta: CareerMeta, day: date,
         for need in market.needs(club)[:world.defs.market.needs_per_day]:
             if club.signed >= limit:
                 break
-            for k in market.candidates(club, need, meta.user_club_id):
-                story = market.attempt(club, need, k, window)
+            # Cover first looks for a loan of a young player who'd play more here.
+            options = ([("loan", k) for k in market.loan_candidates(club, need)]
+                       if need.kind in ("depth", "short") else [])
+            options += [("buy", k) for k in market.candidates(club, need, meta.user_club_id)]
+            for how, k in options:
+                story = (market.attempt_loan(club, k, window) if how == "loan"
+                         else market.attempt(club, need, k, window))
                 if story is None:
                     continue
                 if story:  # only what concerns the user's club: a bid for one of their players
@@ -772,6 +850,8 @@ def answer_bid(conn: Connection, world: World, meta: CareerMeta, day: date, offe
         conn.execute(update(transfer_offer).where(transfer_offer.c.id == offer_id)
                      .values(status="rejected"))
         return OfferResult("rejected", "You turned it down.")
+    if row.kind == "loan":
+        return _answer_loan_offer(conn, world, meta, day, row, action)
     fee = row.fee_cents // 100
     if action == "counter":
         if fee_eur is None:
@@ -810,3 +890,78 @@ def bid_arrived(conn: Connection, meta: CareerMeta, day: date) -> bool:
         "SELECT 1 FROM transfer_offer WHERE owner_club_id = :u AND status = 'pending' "
         "AND by_user = 0 AND created = :d LIMIT 1"),
         {"u": meta.user_club_id, "d": day.isoformat()}).first() is not None
+
+
+
+def _answer_loan_offer(conn: Connection, world: World, meta: CareerMeta, day: date,
+                       row: Any, action: str) -> OfferResult:
+    """The user's answer to an AI club asking to borrow one of their players."""
+    if action == "counter":
+        return OfferResult("refused", "A loan is accepted or turned down.")
+    if action != "accept":
+        return OfferResult("refused", f"Unknown answer {action}.")
+    market = _user_market(conn, world, meta, day)
+    owner = conn.execute(text("SELECT wage_weekly_cents FROM contract WHERE person_id = :p AND "
+                              "is_active = 1 AND kind != 'loan'"), {"p": row.player_id}).first()
+    share = row.wage_weekly_cents / owner.wage_weekly_cents if owner and owner.wage_weekly_cents \
+        else market.rules.loan_share
+    try:
+        news = start_loan(conn, world, meta, Loan(row.player_id, row.bidder_club_id,
+                                                  market.loan_end(), min(1.0, share)), day)
+    except MoveRefused as exc:
+        conn.execute(update(transfer_offer).where(transfer_offer.c.id == row.id)
+                     .values(status="failed"))
+        return OfferResult("refused", str(exc))
+    conn.execute(update(transfer_offer).where(transfer_offer.c.id == row.id)
+                 .values(status="accepted"))
+    return OfferResult("accepted", news)
+
+
+def make_loan_offer(conn: Connection, world: World, meta: CareerMeta, day: date,
+                    player_id: int, share: float) -> OfferResult:
+    """The user asks to borrow a player until the season's end, paying ``share`` of his wage:
+    his club lends a spare player (a rotation player only for most of his wage; never a
+    starter), and he goes where he'll play."""
+    market = _user_market(conn, world, meta, day)
+    rules = market.rules
+    k = market.players.index.get(player_id)
+    if k is None:
+        return OfferResult("refused", "No such player.")
+    club = market.clubs[meta.user_club_id] if meta.user_club_id is not None else None
+    assert club is not None
+    owner = int(market.owner[k])
+    if owner == FREE:
+        return OfferResult("refused", "He's a free agent: sign him instead.")
+    if owner == club.id:
+        return OfferResult("refused", "He's already yours.")
+    parent = market.clubs[owner]
+    role = market.view(parent).roles.get(k, Role.SURPLUS)
+    if role in (Role.KEY, Role.STARTER):
+        return OfferResult("rejected", f"{_club_name(conn, owner)} won't loan out a first-team "
+                                       "player.")
+    if market.age[k] > rules.loan_max_age + 2 and not market.listed[k]:
+        return OfferResult("rejected", f"{_club_name(conn, owner)} don't loan out their senior "
+                                       "players.")
+    if role is Role.ROTATION and share < 0.75:
+        return OfferResult("rejected", "They'd want you to pay at least 75% of his wage.")
+    window = open_window(world, club_window_nation(conn, club.id, meta.season_id),
+                         meta.season_id, day)
+    if window is None:
+        return OfferResult("refused", "The transfer window is closed.")
+    mood = derive_rng(meta.seed, "market-mood", player_id, club.id,
+                      window.start.isoformat()).normal()
+    if not player_accepts(Prospect(reputation_step=club.reputation - parent.reputation,
+                                   wage_ratio=1.0, starts_now=False, would_start=True,
+                                   listed=bool(market.listed[k]), mood=float(mood)), rules):
+        return OfferResult("rejected", "He doesn't want to go on loan to your club.")
+    try:
+        news = start_loan(conn, world, meta, Loan(player_id, club.id, market.loan_end(),
+                                                  share, by_user=True), day)
+    except MoveRefused as exc:
+        return OfferResult("refused", str(exc))
+    return OfferResult("accepted", news)
+
+
+def _club_name(conn: Connection, club_id: int) -> str:
+    return str(conn.execute(text("SELECT name FROM club WHERE id = :c"), {"c": club_id}
+                            ).scalar_one())

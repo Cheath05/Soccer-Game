@@ -16,7 +16,22 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): the updater waits only for real use** (the commit that adds this line; after ee46a4a). The user's VM stayed on v1.19 for over ten minutes after a push.
+- **Latest checkpoint (9 Oct): W4-8b, loans** (the commit that adds this line; after 2487c44). W4 is complete.
+  - **`world/loans.py`:**
+    - `validate_loan` and `start_loan`, the same for AI and user: the borrower's window is open; it pays its share × weeks left from the budget; the parent keeps its floors; the borrower stays within the limit; the loan ends before his contract; he isn't already on loan.
+    - A loan writes a `loan` contract at the borrower and a `loan` history row, and clears him from the parent's line-up.
+    - `end_loans` (daily, in `after_day`) ends loans past their date and writes `loan_return`.
+  - **The AI:** for depth and shortage needs, a club first tries young players (21 or under) at clubs at least `loan_level_gap` (8) bigger, which lend only surplus players, paying `loan_share` (0.5) of the wage. One measured watched summer had **248 loans** beside 1,684 transfers, nobody in two squads, and balance = ledger.
+  - **The user:**
+    - asks to borrow (`POST /api/transfers/loan` with a share; clubs lend spare players, and a rotation player only at 75% or more of his wage; the player goes where he'll play);
+    - answers AI loan offers for their players (bids of kind `loan`, under the same bid caps; no counter);
+    - sees their loans (`GET /api/transfers/loans`).
+  - **The Transfers page:** a Loan button in search (23 and under), loan offers in "Offers for your players", and the loans list on Sell.
+  - **Tests:**
+    - `test_loans.py` (5): one squad, wages once, one loan, no sale while away, start and end, clubs lend only spares;
+    - `test_user_transfers.py`: borrowing, and lending through an offer.
+  - **Next:** U2 (club search, sim to the next cup match, competition names in sim results, the big five first, real Italian names), then reputation that moves, and the play-test gate.
+- **9 Oct: the updater waits only for real use** (2487c44, after ee46a4a). The user's VM stayed on v1.19 for over ten minutes after a push.
   - **Likely cause:** `deploy/update.sh` counted any established connection on the port as busy, so an open game tab (or Tailscale Serve's idle connection) held updates back indefinitely.
   - **Fix:** `/api/health` now says `in_use` (a match played live, or a sim-to-date running), and the updater waits only for that. An older server, without the field, keeps the old connection rule. This one update still needs the tabs closed, because the VM runs the old check until it has it.
   - **Asked the user** for `journalctl --user -u footsim-update -n 30` if it still doesn't update.

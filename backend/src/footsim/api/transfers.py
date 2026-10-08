@@ -16,6 +16,7 @@ from footsim.world.market import (
     OfferResult,
     _Market,
     answer_bid,
+    make_loan_offer,
     make_offer,
     player_terms,
     season_calendar_end,
@@ -68,9 +69,11 @@ class OfferOut(BaseModel):
 
 
 class BidOut(BaseModel):
-    """An AI club's bid for one of the user's players."""
+    """An AI club's bid for one of the user's players (``kind`` transfer), or its request to
+    borrow him until the season's end (``loan``: ``wage_eur`` is the share it pays)."""
 
     id: int
+    kind: str
     player: ClubRef  # id and name of the player
     bidder: ClubRef
     fee_eur: int
@@ -220,7 +223,7 @@ def bids(session: Session) -> list[BidOut]:
             "JOIN club c ON c.id = o.bidder_club_id WHERE o.owner_club_id = :u "
             "AND o.status = 'pending' AND o.by_user = 0 AND o.expires >= :d ORDER BY o.id"),
             {"u": meta.user_club_id, "d": meta.current_date.isoformat()}).all()
-    return [BidOut(id=r.id, player=ClubRef(id=r.player_id, name=display_name(
+    return [BidOut(id=r.id, kind=r.kind, player=ClubRef(id=r.player_id, name=display_name(
         r.first_name, r.last_name, r.known_as)), bidder=ClubRef(id=r.bidder_club_id,
                                                                   name=r.bidder),
         fee_eur=r.fee_cents // 100, wage_eur=r.wage_weekly_cents // 100, years=r.years or 1,
@@ -319,3 +322,57 @@ def renew_contract(player_id: int, body: RenewIn, session: Session) -> dict[str,
             raise HTTPException(409, str(exc)) from exc
     session.autosave()
     return {"message": news}
+
+
+
+class LoanIn(BaseModel):
+    player_id: int
+    share: float = Field(default=1.0, ge=0, le=1)  # of his wage the user's club pays
+
+
+class LoanOut(BaseModel):
+    player: ClubRef
+    parent: ClubRef
+    borrower: ClubRef
+    end: str
+    wage_eur: int  # the borrower's share, a week
+    yours_out: bool  # the user's player, out on loan (else one borrowed by the user)
+
+
+@router.post("/loan")
+def loan(body: LoanIn, session: Session) -> OfferOut:
+    """Ask to borrow a player until the season's end, paying ``share`` of his wage."""
+    _not_simulating(session)
+    if session.live_matches:
+        raise HTTPException(409, "finish the match being played first")
+    with session.write() as conn:
+        meta = read_meta(conn)
+        try:
+            result = make_loan_offer(conn, get_world(), meta, meta.current_date, body.player_id,
+                                     body.share)
+        except MoveRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+    if result.status == "accepted":
+        session.autosave()
+    return _offer_out(result)
+
+
+@router.get("/loans")
+def loans(session: Session) -> list[LoanOut]:
+    """The user's loans now: their players out on loan, and the players they've borrowed."""
+    with session.read() as conn:
+        meta = read_meta(conn)
+        rows = conn.execute(text(
+            "SELECT l.person_id, l.club_id AS borrower, l.end_date, l.wage_weekly_cents, "
+            "o.club_id AS parent, pe.first_name, pe.last_name, pe.known_as, "
+            "b.name AS borrower_name, c.name AS parent_name FROM contract l "
+            "JOIN contract o ON o.person_id = l.person_id AND o.is_active = 1 "
+            "AND o.kind != 'loan' JOIN person pe ON pe.id = l.person_id "
+            "JOIN club b ON b.id = l.club_id JOIN club c ON c.id = o.club_id "
+            "WHERE l.is_active = 1 AND l.kind = 'loan' AND (l.club_id = :u OR o.club_id = :u) "
+            "ORDER BY l.end_date, l.person_id"), {"u": meta.user_club_id}).all()
+    return [LoanOut(player=ClubRef(id=r.person_id, name=display_name(
+        r.first_name, r.last_name, r.known_as)), parent=ClubRef(id=r.parent, name=r.parent_name),
+        borrower=ClubRef(id=r.borrower, name=r.borrower_name), end=r.end_date,
+        wage_eur=r.wage_weekly_cents // 100, yours_out=r.parent == meta.user_club_id)
+        for r in rows]

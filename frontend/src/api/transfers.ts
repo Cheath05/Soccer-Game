@@ -38,6 +38,7 @@ export interface OfferResult {
 
 export interface Bid {
   id: number
+  kind: 'transfer' | 'loan' // a loan: they ask to borrow him to the season's end; wage_eur is their share
   player: ClubRef
   bidder: ClubRef
   fee_eur: number
@@ -152,5 +153,26 @@ export function useRenew() {
     mutationFn: (args: { playerId: number; wage_eur?: number; years?: number }) =>
       api.post<{ message: string }>(`/transfers/contracts/${args.playerId}/renew`, { wage_eur: args.wage_eur ?? null, years: args.years ?? null }),
     onSuccess: () => void invalidate(),
+  })
+}
+
+export interface LoanRow {
+  player: ClubRef
+  parent: ClubRef
+  borrower: ClubRef
+  end: string
+  wage_eur: number
+  yours_out: boolean
+}
+
+export const useLoans = () => useQuery({ queryKey: ['loans'], queryFn: () => api.get<LoanRow[]>('/transfers/loans') })
+
+export function useAskLoan() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (body: { player_id: number; share: number }) => api.post<OfferResult>('/transfers/loan', body),
+    onSuccess: (result) => {
+      if (result.status === 'accepted') void invalidate()
+    },
   })
 }

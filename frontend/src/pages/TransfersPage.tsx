@@ -8,9 +8,11 @@ import {
   type OfferResult,
   type SearchFilters,
   useAnswerBid,
+  useAskLoan,
   useBids,
   useExpiring,
   useListed,
+  useLoans,
   useMakeOffer,
   useMarketSearch,
   useRenew,
@@ -93,6 +95,47 @@ function OfferModal({ player, onClose }: { player: MarketPlayer; onClose: () => 
   )
 }
 
+function LoanModal({ player, onClose }: { player: MarketPlayer; onClose: () => void }) {
+  const ask = useAskLoan()
+  const [share, setShare] = useState<string>('100')
+  const [result, setResult] = useState<OfferResult | null>(null)
+  return (
+    <Modal opened onClose={onClose} title={`Borrow ${player.name}`} size="sm">
+      <Stack>
+        <Text size="sm" c="dimmed">
+          Until the end of the season. His club lends only players it can spare, and he goes where he'll play.
+        </Text>
+        <Select
+          label="You pay of his wage"
+          data={[
+            { value: '50', label: '50%' },
+            { value: '75', label: '75%' },
+            { value: '100', label: '100%' },
+          ]}
+          value={share}
+          onChange={(v) => setShare(v ?? '100')}
+          allowDeselect={false}
+        />
+        {result && (
+          <Alert color={resultColor(result)} title={result.status === 'accepted' ? 'Done' : 'No deal'}>
+            {result.message}
+          </Alert>
+        )}
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>
+            {result?.status === 'accepted' ? 'Close' : 'Cancel'}
+          </Button>
+          {result?.status !== 'accepted' && (
+            <Button loading={ask.isPending} onClick={() => void ask.mutateAsync({ player_id: player.id, share: Number(share) / 100 }).then(setResult)}>
+              Ask to borrow him
+            </Button>
+          )}
+        </Group>
+      </Stack>
+    </Modal>
+  )
+}
+
 function SearchTab() {
   const currency = useCurrency()
   const { symbol } = CURRENCIES[currency]
@@ -101,6 +144,7 @@ function SearchTab() {
   const [form, setForm] = useState<SearchFilters & { max_value_shown?: number }>({ min_overall: 60, max_overall: 99, max_age: 35 })
   const [filters, setFilters] = useState<SearchFilters | null>(null)
   const [target, setTarget] = useState<MarketPlayer | null>(null)
+  const [borrow, setBorrow] = useState<MarketPlayer | null>(null)
   const results = useMarketSearch(filters)
   const set = (patch: Partial<typeof form>) => setForm({ ...form, ...patch })
 
@@ -174,9 +218,16 @@ function SearchTab() {
                   <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
                   <Table.Td>{p.contract_end ? monthYear(p.contract_end) : '–'}</Table.Td>
                   <Table.Td>
-                    <Button size="xs" variant="light" onClick={() => setTarget(p)}>
-                      {p.club ? 'Offer' : 'Sign'}
-                    </Button>
+                    <Group gap={4} wrap="nowrap">
+                      <Button size="xs" variant="light" onClick={() => setTarget(p)}>
+                        {p.club ? 'Offer' : 'Sign'}
+                      </Button>
+                      {p.club && p.age <= 23 && (
+                        <Button size="xs" variant="subtle" onClick={() => setBorrow(p)}>
+                          Loan
+                        </Button>
+                      )}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -185,6 +236,7 @@ function SearchTab() {
         </Table.ScrollContainer>
       )}
       {target && <OfferModal player={target} onClose={() => setTarget(null)} />}
+      {borrow && <LoanModal player={borrow} onClose={() => setBorrow(null)} />}
     </Stack>
   )
 }
@@ -210,9 +262,13 @@ function BidsTab() {
             <div>
               <Text fw={600}>
                 <ClubLink club={b.bidder} /> want {b.player.name}
+                {b.kind === 'loan' ? ' on loan' : ''}
               </Text>
               <Text size="sm" c="dimmed">
-                {money(b.fee_eur)} · he'd earn {wage(b.wage_eur)} for {b.years} {b.years === 1 ? 'year' : 'years'} · answer by {shortDate(b.expires)}
+                {b.kind === 'loan'
+                  ? `until the end of the season · they pay ${wage(b.wage_eur)} of his wage`
+                  : `${money(b.fee_eur)} · he'd earn ${wage(b.wage_eur)} for ${b.years} ${b.years === 1 ? 'year' : 'years'}`}
+                {` · answer by ${shortDate(b.expires)}`}
               </Text>
             </div>
             <Group gap="xs" align="end">
@@ -222,15 +278,19 @@ function BidsTab() {
               <Button color="red" variant="light" size="xs" onClick={() => void answer.mutateAsync({ id: b.id, action: 'reject' }).then(setLast)}>
                 Reject
               </Button>
-              <NumberInput size="xs" w={120} placeholder={`${symbol}M`} decimalScale={2} value={counter[b.id] ?? ''} onChange={(v) => setCounter({ ...counter, [b.id]: v })} />
-              <Button
-                size="xs"
-                variant="default"
-                disabled={counter[b.id] === undefined || counter[b.id] === ''}
-                onClick={() => void answer.mutateAsync({ id: b.id, action: 'counter', fee_eur: toEuros(Number(counter[b.id]) * 1e6) }).then(setLast)}
-              >
-                Counter
-              </Button>
+              {b.kind !== 'loan' && (
+                <>
+                  <NumberInput size="xs" w={120} placeholder={`${symbol}M`} decimalScale={2} value={counter[b.id] ?? ''} onChange={(v) => setCounter({ ...counter, [b.id]: v })} />
+                  <Button
+                    size="xs"
+                    variant="default"
+                    disabled={counter[b.id] === undefined || counter[b.id] === ''}
+                    onClick={() => void answer.mutateAsync({ id: b.id, action: 'counter', fee_eur: toEuros(Number(counter[b.id]) * 1e6) }).then(setLast)}
+                  >
+                    Counter
+                  </Button>
+                </>
+              )}
             </Group>
           </Group>
         </Card>
@@ -244,8 +304,28 @@ function SellTab() {
   const squad = useSquad(career?.club.id).data ?? []
   const listed = new Set(useListed().data ?? [])
   const setListed = useSetListed()
+  const loans = useLoans().data ?? []
   return (
     <Stack>
+      {loans.length > 0 && (
+        <Card withBorder>
+          <Text fw={600} mb="xs">
+            Loans
+          </Text>
+          <Table>
+            <Table.Tbody>
+              {loans.map((l) => (
+                <Table.Tr key={l.player.id}>
+                  <Table.Td>{l.player.name}</Table.Td>
+                  <Table.Td>{l.yours_out ? <>at <ClubLink club={l.borrower} /></> : <>from <ClubLink club={l.parent} /></>}</Table.Td>
+                  <Table.Td>until {shortDate(l.end)}</Table.Td>
+                  <Table.Td ta="right">{wage(l.wage_eur)} paid by {l.yours_out ? 'them' : 'you'}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Card>
+      )}
       <Text size="sm" c="dimmed">
         Listed players are offered to other clubs at a lower price, and clubs come in for them more readily.
       </Text>

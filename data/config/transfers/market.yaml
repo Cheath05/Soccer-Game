@@ -26,6 +26,11 @@ moved_rest_days: 60         # a player who has just moved isn't sold on within t
 max_news: 8                 # news lines a day from the market (bids for the user's players)
 candidates_per_need: 4      # players it tries for one need, best first
 
+# --- loans (W4-8): young surplus players go where they'll play ---
+loan_max_age: 21            # a player this young or younger can be loaned out
+loan_level_gap: 8           # to a club at least this much smaller (reputation)
+loan_share: 0.5             # the borrower pays this share of his wage
+
 # --- squad shape ---
 depth_per_slot: 2           # players a club wants in a position group per formation slot there
 keepers_wanted: 3

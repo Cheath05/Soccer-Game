@@ -172,3 +172,46 @@ def test_the_user_lists_and_unlists_their_players(
                       ).json() == {"listed": False}
     other = client.get("/api/transfers/search").json()[0]["id"]
     assert client.put(f"/api/transfers/listed/{other}").status_code == 400
+
+
+def test_the_user_borrows_and_lends(game: tuple[TestClient, CareerSession, int]) -> None:
+    client, session, club_id = game
+    # Borrowing: a young player a bigger club can spare.
+    young = client.get("/api/transfers/search", params={"max_age": 21, "min_overall": 60}
+                       ).json()
+    answers = []
+    for p in young[:15]:
+        answer = client.post("/api/transfers/loan",
+                             json={"player_id": p["id"], "share": 1.0}).json()
+        answers.append(answer["status"])
+        if answer["status"] == "accepted":
+            loans = client.get("/api/transfers/loans").json()
+            assert any(lo["player"]["id"] == p["id"] and not lo["yours_out"] for lo in loans)
+            squad = {s["id"] for s in client.get(f"/api/clubs/{club_id}/squad").json()}
+            assert p["id"] in squad
+            break
+    assert "accepted" in answers or set(answers) <= {"rejected", "refused"}
+    # Lending: an AI club asks to borrow one of the user's players; accepting sends him there.
+    with session.write() as conn:
+        meta = read_meta(conn)
+        player, wage_cents = conn.execute(text(
+            "SELECT person_id, wage_weekly_cents FROM contract WHERE club_id = :c AND "
+            "is_active = 1 AND kind = 'player' ORDER BY wage_weekly_cents LIMIT 1"),
+            {"c": club_id}).one()
+        borrower = conn.execute(text(
+            "SELECT m.club_id FROM club_league_membership m JOIN competition c ON c.id = "
+            "m.competition_id WHERE c.key = 'ENG4' ORDER BY m.club_id LIMIT 1")).scalar_one()
+        offer = conn.execute(text(
+            "INSERT INTO transfer_offer (player_id, bidder_club_id, owner_club_id, kind, status, "
+            "fee_cents, wage_weekly_cents, years, created, expires, by_user) VALUES (:p, :b, :c, "
+            "'loan', 'pending', 0, :w, NULL, :d, '2026-08-30', 0)"),
+            {"p": player, "b": borrower, "c": club_id, "w": wage_cents // 2,
+             "d": meta.current_date.isoformat()}).lastrowid
+    bids = client.get("/api/transfers/bids").json()
+    assert [b["kind"] for b in bids if b["id"] == offer] == ["loan"]
+    assert client.post(f"/api/transfers/bids/{offer}", json={"action": "counter", "fee_eur": 1}
+                       ).json()["status"] == "refused"
+    lent = client.post(f"/api/transfers/bids/{offer}", json={"action": "accept"}).json()
+    assert lent["status"] == "accepted", lent
+    loans = client.get("/api/transfers/loans").json()
+    assert any(lo["player"]["id"] == player and lo["yours_out"] for lo in loans)

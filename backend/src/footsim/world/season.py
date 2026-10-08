@@ -43,6 +43,7 @@ from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.lifecycle import season_turnover
+from footsim.world.loans import end_loans
 from footsim.world.market import run_market
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import record_season_start
@@ -195,6 +196,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
             continue
         for playoff in league.playoffs:
             messages += _progress_playoff(conn, world, meta, cid, league, playoff)
+    messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
                            season_calendar(world, meta, meta.season_id).season_end)
     return messages

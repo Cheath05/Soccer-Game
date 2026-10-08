@@ -99,3 +99,87 @@ def test_a_player_has_one_loan_and_cant_be_sold_while_away(conn: Connection) -> 
     with pytest.raises(MoveRefused, match="on loan"):
         validate_move(conn, meta_world, read_meta(conn),
                       Move(player, borrower, 0, 100_000, date(2029, 6, 30)), date(2026, 7, 20))
+
+
+def _spare_youngster(conn: Connection, key: str) -> tuple[int, int]:
+    """A young (21 or under) player at a club in ``key`` who isn't in its plans, and the club."""
+    from datetime import date
+
+    from footsim.transfers.decisions import Role
+    from footsim.world.market import FREE, _Market
+    from footsim.world.meta import read_meta
+
+    world, meta = get_world(), read_meta(conn)
+    market = _Market(conn, world, meta, date(2026, 7, 20), date(2027, 6, 30))
+    clubs = [int(c) for c in conn.execute(text(
+        "SELECT m.club_id FROM club_league_membership m JOIN competition c ON c.id = "
+        "m.competition_id WHERE c.key = :k ORDER BY m.club_id"), {"k": key}).scalars()]
+    for club_id in clubs:
+        view = market.view(market.clubs[club_id])
+        for k in view.rows:
+            if (view.roles[k] is Role.SURPLUS and market.age[k] <= 21
+                    and int(market.owner[k]) != FREE):
+                return int(market.players.ids[k]), club_id
+    raise AssertionError("no spare youngster")
+
+
+def test_a_loan_starts_and_ends(conn: Connection) -> None:
+    from datetime import date
+
+    from footsim.world.loans import Loan, end_loans, start_loan
+    from footsim.world.meta import read_meta
+
+    world, meta = get_world(), read_meta(conn)
+    player, parent = _spare_youngster(conn, "ENG1")
+    borrower = conn.execute(text(
+        "SELECT m.club_id FROM club_league_membership m JOIN competition c ON c.id = "
+        "m.competition_id WHERE c.key = 'ENG3' ORDER BY m.club_id LIMIT 1")).scalar_one()
+    budget = conn.execute(text("SELECT transfer_budget_cents FROM club_finance WHERE club_id = "
+                               ":b"), {"b": borrower}).scalar_one()
+    news = start_loan(conn, world, meta, Loan(player, borrower, date(2027, 6, 30), 0.5),
+                      date(2026, 7, 20))
+    assert "on loan" in news
+    assert player in {p.player_id for p in load_squad(conn, borrower, date(2026, 7, 20))}
+    assert conn.execute(text("SELECT transfer_budget_cents FROM club_finance WHERE club_id = "
+                             ":b"), {"b": borrower}).scalar_one() < budget  # its share is paid
+    assert end_loans(conn, meta, date(2027, 6, 30)) == []  # not yet: it runs to that day
+    end_loans(conn, meta, date(2027, 7, 1))
+    assert player in {p.player_id for p in load_squad(conn, parent, date(2027, 7, 1))}
+    kinds = conn.execute(text("SELECT kind FROM transfer WHERE player_id = :p ORDER BY id"),
+                         {"p": player}).scalars().all()
+    assert kinds == ["loan", "loan_return"]
+
+
+def test_clubs_lend_only_spare_players(conn: Connection) -> None:
+    from datetime import date
+
+    from footsim.world.loans import Loan, start_loan
+    from footsim.world.meta import read_meta
+
+    world, meta = get_world(), read_meta(conn)
+    starter = conn.execute(text(
+        "SELECT k.person_id FROM contract k WHERE k.club_id = (SELECT m.club_id FROM "
+        "club_league_membership m JOIN competition c ON c.id = m.competition_id WHERE c.key = "
+        "'ENG1' ORDER BY m.club_id LIMIT 1) AND k.is_active = 1 ORDER BY k.wage_weekly_cents "
+        "DESC LIMIT 1")).scalar_one()
+    borrower = conn.execute(text(
+        "SELECT m.club_id FROM club_league_membership m JOIN competition c ON c.id = "
+        "m.competition_id WHERE c.key = 'ENG2' ORDER BY m.club_id LIMIT 1")).scalar_one()
+    # The rules (window, budget, floors) let it through: the AI's own choice is what stops a
+    # club lending its best player, so check the market never asks for one.
+    from footsim.world.market import _Market
+
+    market = _Market(conn, world, meta, date(2026, 7, 20), date(2027, 6, 30))
+    k = market.players.index[starter]
+    assert market.attempt_loan(market.clubs[borrower], k, _window()) is None
+    with pytest.raises(MoveRefused, match="contract"):
+        start_loan(conn, world, meta, Loan(starter, borrower, date(2040, 6, 30), 0.5),
+                   date(2026, 7, 20))
+
+
+def _window():  # type: ignore[no-untyped-def]
+    from datetime import date
+
+    from footsim.defs.calendar import DateRange
+
+    return DateRange(start=date(2026, 6, 15), end=date(2026, 9, 1))

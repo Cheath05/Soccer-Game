@@ -18,6 +18,7 @@ from footsim.api.schemas import (
     ClubHistoryOut,
     ClubOverviewOut,
     ClubPlayerOut,
+    ClubSearchOut,
     CompetitionOut,
     CupOut,
     CupSummaryOut,
@@ -228,6 +229,13 @@ def cup(key: str, session: Session, season: int | None = None) -> CupOut:
 def competition_fixtures(key: str, session: Session) -> list[FixtureOut]:
     with session.read() as conn:
         return queries.fixtures(conn, competition_key=key)
+
+
+@router.get("/clubs/search")
+def club_search(session: Session, q: str = "") -> list[ClubSearchOut]:
+    """Find a club by a few letters of its name, with its country and league."""
+    with session.read() as conn:
+        return queries.search_clubs(conn, q[:60])
 
 
 @router.get("/clubs/{club_id}")

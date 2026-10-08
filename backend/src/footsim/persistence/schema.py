@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 13  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 14  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 

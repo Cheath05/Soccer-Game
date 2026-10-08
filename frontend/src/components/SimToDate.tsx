@@ -2,7 +2,7 @@ import { Badge, Button, Group, List, Menu, Modal, Progress, ScrollArea, Stack, T
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
-import { useSimStatus, useStartSim, useStopSim } from '../api/hooks'
+import { useSimStatus, useSimTargets, useStartSim, useStopSim } from '../api/hooks'
 import type { Career, SimResult, SimStatus } from '../api/types'
 import { addDays, addMonths, competitionNation, daysBetween, longDate, shortDate } from '../lib/format'
 import SeasonSummary from './SeasonSummary'
@@ -33,6 +33,11 @@ function Results({ results }: { results: SimResult[] }) {
           <Text size="sm">
             {r.home} {r.home_goals}–{r.away_goals} {r.away}
           </Text>
+          {r.competition && (
+            <Text size="xs" c="dimmed">
+              ({r.competition})
+            </Text>
+          )}
         </Group>
       ))}
     </Stack>
@@ -43,6 +48,7 @@ function Results({ results }: { results: SimResult[] }) {
 // progress and a Stop button meanwhile and a summary at the end.
 export default function SimToDate({ career, matchToday }: { career: Career; matchToday: boolean }) {
   const status = useSimStatus()
+  const targets = useSimTargets(career.date)
   const start = useStartSim()
   const stop = useStopSim()
   const client = useQueryClient()
@@ -69,9 +75,9 @@ export default function SimToDate({ career, matchToday }: { career: Career; matc
     wasRunning.current = running
   }, [running, job, client])
 
-  const go = (until: string) => {
+  const go = (to: string | { target: string }) => {
     setPicking(false)
-    start.mutate(until)
+    start.mutate(to)
   }
   const tomorrow = addDays(career.date, 1)
   const latest = addDays(career.date, MAX_DAYS)
@@ -97,6 +103,14 @@ export default function SimToDate({ career, matchToday }: { career: Career; matc
           <Menu.Item onClick={() => go(addDays(career.date, 7))}>One week</Menu.Item>
           <Menu.Item onClick={() => go(addMonths(career.date, 1))}>One month</Menu.Item>
           <Menu.Item onClick={() => go(endOfSeason)}>End of season</Menu.Item>
+          {(targets.data ?? []).map((t) => (
+            <Menu.Item key={t.key} onClick={() => go({ target: t.key })}>
+              {t.label}
+              <Text size="xs" c="dimmed">
+                {t.competition} · {shortDate(t.date)} · {t.opponent}
+              </Text>
+            </Menu.Item>
+          ))}
           <Menu.Divider />
           <Menu.Item
             onClick={() => {

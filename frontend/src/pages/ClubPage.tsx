@@ -208,6 +208,9 @@ function FixtureCard({ title, fixtures, clubId, empty }: { title: string; fixtur
                   <Table.Td w={24}>{f.neutral ? 'N' : home ? 'H' : 'A'}</Table.Td>
                   <Table.Td>
                     <ClubLink club={opponent} />
+                    <Text size="xs" c="dimmed">
+                      {f.competition_name}
+                    </Text>
                   </Table.Td>
                   <Table.Td ta="right">{played ? score(f) : ''}</Table.Td>
                   <Table.Td w={36}>

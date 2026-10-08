@@ -38,6 +38,7 @@ from footsim.importers.rng import entity_rng
 from footsim.persistence import schema as t
 from footsim.persistence.database import create_database, write_meta
 from footsim.ratings.overall import OverallScaling, RatingModel
+from footsim.world.club_names import load_club_names
 
 NATURAL = 20
 ALTERNATE = 15
@@ -179,10 +180,11 @@ def _write_world(
         key: club_reputation([overall[p.source_id] for p in squad[key]], rules.reputation)
         for key in club_keys
     }
+    real_names = load_club_names()
     club_rows = [
         {
             "id": club_id[key],
-            "name": key[1],
+            "name": real_names.get(profile.league_nations.get(key[0], ""), {}).get(key[1], key[1]),
             "nation_id": nation_id.get(profile.league_nations.get(key[0], "")),
             "source_league": key[0],
             "reputation": club_rep[key],

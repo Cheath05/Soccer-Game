@@ -10,6 +10,13 @@ class ClubRef(BaseModel):
     name: str
 
 
+class ClubSearchOut(ClubRef):
+    nation: str | None  # the club's country
+    nation_code: str | None
+    competition: str | None  # its league this season
+    competition_key: str | None
+
+
 class ClubOption(ClubRef):
     reputation: int
     average_overall: float
@@ -204,7 +211,19 @@ class AdvanceOut(BaseModel):
 
 
 class SimIn(BaseModel):
-    until: date  # simulate up to (not including) this day
+    until: date | None = None  # simulate up to (not including) this day
+    target: str | None = None  # or a key from GET /career/sim/targets, resolved on the server
+
+
+class SimTargetOut(BaseModel):
+    """A "Sim to…" choice the server works out: the user's next match in a competition."""
+
+    key: str  # "next_cup", or "next:<competition key>"
+    label: str
+    competition: str  # the competition's name ("Copa del Rey"; "cups" for the any-cup choice)
+    date: str  # the day the match is on; the sim stops the day before
+    fixture_id: int
+    opponent: str
 
 
 class SimResultOut(BaseModel):
@@ -215,6 +234,7 @@ class SimResultOut(BaseModel):
     home_goals: int
     away_goals: int
     outcome: str  # W | D | L for the user's club
+    competition: str = ""  # the competition's name ("La Liga", "Copa del Rey")
 
 
 class SeasonFinalOut(BaseModel):

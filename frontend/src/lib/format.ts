@@ -200,7 +200,10 @@ export function competitionNation(c: { key: string; nation?: string }): string {
   return c.nation || c.key.slice(0, 3)
 }
 
-/** Leagues grouped by nation, England first and then the rest by name, each nation's leagues in tier order. */
+/** The countries listed first wherever one is picked, in this order. */
+export const BIG_FIVE = ['ENG', 'ESP', 'ITA', 'GER', 'FRA']
+
+/** Leagues grouped by nation, the big five first (England, Spain, Italy, Germany, France) and then the rest by name, each nation's leagues in tier order. */
 export function groupByNation<T extends { key: string; tier: number; nation?: string }>(leagues: T[]): { code: string; name: string; leagues: T[] }[] {
   const groups = new Map<string, T[]>()
   for (const league of leagues) {
@@ -209,7 +212,7 @@ export function groupByNation<T extends { key: string; tier: number; nation?: st
     if (group) group.push(league)
     else groups.set(code, [league])
   }
-  const rank = (code: string) => (code === 'ENG' ? 0 : 1)
+  const rank = (code: string) => (BIG_FIVE.includes(code) ? BIG_FIVE.indexOf(code) : BIG_FIVE.length)
   return [...groups]
     .map(([code, list]) => ({ code, name: nationName(code), leagues: list.sort((a, b) => a.tier - b.tier || a.key.localeCompare(b.key)) }))
     .sort((a, b) => rank(a.code) - rank(b.code) || a.name.localeCompare(b.name))

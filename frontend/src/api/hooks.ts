@@ -20,7 +20,9 @@ import type {
   PlayerSeason,
   SaveSlot,
   Season,
+  ClubSearchResult,
   SimStatus,
+  SimTarget,
   SquadPlayer,
   Table,
   Tactics,
@@ -124,10 +126,25 @@ export const useCalendar = (from: string, to: string) =>
     placeholderData: (previous) => previous,
   })
 
+/** The "Sim to…" choices that depend on the fixture list (the next cup match...), refetched when the game moves on. */
+export const useSimTargets = (date: string) =>
+  useQuery({ queryKey: ['sim-targets', date], queryFn: () => api.get<SimTarget[]>('/career/sim/targets') })
+
+/** Clubs matching a few letters of a name, for the header search. */
+export const useClubSearch = (q: string) =>
+  useQuery({
+    queryKey: ['club-search', q],
+    queryFn: () => api.get<ClubSearchResult[]>(`/clubs/search?q=${encodeURIComponent(q)}`),
+    enabled: q.trim().length >= 2,
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  })
+
+/** Sim to a date (ISO), or to a server-computed target (a key from `useSimTargets`). */
 export function useStartSim() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (until: string) => api.post<SimStatus>('/career/sim', { until }),
+    mutationFn: (to: string | { target: string }) => api.post<SimStatus>('/career/sim', typeof to === 'string' ? { until: to } : to),
     onSuccess: (data) => client.setQueryData(['sim'], data),
   })
 }

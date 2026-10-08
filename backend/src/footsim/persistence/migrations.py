@@ -168,9 +168,17 @@ def _to_v13(conn: Connection) -> None:
     conn.execute(text(PLAYING_VIEW))
 
 
+def _to_v14(conn: Connection) -> None:
+    """Real names for the clubs the source data lists under made-up ones (AC Milan, Inter,
+    Atalanta, Lazio): data/config/world/club_names.yaml, renamed by the old name."""
+    from footsim.world.club_names import apply_club_names
+
+    apply_club_names(conn)
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
-    11: _to_v11, 12: _to_v12, 13: _to_v13}
+    11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14}
 
 
 def migrate(engine: Engine) -> int:

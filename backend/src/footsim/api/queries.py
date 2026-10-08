@@ -1,6 +1,7 @@
 """Read models for the API: squad lists, tables, fixtures, match reports, tactics."""
 
 import json
+import unicodedata
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -17,6 +18,7 @@ from footsim.api.schemas import (
     ClubOverviewOut,
     ClubPlayerOut,
     ClubRef,
+    ClubSearchOut,
     ClubSeasonOut,
     CompetitionOut,
     CupOut,
@@ -85,6 +87,7 @@ from footsim.scouting.estimates import (
     potential_range,
 )
 from footsim.transfers.valuation import value_eur, years_old
+from footsim.world.club_names import load_club_names
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.meta import CareerMeta, read_meta
@@ -124,6 +127,43 @@ def _club_competition(conn: Connection, club_id: int, season_id: int) -> Row[Any
             club_league_membership.c.season_id == season_id)).first()
 
 
+def _fold(text_: str) -> str:
+    """Lower case without accents, so "Sporting Gijon" finds "Sporting Gijón"."""
+    decomposed = unicodedata.normalize("NFKD", text_.casefold())
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
+def search_clubs(conn: Connection, q: str, limit: int = 12) -> list[ClubSearchOut]:
+    """Clubs whose name contains ``q`` (accents and case ignored; a few letters are enough),
+    best matches first: the name starts with it, then a word does, then anywhere in it; ties by
+    reputation. Each comes with its country and this season's league."""
+    needle = _fold(q).strip()
+    if not needle:
+        return []
+    season_id = read_meta(conn).season_id
+    league_of = {r.club_id: r for r in conn.execute(
+        select(club_league_membership.c.club_id, competition.c.name, competition.c.key)
+        .join(competition, competition.c.id == club_league_membership.c.competition_id)
+        .where(club_league_membership.c.season_id == season_id))}
+    ranked: list[tuple[int, int, str, Row[Any]]] = []
+    for row in conn.execute(select(club.c.id, club.c.name, club.c.reputation,
+                                   nation.c.name.label("nation"), nation.c.code.label("code"))
+                            .outerjoin(nation, nation.c.id == club.c.nation_id)):
+        name = _fold(row.name)
+        if needle not in name:
+            continue
+        rank = 0 if name.startswith(needle) else 1 if f" {needle}" in f" {name}" else 2
+        ranked.append((rank, -row.reputation, name, row))
+    ranked.sort(key=lambda t: t[:3])
+    out = []
+    for _, _, _, row in ranked[:limit]:
+        league = league_of.get(row.id)
+        out.append(ClubSearchOut(id=row.id, name=row.name, nation=row.nation, nation_code=row.code,
+                                 competition=league.name if league else None,
+                                 competition_key=league.key if league else None))
+    return out
+
+
 def _season_label(conn: Connection, season_id: int) -> str:
     return str(conn.execute(select(season.c.label).where(season.c.id == season_id)).scalar_one())
 
@@ -137,6 +177,13 @@ def _competition_out(world: World, comp: Row[Any]) -> CompetitionOut:
                           nation=league.nation if league else "")
 
 
+BIG_FIVE = ("ENG", "ESP", "ITA", "GER", "FRA")  # listed first wherever a country is picked
+
+
+def _big_five_rank(nation_code: str) -> int:
+    return BIG_FIVE.index(nation_code) if nation_code in BIG_FIVE else len(BIG_FIVE)
+
+
 def world_leagues(base_world: Path, world: World) -> list[LeagueOption]:
     """Every league a career can start in, with its clubs: those the base world was built with,
     and those added since (found by the ratings source's league names, as a new career will)."""
@@ -146,9 +193,11 @@ def world_leagues(base_world: Path, world: World) -> list[LeagueOption]:
             built = {r.key: r.id for r in conn.execute(select(competition.c.id,
                                                               competition.c.key))}
             result = []
+            real_names = load_club_names()  # as the world is built or migrated, for a career
             for key, league in sorted(world.defs.leagues.items(),
-                                      key=lambda kv: (kv[1].nation != "ENG", kv[1].nation,
-                                                      kv[1].tier)):
+                                      key=lambda kv: (_big_five_rank(kv[1].nation),
+                                                      kv[1].nation, kv[1].tier)):
+                renamed = real_names.get(world.defs.nations[league.nation].name, {})
                 if key in built:
                     rows = conn.execute(text("""
                         SELECT c.id, c.name, c.reputation FROM club c
@@ -164,7 +213,8 @@ def world_leagues(base_world: Path, world: World) -> list[LeagueOption]:
                     continue
                 if len(rows) != league.clubs:
                     continue  # as ensure_leagues: a league whose clubs don't add up isn't played
-                clubs = [ClubOption(id=r.id, name=r.name, reputation=r.reputation,
+                clubs = [ClubOption(id=r.id, name=renamed.get(r.name, r.name),
+                                    reputation=r.reputation,
                                     average_overall=_squad_strength(conn, world, r.id))
                          for r in rows]
                 clubs.sort(key=lambda c: -c.average_overall)

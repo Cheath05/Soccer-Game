@@ -97,6 +97,9 @@ export default function DashboardPage() {
                   <Text size="sm" style={{ flex: 1 }} truncate>
                     {f.home.name} {score(f)} {f.away.name}
                   </Text>
+                  <Text size="xs" c="dimmed" visibleFrom="xs">
+                    {f.competition_name}
+                  </Text>
                   <ResultBadge fixture={f} clubId={career.club.id} />
                 </Group>
               ))}

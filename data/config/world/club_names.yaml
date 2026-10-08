@@ -1,0 +1,10 @@
+# Real club names for clubs that FC 27 lists under made-up names (it lacks the licences).
+# Real club names are facts, not EA data. Grouped by nation (as named in nations.yaml);
+# each entry maps the name in the source data to the real one. Applied when a world is built
+# (importers/build_world.py) and, for saves already made, by the v14 schema migration, which
+# renames by the old name, so it is safe to run twice.
+Italy:
+  Milano FC: AC Milan
+  Lombardia FC: Inter
+  Bergamo Calcio: Atalanta
+  Latium: Lazio

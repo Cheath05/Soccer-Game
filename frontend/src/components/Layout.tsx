@@ -7,6 +7,7 @@ import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
 import { competitionNation, longDate, useCurrency } from '../lib/format'
+import ClubSearch from './ClubSearch'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
 import VersionTag from './VersionTag'
@@ -86,6 +87,9 @@ export default function Layout() {
             </Badge>
           </Group>
           <Group gap="sm" wrap="nowrap">
+            <Box visibleFrom="md">
+              <ClubSearch w={200} />
+            </Box>
             <Text size="sm" fw={500} visibleFrom="xs">
               {longDate(data.date)}
             </Text>
@@ -105,6 +109,9 @@ export default function Layout() {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="sm">
+        <Box hiddenFrom="md" mb="xs">
+          <ClubSearch onPick={close} />
+        </Box>
         {NAV.map((item) => (
           <div key={item.to}>
             {item.to === '/start' && data && (

@@ -92,6 +92,27 @@ export interface SimResult {
   home_goals: number
   away_goals: number
   outcome: 'W' | 'D' | 'L'
+  competition: string // "La Liga", "Copa del Rey"
+}
+
+// "Sim to…" choices the server works out (GET /career/sim/targets): the user's next cup match, and so on.
+export interface SimTarget {
+  key: string
+  label: string
+  competition: string
+  date: string
+  fixture_id: number
+  opponent: string
+}
+
+// GET /clubs/search?q=
+export interface ClubSearchResult {
+  id: number
+  name: string
+  nation: string | null
+  nation_code: string | null
+  competition: string | null
+  competition_key: string | null
 }
 
 export interface SeasonFinal {

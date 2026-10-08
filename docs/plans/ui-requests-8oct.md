@@ -41,7 +41,7 @@ The user's words: "having the arrow and then a number next to it is fine, I don'
    - Drag a bench player onto a player to substitute him (the existing sub API).
    - Drag two players to swap positions. If the live session can't swap positions yet, add that as an input to the engine (a tactical change at a stoppage, like a sub). Matches without it must stay identical (golden test), and determinism holds (the user's inputs are part of the run).
 
-## U2: finding clubs, simming to cups, league order, Italian names
+## U2: finding clubs, simming to cups, league order, Italian names (done 9 Oct)
 
 The user's words: "Let me also just have an option to look up a team so I can see their squad, and their results without having to click league and then the country and then look for them. When simming, I want to have an option to sim to a cup game without needing to know the date, and when champions league etc is added, an option for that too, and if I just sim an entire season, let me know the competition the game was like (La Liga) or (Copa Del Rey). When I click leagues and countries, make the big five leagues be the default first options to choose from. Also, for the Italian league, just change the names of the clubs to their real ones, like Milano should be AC Milan etc."
 

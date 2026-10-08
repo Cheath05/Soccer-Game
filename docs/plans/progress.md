@@ -16,7 +16,14 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): reputation that moves** (the commit that adds this line; after b24ad81, which made wages visibly scale with a sandbox budget: no wage limit without a board, the budget's weekly wage room shown, and the board off by default for sandbox careers).
+- **Latest checkpoint (9 Oct): U2, finding clubs, simming to cups, names** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 0460499). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U2).
+  - **Club search** in the header (`GET /api/clubs/search?q=`: accents folded; ranked by prefix, word start, substring, then reputation), opening the club page.
+  - **"Next cup match"** in the Sim to… menu (`GET /api/career/sim/targets`; `POST /api/career/sim` takes `{"target": ...}` and resolves it on the server). There's one entry per competition with an upcoming drawn match, so continental competitions will just appear. It stops the day before, like Sim to date.
+  - **Competition names** beside results in the sim progress and summary, the dashboard and club pages.
+  - **The big five first** (England, Spain, Italy, Germany, France) in every country and league picker.
+  - **Real names:** Milano FC → AC Milan, Lombardia FC → Inter, Bergamo Calcio → Atalanta, Latium → Lazio (`data/config/world/club_names.yaml`). They're applied at the world build, in `_to_v14` (schema 14, idempotent, `club_name` kept in step), and in memory for the start page's list (the base world isn't migrated). The other 36 Italian clubs are real. Liga MX names have lost their accents in the source data (left alone).
+  - **Tests:** `test_club_names_and_sim_targets.py` (4), plus the migrations, saves, importers, sim-to-date, clubs and calendar tests; ruff, mypy, tsc and lint clean.
+- **9 Oct: reputation that moves** (0460499, after b24ad81, which made wages visibly scale with a sandbox budget: no wage limit without a board, the budget's weekly wage room shown, and the board off by default for sandbox careers).
   - **At each rollover** (`world/reputation.py`, after the fixtures), every club's reputation closes `drift` (25%) of the gap to what its squad is worth now: the world build's formula on its best 18 players' overalls, from the `playing` view. It adds `title_bonus` (2, half for a lower division) and `cup_bonus` (1) for silverware, and gives the user news when their club's reputation moves 2 or more.
   - **`league_weight` is 0:** the value model was fitted on squad-based reputations, and a pull towards a league's mean would deflate the top clubs and their players' values every season. At the build, reputation equals the squad formula (today's gap is within about ±1.5), so it only moves as squads change: buying better players lifts a club over a few seasons, and selling its best lowers it.
   - **Tests:** `test_reputation.py` (drifts to the target without overshooting; a club stripped of its best players falls); the definitions tests.

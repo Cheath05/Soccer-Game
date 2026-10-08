@@ -770,6 +770,27 @@ class MatchEngine:
         self.lineup_version += 1
         self._announce("tactics", team, f"Formation changed to {formation.name}")
 
+    def swap_positions(self, team: int, first_id: int, second_id: int) -> None:
+        """Two players on the pitch change places: each takes the other's slot, position and
+        role, and walks there. Like a formation change it is made at once, and it moves no
+        one but through their targets. A goalkeeper stays in goal."""
+        idx = {pid: next((int(i) for i in self.team_indices(team)
+                          if self.players[i].player_id == pid), None)
+               for pid in (first_id, second_id)}
+        a, b = idx[first_id], idx[second_id]
+        if a is None or b is None or a == b:
+            raise ValueError("invalid position swap")
+        if "GK" in (self.position[a], self.position[b]):
+            raise ValueError("the goalkeeper can't swap places")
+        self.slot[a], self.slot[b] = self.slot[b], self.slot[a]
+        self.position[a], self.position[b] = self.position[b], self.position[a]
+        self.group[a], self.group[b] = self.group[b], self.group[a]
+        self.role[a], self.role[b] = self.role[b], self.role[a]
+        self.lineup_version += 1
+        self.emit("swap", team, a, other=self.players[b].player_id)
+        self._announce("tactics", team, f"{self.players[a].player.name} and "
+                                        f"{self.players[b].player.name} swap positions")
+
     def substitute(self, team: int, out_player_id: int, in_player_id: int) -> None:
         """Make a substitution: straight away if play is stopped, otherwise at the next
         stoppage (the fourth official waits for the ball to go dead)."""

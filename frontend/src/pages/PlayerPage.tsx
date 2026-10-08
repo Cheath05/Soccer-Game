@@ -1,11 +1,12 @@
 import { Badge, Button, Card, Grid, Group, Loader, Modal, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
-import { useParams } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 
-import { usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
+import { useClubPlayers, usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
 import type { PlayerSeasonLine } from '../api/types'
 import ClubLink from '../components/ClubLink'
-import { SeasonChange } from '../components/SeasonStart'
+import { SeasonChange } from '../components/SeasonChange'
+import { recallPlayerList } from '../lib/playerList'
 import { attributeLabel, matchRatingColor, money, positionColor, ratingColor, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
@@ -19,6 +20,35 @@ const GROUP_TITLES: Record<string, string> = {
 export default function PlayerPage() {
   const { playerId } = useParams({ from: '/players/$playerId' })
   const player = usePlayer(Number(playerId))
+  const navigate = useNavigate()
+  const router = useRouter()
+  const clubPlayers = useClubPlayers(player.data?.club?.id ?? 0)
+  // The list he was opened from (the squad as sorted and filtered), else his club's squad.
+  const remembered = recallPlayerList()
+  const order = remembered.includes(Number(playerId)) ? remembered : (clubPlayers.data ?? []).map((c) => c.id)
+  const at = order.indexOf(Number(playerId))
+  const previous = at > 0 ? order[at - 1] : undefined
+  const next = at >= 0 && at < order.length - 1 ? order[at + 1] : undefined
+  const names = new Map((clubPlayers.data ?? []).map((c) => [c.id, c.name]))
+  const go = (id: number | undefined) => {
+    if (id !== undefined) void navigate({ to: '/players/$playerId', params: { playerId: String(id) }, replace: true })
+  }
+  const back = () => (window.history.length > 1 ? router.history.back() : void navigate({ to: '/squad' }))
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+      if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return
+      if (document.querySelector('[role="dialog"]')) return
+      if (event.key === 'ArrowLeft' && previous !== undefined) go(previous)
+      else if (event.key === 'ArrowRight' && next !== undefined) go(next)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previous, next])
+
   if (player.isPending) return <Loader />
   if (!player.data) return <Text c="red">{player.error?.message}</Text>
   const p = player.data
@@ -29,6 +59,24 @@ export default function PlayerPage() {
 
   return (
     <Stack>
+      <Group justify="space-between">
+        <Button variant="subtle" size="compact-sm" onClick={back}>
+          ← Back
+        </Button>
+        {order.length > 1 && (
+          <Group gap="xs">
+            <Button variant="default" size="compact-sm" disabled={previous === undefined} onClick={() => go(previous)} title={previous !== undefined ? names.get(previous) : undefined}>
+              ‹ Previous
+            </Button>
+            <Text size="xs" c="dimmed">
+              {at >= 0 ? `${at + 1} of ${order.length}` : ''}
+            </Text>
+            <Button variant="default" size="compact-sm" disabled={next === undefined} onClick={() => go(next)} title={next !== undefined ? names.get(next) : undefined}>
+              Next ›
+            </Button>
+          </Group>
+        )}
+      </Group>
       <Group justify="space-between" align="start">
         <div>
           <Title order={2}>{p.name}</Title>

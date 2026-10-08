@@ -73,7 +73,7 @@ export const useClub = (clubId: number) =>
   useQuery({ queryKey: ['club', clubId], queryFn: () => api.get<ClubOverview>(`/clubs/${clubId}`) })
 
 export const useClubPlayers = (clubId: number) =>
-  useQuery({ queryKey: ['club-players', clubId], queryFn: () => api.get<ClubPlayer[]>(`/clubs/${clubId}/players`) })
+  useQuery({ queryKey: ['club-players', clubId], queryFn: () => api.get<ClubPlayer[]>(`/clubs/${clubId}/players`), enabled: clubId > 0 })
 
 export const useClubFixtures = (clubId: number | undefined, season?: number | null) =>
   useQuery({

@@ -11,7 +11,7 @@
   - build into a temporary folder only (`npx vite build --outDir /private/tmp/<name> --emptyOutDir`);
   - browser checks only on a throwaway server on port 8765 or 8766 with a temporary `FOOTSIM_SAVES_DIR`; never port 8000, never `saves/`.
 
-## U1: squad, player, tactics and in-match changes
+## U1: squad, player, tactics and in-match changes (done 9 Oct)
 
 The user's words: "having the arrow and then a number next to it is fine, I don't need a separate season start overall. I want to have a back button when I click on a player in squad, and an option to go from that player's information to another player. In tactics I want the position of the player to be more clear as I find myself wondering why a player's overall rating is one number, but their shown rating is lower, make it more clear. I would also like to be able to drag players from different positions on the squad formation in tactics and between the bench. I'd like to be able to choose who is on the bench vs the reserves too. When it comes to subs in a game, I would also like the option to see the formation and the players' positions and drag the player to another position or a bench player to replace them to make subs easier."
 

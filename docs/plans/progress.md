@@ -16,7 +16,18 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): W4-6 follow-up: fewer bids, quieter news** (the commit that adds this line; after b1cfa33).
+- **Latest checkpoint (9 Oct): U1, squad, player, tactics and subs UI** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 0a950ac). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U1).
+  - **Squad:** the overall shows its change since the season began beside it ("90 ▲+1"); the separate column is gone. A Team column shows XI, Bench or Reserve.
+  - **Player page:** Back, plus Previous and Next (← and →) through the list he was clicked from.
+  - **Tactics:**
+    - each starter's rating is explained: overall (best position), then role, familiarity and fitness, in steps that add up to the slot rating;
+    - out-of-position players are ringed amber or red;
+    - drag and drop between slots, the bench and the reserves;
+    - the user picks the bench (`SUB1..SUB9` in the lineup JSON, honoured by `LineupPicker.pick`, with a keeper still forced on). AI benches are unchanged.
+  - **Live match:** a pitch view of the user's side in the subs panel. Drag a bench player onto a player to substitute him, or two players to swap positions (`MatchEngine.swap_positions`, a logged `swap` command that replays exactly; only on the user's command, so the golden values are unchanged).
+  - **Tests:** `test_lineup.py` (4 new), `test_live_session.py` (swap with replay), `test_tactics_api.py`; the golden test unchanged; mypy, ruff, tsc and lint clean. The browser check on :8766 used synthetic drags.
+  - **Known:** drag and drop doesn't work on touch screens; there, use the player select or the subs List view.
+- **9 Oct: W4-6 follow-up: fewer bids, quieter news** (0a950ac, after b1cfa33).
   - **Bids for the user's players were a stream:** a League Two club got one every two days in July, each stopping sim-to-date. Now there are at most `bids_per_window` (4) a window, and a club turned down doesn't bid for the same player again in that window.
   - **News:** AI clubs' deals stay out of the user's news (the user asked: only what concerns their club). The market's news is just bids for the user's players; the transfer history still lists every deal.
   - **Tests:** the tests that advance to a match now turn down bids on the way (`tests/integration/match_day.py`), as a player would. They had failed on `stop: "offer"` in the W4-6 full run. The sim-to-date tests sim on after a bid.

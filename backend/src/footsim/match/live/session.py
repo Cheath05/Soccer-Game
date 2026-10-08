@@ -30,7 +30,7 @@ from footsim.world.context import World
 
 HIGHLIGHT_TYPES = frozenset({"goal", "shot", "penalty", "red"})
 MATCH_COMMANDS = frozenset({"formation", "instruction", "sub", "auto_subs", "assistant",
-                            "start_period"})
+                            "start_period", "swap"})
 MAX_TICKS_PER_PUMP = 3000  # never hold the event loop for long, even after falling behind
 SKIP_TICKS = 600  # highlights mode: most match time skipped in one go (60 s)
 STATUS_EVERY = 1.0  # real seconds between player status updates
@@ -48,6 +48,8 @@ def apply_command(engine: MatchEngine, team: int, cmd: Command) -> None:
         engine.set_instruction(team, str(cmd["key"]), str(cmd["value"]))
     elif kind == "sub":
         engine.substitute(team, int(cmd["out"]), int(cmd["in"]))
+    elif kind == "swap":
+        engine.swap_positions(team, int(cmd["a"]), int(cmd["b"]))
     elif kind == "auto_subs":
         engine.auto_subs[team] = bool(cmd.get("value"))
     elif kind == "assistant":
@@ -362,7 +364,8 @@ class LiveSession:
             players.append({
                 "index": i, "team": team, "player_id": sp.player_id, "name": sp.player.name,
                 "short_name": sp.player.short_name, "number": sp.number,
-                "position": e.position[i], "role": e.role[i].name, "active": bool(e.active[i]),
+                "position": e.position[i], "slot": e.slot[i], "role": e.role[i].name,
+                "active": bool(e.active[i]),
                 "ovr": self._ovr(sp.player, e.position[i], e.role[i].key),
                 "rating": match_rating(line, e.group[i], result, e.score[1 - team], minutes),
                 "energy": round(float(e.stamina[i]) * 100),
@@ -411,7 +414,10 @@ class LiveSession:
             "bench": [e.bench_info(0), e.bench_info(1)],
             "status": self.status(),
             "formation": [e.formation[0].key, e.formation[1].key],
-            "formations": [{"key": f.key, "name": f.name} for f in e.defs.formations.values()],
+            "formations": [{"key": f.key, "name": f.name,
+                            "slots": [{"id": s.id, "position": s.position, "x": s.base.x,
+                                       "y": s.base.y} for s in f.slots]}
+                           for f in e.defs.formations.values()],
             "instructions": [dict(e.instructions[0]), dict(e.instructions[1])],
             "instruction_options": [{"key": d.key, "label": d.label, "options": d.options}
                                     for d in e.defs.instructions.values()],

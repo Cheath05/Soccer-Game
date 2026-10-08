@@ -1,8 +1,9 @@
-import { Badge, Button, Checkbox, Group, Progress, ScrollArea, Stack, Table, Text, Tooltip } from '@mantine/core'
+import { Badge, Button, Checkbox, Group, Progress, ScrollArea, SegmentedControl, Stack, Table, Text, Tooltip } from '@mantine/core'
 import { useState } from 'react'
 
 import { POSITION_ORDER, matchRatingColor } from '../lib/format'
 import type { BenchStatus, PlayerStatus } from './protocol'
+import SubsPitch from './SubsPitch'
 import type { LiveMatch } from './useLiveMatch'
 
 function energyColor(value: number): string {
@@ -39,6 +40,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
   const { live, send } = match
   const [off, setOff] = useState<number | null>(null)
   const [on, setOn] = useState<number | null>(null)
+  const [view, setView] = useState('pitch')
   if (!live) return null
   const team = live.userTeam
   const players = live.status.players
@@ -65,6 +67,9 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
           onChange={(e) => send({ type: 'auto_subs', value: e.currentTarget.checked })}
         />
       </Group>
+      <SegmentedControl size="xs" value={view} onChange={setView} data={[{ value: 'pitch', label: 'Pitch' }, { value: 'list', label: 'List' }]} />
+      {view === 'pitch' && <SubsPitch match={match} onInspect={onInspect} />}
+      {view === 'list' && (<>
       <ScrollArea h={210} type="auto">
         <Table verticalSpacing={1} horizontalSpacing={4} highlightOnHover striped>
           <Table.Thead>
@@ -189,6 +194,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
           ? `${coming.short_name} on for ${leaving.short_name}${dead ? '' : ' at the next stoppage'}`
           : 'Pick a player off and one on'}
       </Button>
+      </>)}
       {waiting.map((w) => (
         <Text key={w.out} size="xs" c="orange">
           Waiting for the ball to go out: {nameOf(w.in)} on for {nameOf(w.out)}

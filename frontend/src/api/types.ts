@@ -448,6 +448,14 @@ export interface InstructionOption {
   default: string
 }
 
+/** Why a starter rates what he does in his slot: kind is role, position or condition; delta is in rating points. */
+export interface RatingAdjustment {
+  kind: string
+  label: string
+  delta: number
+}
+
+/** A starter (slot set), a substitute or a reserve. A starter's rating is his slot rating; overall plus adjustments make it. */
 export interface SheetEntry {
   slot: string | null
   position: string
@@ -457,6 +465,14 @@ export interface SheetEntry {
   number: number
   rating: number
   condition: number
+  overall: number
+  best_position: string
+  positions: string[]
+  familiarity: number
+  position_fit: 'natural' | 'adjusted' | 'out'
+  role_name: string
+  adjustments: RatingAdjustment[]
+  available: boolean
 }
 
 export interface Tactics {
@@ -466,6 +482,9 @@ export interface Tactics {
   instructions: Record<string, string>
   starters: SheetEntry[]
   bench: SheetEntry[]
+  reserves: SheetEntry[]
+  bench_chosen: boolean
+  bench_size: number
   formations: Formation[]
   roles_by_group: Record<string, RoleOption[]>
   instruction_options: InstructionOption[]

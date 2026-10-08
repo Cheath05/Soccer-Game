@@ -233,3 +233,49 @@ def test_goal_pauses_never_change_the_result(world: World) -> None:
     headless.run()
     assert watched.engine.score == headless.score
     assert watched.engine.tick_count == headless.tick_count
+
+
+def test_two_players_can_swap_positions_and_the_match_replays_exactly(world: World) -> None:
+    """The user's position swap is an input like a substitution: no one jumps, a goalkeeper
+    stays in goal, and the same inputs give the same match."""
+    watched = _session(world)
+    watched.apply({"type": "resume"}, 0.0)
+    now = _play(watched, 0.0, 5.0)
+    engine = watched.engine
+    outfield = [engine.players[int(i)] for i in engine.team_indices(0)
+                if engine.position[int(i)] != "GK"]
+    first, second = outfield[0], outfield[-1]
+    where = {sp.player_id: (engine.slot[i], engine.position[i])
+             for i, sp in enumerate(engine.players) if sp.player_id in (first.player_id,
+                                                                         second.player_id)}
+    keeper = next(sp for i, sp in enumerate(engine.players)
+                  if engine.team_of[i] == 0 and engine.position[i] == "GK")
+    before = engine.pos.copy()
+    assert watched.apply({"type": "swap", "a": keeper.player_id, "b": first.player_id},
+                         now) is not None
+    assert watched.apply({"type": "swap", "a": first.player_id, "b": first.player_id},
+                         now) is not None
+    assert watched.apply({"type": "swap", "a": first.player_id, "b": second.player_id},
+                         now) is None
+    assert engine.pos.tobytes() == before.tobytes()  # nobody was moved
+    now_where = {sp.player_id: (engine.slot[i], engine.position[i])
+                 for i, sp in enumerate(engine.players) if sp.player_id in where}
+    assert now_where[first.player_id] == where[second.player_id]
+    assert now_where[second.player_id] == where[first.player_id]
+    status = {p["player_id"]: p for p in watched.status()["players"]}
+    assert status[first.player_id]["slot"] == where[second.player_id][0]
+    now = _play(watched, now, 5.0)
+    watched.finish()
+
+    replayed = _engine(world)
+    replay(replayed, 0, watched.log)
+    assert replayed.tick_count == watched.engine.tick_count
+    assert replayed.score == watched.engine.score
+    assert replayed.pos.tobytes() == watched.engine.pos.tobytes()
+    assert [cmd["type"] for _, cmd in watched.log] == ["swap"]  # the refused ones aren't logged
+
+
+def test_the_init_message_carries_each_formations_slots(world: World) -> None:
+    init = _session(world).init_message(("Home", "Away"), 0.0)
+    shape = next(f for f in init["formations"] if f["key"] == "4-3-3")
+    assert len(shape["slots"]) == 11 and {"id", "position", "x", "y"} <= set(shape["slots"][0])

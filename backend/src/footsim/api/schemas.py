@@ -532,15 +532,37 @@ class InstructionOut(BaseModel):
     default: str
 
 
+class RatingAdjustmentOut(BaseModel):
+    """One reason a player rates differently in his slot from his overall: his role there
+    (``role``), his familiarity with the position (``position``) or his condition
+    (``condition``). ``delta`` is in rating points (negative: he is worse for it)."""
+
+    kind: str
+    label: str
+    delta: int
+
+
 class SheetEntryOut(BaseModel):
-    slot: str | None
-    position: str
+    """A starter, a substitute or a reserve. For a starter ``rating`` is his rating in the slot:
+    his role overall there, times his familiarity with the position, times his condition; the
+    ``adjustments`` take ``overall`` (his best, as the squad shows it) to it."""
+
+    slot: str | None  # the pitch slot; None for a substitute or a reserve
+    position: str  # the slot's position, or his own for a substitute or a reserve
     role: str
     player_id: int
     name: str
-    number: int
+    number: int  # 0 for a reserve (no shirt number is given until he is picked)
     rating: int
     condition: int
+    overall: int = 0
+    best_position: str = ""
+    positions: list[str] = []  # where he is at home (familiarity 15 or more)
+    familiarity: int = 20  # with the slot's position, 0-20
+    position_fit: str = "natural"  # natural | adjusted (amber) | out (red)
+    role_name: str = ""
+    adjustments: list[RatingAdjustmentOut] = []
+    available: bool = True
 
 
 class TacticsOut(BaseModel):
@@ -550,6 +572,9 @@ class TacticsOut(BaseModel):
     instructions: dict[str, str]
     starters: list[SheetEntryOut]
     bench: list[SheetEntryOut]
+    reserves: list[SheetEntryOut] = []
+    bench_chosen: bool = False  # the user has picked the bench (else it is picked automatically)
+    bench_size: int = 9
     formations: list[FormationOut]
     roles_by_group: dict[str, list[RoleOut]]
     instruction_options: list[InstructionOut]

@@ -18,6 +18,18 @@ from footsim.domain.attributes import ATTR_INDEX
 from footsim.ratings.overall import RatingModel, familiarity_factor
 
 BENCH_SIZE = 9
+SUB_PREFIX = "SUB"  # a saved line-up's bench: slot ids SUB1..SUB{BENCH_SIZE}
+
+
+def sub_slot(number: int) -> str:
+    return f"{SUB_PREFIX}{number}"
+
+
+def sub_order(slot_id: str) -> int | None:
+    """Which bench place a line-up key names (``SUB3`` -> 3), or None for a pitch slot."""
+    if slot_id.startswith(SUB_PREFIX) and slot_id[len(SUB_PREFIX):].isdigit():
+        return int(slot_id[len(SUB_PREFIX):])
+    return None
 
 
 def condition_factor(condition: float) -> float:
@@ -110,7 +122,8 @@ class LineupPicker:
                 score[i, j] = self.slot_rating(p, slot.position, roles[slot.id], overalls[i])
 
         # Honour manually fixed slots where that player is available. The forcing score only
-        # steers the assignment: a fixed player keeps his real rating in the slot.
+        # steers the assignment: a fixed player keeps his real rating in the slot. Keys
+        # SUB1..SUBn choose the bench instead (below).
         rating = score.copy()
         by_id = {p.player_id: i for i, p in enumerate(available)}
         slot_index = {s.id: k for k, s in enumerate(slots)}
@@ -133,7 +146,13 @@ class LineupPicker:
         best = overalls.max(axis=1)
         rest = sorted((i for i in range(len(available)) if i not in chosen),
                       key=lambda i: -best[i])
-        bench_idx = rest[:BENCH_SIZE]
+        # The manager's substitutes first, in the order he gave them (an unavailable player, or
+        # one who is starting, is skipped); the best of the rest fill any places left.
+        wanted = sorted((sub_order(k) or 0, pid) for k, pid in (fixed or {}).items()
+                        if sub_order(k) is not None)
+        picked = [by_id[pid] for _, pid in wanted if pid in by_id]
+        chosen_subs = list(dict.fromkeys(i for i in picked if i not in chosen))[:BENCH_SIZE]
+        bench_idx = [*chosen_subs, *(i for i in rest if i not in chosen_subs)][:BENCH_SIZE]
         keepers = [i for i in rest if available[i].primary_position == "GK"]
         if keepers and not any(available[i].primary_position == "GK" for i in bench_idx):
             bench_idx = [*bench_idx[: BENCH_SIZE - 1], keepers[0]]

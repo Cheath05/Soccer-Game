@@ -35,6 +35,7 @@ from footsim.api.schemas import (
     PlayerSeasonLineOut,
     PlayerSeasonOut,
     PotentialOut,
+    RatingAdjustmentOut,
     RoleOut,
     RoleRatingOut,
     SeasonOut,
@@ -49,7 +50,14 @@ from footsim.defs.competitions import MovementKind
 from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES
 from footsim.importers.generate import age_on
 from footsim.match.engine.clock import event_label
-from footsim.match.teams import TeamSheet
+from footsim.match.teams import (
+    BENCH_SIZE,
+    SheetPlayer,
+    SquadPlayer,
+    TeamSheet,
+    condition_factor,
+    sub_order,
+)
 from footsim.persistence.database import open_database
 from footsim.persistence.schema import (
     club,
@@ -69,6 +77,7 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.ratings.face import face_stats
+from footsim.ratings.overall import familiarity_factor
 from footsim.scouting.estimates import (
     OTHER_CLUB_KNOWLEDGE,
     OWN_CLUB_KNOWLEDGE,
@@ -80,7 +89,7 @@ from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.season import active_leagues, season_calendar, standings
-from footsim.world.squads import display_name, short_name, team_sheet
+from footsim.world.squads import display_name, load_squad, short_name, team_sheet
 from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
 
 # --- helpers --------------------------------------------------------------------------
@@ -827,12 +836,63 @@ def match_detail(conn: Connection, fixture_id: int) -> MatchOut:
 # --- tactics --------------------------------------------------------------------------
 
 
-def _sheet_entries(sheet: TeamSheet, bench: bool) -> list[SheetEntryOut]:
-    players = sheet.bench if bench else sheet.starters
-    return [SheetEntryOut(slot=sp.slot, position=sp.position, role=sp.role,
-                          player_id=sp.player_id, name=sp.player.name, number=sp.number,
-                          rating=round(sp.rating), condition=round(sp.player.condition))
-            for sp in players]
+def _own_view(world: World, p: SquadPlayer) -> tuple[int, list[str]]:
+    """A player's overall as the squad shows it (his best role in his main position's group),
+    and where he is at home."""
+    group = world.defs.positions[p.primary_position].group
+    overall = round(float(world.model.group_overalls(p.attrs)[group]))
+    home = [pos for pos, fam in sorted(p.positions.items(), key=lambda kv: -kv[1]) if fam >= 15]
+    return overall, home
+
+
+def _fit(familiarity: int) -> str:
+    return "natural" if familiarity >= 15 else "adjusted" if familiarity >= 11 else "out"
+
+
+def _slot_entry(world: World, sp: SheetPlayer) -> SheetEntryOut:
+    """A starter with the reasons his rating in the slot differs from his overall."""
+    p = sp.player
+    overall, home = _own_view(world, p)
+    role = world.defs.roles[sp.role]
+    role_overall = float(world.model.role_overalls(p.attrs)[world.model.role_index(sp.role)])
+    familiarity = p.positions.get(sp.position, 0)
+    after_position = role_overall * familiarity_factor(familiarity)
+    final = after_position * condition_factor(p.condition)
+    step_role = round(role_overall) - overall
+    step_position = round(after_position) - round(role_overall)
+    step_condition = min(round(final), 99) - round(after_position)
+    adjustments = []
+    if step_role:
+        adjustments.append(RatingAdjustmentOut(
+            kind="role", label=f"playing as {role.name}", delta=step_role))
+    if step_position:
+        adjustments.append(RatingAdjustmentOut(
+            kind="position", label=f"out of position at {sp.position}"
+            if _fit(familiarity) == "out" else f"not fully at home at {sp.position}",
+            delta=step_position))
+    if step_condition:
+        adjustments.append(RatingAdjustmentOut(
+            kind="condition", label=f"not fully fit ({round(p.condition)}%)",
+            delta=step_condition))
+    return SheetEntryOut(
+        slot=sp.slot, position=sp.position, role=sp.role, player_id=sp.player_id,
+        name=p.name, number=sp.number, rating=round(sp.rating), condition=round(p.condition),
+        overall=overall, best_position=p.primary_position, positions=home,
+        familiarity=familiarity, position_fit=_fit(familiarity), role_name=role.name,
+        adjustments=adjustments, available=p.available)
+
+
+def _bench_entry(world: World, p: SquadPlayer, number: int = 0) -> SheetEntryOut:
+    """A substitute or a reserve: no slot, so his rating is his overall."""
+    overall, home = _own_view(world, p)
+    return SheetEntryOut(
+        slot=None, position=p.primary_position, role="", player_id=p.player_id, name=p.name,
+        number=number, rating=overall, condition=round(p.condition), overall=overall,
+        best_position=p.primary_position, positions=home, available=p.available)
+
+
+def _sheet_entries(world: World, sheet: TeamSheet) -> list[SheetEntryOut]:
+    return [_slot_entry(world, sp) for sp in sheet.starters]
 
 
 def tactics(conn: Connection, world: World, meta: CareerMeta | None = None) -> TacticsOut:
@@ -840,16 +900,24 @@ def tactics(conn: Connection, world: World, meta: CareerMeta | None = None) -> T
     assert meta.user_club_id is not None
     row = conn.execute(select(tactic).where(tactic.c.club_id == meta.user_club_id)).first()
     sheet = team_sheet(conn, world, meta.user_club_id, meta.current_date)
+    squad_players = load_squad(conn, meta.user_club_id, meta.current_date)
     defs = world.defs
+    lineup = {k: int(v) for k, v in json.loads(row.lineup).items()} if row and row.lineup else None
+    used = {sp.player_id for sp in (*sheet.starters, *sheet.bench)}
+    order = list(defs.positions)
+    reserves = sorted((p for p in squad_players if p.player_id not in used),
+                      key=lambda p: (order.index(p.primary_position), -_own_view(world, p)[0]))
     return TacticsOut(
         formation=sheet.formation.key,
         roles=json.loads(row.roles) if row else {},
-        lineup={k: int(v) for k, v in json.loads(row.lineup).items()} if row and row.lineup
-        else None,
+        lineup=lineup,
+        bench_chosen=bool(lineup and any(sub_order(k) is not None for k in lineup)),
+        bench_size=BENCH_SIZE,
         instructions={**default_instructions(defs),
                       **(json.loads(row.instructions) if row else {})},
-        starters=_sheet_entries(sheet, bench=False),
-        bench=_sheet_entries(sheet, bench=True),
+        starters=_sheet_entries(world, sheet),
+        bench=[_bench_entry(world, sp.player, sp.number) for sp in sheet.bench],
+        reserves=[_bench_entry(world, p) for p in reserves],
         formations=[FormationOut(key=f.key, name=f.name, slots=[
             SlotOut(id=s.id, position=s.position, x=s.base.x, y=s.base.y,
                     default_role=s.default_role) for s in f.slots])

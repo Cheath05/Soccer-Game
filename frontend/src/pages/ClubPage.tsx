@@ -9,6 +9,7 @@ import ClubLink from '../components/ClubLink'
 import Overall from '../components/Overall'
 import ResultBadge from '../components/ResultBadge'
 import { money, ordinal, positionColor, score, shortDate, wage } from '../lib/format'
+import { rememberPlayerList } from '../lib/playerList'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'contract_end'
 
@@ -122,7 +123,10 @@ export default function ClubPage() {
           </Table.Thead>
           <Table.Tbody>
             {rows.map((p) => (
-              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/players/$playerId', params: { playerId: String(p.id) } })}>
+              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => {
+                rememberPlayerList(rows.map((r) => r.id))
+                void navigate({ to: '/players/$playerId', params: { playerId: String(p.id) } })
+              }}>
                 <Table.Td>
                   <Badge color={positionColor(p.position)} variant="light" w={44}>
                     {p.position}

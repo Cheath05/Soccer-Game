@@ -11,6 +11,7 @@ from sqlalchemy import Connection, Row, func, literal, or_, select, text
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
 from footsim.match.report import MatchReport
+from footsim.match.teams import BENCH_SIZE, sub_order
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.context import World
 from footsim.world.finance import initialize_finances
@@ -201,6 +202,15 @@ def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[
     for slot, role in roles.items():
         if role not in world.defs.roles:
             raise ValueError(f"unknown role {role} for slot {slot}")
+    if lineup:
+        slots = {slot.id for slot in world.defs.formations[formation].slots}
+        for key in lineup:
+            if key not in slots and sub_order(key) is None:
+                raise ValueError(f"unknown line-up place {key}")
+            if sub_order(key) is not None and not 1 <= (sub_order(key) or 0) <= BENCH_SIZE:
+                raise ValueError(f"the bench has {BENCH_SIZE} places, not {key}")
+        if len(set(lineup.values())) != len(lineup):
+            raise ValueError("a player can only be in one place")
     conn.execute(text("""
         INSERT INTO tactic (club_id, formation, roles, lineup, instructions)
         VALUES (:club, :formation, :roles, :lineup, :instructions)

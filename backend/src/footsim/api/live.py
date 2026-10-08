@@ -9,7 +9,8 @@ match (paused). A match belongs to the career loaded when it started (see Career
 Protocol v2 (JSON).
   Server -> client: init | frames | ack | end | error.
   Client -> server: pause | resume | speed {value} | mode {value: full|highlights} |
-    formation {key} | instruction {key, value} | sub {out, in} | auto_subs {value} |
+    formation {key} | instruction {key, value} | sub {out, in} |
+    swap {a, b} (two players on the pitch change positions) | auto_subs {value} |
     assistant {value} (the AI manager adjusts the user's tactics) | start_period | finish.
     Any command may carry a cmd_id, echoed back in its ack.
 """

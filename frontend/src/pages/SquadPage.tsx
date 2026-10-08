@@ -2,13 +2,13 @@ import { Badge, Group, Progress, SegmentedControl, Stack, Table, Text, Title, Un
 import { useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 
-import { useCareer, useSquad } from '../api/hooks'
+import { useCareer, useSquad, useTactics } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
-import Overall from '../components/Overall'
-import SeasonStart from '../components/SeasonStart'
-import { money, positionColor, wage } from '../lib/format'
+import { SeasonChange } from '../components/SeasonChange'
+import { money, positionColor, ratingColor, wage } from '../lib/format'
+import { rememberPlayerList } from '../lib/playerList'
 
-type SortKey = 'position' | 'name' | 'age' | 'overall' | 'season_start' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
+type SortKey = 'position' | 'selection' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
 
 const GROUPS: Record<string, string[]> = {
   All: [],
@@ -20,10 +20,10 @@ const GROUPS: Record<string, string[]> = {
 
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: 'position', label: 'Pos' },
+  { key: 'selection', label: 'Team' },
   { key: 'name', label: 'Name' },
   { key: 'age', label: 'Age', numeric: true },
   { key: 'overall', label: 'Ovr', numeric: true },
-  { key: 'season_start', label: 'Season start', numeric: true },
   { key: 'condition', label: 'Condition', numeric: true },
   { key: 'form', label: 'Form', numeric: true },
   { key: 'appearances', label: 'Apps', numeric: true },
@@ -36,15 +36,24 @@ export default function SquadPage() {
   const career = useCareer().data
   const squad = useSquad(career?.club.id)
   const navigate = useNavigate()
+  const tactics = useTactics().data
+  // Who starts, who is on the bench and who is a reserve, as the tactics screen has them.
+  const selection = useMemo(() => {
+    const map = new Map<number, number>()
+    tactics?.reserves.forEach((r) => map.set(r.player_id, 2))
+    tactics?.bench.forEach((b) => map.set(b.player_id, 1))
+    tactics?.starters.forEach((s) => map.set(s.player_id, 0))
+    return map
+  }, [tactics])
   const [group, setGroup] = useState('All')
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'position', desc: false })
 
   const rows = useMemo(() => {
     const list = (squad.data ?? []).filter((p) => group === 'All' || GROUPS[group].includes(p.position))
     if (sort.key === 'position') return sort.desc ? [...list].reverse() : list
-    const sorted = [...list].sort((a, b) => compare(a, b, sort.key))
+    const sorted = [...list].sort((a, b) => (sort.key === 'selection' ? (selection.get(a.id) ?? 3) - (selection.get(b.id) ?? 3) || b.overall - a.overall : compare(a, b, sort.key)))
     return sort.desc ? sorted.reverse() : sorted
-  }, [squad.data, group, sort])
+  }, [squad.data, group, sort, selection])
 
   return (
     <Stack>
@@ -52,7 +61,7 @@ export default function SquadPage() {
         <Title order={2}>Squad</Title>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
-      <Table.ScrollContainer minWidth={980}>
+      <Table.ScrollContainer minWidth={1040}>
         <Table highlightOnHover striped>
           <Table.Thead>
             <Table.Tr>
@@ -73,11 +82,21 @@ export default function SquadPage() {
           </Table.Thead>
           <Table.Tbody>
             {rows.map((p) => (
-              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/players/$playerId', params: { playerId: String(p.id) } })}>
+              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => {
+                  rememberPlayerList(rows.map((r) => r.id))
+                  void navigate({ to: '/players/$playerId', params: { playerId: String(p.id) } })
+                }}>
                 <Table.Td>
                   <Badge color={positionColor(p.position)} variant="light" w={44}>
                     {p.position}
                   </Badge>
+                </Table.Td>
+                <Table.Td>
+                  {selection.has(p.id) && (
+                    <Badge size="sm" variant={selection.get(p.id) === 0 ? 'filled' : 'light'} color={selection.get(p.id) === 2 ? 'gray' : selection.get(p.id) === 1 ? 'teal' : 'blue'} w={72}>
+                      {['XI', 'Bench', 'Reserve'][selection.get(p.id) ?? 2]}
+                    </Badge>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
@@ -98,10 +117,14 @@ export default function SquadPage() {
                 </Table.Td>
                 <Table.Td ta="right">{p.age}</Table.Td>
                 <Table.Td ta="right">
-                  <Overall value={p.overall} trend={p.trend} />
-                </Table.Td>
-                <Table.Td ta="right">
-                  <SeasonStart start={p.season_start_overall} now={p.overall} />
+                  <Group gap={6} wrap="nowrap" justify="flex-end" component="span" display="inline-flex">
+                    <Text fw={700} c={ratingColor(p.overall)} size="sm" span>
+                      {p.overall}
+                    </Text>
+                    <Text span w={44} ta="left">
+                      <SeasonChange start={p.season_start_overall} now={p.overall} />
+                    </Text>
+                  </Group>
                 </Table.Td>
                 <Table.Td>
                   <Progress value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size="sm" />
@@ -123,14 +146,7 @@ export default function SquadPage() {
   )
 }
 
-function compare(a: SquadPlayer, b: SquadPlayer, key: SortKey): number {
-  if (key === 'season_start') {
-    // By how far the overall has moved since the season began; players with no record last.
-    const change = (p: SquadPlayer) => (p.season_start_overall == null ? -Infinity : p.overall - p.season_start_overall)
-    const cx = change(a)
-    const cy = change(b)
-    return cx === cy ? 0 : cx < cy ? -1 : 1
-  }
+function compare(a: SquadPlayer, b: SquadPlayer, key: Exclude<SortKey, 'selection'>): number {
   const x = a[key]
   const y = b[key]
   if (typeof x === 'number' && typeof y === 'number') return x - y

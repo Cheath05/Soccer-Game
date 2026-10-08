@@ -43,6 +43,7 @@ export interface PlayerStatus {
   short_name: string
   number: number
   position: string
+  slot: string // the formation slot he fills
   role: string
   active: boolean
   ovr: number
@@ -104,7 +105,7 @@ export interface LiveState {
   subsLeft: [number, number]
   lineup: PlayerInfo[]
   formation: string[]
-  formations: { key: string; name: string }[]
+  formations: { key: string; name: string; slots?: { id: string; position: string; x: number; y: number }[] }[]
   instructions: Record<string, string>[]
   instructionOptions: { key: string; label: string; options: string[] }[]
   autoSubs: boolean[]

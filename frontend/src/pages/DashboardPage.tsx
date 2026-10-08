@@ -136,9 +136,11 @@ export default function DashboardPage() {
                 <Text c="dimmed" size="sm">
                   Finances
                 </Text>
-                <Badge color={confidenceColor(finances.board.confidence)} variant="light">
-                  Board: {finances.board.mood}
-                </Badge>
+                {finances.board && (
+                  <Badge color={confidenceColor(finances.board.confidence)} variant="light">
+                    Board: {finances.board.mood}
+                  </Badge>
+                )}
               </Group>
               <Group mt="xs" grow>
                 <div>
@@ -151,15 +153,17 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <Text size="xs" c="dimmed">
-                    Transfer budget
+                    Budget
                   </Text>
-                  <Text fw={700}>{money(finances.transfer_budget_eur)}</Text>
+                  <Text fw={700}>{money(finances.budget_eur)}</Text>
                 </div>
                 <div>
                   <Text size="xs" c="dimmed">
-                    Wage room
+                    Monthly profit
                   </Text>
-                  <Text fw={700}>{money(finances.wage_budget_weekly_eur - finances.wage_bill_weekly_eur)}/wk</Text>
+                  <Text fw={700} c={finances.monthly.profit_eur < 0 ? 'red.7' : 'green.7'}>
+                    {money(finances.monthly.profit_eur)}
+                  </Text>
                 </div>
               </Group>
             </Card>

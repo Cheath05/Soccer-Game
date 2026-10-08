@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class ClubRef(BaseModel):
@@ -37,9 +37,14 @@ class SaveSlotOut(BaseModel):
 class NewCareerIn(BaseModel):
     club_id: int
     manager_name: str
-    # The sandbox: the club's transfer budget to start with, up to EUR 10bn (the owner puts in
-    # the cash to back it). None: the board's own budget.
-    transfer_budget_eur: int | None = Field(default=None, ge=0, le=10_000_000_000)
+    # The sandbox: the club's budget for transfer fees and wages to start with, up to EUR 10bn
+    # (the owner puts in the cash to back it). None: the board's own budget. (Called
+    # ``transfer_budget_eur`` before the budget was one: still accepted.)
+    budget_eur: int | None = Field(
+        default=None, ge=0, le=10_000_000_000,
+        validation_alias=AliasChoices("budget_eur", "transfer_budget_eur"))
+    # False: play without a board (no expectations or sacking; the budget is all the cash).
+    board_enabled: bool = True
 
 
 class FixtureOut(BaseModel):
@@ -305,7 +310,7 @@ class ClubOverviewOut(BaseModel):
     stadium_capacity: int | None
     manager: str | None  # None until computer managers exist
     wage_bill_weekly_eur: int
-    transfer_budget_eur: int  # rounded for clubs other than the user's
+    budget_eur: int  # for transfer fees and new wages this season; rounded for other clubs
     balance_eur: int  # likewise
     squad_size: int
     average_age: float
@@ -557,15 +562,32 @@ class TacticsIn(BaseModel):
     instructions: dict[str, str]
 
 
-class FinanceLineOut(BaseModel):
-    """Money of one kind this season (the user's club)."""
+class MonthlyOut(BaseModel):
+    """A month of the club's recurring money at today's rates: income positive, costs negative,
+    and the profit their sum."""
 
-    kind: str
+    tv_eur: int  # its share of its league's TV money
+    commercial_eur: int  # commercial and matchday
+    wages_eur: int
+    running_eur: int  # running costs
+    profit_eur: int
+
+
+class ChangeOut(BaseModel):
+    """A part of the month that changed from one settlement to the next: what a month of it was
+    before and after (signed: a cost is negative). ``date`` is the settlement it first showed
+    in."""
+
+    date: str
     label: str
-    amount_eur: int
+    before_eur: int
+    after_eur: int
 
 
-class LedgerRowOut(BaseModel):
+class TransactionOut(BaseModel):
+    """One-off money: the opening balance, a transfer, prize money, a parachute payment, the
+    owner's investment."""
+
     date: str
     kind: str
     label: str
@@ -585,18 +607,24 @@ class BoardOut(BaseModel):
 
 
 class FinancesOut(BaseModel):
-    """The user's club's money (W3). Amounts in euros; the page converts for display."""
+    """The user's club's money (W3-4). Amounts in euros; the page converts for display."""
 
     club: ClubRef
     season: str
     league: str | None
     balance_eur: int
-    transfer_budget_eur: int
-    wage_budget_weekly_eur: int
+    budget_eur: int  # for transfer fees and new wages this season
     wage_bill_weekly_eur: int
-    projected_revenue_eur: int  # this season's, as the club plans it
-    income: list[FinanceLineOut]  # this season so far
-    expenses: list[FinanceLineOut]
-    net_eur: int
-    recent: list[LedgerRowOut]
-    board: BoardOut
+    wage_capacity_weekly_eur: int  # the weekly wage bill the club's income supports
+    monthly: MonthlyOut
+    season_profit_so_far_eur: int  # the months settled this season
+    changes: list[ChangeOut]  # notable changes in the month's parts, the latest first
+    transactions: list[TransactionOut]  # one-off money, the latest first
+    board_enabled: bool
+    board: BoardOut | None  # None when the board is off
+
+
+class BoardIn(BaseModel):
+    """Turn the user's board on or off."""
+
+    enabled: bool

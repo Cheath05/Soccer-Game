@@ -213,11 +213,6 @@ def _cross_validate(defs: GameDefinitions) -> None:
     for league in defs.leagues.values():
         if league.key not in defs.finance.league_income:
             errors.append(f"league {league.key}: no league_income in finance/finance.yaml")
-    if defs.market.default_window_nation not in {c.nation for c in defs.calendars.values()}:
-        errors.append("transfers/market.yaml: no calendar for default_window_nation "
-                      f"{defs.market.default_window_nation}")
-    for key in sorted(set(defs.finance.league_income) - set(defs.leagues)):
-        errors.append(f"finance/finance.yaml: league_income for unknown league {key}")
         if league.nation not in defs.nations:
             errors.append(f"league {league.key}: unknown nation code {league.nation}")
         if league.calendar not in defs.calendars:
@@ -230,6 +225,20 @@ def _cross_validate(defs: GameDefinitions) -> None:
         for target in targets:
             if target not in defs.leagues:
                 errors.append(f"league {league.key}: movement to unknown league {target}")
+    for key in sorted(set(defs.finance.league_income) - set(defs.leagues)):
+        errors.append(f"finance/finance.yaml: league_income for unknown league {key}")
+    for key in sorted(set(defs.finance.cup_prizes) - set(defs.cups)):
+        errors.append(f"finance/finance.yaml: cup_prizes for unknown cup {key}")
+    for cup in defs.cups.values():
+        prizes = defs.finance.cup_prizes.get(cup.key)
+        if prizes is None:
+            errors.append(f"cup {cup.key}: no cup_prizes in finance/finance.yaml")
+        elif len(prizes) != len(cup.rounds):
+            errors.append(f"cup {cup.key}: cup_prizes has {len(prizes)} amounts for "
+                          f"{len(cup.rounds)} rounds")
+    if defs.market.default_window_nation not in {c.nation for c in defs.calendars.values()}:
+        errors.append("transfers/market.yaml: no calendar for default_window_nation "
+                      f"{defs.market.default_window_nation}")
 
     unknown_positions = set(defs.lifecycle.youth.positions) - set(defs.positions)
     if unknown_positions:

@@ -328,7 +328,7 @@ export interface ClubOverview {
   stadium_capacity: number | null
   manager: string | null
   wage_bill_weekly_eur: number
-  transfer_budget_eur: number // rounded for other clubs
+  budget_eur: number // for transfer fees and new wages this season; rounded for other clubs
   balance_eur: number
   squad_size: number
   average_age: number
@@ -521,13 +521,27 @@ export interface CupRun {
   out: boolean
 }
 
-export interface FinanceLine {
-  kind: string
-  label: string
-  amount_eur: number
+/** A month of the club's recurring money at today's rates: income positive, costs negative, and
+ * the profit their sum. */
+export interface Monthly {
+  tv_eur: number // its share of its league's TV money
+  commercial_eur: number // commercial and matchday
+  wages_eur: number
+  running_eur: number
+  profit_eur: number
 }
 
-export interface LedgerRow {
+/** A part of the month that changed from one settlement to the next (a month's worth each; a
+ * cost is negative). `date` is the settlement it first showed in. */
+export interface FinanceChange {
+  date: string
+  label: string
+  before_eur: number
+  after_eur: number
+}
+
+/** One-off money: the opening balance, a transfer, prize money, a parachute payment. */
+export interface Transaction {
   date: string
   kind: string
   label: string
@@ -548,13 +562,13 @@ export interface Finances {
   season: string
   league: string | null
   balance_eur: number
-  transfer_budget_eur: number
-  wage_budget_weekly_eur: number
+  budget_eur: number // for transfer fees and new wages this season
   wage_bill_weekly_eur: number
-  projected_revenue_eur: number
-  income: FinanceLine[]
-  expenses: FinanceLine[]
-  net_eur: number
-  recent: LedgerRow[]
-  board: Board
+  wage_capacity_weekly_eur: number // the weekly wage bill the club's income supports
+  monthly: Monthly
+  season_profit_so_far_eur: number
+  changes: FinanceChange[] // the latest first
+  transactions: Transaction[] // the latest first
+  board_enabled: boolean
+  board: Board | null // null when the board is off
 }

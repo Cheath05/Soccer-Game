@@ -650,7 +650,7 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         position=position, points=points, played=played, reputation=row.reputation,
         stadium_name=row.stadium_name, stadium_capacity=row.stadium_capacity,
         manager=meta.manager_name if own else None,
-        wage_bill_weekly_eur=int(wage_bill), transfer_budget_eur=int(budget),
+        wage_bill_weekly_eur=int(wage_bill), budget_eur=int(budget),
         balance_eur=int(balance),
         squad_size=len(players),
         average_age=round(float(np.mean([p.age for p in players])), 1) if players else 0.0,

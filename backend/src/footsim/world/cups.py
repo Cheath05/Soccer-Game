@@ -5,7 +5,8 @@ league keeps to its own country's dates. Each round is drawn once the one before
 Where a round sends more clubs through than half of those in it, the highest-ranked are exempt
 (a bye). A club's league match within two days of a cup match is moved to the nearest free day
 for both clubs, a midweek where possible, as real fixture lists are rearranged; leagues a round
-``blocks`` play nothing that day in the first place."""
+``blocks`` play nothing that day in the first place. The winner of a tie earns that round's prize
+money (``cup_prizes`` in finance.yaml), a one-off ``prize`` in the club's ledger."""
 
 from datetime import date, timedelta
 from typing import Any
@@ -26,6 +27,7 @@ from footsim.persistence.schema import (
     league_final,
 )
 from footsim.world.context import World
+from footsim.world.finance import Entry, post
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import club_name
 
@@ -119,6 +121,11 @@ def progress_cups(conn: Connection, world: World, meta: CareerMeta, today: date)
                     conn.execute(update(cup_tie).where(cup_tie.c.id == t.id)
                                  .values(winner_club_id=winner))
                     decided.append((t, winner))
+        # Prize money, once: a tie is decided only while it has no winner, so a day that runs
+        # again pays nothing more.
+        post(conn, today, meta.season_id, [
+            Entry(winner, "prize", cup_prize_cents(world, cup, current), ids[cup.key])
+            for _, winner in decided])
         messages += _results_news(conn, meta, cup, current, decided)
         if any(t.round == current and t.winner_club_id is None
                for t in _ties(conn, meta.season_id, ids[cup.key])):
@@ -128,6 +135,12 @@ def progress_cups(conn: Connection, world: World, meta: CareerMeta, today: date)
         elif decided:
             messages.append(f"{club_name(conn, decided[0][1])} win the {cup.name}.")
     return messages
+
+
+def cup_prize_cents(world: World, cup: CupDef, round_index: int) -> int:
+    """The prize money, in cents, for winning a tie in round ``round_index`` of ``cup``
+    (``cup_prizes`` in finance.yaml)."""
+    return round(world.defs.finance.cup_prizes[cup.key][round_index] * 100)
 
 
 def cup_decider(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:

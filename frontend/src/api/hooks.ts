@@ -147,16 +147,34 @@ export function useSaveTactics() {
   })
 }
 
+/** `budget` is the sandbox: euros for fees and wages to start with (null: the board's own).
+ * `boardEnabled` false plays without a board. */
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number; manager: string; transferBudget?: number | null }) =>
+    mutationFn: (args: { slot: number; clubId: number; manager: string; budget?: number | null; boardEnabled?: boolean }) =>
       api.post<Career>(`/saves/${args.slot}/new`, {
         club_id: args.clubId,
         manager_name: args.manager,
-        transfer_budget_eur: args.transferBudget ?? null,
+        budget_eur: args.budget ?? null,
+        board_enabled: args.boardEnabled ?? true,
       }),
     onSuccess: invalidate,
+  })
+}
+
+/** Turn the user's board on or off: the budget is worked out again, so the finances (and the
+ * club's overview, which shows the budget) are refetched. The answer is the new finances: the
+ * page shows them at once, and the refetch only confirms them. */
+export function useSetBoard() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => api.put<Finances>('/career/board', { enabled }),
+    onSuccess: (data) => {
+      client.setQueryData(['finances'], data)
+      void client.invalidateQueries({ queryKey: ['finances'] })
+      void client.invalidateQueries({ queryKey: ['club'] })
+    },
   })
 }
 

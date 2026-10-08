@@ -11,6 +11,7 @@ from footsim import __version__
 from footsim.api import finances, queries, season_review, sim
 from footsim.api.schemas import (
     AdvanceOut,
+    BoardIn,
     CareerOut,
     ClubHistoryOut,
     ClubOverviewOut,
@@ -38,6 +39,7 @@ from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
 from footsim.world.career import advance, play_user_instant, set_user_tactic
 from footsim.world.context import get_world
+from footsim.world.finance import set_board_enabled
 from footsim.world.meta import read_meta
 
 router = APIRouter(prefix="/api")
@@ -109,7 +111,7 @@ def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     if not session.base_world.exists():
         raise HTTPException(503, "No base world built yet: run `just build-world`.")
     session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
-                       body.transfer_budget_eur)
+                       body.budget_eur, body.board_enabled)
     _record_club_name(session)
     session.save()
     return _career(session)
@@ -157,13 +159,30 @@ def advance_career(session: Session) -> AdvanceOut:
 
 @router.get("/finances")
 def club_finances(session: Session) -> FinancesOut:
-    """The user's club's money: balance, budgets, this season's income and expenses, the latest
-    ledger rows and the board's view."""
+    """The user's club's money: balance, budget, wages against what the income supports, a
+    month's money at today's rates and its recent changes, the one-off transactions and (when
+    the board is on) the board's view."""
     with session.read() as conn:
         try:
             return finances.finances(conn, get_world())
         except finances.NoClub as exc:
             raise HTTPException(404, "watching only: no club of your own") from exc
+
+
+@router.put("/career/board")
+def put_board(body: BoardIn, session: Session) -> FinancesOut:
+    """Turn the user's board on or off. The budget is worked out again at once: all the club's
+    cash without a board, the board's plan with one."""
+    _not_simulating(session)
+    world = get_world()
+    with session.write() as conn:
+        meta = read_meta(conn)
+        if meta.user_club_id is None:
+            raise HTTPException(404, "watching only: no club of your own")
+        set_board_enabled(conn, world, meta, body.enabled)
+    session.autosave()
+    with session.read() as conn:
+        return finances.finances(conn, world)
 
 
 @router.get("/competitions")

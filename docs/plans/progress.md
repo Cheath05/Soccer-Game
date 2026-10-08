@@ -16,7 +16,18 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (8 Oct): D, first-team rewards in development** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 16d5dcc). The user asked for a bench boost and an academy boost.
+- **Latest checkpoint (8 Oct): W3-4, simpler money** (agent F's work, reviewed here; the commit that adds this line, after ecd8dd3). The user's 8 Oct finance requests, as decided in the design doc's "W3-4".
+  - **One budget** for fees and new wages: a signing costs fee + wage × weeks left in the season (`signing_cost_cents`, `weeks_left`). The seller gets back `reinvest` × fee + the freed wages; a release changes nothing. `validate_move` refuses "That's beyond the budget."; the weekly wage-budget limit is gone.
+  - **Each season's budget:** board on, 35% of revenue + 40% of cash − the wage overshoot; board off, all the cash. `wage_budget_cents` is now the wage capacity (informational, and the AI's prudence).
+  - **The optional board:** `CareerMeta.board_enabled` (default on, so old saves keep theirs); a switch at career start and on the Finances page (`PUT /api/career/board`, recomputing the budget at once). With it off, the page hides targets and confidence.
+  - **$ by default**; € or £ stays if already chosen. The sandbox is typed in the shown currency.
+  - **The Finances page:** Balance, Budget, wages against capacity, "Each month" (TV, commercial and matchday, wages, running costs, profit at current rates), Changes (a part moving ≥5% and ≥€10K between monthly settlements), and Transactions (one-offs only: opening, transfers "Signed X from Y" / "Sold X to Y", prizes, parachutes, owner investment). The dashboard card matches.
+  - **Cup prize money:** each decided tie's winner gets that round's prize, once (`cup_prizes` in finance.yaml, 14 cups, approximate and unmeasured: e.g. the FA Cup €45K rising to €2M for the final).
+  - **A W3-1 bug fixed:** the loader's league checks (unknown nation, calendar, movement targets) had been cut off by the finance check inserted into their loop. They run again, with a regression test.
+  - **Tests:** the finance, transfers, finances-API, clubs and definitions tests; the full suite passes (343); e2e smoke and live pass on :8765. The smoke script's wait for the 0% progress bar is now "attached" (the cold-start flake).
+  - **Known:** transfer news is written in € on the server, whatever the display currency.
+  - **Next:** U1 (squad, player navigation, tactics clarity, drag and drop, bench and reserves, in-match subs), then U2 (club search, sim to the next cup match, competition names, the big five first, real Italian names), per `docs/plans/ui-requests-8oct.md`. Then W4-6.
+- **8 Oct: D, first-team rewards in development** (ecd8dd3, after 16d5dcc; a Sonnet agent's work, reviewed here). The user asked for a bench boost and an academy boost.
   - **Bench credit:** an unused substitute is credited 20 development minutes a match. It's a running total on `player_state.bench_minutes` that keeps 0.917 of itself each month, and it counts with real minutes in the growth bands. A player benched all season settles near 900 credit minutes: band ×0.8 instead of ×0.55, still short of a starter's ×1.0–1.1.
   - **Academy boost:** an academy product (he has or had a youth contract with his current club), aged 21 or under, with 1,800 or more real minutes in 12 months, gains 3 potential a year, up to 8 in all and never past 94. It's kept as a fraction in `player_development.potential_boost`, and whole points go to `pa_hidden`. It fires from the first youth intake (Jul 2027).
   - **Schema 12** adds the two columns (`_to_v12`, idempotent).

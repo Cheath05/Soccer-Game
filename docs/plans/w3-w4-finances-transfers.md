@@ -135,6 +135,20 @@ The user asked for:
   - **transactions** lists only one-off money: the opening balance, transfers, prize money, parachutes, and owner investment.
 - **Cup prize money:** a cup tie's winner earns that round's prize (`cup_prizes` in finance.yaml: by cup, rising each round, with the final the biggest). It's a one-off `prize` transaction.
 
+**Implemented 8 Oct (agent F):** all of the above is in the code, with tests (`test_finance.py`, `test_finances_api.py`, `test_transfers.py`, `test_clubs.py`, `test_definitions.py`). What had to be decided:
+
+- **Weeks left** (`finance.weeks_left`) is `max(1, days to the season's end date ÷ 7)`, a fraction (the AI market uses the same number). A signing's cost is `fee + round(wage × weeks)` (`finance.signing_cost_cents`).
+- **In debt, no budget** still holds with a board: a negative balance gives 0, not just a 0 cash share. Without a board the user's budget is `max(0, balance)`, so it's 0 in debt too.
+- **Switching the board** (`finance.set_board_enabled`, `PUT /api/career/board`) does nothing when the board is already as asked, so on-off-on isn't a way to refill a budget that has been spent. A real switch works the budget out again at once from the cash, revenue and wage bill as they are. The board's target and confidence keep updating while it's off; the API and the pages hide them (`board` is null).
+- **The flag** is `CareerMeta.board_enabled` in `game_meta` (default on, so older saves keep their board). There is no schema change.
+- **The API**: `GET /api/finances` has `budget_eur`, `wage_capacity_weekly_eur`, `monthly` (TV, commercial, wages, running costs and their sum, from `finance.monthly_parts`: the same function `settle_month` books), `season_profit_so_far_eur` (the recurring rows of this season: one-off money isn't profit), `changes`, `transactions`, `board_enabled` and `board`. The new-career body says `budget_eur` (the old `transfer_budget_eur` is still accepted) and `board_enabled`. The club overview's `transfer_budget_eur` is now `budget_eur`.
+- **Changes** compare each part (TV money, commercial and matchday, wages, running costs) between consecutive itemised settlements of the user's club. A part is listed when it moved by 5% of what it was and by €10,000 (`display` in finance.yaml), the latest first, at most 10. Costs are signed as in the ledger (negative), and the page shows their size.
+- **Transactions** are the kinds opening, transfer, prize, parachute and adjustment, the latest 20. A transfer reads "Signed X from Y" or "Sold X to Y"; a prize "<competition> prize money" (a league's merit too, now).
+- **Cup prizes** go to the winner of a played tie only (a bye wins nothing, the loser and the final's loser nothing), at the day the tie is decided, with the cup's competition id as `ref_id`. The amounts in finance.yaml are approximate real prize money shrunk to the game's scale (the FA Cup €45K in the first round to €2M for the final, the Premier League's merit being about half the real TV money; the DFB-Pokal €100K to €3M; small countries' cups €10K to €250-450K). They are first settings, not measured.
+- **Dollars**: the display currency is $ until the user picks another (a stored choice is kept). The start page's sandbox field is typed in millions of the shown currency and sent in euros.
+- **Not done**: the news the server writes for a transfer ("joins X from Y for €5M") still says €; it would need the amount sent apart from the text.
+- **Fixed on the way**: `defs/loader.py` had lost its league checks (unknown nation, calendar and movement targets) when W3-1 put the finance check in the middle of their loop; they run again.
+
 ## W4: transfers
 
 ### Valuation (W4-1)

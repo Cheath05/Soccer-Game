@@ -100,3 +100,60 @@ def test_unbalanced_promotion_detected(config_copy: Path) -> None:
     _edit_yaml(config_copy / "competitions" / "eng" / "premier_league.yaml", relegate_four)
     with pytest.raises(DefinitionError, match="ENG1 relegates 4 to ENG2"):
         load_definitions(config_copy)
+
+
+def test_a_league_must_name_a_calendar_that_exists(config_copy: Path) -> None:
+    def unplug_calendar(data: dict) -> None:  # type: ignore[type-arg]
+        data["calendar"] = "NOWHERE-2026-27"
+
+    _edit_yaml(config_copy / "competitions" / "eng" / "premier_league.yaml", unplug_calendar)
+    with pytest.raises(DefinitionError, match="league ENG1: unknown calendar NOWHERE-2026-27"):
+        load_definitions(config_copy)
+
+
+def _edit_finance(config_copy: Path, edit: object) -> None:
+    _edit_yaml(config_copy / "finance" / "finance.yaml", edit)
+
+
+def test_every_cup_has_prize_money_for_each_of_its_rounds() -> None:
+    defs = load_definitions()
+    assert set(defs.finance.cup_prizes) == set(defs.cups)
+    for key, cup in defs.cups.items():
+        assert len(defs.finance.cup_prizes[key]) == len(cup.rounds), key
+
+
+def test_a_cup_with_no_prize_money_is_an_error(config_copy: Path) -> None:
+    def forget_the_fa_cup(data: dict) -> None:  # type: ignore[type-arg]
+        del data["cup_prizes"]["FA_CUP"]
+
+    _edit_finance(config_copy, forget_the_fa_cup)
+    with pytest.raises(DefinitionError, match="cup FA_CUP: no cup_prizes"):
+        load_definitions(config_copy)
+
+
+def test_prize_money_needs_an_amount_for_every_round(config_copy: Path) -> None:
+    def one_round_short(data: dict) -> None:  # type: ignore[type-arg]
+        data["cup_prizes"]["FA_CUP"] = data["cup_prizes"]["FA_CUP"][:-1]
+
+    _edit_finance(config_copy, one_round_short)
+    with pytest.raises(DefinitionError, match="cup FA_CUP: cup_prizes has 7 amounts for 8 rounds"):
+        load_definitions(config_copy)
+
+
+def test_prize_money_for_a_cup_that_does_not_exist_is_an_error(config_copy: Path) -> None:
+    def invent_a_cup(data: dict) -> None:  # type: ignore[type-arg]
+        data["cup_prizes"]["SUPER_CUP"] = [1000.0, 2000.0]
+
+    _edit_finance(config_copy, invent_a_cup)
+    with pytest.raises(DefinitionError, match="cup_prizes for unknown cup SUPER_CUP"):
+        load_definitions(config_copy)
+
+
+def test_cup_prize_money_never_falls_from_one_round_to_the_next(config_copy: Path) -> None:
+    def pay_the_final_least(data: dict) -> None:  # type: ignore[type-arg]
+        prizes = data["cup_prizes"]["FA_CUP"]
+        prizes[-1] = prizes[0] / 2
+
+    _edit_finance(config_copy, pay_the_final_least)
+    with pytest.raises(DefinitionError, match="must not fall from one round to the next"):
+        load_definitions(config_copy)

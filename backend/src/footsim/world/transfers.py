@@ -3,13 +3,16 @@
 This is the one place a player changes club. ``validate_move`` says why a move can't happen, before
 anything is written. ``complete_move`` makes it, in the caller's transaction:
 - the old contract ends and the new one starts;
-- the fee moves between the clubs' balances (through the finance ledger) and budgets;
+- the fee moves between the clubs' balances (through the finance ledger);
+- the clubs' budgets move: the buyer's by the signing's cost, the seller's by what it gets back;
 - the history records it;
 - the selling club's saved line-up lets him go.
 
 AI clubs and the user go through the same two functions, so they play by the same rules:
 - the buying club's country has a transfer window open (a release needs none);
-- the buyer can pay the fee from its transfer budget and the wage within its wage budget;
+- the signing is within the buyer's budget: it costs the fee and the player's weekly wage for
+  the weeks left in the season (``signing_cost_cents``). The seller's budget gets back
+  ``reinvest`` of the fee and the old wage for those weeks; a release changes no budget;
 - the seller keeps enough senior players and keepers, and the buyer stays within the squad
   limit;
 - one club owns a player at a time. The database enforces it too (``ux_contract_owner``).
@@ -28,7 +31,7 @@ from sqlalchemy import Connection, Row, bindparam, select, text, update
 from footsim.persistence.schema import club_finance, contract, tactic, transfer
 from footsim.transfers.valuation import plain_values, values_eur, years_old
 from footsim.world.context import World
-from footsim.world.finance import Entry, post
+from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import club_name, display_name
@@ -120,13 +123,10 @@ def validate_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
         club_finance.c.club_id == move.to_club_id)).first()
     if money is None:
         raise MoveRefused("That club has no finances.")
-    if move.fee_cents > money.transfer_budget_cents:
-        raise MoveRefused("The fee is beyond the transfer budget.")
-    bill = int(conn.execute(text(
-        "SELECT COALESCE(SUM(wage_weekly_cents), 0) FROM contract WHERE club_id = :club "
-        "AND is_active = 1"), {"club": move.to_club_id}).scalar_one())
-    if bill + move.wage_weekly_cents > money.wage_budget_cents:
-        raise MoveRefused("His wage is beyond the wage budget.")
+    weeks = weeks_left(conn, meta.season_id, day)
+    if signing_cost_cents(move.fee_cents, move.wage_weekly_cents, weeks) > (
+            money.transfer_budget_cents):
+        raise MoveRefused("That's beyond the budget.")
     if (len(senior_squad(conn, world, move.to_club_id, day)) + 1
             > world.defs.lifecycle.squads.max_players):
         raise MoveRefused("The squad is full.")
@@ -182,13 +182,26 @@ def complete_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
         post(conn, day, meta.season_id, [
             Entry(move.to_club_id, "transfer", -move.fee_cents, transfer_id),
             Entry(seller, "transfer", move.fee_cents, transfer_id)])
-        reinvest = round(world.defs.finance.reinvest * move.fee_cents)
-        conn.execute(text(
-            "UPDATE club_finance SET transfer_budget_cents = transfer_budget_cents + :change "
-            "WHERE club_id = :club"),
-            [{"club": move.to_club_id, "change": -move.fee_cents},
-             {"club": seller, "change": reinvest}])
+    if move.to_club_id is not None:  # a release changes no budget
+        _move_budgets(conn, world, meta, move, owner, day)
     return [_news(conn, move, seller, kind)]
+
+
+def _move_budgets(conn: Connection, world: World, meta: CareerMeta, move: Move,
+                  owner: Row[Any] | None, day: date) -> None:
+    """The buyer's budget pays the signing's cost (the fee and his new wage for the rest of the
+    season). The seller's gets back ``reinvest`` of the fee, and the wage it no longer pays for
+    the rest of the season (``owner``: the contract he left)."""
+    weeks = weeks_left(conn, meta.season_id, day)
+    changes = [{"club": move.to_club_id,
+                "change": -signing_cost_cents(move.fee_cents, move.wage_weekly_cents, weeks)}]
+    if owner is not None:
+        changes.append({"club": owner.club_id,
+                        "change": round(world.defs.finance.reinvest * move.fee_cents)
+                        + round(owner.wage_weekly_cents * weeks)})
+    conn.execute(text(
+        "UPDATE club_finance SET transfer_budget_cents = transfer_budget_cents + :change "
+        "WHERE club_id = :club"), changes)
 
 
 def _news(conn: Connection, move: Move, seller: int | None, kind: str) -> str:

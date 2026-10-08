@@ -1,18 +1,12 @@
-import { Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Alert, Badge, Card, Divider, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, Title } from '@mantine/core'
 
-import { useFinances } from '../api/hooks'
-import type { FinanceLine } from '../api/types'
-import { CURRENCIES, type Currency, confidenceColor, money, setCurrency, shortDate, useCurrency, wage } from '../lib/format'
-
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
-}
+import { useFinances, useSetBoard } from '../api/hooks'
+import type { Board } from '../api/types'
+import { CURRENCIES, type Currency, confidenceColor, money, monthYear, ordinal, setCurrency, shortDate, useCurrency, wage } from '../lib/format'
 
 function Figure({ label, value, note, color }: { label: string; value: string; note?: string; color?: string }) {
   return (
-    <Card withBorder padding="sm">
+    <Card withBorder padding="sm" h="100%">
       <Text size="xs" c="dimmed">
         {label}
       </Text>
@@ -28,28 +22,36 @@ function Figure({ label, value, note, color }: { label: string; value: string; n
   )
 }
 
-function Lines({ title, lines, empty }: { title: string; lines: FinanceLine[]; empty: string }) {
-  const total = lines.reduce((sum, l) => sum + l.amount_eur, 0)
+/** One part of the month: income is green-neutral, a cost carries its minus sign. */
+function Part({ label, eur }: { label: string; eur: number }) {
+  return (
+    <Group justify="space-between">
+      <Text size="sm">{label}</Text>
+      <Text size="sm">{money(eur)}</Text>
+    </Group>
+  )
+}
+
+function BoardCard({ board }: { board: Board }) {
   return (
     <Card withBorder h="100%">
-      <Group justify="space-between">
-        <Text fw={600}>{title}</Text>
-        <Text fw={700} c={total < 0 ? 'red.7' : 'green.7'}>
-          {money(total)}
-        </Text>
+      <Text fw={600}>The board</Text>
+      <Group mt="xs" gap="xs">
+        <Badge size="lg" color={confidenceColor(board.confidence)}>
+          {board.mood}
+        </Badge>
+        {board.confidence !== null && <Text size="sm">Confidence {board.confidence}/100</Text>}
       </Group>
-      <Stack gap={4} mt="xs">
-        {lines.length === 0 && (
-          <Text size="sm" c="dimmed">
-            {empty}
+      {board.confidence !== null && <Progress mt="sm" value={board.confidence} color={confidenceColor(board.confidence)} />}
+      <Stack gap={2} mt="sm">
+        {board.target !== null && (
+          <Text size="sm">
+            Expects a {ordinal(board.target)}-place finish{board.league_size ? ` of ${board.league_size}` : ''}
           </Text>
         )}
-        {lines.map((l) => (
-          <Group key={l.kind} justify="space-between">
-            <Text size="sm">{l.label}</Text>
-            <Text size="sm">{money(l.amount_eur)}</Text>
-          </Group>
-        ))}
+        <Text size="sm" c="dimmed">
+          {board.position !== null ? `Now ${ordinal(board.position)} after ${board.played} ${board.played === 1 ? 'game' : 'games'}` : 'The season hasn’t started'}
+        </Text>
       </Stack>
     </Card>
   )
@@ -58,11 +60,12 @@ function Lines({ title, lines, empty }: { title: string; lines: FinanceLine[]; e
 export default function FinancesPage() {
   const currency = useCurrency()
   const { data: f, error } = useFinances()
+  const setBoard = useSetBoard()
   if (error) return <Text c="dimmed">No finances to show: {error.message}</Text>
   if (!f) return null
-  const wageRoom = f.wage_budget_weekly_eur - f.wage_bill_weekly_eur
-  const used = f.wage_budget_weekly_eur > 0 ? Math.min(100, (100 * f.wage_bill_weekly_eur) / f.wage_budget_weekly_eur) : 0
-  const board = f.board
+  const month = f.monthly
+  const over = f.wage_bill_weekly_eur - f.wage_capacity_weekly_eur
+  const used = f.wage_capacity_weekly_eur > 0 ? Math.min(100, (100 * f.wage_bill_weekly_eur) / f.wage_capacity_weekly_eur) : 100
 
   return (
     <Stack>
@@ -87,79 +90,122 @@ export default function FinancesPage() {
         </Group>
       </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }}>
-        <Figure label="Bank balance" value={money(f.balance_eur)} color={f.balance_eur < 0 ? 'red.7' : undefined} note={f.balance_eur < 0 ? 'In debt: no transfer budget' : undefined} />
-        <Figure label="Transfer budget" value={money(f.transfer_budget_eur)} note="Set by the board each season" />
-        <Figure label="Wage budget" value={wage(f.wage_budget_weekly_eur)} note={wageRoom >= 0 ? `${wage(wageRoom)} room` : `${wage(-wageRoom)} over`} />
-        <Figure label="Expected revenue" value={money(f.projected_revenue_eur)} note="This season, mid-table" />
+      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+        <Figure label="Balance" value={money(f.balance_eur)} color={f.balance_eur < 0 ? 'red.7' : undefined} note={f.balance_eur < 0 ? 'In debt: no budget at the next season’s start' : 'The club’s cash'} />
+        <Figure label="Budget" value={money(f.budget_eur)} note="For transfer fees and new wages this season" />
+        <Card withBorder padding="sm" h="100%">
+          <Text size="xs" c="dimmed">
+            Wages
+          </Text>
+          <Text fw={700} size="xl">
+            {wage(f.wage_bill_weekly_eur)}
+          </Text>
+          <Progress mt={6} value={used} color={over > 0 ? 'red' : used > 95 ? 'orange' : 'teal'} />
+          <Text size="xs" c={over > 0 ? 'red.7' : 'dimmed'} mt={4}>
+            {over > 0
+              ? `${wage(over)} more than your income supports (${wage(f.wage_capacity_weekly_eur)}): that comes off next season’s budget`
+              : `Your income supports ${wage(f.wage_capacity_weekly_eur)}`}
+          </Text>
+        </Card>
       </SimpleGrid>
 
-      <Card withBorder>
-        <Group justify="space-between" mb={6}>
-          <Text size="sm">
-            Wage bill {wage(f.wage_bill_weekly_eur)} of {wage(f.wage_budget_weekly_eur)}
-          </Text>
-          <Text size="sm" c="dimmed">
-            {used.toFixed(0)}% of the wage budget
-          </Text>
-        </Group>
-        <Progress value={used} color={used > 95 ? 'red' : used > 85 ? 'orange' : 'teal'} />
-      </Card>
-
       <Grid>
-        <Grid.Col span={{ base: 12, md: 4 }}>
+        <Grid.Col span={{ base: 12, md: 6 }}>
           <Card withBorder h="100%">
-            <Text fw={600}>The board</Text>
-            <Group mt="xs" gap="xs">
-              <Badge size="lg" color={confidenceColor(board.confidence)}>
-                {board.mood}
-              </Badge>
-              {board.confidence !== null && <Text size="sm">Confidence {board.confidence}/100</Text>}
-            </Group>
-            {board.confidence !== null && <Progress mt="sm" value={board.confidence} color={confidenceColor(board.confidence)} />}
-            <Stack gap={2} mt="sm">
-              {board.target !== null && (
-                <Text size="sm">
-                  Expects a {ordinal(board.target)}-place finish{board.league_size ? ` of ${board.league_size}` : ''}
+            <Text fw={600}>Each month</Text>
+            <Text size="xs" c="dimmed">
+              At today’s rates
+            </Text>
+            <Stack gap={4} mt="xs">
+              <Part label="League TV money" eur={month.tv_eur} />
+              <Part label="Commercial and matchday" eur={month.commercial_eur} />
+              <Part label="Wages" eur={month.wages_eur} />
+              <Part label="Running costs" eur={month.running_eur} />
+              <Divider my={2} />
+              <Group justify="space-between">
+                <Text fw={600}>Profit</Text>
+                <Text fw={700} c={month.profit_eur < 0 ? 'red.7' : 'green.7'}>
+                  {money(month.profit_eur)}
                 </Text>
-              )}
-              <Text size="sm" c="dimmed">
-                {board.position !== null ? `Now ${ordinal(board.position)} after ${board.played} ${board.played === 1 ? 'game' : 'games'}` : 'The season hasn’t started'}
-              </Text>
+              </Group>
             </Stack>
+            <Text size="xs" c="dimmed" mt="sm">
+              Profit so far this season: {money(f.season_profit_so_far_eur)}. It reaches your balance on the 1st of each month, and your budget at the start of the next season.
+            </Text>
           </Card>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-          <Lines title="Income this season" lines={f.income} empty="Nothing yet: money comes in on the 1st of each month." />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-          <Lines title="Spending this season" lines={f.expenses} empty="Nothing yet: wages are paid on the 1st of each month." />
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card withBorder h="100%">
+            <Text fw={600}>Changes</Text>
+            <Stack gap={4} mt="xs">
+              {f.changes.length === 0 && (
+                <Text size="sm" c="dimmed">
+                  Nothing yet. A move up or down a division, or a new wage bill, shows here once.
+                </Text>
+              )}
+              {f.changes.map((c) => (
+                <Group key={`${c.date}-${c.label}`} justify="space-between" wrap="nowrap" align="start">
+                  <Text size="sm">
+                    <Text span c="dimmed">
+                      {monthYear(c.date)}:
+                    </Text>{' '}
+                    {c.label} {money(Math.abs(c.before_eur))} → {money(Math.abs(c.after_eur))} a month
+                  </Text>
+                  <Text size="sm" fw={600} c={c.after_eur < c.before_eur ? 'red.7' : 'green.7'}>
+                    {c.after_eur < c.before_eur ? '▼' : '▲'}
+                  </Text>
+                </Group>
+              ))}
+            </Stack>
+          </Card>
         </Grid.Col>
       </Grid>
 
       <Card withBorder>
-        <Group justify="space-between">
-          <Text fw={600}>Recent transactions</Text>
-          <Text size="sm" c={f.net_eur < 0 ? 'red.7' : 'green.7'}>
-            Net this season {money(f.net_eur)}
-          </Text>
-        </Group>
+        <Text fw={600}>Transactions</Text>
+        <Text size="xs" c="dimmed">
+          One-off money: transfers, prize money and the like
+        </Text>
         <Table mt="xs" verticalSpacing={4}>
           <Table.Tbody>
-            {f.recent.map((r, i) => (
-              <Table.Tr key={`${r.date}-${r.kind}-${i}`}>
+            {f.transactions.map((t, i) => (
+              <Table.Tr key={`${t.date}-${t.kind}-${i}`}>
                 <Table.Td w={90} c="dimmed">
-                  {shortDate(r.date)}
+                  {shortDate(t.date)}
                 </Table.Td>
-                <Table.Td>{r.label}</Table.Td>
-                <Table.Td ta="right" c={r.amount_eur < 0 ? 'red.7' : 'green.7'}>
-                  {money(r.amount_eur)}
+                <Table.Td>{t.label}</Table.Td>
+                <Table.Td ta="right" c={t.amount_eur < 0 ? 'red.7' : 'green.7'}>
+                  {money(t.amount_eur)}
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       </Card>
+
+      <Grid>
+        {f.board && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <BoardCard board={f.board} />
+          </Grid.Col>
+        )}
+        <Grid.Col span={{ base: 12, md: f.board ? 6 : 12 }}>
+          <Card withBorder h="100%">
+            <Switch
+              label="Board expectations"
+              description="Off means no targets and no sacking, and your budget is all your cash."
+              checked={f.board_enabled}
+              disabled={setBoard.isPending}
+              onChange={(e) => setBoard.mutate(e.currentTarget.checked)}
+            />
+            {setBoard.error && (
+              <Alert color="red" mt="sm">
+                {setBoard.error.message}
+              </Alert>
+            )}
+          </Card>
+        </Grid.Col>
+      </Grid>
     </Stack>
   )
 }

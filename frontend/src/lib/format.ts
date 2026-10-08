@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react'
 
-// Money is kept in euros everywhere; the player picks the currency it's shown in. The rates are
-// fixed (display only), so a figure never changes with a market.
+// Money is kept in euros everywhere; the player picks the currency it's shown in (dollars until
+// they choose another). The rates are fixed (display only), so a figure never changes with a
+// market.
 export type Currency = 'EUR' | 'GBP' | 'USD'
 export const CURRENCIES: Record<Currency, { symbol: string; perEuro: number; label: string }> = {
+  USD: { symbol: '$', perEuro: 1.1, label: '$' },
   EUR: { symbol: '€', perEuro: 1, label: '€' },
   GBP: { symbol: '£', perEuro: 0.85, label: '£' },
-  USD: { symbol: '$', perEuro: 1.1, label: '$' },
 }
 const CURRENCY_KEY = 'footsim.currency'
 const listeners = new Set<() => void>()
@@ -15,9 +16,9 @@ let shown: Currency = readCurrency()
 function readCurrency(): Currency {
   try {
     const stored = localStorage.getItem(CURRENCY_KEY)
-    return stored === 'GBP' || stored === 'USD' ? stored : 'EUR'
+    return stored === 'EUR' || stored === 'GBP' ? stored : 'USD'
   } catch {
-    return 'EUR'
+    return 'USD'
   }
 }
 
@@ -58,6 +59,11 @@ export function wage(eurPerWeek: number): string {
   return `${money(eurPerWeek)}/wk`
 }
 
+/** An amount typed in the shown currency, in euros (what the game keeps): $11M is €10M. */
+export function toEuros(amountShown: number): number {
+  return Math.round(amountShown / CURRENCIES[shown].perEuro)
+}
+
 export function longDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', {
     weekday: 'short',
@@ -90,6 +96,11 @@ export function daysBetween(from: string, to: string): number {
 
 export function shortDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+/** An ISO date as its month and year: Jul 2027. */
+export function monthYear(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 }
 
 const SPECIAL_LABELS: Record<string, string> = {

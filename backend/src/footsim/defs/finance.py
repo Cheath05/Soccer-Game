@@ -53,10 +53,22 @@ class BoardRules(DefModel):
     min_played: int = Field(ge=0)  # league matches before the board judges the position
 
 
+class DisplayRules(DefModel):
+    """What the finances page lists (api/finances.py)."""
+
+    change_share: float = Field(ge=0)  # a monthly figure is listed as changed once it has moved
+    change_amount: float = Field(ge=0)  # by this share of what it was, and by this much (EUR)
+    changes_shown: int = Field(ge=1)  # changes listed, the latest first
+    transactions_shown: int = Field(ge=1)  # one-off transactions listed, the latest first
+
+
 class FinanceDef(DefModel):
     """How clubs' money works (world/finance.py)."""
 
     league_income: dict[str, LeagueIncome]
+    # Prize money a cup's tie winner earns (EUR), by cup key: one amount for each of the cup's
+    # rounds in order, the last the final's. The loader checks every cup has one.
+    cup_prizes: dict[str, list[float]]
     wage_ratio_start: float = Field(gt=0, le=1)
     club_income_floor: float = Field(ge=0)
     wage_budget_ratio: float = Field(gt=0, le=1.5)
@@ -67,10 +79,23 @@ class FinanceDef(DefModel):
     reinvest: float = Field(ge=0, le=1)
     parachute: float = Field(ge=0, le=1)
     board: BoardRules
+    display: DisplayRules
+
+    @model_validator(mode="after")
+    def _prizes_rise(self) -> Self:
+        """A cup pays something in every round, and no round less than the one before it (the
+        final the most)."""
+        for key, amounts in self.cup_prizes.items():
+            if not amounts or min(amounts) < 0:
+                raise ValueError(f"cup_prizes {key}: needs a prize for each round, none negative")
+            if any(later < earlier for earlier, later in zip(amounts, amounts[1:], strict=False)):
+                raise ValueError(f"cup_prizes {key}: prize money must not fall from one round "
+                                 "to the next")
+        return self
 
     @model_validator(mode="after")
     def _solvent(self) -> Self:
-        """A club starts able to pay its wages and running costs, and its wage budget leaves
+        """A club starts able to pay its wages and running costs, and its wage capacity leaves
         room for the wages it already pays."""
         if self.wage_ratio_start + self.operating_costs >= 1:
             raise ValueError("wage_ratio_start + operating_costs must be below 1")

@@ -60,15 +60,19 @@ class CareerSession:
         self.slot = slot
 
     def new_career(self, slot: int, club_id: int, manager_name: str,
-                   transfer_budget_eur: int | None = None) -> None:
+                   budget_eur: int | None = None, board_enabled: bool = True) -> None:
+        """Start a career. The sandbox: ``budget_eur`` is the club's budget to start with for
+        fees and wages (the owner puts in the cash). ``board_enabled`` False plays without a
+        board."""
         with self.lock:
             self.close()
             working = self.saves.new_career(slot, self.base_world, overwrite=True)
             self._open(slot, working)
             with self.engine.begin() as conn:
-                initialize_career(conn, get_world(), club_id, manager_name)
-                if transfer_budget_eur is not None:
-                    set_sandbox_budget(conn, read_meta(conn), club_id, transfer_budget_eur * 100)
+                initialize_career(conn, get_world(), club_id, manager_name,
+                                  board_enabled=board_enabled)
+                if budget_eur is not None:
+                    set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)
             self.saves.save(slot)
 
     def load(self, slot: int, autosave: bool = False) -> None:

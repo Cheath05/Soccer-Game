@@ -17,6 +17,10 @@ class CareerMeta:
     base_calendar: str
     user_club_id: int | None
     manager_name: str | None
+    # The user's board (W3-4): expectations, confidence and a budget from its plan. Off, the
+    # user's club has none of them and its budget is its cash. Saves from before it have the
+    # board.
+    board_enabled: bool = True
 
     @property
     def seed(self) -> int:
@@ -32,6 +36,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         base_calendar=values.get("base_calendar", values.get("calendar", "")),
         user_club_id=values.get("user_club_id"),
         manager_name=values.get("manager_name"),
+        board_enabled=bool(values.get("board_enabled", True)),
     )
 
 
@@ -43,6 +48,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "base_calendar": meta.base_calendar,
         "user_club_id": meta.user_club_id,
         "manager_name": meta.manager_name,
+        "board_enabled": meta.board_enabled,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

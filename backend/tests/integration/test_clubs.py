@@ -37,9 +37,10 @@ def test_another_clubs_profile_and_squad(client: TestClient) -> None:
     assert overview["manager"] is None and overview["recent_transfers"] == []
     assert overview["squad_size"] >= 18 and 16 < overview["average_age"] < 35
     assert len(overview["top_players"]) == 5
-    assert overview["transfer_budget_eur"] > 0 and overview["wage_bill_weekly_eur"] > 0
+    assert overview["budget_eur"] > 0 and overview["wage_bill_weekly_eur"] > 0
     assert overview["balance_eur"] > 0
-    for figure in ("wage_bill_weekly_eur", "transfer_budget_eur", "balance_eur"):
+    assert "transfer_budget_eur" not in overview  # it is the club's one budget now
+    for figure in ("wage_bill_weekly_eur", "budget_eur", "balance_eur"):
         assert _significant_figures(overview[figure]) <= 2, figure  # only a rough figure
     dates = [f["date"] for f in overview["upcoming"]]
     assert len(dates) == 5 and dates == sorted(dates) and overview["recent"] == []
@@ -58,6 +59,8 @@ def test_another_clubs_profile_and_squad(client: TestClient) -> None:
 
     own = client.get(f"/api/clubs/{mine['id']}").json()
     assert own["own_club"] and own["manager"] == "Tester"
+    money = client.get("/api/finances").json()  # your own club's money is exact, not rounded
+    assert (own["budget_eur"], own["balance_eur"]) == (money["budget_eur"], money["balance_eur"])
     my_squad = client.get(f"/api/clubs/{mine['id']}/squad").json()
     ours = client.get(f"/api/players/{my_squad[0]['id']}").json()
     assert ours["own_player"] and ours["condition"] is not None

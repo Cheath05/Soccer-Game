@@ -35,27 +35,86 @@ league_income:
   TUR1: {base: 14_000_000, merit: 9_400_000}    # €22.6m
   BEL1: {base: 7_900_000, merit: 5_200_000}     # €12.6m
 
+# Prize money for winning a cup tie (EUR), paid once to the winner of each tie as the tie is
+# decided (a bye wins nothing): one amount per round in the cup's order, so the last is the
+# final's, the biggest. A club that goes out earns nothing for the round it lost, and the final's
+# loser nothing either. These are approximate round figures: the order of magnitude of each
+# cup's real prize money (2023-25), shrunk to the game's scale (league_income above, which is
+# about half the real top-flight TV money and about the real lower-league money), so a deep run
+# is worth a few percent of a top club's season and a lot to a lower-league one. The FA Cup pays
+# most (its early rounds are real money to a League Two club), the German cup comes next, the
+# smaller countries' cups least. The loader checks every cup has an amount for each of its
+# rounds.
+cup_prizes:
+  #        (rounds in the cup's order)
+  FA_CUP: [45_000, 75_000, 120_000, 190_000, 300_000, 500_000, 900_000, 2_000_000]
+  #        1st     2nd     3rd      4th      5th      QF       SF       Final
+  EFL_CUP: [20_000, 30_000, 50_000, 80_000, 140_000, 300_000, 1_000_000]
+  #         1st     2nd     3rd     4th     QF        SF       Final
+  COPA_DEL_REY: [20_000, 40_000, 100_000, 250_000, 600_000, 1_500_000]
+  #              1st     R32     R16      QF       SF       Final
+  COPPA_ITALIA: [20_000, 35_000, 90_000, 240_000, 600_000, 1_400_000]
+  #              1st     2nd     R16     QF       SF       Final
+  DFB_POKAL: [100_000, 200_000, 400_000, 800_000, 1_600_000, 3_000_000]
+  #           1st      2nd      R16      QF       SF         Final
+  COUPE_DE_FRANCE: [15_000, 25_000, 45_000, 90_000, 200_000, 500_000]
+  #                 R64     R32     R16     QF      SF       Final
+  TACA_DE_PORTUGAL: [12_000, 25_000, 60_000, 150_000, 400_000]
+  #                  1st     R16     QF      SF       Final
+  TACA_DA_LIGA: [40_000, 120_000, 350_000]
+  #              QF      SF       Final
+  KNVB_BEKER: [15_000, 30_000, 75_000, 175_000, 400_000]
+  #            2nd     R16     QF      SF       Final
+  SCOTTISH_CUP: [15_000, 40_000, 100_000, 250_000]
+  #              4th     QF      SF       Final
+  SCOTTISH_LEAGUE_CUP: [15_000, 30_000, 80_000, 200_000]
+  #                     R16     QF      SF      Final
+  BELGIAN_CUP: [10_000, 20_000, 40_000, 90_000, 250_000]
+  #             R32     R16     QF      SF      Final
+  TURKISH_CUP: [15_000, 30_000, 70_000, 175_000, 450_000]
+  #             R32     R16     QF      SF       Final
+  KINGS_CUP: [25_000, 50_000, 125_000, 350_000, 1_000_000]
+  #           R32     R16     QF       SF       Final
+
 wage_ratio_start: 0.6     # a club's wage bill was this share of its revenue when its finances
                           # began (its own income is derived from it)...
 club_income_floor: 0.1    # ...but its own income is at least this share of its league income
-wage_budget_ratio: 0.7    # the board lets the wage bill grow to this share of revenue
+wage_budget_ratio: 0.7    # a club's wage capacity: the wage bill its revenue supports is this
+                          # share of it (shown to the user; going over it costs next season's
+                          # budget, below)
 operating_costs: 0.2      # everything else a club spends (staff, facilities, matchdays), as a
                           # share of revenue: with wages at 0.6, a club keeps about a fifth of a
                           # season's revenue before transfers
 starting_cash: 0.25       # opening balance, as a share of a season's revenue
+# A club's budget is the money it may commit in a season to transfer fees and new wages (a
+# signing costs its fee plus its weekly wage for the weeks left in the season). It is set at each
+# season's start: `budget_share` of the season's revenue plus `cash_share` of the cash in hand
+# (none while in debt), less what the club already pays in wages above its capacity, a year's
+# worth. A user whose board is off has all of their cash instead.
 # budget_share was 0.2 before the AI market (W4-5): 0.35 makes the market the sink for
 # clubs' yearly surplus and stars affordable (docs/calibration/market.md).
-budget_share: 0.35        # the transfer budget at a season's start: this share of the season's
-cash_share: 0.4           # revenue, plus this share of the cash in hand (none while in debt)
-reinvest: 0.7             # share of a sale's fee added back to the transfer budget (W4)
+budget_share: 0.35
+cash_share: 0.4
+reinvest: 0.7             # share of a sale's fee added to the seller's budget (with the wage it
+                          # no longer pays this season)
 parachute: 0.5            # a relegated club gets this share of the league income it lost, once
 
-# The board (display only for now: no sackings). It expects the club to finish where its squad
-# ranks in its league, and its confidence moves each month with the club's position against
-# that: `per_place` points a place better or worse, at most `max_step` a month, once the club
-# has played `min_played` league matches. Each new season it goes halfway back to the start.
+# The board. It expects the club to finish where its squad ranks in its league, and its
+# confidence moves each month with the club's position against that: `per_place` points a place
+# better or worse, at most `max_step` a month, once the club has played `min_played` league
+# matches. Each new season it goes halfway back to the start. (Display only for now: no
+# sackings. The user can turn their board off; every other club always has one.)
 board:
   confidence_start: 60
   per_place: 2.0
   max_step: 8.0
   min_played: 3
+
+# What the user's finances page lists. A part of the month's money (TV money, commercial and
+# matchday, wages, running costs) is listed as changed when it moved from one settlement to the
+# next by `change_share` of what it was and by at least `change_amount` EUR.
+display:
+  change_share: 0.05
+  change_amount: 10_000
+  changes_shown: 10
+  transactions_shown: 20

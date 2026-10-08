@@ -1,11 +1,13 @@
-import { Alert, Badge, Button, Card, Container, Group, Loader, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Container, Group, Loader, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
 import VersionTag from '../components/VersionTag'
-import { longDate } from '../lib/format'
+import { CURRENCIES, type Currency, longDate, setCurrency, toEuros, useCurrency } from '../lib/format'
+
+const MAX_BUDGET_EUR = 10_000_000_000 // the most the sandbox gives (the server's limit)
 
 export default function StartPage({ hasCareer, error }: { hasCareer: boolean; error: Error | null }) {
   const saves = useSaves()
@@ -13,8 +15,11 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const newCareer = useNewCareer()
   const loadCareer = useLoadCareer()
   const navigate = useNavigate()
+  const currency = useCurrency()
   const [manager, setManager] = useState('')
+  // The sandbox budget, typed in millions of the money shown (dollars unless changed here).
   const [budgetMillions, setBudgetMillions] = useState<number | string>('')
+  const [board, setBoard] = useState(true)
   const [league, setLeague] = useState('ENG1')
   const [clubId, setClubId] = useState<number | null>(null)
   const [slot, setSlot] = useState('1')
@@ -90,17 +95,29 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
             <TextInput label="Manager name" placeholder="Your name" value={manager} onChange={(e) => setManager(e.currentTarget.value)} />
             <Select label="Save slot" data={['1', '2', '3']} value={slot} onChange={(v) => setSlot(v ?? '1')} w={110} allowDeselect={false} />
             <NumberInput
-              label="Sandbox: transfer budget (€M)"
-              description="Optional. Leave empty for the board's budget"
+              label={`Sandbox: budget (${CURRENCIES[currency].symbol}M)`}
+              description="Optional. To spend on transfer fees and wages. Leave empty for the board's budget"
               placeholder="Board's budget"
               min={0}
-              max={10_000}
+              max={Math.floor((MAX_BUDGET_EUR / 1_000_000) * CURRENCIES[currency].perEuro)}
               thousandSeparator=","
               value={budgetMillions}
               onChange={setBudgetMillions}
-              w={230}
+              w={300}
+            />
+            <SegmentedControl
+              size="xs"
+              value={currency}
+              onChange={(v) => setCurrency(v as Currency)}
+              data={(Object.keys(CURRENCIES) as Currency[]).map((c) => ({ value: c, label: CURRENCIES[c].label }))}
             />
           </Group>
+          <Switch
+            label="Board expectations"
+            description="Off means no targets and no sacking, and your budget is all your cash."
+            checked={board}
+            onChange={(e) => setBoard(e.currentTarget.checked)}
+          />
           {leagues.isPending && <Loader />}
           {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
           {leagues.data && (
@@ -138,7 +155,18 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               size="md"
               disabled={clubId === null}
               loading={newCareer.isPending}
-              onClick={() => clubId !== null && void newCareer.mutateAsync({ slot: Number(slot), clubId, manager: manager || 'Manager', transferBudget: budgetMillions === '' ? null : Math.round(Number(budgetMillions) * 1_000_000) }).then(goHome, ignore)}
+              onClick={() =>
+                clubId !== null &&
+                void newCareer
+                  .mutateAsync({
+                    slot: Number(slot),
+                    clubId,
+                    manager: manager || 'Manager',
+                    budget: budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
+                    boardEnabled: board,
+                  })
+                  .then(goHome, ignore)
+              }
             >
               Start career
             </Button>

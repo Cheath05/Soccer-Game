@@ -84,7 +84,7 @@ def _players(conn: Connection) -> list[Any]:
                COALESCE(d.ageless, 0) AS ageless, pl.pa_hidden
         FROM person p JOIN player pl ON pl.person_id = p.id
         JOIN player_attr a ON a.player_id = p.id
-        LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1
+        LEFT JOIN playing k ON k.person_id = p.id
         LEFT JOIN player_development d ON d.player_id = p.id
         WHERE pl.retired_on IS NULL
         ORDER BY p.id
@@ -237,7 +237,8 @@ def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) ->
 def trim_squads(conn: Connection, world: World, meta: CareerMeta, day: date) -> None:
     """Computer-run clubs over their squad limit release their weakest: worst first, a young
     player counting half the potential he has yet to reach. Youngsters on youth contracts are
-    in the youth squad, which doesn't count, until they're old enough for a first contract."""
+    in the youth squad, which doesn't count, until they're old enough for a first contract.
+    Players count where they play (on loan: at the borrowing club, which can't release them)."""
     rules = world.defs.lifecycle.squads
     adult = world.defs.lifecycle.youth.contract_age
     rows = [r for r in _players(conn) if r.club_id is not None and r.club_id != meta.user_club_id
@@ -260,7 +261,9 @@ def trim_squads(conn: Connection, world: World, meta: CareerMeta, day: date) -> 
             room = (max(0.0, r.pa_hidden - float(overalls[k])) if age <= rules.young_until
                     else 0.0)
             scores.append((float(overalls[k]) + rules.potential_weight * room, -age, r.id, k))
-        releasable = sorted(entry for entry in scores if entry[3] not in keepers)
+        # A player here on loan counts in the squad but isn't this club's to release.
+        releasable = sorted(entry for entry in scores if entry[3] not in keepers
+                            and squad[entry[3]].contract_kind != "loan")
         for _, _, pid, _ in releasable[:max(0, len(squad) - rules.keep)]:
             conn.execute(update(contract).where(contract.c.person_id == pid,
                                                 contract.c.is_active == 1)

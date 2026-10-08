@@ -76,9 +76,17 @@ def post(conn: Connection, day: date, season_id: int, entries: Iterable[Entry]) 
 
 
 def wage_bills(conn: Connection) -> dict[int, int]:
-    """Each club's weekly wage bill in cents: its active contracts."""
-    rows = conn.execute(text("SELECT club_id, SUM(wage_weekly_cents) AS bill FROM contract "
-                             "WHERE is_active = 1 GROUP BY club_id"))
+    """Each club's weekly wage bill in cents: its active contracts (its loans in included), less
+    the share a borrowing club pays for each of its players out on loan, so every euro of a wage
+    is paid once (W4-8)."""
+    rows = conn.execute(text(
+        "SELECT club_id, SUM(w) AS bill FROM ("
+        "  SELECT club_id, wage_weekly_cents AS w FROM contract WHERE is_active = 1"
+        "  UNION ALL"
+        "  SELECT o.club_id, -l.wage_weekly_cents FROM contract l JOIN contract o"
+        "    ON o.person_id = l.person_id AND o.is_active = 1 AND o.kind != 'loan'"
+        "  WHERE l.is_active = 1 AND l.kind = 'loan'"
+        ") GROUP BY club_id"))
     return {int(r.club_id): int(r.bill) for r in rows}
 
 
@@ -433,7 +441,7 @@ def squad_strengths(conn: Connection, world: World) -> dict[int, float]:
     """Each club's squad strength: the mean overall of its best ``SQUAD_STRENGTH_PLAYERS``."""
     overalls = player_overalls(conn, world)
     by_club: dict[int, list[int]] = defaultdict(list)
-    for r in conn.execute(text("SELECT person_id, club_id FROM contract WHERE is_active = 1")):
+    for r in conn.execute(text("SELECT person_id, club_id FROM playing")):
         if r.person_id in overalls:
             by_club[int(r.club_id)].append(overalls[r.person_id])
     return {c: float(np.mean(sorted(v, reverse=True)[:SQUAD_STRENGTH_PLAYERS]))

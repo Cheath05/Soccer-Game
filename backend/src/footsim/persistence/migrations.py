@@ -156,9 +156,21 @@ def _to_v12(conn: Connection) -> None:
     _add_column(conn, "player_development", "potential_boost", "REAL NOT NULL DEFAULT 0")
 
 
+def _to_v13(conn: Connection) -> None:
+    """Loans (W4-8): at most one active loan per player, and the ``playing`` view (where each
+    player plays) that every squad reads."""
+    from footsim.persistence.schema import PLAYING_VIEW
+
+    metadata.create_all(conn)
+    conn.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_contract_loan ON contract (person_id) "
+        "WHERE is_active = 1 AND kind = 'loan'"))
+    conn.execute(text(PLAYING_VIEW))
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
-    11: _to_v11, 12: _to_v12}
+    11: _to_v11, 12: _to_v12, 13: _to_v13}
 
 
 def migrate(engine: Engine) -> int:

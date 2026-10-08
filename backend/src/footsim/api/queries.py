@@ -186,7 +186,10 @@ def _overalls(conn: Connection, world: World, club_id: int) -> list[tuple[int, f
         SELECT a.*, (SELECT position FROM player_position pp WHERE pp.player_id = a.player_id
                      ORDER BY familiarity DESC LIMIT 1) AS primary_position
         FROM player_attr a JOIN contract k ON k.person_id = a.player_id
-        WHERE k.club_id = :club AND k.is_active = 1
+        WHERE k.club_id = :club AND k.is_active = 1 AND (k.kind = 'loan' OR NOT EXISTS (
+            SELECT 1 FROM contract l WHERE l.person_id = k.person_id AND l.is_active = 1
+            AND l.kind = 'loan'))  -- where he plays, as the playing view: this also runs on
+                                   -- the base world, which is older than the view
     """), {"club": club_id}).all()
     if not rows:
         return []
@@ -481,12 +484,13 @@ _PLAYER_SQL = """
            pl.pa_hidden, pl.value_eur_cents, k.club_id, k.wage_weekly_cents, k.end_date,
            s.condition, s.form, s.injured_until, s.injury, s.suspended_matches, d.trend,
            pl.retired_on, c.reputation AS club_reputation, pl.reputation AS player_reputation,
-           pl.value_premium
+           pl.value_premium, k.kind AS contract_kind, o.club_id AS owner_club_id
     FROM person p
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN nation n ON n.id = p.nation_id
-    LEFT JOIN contract k ON k.person_id = p.id AND k.is_active = 1 AND k.kind != 'loan'
-    LEFT JOIN club c ON c.id = k.club_id
+    LEFT JOIN playing k ON k.person_id = p.id
+    LEFT JOIN contract o ON o.person_id = p.id AND o.is_active = 1 AND o.kind != 'loan'
+    LEFT JOIN club c ON c.id = o.club_id
     LEFT JOIN player_state s ON s.player_id = p.id
     LEFT JOIN player_development d ON d.player_id = p.id
 """

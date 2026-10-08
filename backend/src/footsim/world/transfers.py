@@ -65,15 +65,23 @@ def owner_contract(conn: Connection, player_id: int) -> Row[Any] | None:
 
 
 def senior_squad(conn: Connection, world: World, club_id: int, day: date) -> list[int]:
-    """A club's senior players: its players, with youngsters on youth contracts once they're
-    old enough for a first contract (as the squad limit counts them: lifecycle.trim_squads)."""
+    """A club's senior players, where they play (its loans in, not its players out on loan):
+    its players, with youngsters on youth contracts once they're old enough for a first contract
+    (as the squad limit counts them: lifecycle.trim_squads)."""
     adult = world.defs.lifecycle.youth.contract_age
     rows = conn.execute(text(
-        "SELECT k.person_id, k.kind, p.birth_date FROM contract k "
-        "JOIN person p ON p.id = k.person_id WHERE k.club_id = :club AND k.is_active = 1 "
-        "AND k.kind IN ('player', 'youth') ORDER BY k.person_id"), {"club": club_id}).all()
+        "SELECT k.person_id, k.kind, p.birth_date FROM playing k "
+        "JOIN person p ON p.id = k.person_id WHERE k.club_id = :club "
+        "AND k.kind IN ('player', 'youth', 'loan') ORDER BY k.person_id"),
+        {"club": club_id}).all()
     return [r.person_id for r in rows
-            if r.kind == "player" or years_old(r.birth_date, day) >= adult]
+            if r.kind != "youth" or years_old(r.birth_date, day) >= adult]
+
+
+def on_loan(conn: Connection, player_id: int) -> bool:
+    """Whether he's out on loan now (W4-8)."""
+    return conn.execute(text("SELECT 1 FROM contract WHERE person_id = :p AND is_active = 1 "
+                             "AND kind = 'loan'"), {"p": player_id}).first() is not None
 
 
 def _check_seller(conn: Connection, world: World, club_id: int, player_id: int,
@@ -99,6 +107,8 @@ def validate_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
     if alive is None or alive.retired_on is not None:
         raise MoveRefused("No such player.")
     owner = owner_contract(conn, move.player_id)
+    if on_loan(conn, move.player_id):
+        raise MoveRefused("He's out on loan: he can move when he's back.")
     if move.to_club_id is None:
         if owner is None:
             raise MoveRefused("He has no club to leave.")

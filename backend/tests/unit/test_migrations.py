@@ -325,3 +325,27 @@ def test_version_11_gains_the_first_team_rewards(tmp_path: Path) -> None:
             "SELECT potential_boost FROM player_development")).scalar_one() == 2.25
     assert migrate(engine) == SCHEMA_VERSION  # nothing left to do
     engine.dispose()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_12_gains_the_playing_view_and_one_loan_per_player(tmp_path: Path) -> None:
+    """Loans (W4-8): a save from before them gets the playing view and the one-loan rule, and
+    running the step again changes nothing."""
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP VIEW playing"))
+        conn.execute(text("DROP INDEX ux_contract_loan"))
+    write_meta(engine, {"schema_version": 12})
+    assert migrate(engine) == 12
+    for _ in range(2):
+        with engine.begin() as conn:
+            names = {r.name for r in conn.execute(text("SELECT name FROM sqlite_master"))}
+            assert {"playing", "ux_contract_loan"} <= names
+            playing = conn.execute(text("SELECT COUNT(*) FROM playing")).scalar_one()
+            active = conn.execute(text("SELECT COUNT(*) FROM contract WHERE is_active = 1")
+                                  ).scalar_one()
+            assert playing == active  # no loans yet: everyone plays where he's contracted
+            STEPS[13](conn)
+    session.close()

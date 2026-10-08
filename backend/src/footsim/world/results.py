@@ -52,7 +52,7 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
         conn.execute(text("""
             UPDATE player_state SET suspended_matches = suspended_matches - 1
             WHERE suspended_matches > 0 AND player_id IN (
-                SELECT person_id FROM contract WHERE club_id = :club AND is_active = 1)
+                SELECT person_id FROM playing WHERE club_id = :club)
         """), {"club": club_id})
 
     states = {r.player_id: r for r in conn.execute(

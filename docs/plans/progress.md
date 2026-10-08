@@ -16,7 +16,16 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): the calendar** (a Sonnet agent's work, reviewed and browser-checked here; the commit that adds this line, after c1e4289). The user asked for a calendar to sim from.
+- **Latest checkpoint (9 Oct): W4-8a, where a player plays** (loans' groundwork; the commit that adds this line, after 1370b66). There's no change of behaviour until loans exist.
+  - **Schema 13:**
+    - `ux_contract_loan`: at most one active loan per player;
+    - the **`playing` view**: each player's active loan if he has one, else his permanent contract. It's created by the schema (an after-create DDL) and by `_to_v13`.
+  - **Squads read `playing`:** `load_squad` (matches and line-ups), the suspension count in `record_result`, `lifecycle._players` (the trim counts a loanee where he plays and never releases him), `squad_strengths`, the squad page (and the club, where he plays), the transfer floors (`senior_squad`), and the market's squad views. The start page's league list keeps the view's condition inline, because the base world is older than the view.
+  - **Ownership stays on the permanent contract:** values, `owner_contract`, sales. `validate_move` refuses a player who's out on loan.
+  - **`wage_bills`** = a club's active contracts (loans in included) − the shares others pay for its loanees. Every euro is paid once.
+  - **Tests:** `test_loans.py` (one squad per player, wages paid once, one loan per player, no sale while away) and the v12 → v13 migration.
+  - **Next:** W4-8b, the loans themselves (start and end, the AI's loans of young surplus players, the user's loans in and out).
+- **9 Oct: the calendar** (1370b66, after c1e4289; a Sonnet agent's work, reviewed and browser-checked here). The user asked for a calendar to sim from.
   - **A Calendar page:** a Monday-first month grid with previous, next and Today. It shows the user's fixtures (home or away, opponent, competition; score and a win/draw/loss tint once played, linking to the report), shading for transfer-window days and international breaks, and the season's start and end.
   - **Clicking a coming day** asks "Sim to <date>?" and starts the existing sim-to-date, with its progress and summary from the header.
   - **API:** `GET /api/calendar?from=&to=` (`api/calendar.py`; 422 for a backwards range or more than 400 days). Tested in `test_calendar_api.py`.

@@ -17,11 +17,11 @@ _SQUAD_SQL = text("""
     SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date,
            pl.height_cm, pl.preferred_foot, pl.weak_foot,
            s.condition, s.injured_until, s.suspended_matches
-    FROM contract k
+    FROM playing k
     JOIN person p ON p.id = k.person_id
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN player_state s ON s.player_id = p.id
-    WHERE k.club_id = :club AND k.is_active = 1
+    WHERE k.club_id = :club
 """)
 
 

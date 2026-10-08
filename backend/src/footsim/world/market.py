@@ -47,6 +47,7 @@ from footsim.transfers.decisions import (
 )
 from footsim.transfers.valuation import values_eur, years_old
 from footsim.world.context import AI_FORMATIONS, World
+from footsim.world.finance import wage_bills
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import display_name
 from footsim.world.transfers import Move, MoveRefused, complete_move, fee_text
@@ -179,6 +180,8 @@ class _Market:
         self.years_left = np.zeros(n, dtype=float)
         self.listed = np.zeros(n, dtype=bool)
         self.moved = np.zeros(n, dtype=bool)
+        self.plays_for = np.full(n, FREE, dtype=np.int64)  # where he plays (on loan: there)
+        self.on_loan = np.zeros(n, dtype=bool)
         for r in conn.execute(text(
                 "SELECT person_id, club_id, wage_weekly_cents, end_date, listed FROM contract "
                 "WHERE is_active = 1 AND kind != 'loan'")):
@@ -209,8 +212,14 @@ class _Market:
                                     else p.reputation[k] for k, o in enumerate(self.owner)])
         self.value = values_eur(world.defs.valuation, p.overall, self.age, p.primary == "GK",
                                 self.market_rep, p.premium).astype(np.int64)
+        for r in conn.execute(text("SELECT person_id, club_id, kind FROM playing")):
+            k = p.index.get(int(r.person_id))
+            if k is not None:
+                self.plays_for[k] = r.club_id
+                self.on_loan[k] = r.kind == "loan"
+        # A squad, as needs and roles see it, is who plays there (W4-8).
         self.by_club: dict[int, set[int]] = {}
-        for k, o in enumerate(self.owner):
+        for k, o in enumerate(self.plays_for):
             if o != FREE:
                 self.by_club.setdefault(int(o), set()).add(k)
         self.views: dict[int, _View] = {}
@@ -224,9 +233,7 @@ class _Market:
             "ON c.id = m.competition_id WHERE m.season_id = :s"), {"s": season})}
         formations = {int(r.club_id): str(r.formation) for r in self.conn.execute(text(
             "SELECT club_id, formation FROM tactic"))}
-        bills = {int(r.club_id): int(r.bill) // 100 for r in self.conn.execute(text(
-            "SELECT club_id, SUM(wage_weekly_cents) AS bill FROM contract WHERE is_active = 1 "
-            "GROUP BY club_id"))}
+        bills = {club: bill // 100 for club, bill in wage_bills(self.conn).items()}
         clubs = {}
         for r in self.conn.execute(text(
                 "SELECT c.id, c.reputation, c.source_league, n.code AS nation, "
@@ -345,7 +352,7 @@ class _Market:
     def candidates(self, club: _Club, need: _Need, user_club: int | None) -> list[int]:
         p, rules = self.players, self.rules
         rating = p.in_group[need.group]
-        mask = (p.can_play[need.group] & (self.owner != club.id) & ~self.moved
+        mask = (p.can_play[need.group] & (self.owner != club.id) & ~self.moved & ~self.on_loan
                 & (rating >= need.low) & (rating <= need.high) & (self.age <= need.max_age))
         if need.beat:
             mask &= rating >= need.beat + rules.min_improvement
@@ -491,6 +498,7 @@ class _Market:
         old_wage = int(self.wage[k])
         self.owner[k], self.wage[k], self.years_left[k] = club.id, wage, years
         self.market_rep[k] = club.reputation
+        self.plays_for[k] = club.id
         self.listed[k], self.moved[k] = False, True
         self.by_club.setdefault(club.id, set()).add(k)
         club.signed += 1

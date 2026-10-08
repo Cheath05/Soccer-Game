@@ -5,6 +5,7 @@ attributes as one wide row per player (a column per attribute).
 """
 
 from sqlalchemy import (
+    DDL,
     Column,
     Float,
     ForeignKey,
@@ -16,13 +17,14 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    event,
     text,
 )
 
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 12  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 13  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -164,7 +166,22 @@ contract = Table(
     # One club owns a player: at most one active contract per person that isn't a loan (W4-3).
     Index("ux_contract_owner", "person_id", unique=True,
           sqlite_where=text("is_active = 1 AND kind != 'loan'")),
+    # And at most one active loan (W4-8): a loan is a contract row of kind 'loan' at the
+    # borrowing club, beside his permanent contract at the parent club.
+    Index("ux_contract_loan", "person_id", unique=True,
+          sqlite_where=text("is_active = 1 AND kind = 'loan'")),
 )
+
+# Where each player plays (W4-8): his active loan if he has one, else his permanent contract.
+# Every squad reads this, so a loaned player is in exactly one squad.
+PLAYING_VIEW = """
+CREATE VIEW IF NOT EXISTS playing AS
+SELECT k.* FROM contract k
+WHERE k.is_active = 1 AND (k.kind = 'loan' OR NOT EXISTS (
+    SELECT 1 FROM contract l WHERE l.person_id = k.person_id AND l.is_active = 1
+    AND l.kind = 'loan'))
+"""
+event.listen(metadata, "after_create", DDL(PLAYING_VIEW))  # type: ignore[no-untyped-call]
 
 external_id = Table(
     "external_id",

@@ -35,7 +35,7 @@ class SimJob:
     day: date
     results: list[SimResultOut] = field(default_factory=list)
     messages: list[str] = field(default_factory=list)
-    stop: str | None = None  # date | season_end | cancelled | abandoned | error
+    stop: str | None = None  # date | season_end | offer | cancelled | abandoned | error
     error: str | None = None
     season_final: SeasonFinalOut | None = None
     cancel: threading.Event = field(default_factory=threading.Event)

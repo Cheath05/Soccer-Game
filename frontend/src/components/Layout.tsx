@@ -16,6 +16,7 @@ const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/squad', label: 'Squad' },
   { to: '/tactics', label: 'Tactics' },
+  { to: '/transfers', label: 'Transfers' },
   { to: '/finances', label: 'Finances' },
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
@@ -61,6 +62,7 @@ export default function Layout() {
         if (result.stop === 'season_end' && result.season_final) setSeasonFinal(result.season_final)
         else if (result.messages.length) setMessages(result.messages)
         if (result.stop === 'match') void navigate({ to: '/matchday' })
+        if (result.stop === 'offer') void navigate({ to: '/transfers' })
       },
     })
   }

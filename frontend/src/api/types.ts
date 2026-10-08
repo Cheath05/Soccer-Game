@@ -193,14 +193,14 @@ export interface SimStatus {
   date: string // how far it has got
   results: SimResult[]
   messages: string[]
-  stop: 'date' | 'season_end' | 'cancelled' | 'abandoned' | 'error' | null
+  stop: 'date' | 'season_end' | 'offer' | 'cancelled' | 'abandoned' | 'error' | null
   error: string | null
   season_final?: SeasonFinal | null // when it stopped at the season's end
 }
 
 export interface AdvanceResult {
   date: string
-  stop: 'match' | 'season_end' | 'limit'
+  stop: 'match' | 'season_end' | 'offer' | 'limit'
   fixture_id: number | null
   messages: string[]
   season_final?: SeasonFinal | null // when it stopped at the season's end

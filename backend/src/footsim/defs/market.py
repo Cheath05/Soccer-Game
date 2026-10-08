@@ -34,6 +34,8 @@ class MarketDef(DefModel):
     max_in_winter: int = Field(ge=0)
     max_out: int = Field(ge=0)
     needs_per_day: int = Field(ge=1)
+    offer_days: int = Field(ge=1)
+    max_bids_for_user: int = Field(ge=0)
     moved_rest_days: int = Field(ge=0)
     max_news: int = Field(ge=0)
     news_fee: float = Field(ge=0)

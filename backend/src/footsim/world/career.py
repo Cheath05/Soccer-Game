@@ -14,6 +14,7 @@ from footsim.match.report import MatchReport
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.context import World
 from footsim.world.finance import initialize_finances
+from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
 from footsim.world.overall_history import record_season_start
 from footsim.world.results import daily_recovery, record_result
@@ -35,7 +36,7 @@ MAX_ADVANCE_DAYS = 400
 @dataclass
 class AdvanceResult:
     date: date
-    stop: str  # match | season_end | limit
+    stop: str  # match | season_end | offer (an AI club bid for a user's player) | limit
     fixture_id: int | None = None
     messages: list[str] = field(default_factory=list)
 
@@ -159,6 +160,8 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
         daily_recovery(conn, day)
         meta.current_date = day
         write_meta(conn, meta)
+        if bid_arrived(conn, meta, day - timedelta(days=1)):
+            return AdvanceResult(day, "offer", None, messages)
     return AdvanceResult(day, "limit", None, messages)
 
 
@@ -167,7 +170,7 @@ class SimStep:
     """One step of simulating towards a date (``sim_step``)."""
 
     date: date
-    stop: str | None  # why it ends here: "date" or "season_end"; None to carry on
+    stop: str | None  # why it ends here: "date", "season_end" or "offer"; None to carry on
     fixture_id: int | None = None  # the user's match played in this step
     messages: list[str] = field(default_factory=list)
 
@@ -186,7 +189,7 @@ def sim_step(conn: Connection, world: World, until: date) -> SimStep:
         play_user_instant(conn, world, meta, user_fx, day)
         return SimStep(day, None, user_fx.id)
     result = advance(conn, world, max_days=(until - day).days)
-    stop = {"match": None, "season_end": "season_end"}.get(result.stop, "date")
+    stop = {"match": None, "season_end": "season_end", "offer": "offer"}.get(result.stop, "date")
     return SimStep(result.date, stop, messages=result.messages)
 
 

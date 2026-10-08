@@ -13,6 +13,7 @@ import MatchReportPage from './pages/MatchReportPage'
 import PlayerPage from './pages/PlayerPage'
 import SquadPage from './pages/SquadPage'
 import TacticsPage from './pages/TacticsPage'
+import TransfersPage from './pages/TransfersPage'
 
 const rootRoute = createRootRoute({ component: Layout })
 
@@ -24,6 +25,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/clubs/$clubId', component: ClubPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/tactics', component: TacticsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/finances', component: FinancesPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/transfers', component: TransfersPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/fixtures', component: FixturesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/league', component: LeaguePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/cups', component: CupsPage }),

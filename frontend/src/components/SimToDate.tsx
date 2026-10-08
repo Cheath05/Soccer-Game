@@ -14,6 +14,7 @@ const STOP_TEXT: Record<string, string> = {
   date: 'Reached the date.',
   season_end: 'The season is over.',
   cancelled: 'Stopped.',
+  offer: 'A club has made an offer for one of your players: answer it on the Transfers page.',
   abandoned: 'Another career was loaded.',
   error: 'Something went wrong.',
 }

@@ -16,7 +16,26 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (8 Oct): W3-4, simpler money** (agent F's work, reviewed here; the commit that adds this line, after ecd8dd3). The user's 8 Oct finance requests, as decided in the design doc's "W3-4".
+- **Latest checkpoint (8 Oct): W4-6, the user's transfers** (the commit that adds this line; after f4fa66d).
+  - **Your offers** (`world/market.py` `make_offer`, by the same rules as every AI club):
+    - the window and the budget are checked first;
+    - then the club answers (asking price: accept, counter "They want €X", or reject);
+    - then the player (the same weighing as any move; the wage he asks, or more);
+    - then `complete_move`.
+    - A free agent costs no fee, and wants his level of club and the wage he asks.
+  - **AI bids for your players:** the market bids for them like anyone's (the reach rule, the budget, the player's willingness). A bid becomes a pending `transfer_offer` that stands `offer_days` (3); at most `max_bids_for_user` (3) wait at once, and they expire afterwards.
+    - **Sim-to-date and Continue stop** the day a bid arrives (`advance` stop `offer`), with a message, and Continue opens the Transfers page.
+    - You accept, reject or counter: the bidder pays a counter up to its ceiling and within its budget, or walks away.
+  - **API** (`api/transfers.py`): `GET /api/transfers/search` (position, overall, age, value, league, free agents, listed, name), `/terms/{id}`, `POST /offer`, `PUT /listed/{id}`, `GET /listed`, `GET /bids`, `POST /bids/{id}`, `GET /history`.
+  - **The Transfers page:**
+    - Find players: filters, results, and an offer dialog in the shown currency;
+    - Offers for your players: accept, reject or counter;
+    - Sell: put players up for sale;
+    - History: yours or everyone's.
+  - **Tests:** `test_user_transfers.py` (6: an offer answered by club and player; a free agent's wage; the window and the budget; answering bids; a bid stopping the sim; listing). The market, transfer and finance tests pass. A browser check on :8765 had no errors.
+  - **Measured in a scratch run:** Aston Villa received 2 bids (Sevilla, €16M) over July and August, and the sim stopped for each.
+  - **Running alongside:** U1 (Sonnet), resumed after a session limit; its files aren't in this commit.
+- **8 Oct: W3-4, simpler money** (agent F's work, reviewed here; the commit that adds this line, after ecd8dd3). The user's 8 Oct finance requests, as decided in the design doc's "W3-4".
   - **One budget** for fees and new wages: a signing costs fee + wage × weeks left in the season (`signing_cost_cents`, `weeks_left`). The seller gets back `reinvest` × fee + the freed wages; a release changes nothing. `validate_move` refuses "That's beyond the budget."; the weekly wage-budget limit is gone.
   - **Each season's budget:** board on, 35% of revenue + 40% of cash − the wage overshoot; board off, all the cash. `wage_budget_cents` is now the wage capacity (informational, and the AI's prudence).
   - **The optional board:** `CareerMeta.board_enabled` (default on, so old saves keep theirs); a switch at career start and on the Finances page (`PUT /api/career/board`, recomputing the budget at once). With it off, the page hides targets and confidence.

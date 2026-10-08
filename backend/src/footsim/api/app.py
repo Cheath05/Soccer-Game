@@ -14,6 +14,7 @@ from footsim.api.live import router as live_router
 from footsim.api.routes import router
 from footsim.api.session import CareerSession, NoCareer, default_session
 from footsim.api.sim import router as sim_router
+from footsim.api.transfers import router as transfers_router
 from footsim.core.build_info import build_info
 from footsim.core.paths import REPO_ROOT
 from footsim.persistence.database import SchemaMismatch
@@ -38,6 +39,7 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
     app.include_router(router)
     app.include_router(live_router)
     app.include_router(sim_router)
+    app.include_router(transfers_router)
 
     if frontend is not None and (frontend / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")

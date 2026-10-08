@@ -22,7 +22,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from sqlalchemy import Connection, text
+from sqlalchemy import Connection, select, text, update
 
 from footsim.core.rng import derive_rng
 from footsim.defs.calendar import DateRange
@@ -30,6 +30,7 @@ from footsim.defs.finance import WageLevel
 from footsim.defs.formations import FormationDef
 from footsim.defs.positions import PositionGroup
 from footsim.domain.attributes import ATTRIBUTES
+from footsim.persistence.schema import transfer_offer
 from footsim.transfers.decisions import (
     Prospect,
     Role,
@@ -47,8 +48,9 @@ from footsim.transfers.decisions import (
 from footsim.transfers.valuation import values_eur, years_old
 from footsim.world.context import AI_FORMATIONS, World
 from footsim.world.meta import CareerMeta
+from footsim.world.squads import display_name
 from footsim.world.transfers import Move, MoveRefused, complete_move, fee_text
-from footsim.world.windows import open_window
+from footsim.world.windows import club_window_nation, open_window
 
 META_KEY = "market_day"  # the last day the market ran (after_day may run a day twice)
 FAMILIAR = 15  # familiarity (0-20) at which a player can play a position
@@ -345,8 +347,6 @@ class _Market:
         rating = p.in_group[need.group]
         mask = (p.can_play[need.group] & (self.owner != club.id) & ~self.moved
                 & (rating >= need.low) & (rating <= need.high) & (self.age <= need.max_age))
-        if user_club is not None:
-            mask &= self.owner != user_club
         if need.beat:
             mask &= rating >= need.beat + rules.min_improvement
         rows = np.nonzero(mask)[0]
@@ -394,6 +394,8 @@ class _Market:
                 return None
             fee = 0
             wage = wage_demand(going, None, True, rules)
+        elif owner == meta.user_club_id:
+            return self.bid_for_user(club, need, k, window)
         else:
             seller = self.clubs.get(owner)
             if seller is None or seller.sold >= rules.max_out:
@@ -436,6 +438,50 @@ class _Market:
         self._moved(k, club, owner, wage, years)
         notable = fee >= rules.news_fee
         return news[0] if notable else ""
+
+    def bid_for_user(self, club: _Club, need: _Need, k: int, window: DateRange) -> str | None:
+        """An AI club wants one of the user's players: it doesn't buy him, it makes an offer
+        that stands ``offer_days`` and stops sim-to-date. Returns the news, or None."""
+        p, rules, meta = self.players, self.rules, self.meta
+        player_id = int(p.ids[k])
+        pending = self.conn.execute(text(
+            "SELECT COUNT(*) AS n, SUM(player_id = :p AND bidder_club_id = :c) AS mine "
+            "FROM transfer_offer WHERE owner_club_id = :u AND status = 'pending'"),
+            {"p": player_id, "c": club.id, "u": meta.user_club_id}).one()
+        if pending.n >= rules.max_bids_for_user or pending.mine:
+            return None
+        user = self.clubs[int(self.owner[k])]
+        role = self.view(user).roles.get(k, Role.SURPLUS)
+        eagerness = derive_rng(meta.seed, "market-bid", self.day.isoformat(), club.id,
+                               player_id).uniform(*rules.bid_eagerness)
+        value = float(self.value[k])
+        fee = min(opening_bid(value, eagerness * (1 + 0.2 * need.urgency)),
+                  buyer_ceiling(value, need.urgency, rules))
+        wage = wage_demand(self.going_rate(club, float(p.overall[k])), float(self.wage[k]),
+                           False, rules)
+        if (wage > club.capacity * rules.max_wage_share
+                or fee + wage * self.weeks_left > club.budget):
+            return None
+        mood = derive_rng(meta.seed, "market-mood", player_id, club.id,
+                          window.start.isoformat()).normal()
+        if not player_accepts(Prospect(
+                reputation_step=club.reputation - user.reputation,
+                wage_ratio=wage / max(float(self.wage[k]), 1.0),
+                starts_now=role in (Role.KEY, Role.STARTER), would_start=True,
+                listed=bool(self.listed[k]), mood=float(mood)), rules):
+            return None
+        self.conn.execute(transfer_offer.insert().values(
+            player_id=player_id, bidder_club_id=club.id, owner_club_id=user.id, kind="transfer",
+            status="pending", fee_cents=fee * 100, counter_fee_cents=None,
+            wage_weekly_cents=wage * 100, years=contract_years(float(self.age[k]), rules),
+            created=self.day.isoformat(),
+            expires=(self.day + timedelta(days=rules.offer_days)).isoformat(), by_user=0))
+        names = self.conn.execute(text(
+            "SELECT pe.first_name, pe.last_name, pe.known_as, c.name FROM person pe, club c "
+            "WHERE pe.id = :p AND c.id = :c"), {"p": player_id, "c": club.id}).one()
+        name = display_name(names.first_name, names.last_name, names.known_as)
+        return (f"{names.name} bid {fee_text(fee * 100)} for {name}. Answer them on the "
+                "Transfers page.")
 
     def _moved(self, k: int, club: _Club, seller_id: int, wage: int, years: int) -> None:
         old_wage = int(self.wage[k])
@@ -526,6 +572,8 @@ def run_market(conn: Connection, world: World, meta: CareerMeta, day: date,
     if not any(windows.values()):
         return []
     _mark(conn, day)
+    conn.execute(text("UPDATE transfer_offer SET status = 'expired' WHERE status = 'pending' "
+                      "AND expires < :d"), {"d": day.isoformat()})
     market = _Market(conn, world, meta, day, season_end)
     default = world.defs.market.default_window_nation
     acting = []
@@ -571,9 +619,201 @@ def _plain_news(conn: Connection, k: int, market: _Market) -> str:
         "JOIN club b ON b.id = t.to_club_id LEFT JOIN club s ON s.id = t.from_club_id "
         "WHERE t.player_id = :p ORDER BY t.id DESC LIMIT 1"),
         {"p": int(market.players.ids[k])}).one()
-    from footsim.world.squads import display_name
-
     name = display_name(row.first_name, row.last_name, row.known_as)
     if row.kind == "free" or row.seller is None:
         return f"{name} joins {row.buyer} on a free transfer."
     return f"{name} joins {row.buyer} from {row.seller} for {fee_text(row.fee_cents)}."
+
+
+# --- the user's side (W4-6): the same rules, asked for by the user ------------------------
+
+
+@dataclass(frozen=True)
+class Terms:
+    """What it would take to sign a player now, as the user's club sees it."""
+
+    player_id: int
+    club_id: int | None  # his club; None for a free agent
+    value_eur: int
+    wage_eur: int  # the weekly wage he'd ask of the user's club
+    years: int  # the contract he'd sign
+    listed: bool
+    window_open: bool  # the user's club's window
+
+
+@dataclass(frozen=True)
+class OfferResult:
+    """The answer to the user's offer: ``accepted`` (done: ``news`` says so), ``countered``
+    (the club wants ``fee_eur``), ``rejected`` (by the club or the player: ``message`` says
+    who and why), or ``refused`` (against the rules: the window, the budget, the squad)."""
+
+    status: str
+    message: str
+    fee_eur: int = 0
+    wage_eur: int = 0
+    years: int = 0
+
+
+def _user_market(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Market:
+    if meta.user_club_id is None:
+        raise MoveRefused("Watching only: there's no club of your own.")
+    end = season_calendar_end(world, meta)
+    return _Market(conn, world, meta, day, end)
+
+
+def season_calendar_end(world: World, meta: CareerMeta) -> date:
+    from footsim.world.season import season_calendar
+
+    return season_calendar(world, meta, meta.season_id).season_end
+
+
+def _contract_end(market: _Market, years: int) -> date:
+    first = market.season_end.year if (market.season_end - market.day).days > 30 else (
+        market.season_end.year + 1)
+    return date(first + years - 1, 6, 30)
+
+
+def _user_view(market: _Market, k: int) -> tuple[_Club, int, float]:
+    """The user's club, his row and the ask of the user's club (the going rate in its league)."""
+    assert market.meta.user_club_id is not None
+    club = market.clubs[market.meta.user_club_id]
+    return club, k, market.going_rate(club, float(market.players.overall[k]))
+
+
+def player_terms(conn: Connection, world: World, meta: CareerMeta, day: date,
+                 player_id: int) -> Terms:
+    market = _user_market(conn, world, meta, day)
+    k = market.players.index.get(player_id)
+    if k is None:
+        raise MoveRefused("No such player.")
+    club, _, going = _user_view(market, k)
+    owner = int(market.owner[k])
+    free = owner == FREE
+    wage = wage_demand(going, None if free else float(market.wage[k]), free, market.rules)
+    nation = club_window_nation(conn, club.id, meta.season_id)
+    return Terms(player_id, None if free else owner, int(market.value[k]), wage,
+                 contract_years(float(market.age[k]), market.rules), bool(market.listed[k]),
+                 open_window(world, nation, meta.season_id, day) is not None)
+
+
+def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, player_id: int,
+               fee_eur: int, wage_eur: int | None = None, years: int | None = None
+               ) -> OfferResult:
+    """The user's offer for a player, answered at once: his club's answer (the asking price,
+    as any club would ask), then his (the same weighing as for any move), then the move."""
+    market = _user_market(conn, world, meta, day)
+    rules = market.rules
+    k = market.players.index.get(player_id)
+    if k is None:
+        return OfferResult("refused", "No such player.")
+    club, _, going = _user_view(market, k)
+    owner = int(market.owner[k])
+    if owner == club.id:
+        return OfferResult("refused", "He's already yours.")
+    nation = club_window_nation(conn, club.id, meta.season_id)
+    if open_window(world, nation, meta.season_id, day) is None:
+        return OfferResult("refused", "The transfer window is closed.")
+    value = float(market.value[k])
+    if fee_eur > club.budget:
+        return OfferResult("refused", "That's beyond the budget.")
+    if owner == FREE:
+        if fee_eur:
+            return OfferResult("refused", "A free agent costs no fee.")
+        level = world.defs.world_build.reputation
+        own_level = level.club_base + level.club_per_point * (
+            float(market.players.overall[k]) - level.club_reference_overall)
+        if not free_agent_accepts(club.reputation, own_level, rules):
+            return OfferResult("rejected", "He doesn't want to join a club at your level.")
+        asked = wage_demand(going, None, True, rules)
+    else:
+        seller = market.clubs[owner]
+        role = market.view(seller).roles.get(k, Role.SURPLUS)
+        ask = asking_price(value, role, float(market.years_left[k]), bool(market.listed[k]),
+                           seller.distressed, rules)
+        answer = seller_answer(fee_eur, ask, rules)
+        if answer.kind == "reject":
+            return OfferResult("rejected", "They turned it down: it's well short of what they "
+                               "want.")
+        if answer.kind == "counter":
+            return OfferResult("countered", f"They want {fee_text(ask * 100)}.", fee_eur=ask)
+        asked = wage_demand(going, float(market.wage[k]), False, rules)
+        group = str(market.players.primary[k])
+        starters = market.view(club).starters.get(group, [])
+        weakest = min((float(market.players.in_group[group][j]) for j in starters), default=0.0)
+        window = open_window(world, nation, meta.season_id, day)
+        assert window is not None
+        mood = derive_rng(meta.seed, "market-mood", player_id, club.id,
+                          window.start.isoformat()).normal()
+        wanted = wage_eur if wage_eur is not None else asked
+        if not player_accepts(Prospect(
+                reputation_step=club.reputation - seller.reputation,
+                wage_ratio=wanted / max(float(market.wage[k]), 1.0),
+                starts_now=role in (Role.KEY, Role.STARTER),
+                would_start=float(market.players.in_group[group][k]) >= weakest,
+                listed=bool(market.listed[k]), mood=float(mood)), rules):
+            return OfferResult("rejected", "He doesn't want to move to your club.")
+    wage = wage_eur if wage_eur is not None else asked
+    if wage < asked:
+        return OfferResult("rejected", f"He wants {fee_text(asked * 100)} a week.",
+                           wage_eur=asked)
+    length = years or contract_years(float(market.age[k]), rules)
+    move = Move(player_id, club.id, fee_eur * 100, wage * 100, _contract_end(market, length),
+                by_user=True)
+    try:
+        news = complete_move(conn, world, meta, move, day)
+    except MoveRefused as exc:
+        return OfferResult("refused", str(exc))
+    return OfferResult("accepted", news[0], fee_eur, wage, length)
+
+
+def answer_bid(conn: Connection, world: World, meta: CareerMeta, day: date, offer_id: int,
+               action: str, fee_eur: int | None = None) -> OfferResult:
+    """The user's answer to an AI club's bid for one of their players: ``accept`` (he goes),
+    ``reject``, or ``counter`` at ``fee_eur`` (the bidder pays it if it's within what it would
+    pay for him and its budget, and walks away otherwise)."""
+    row = conn.execute(select(transfer_offer).where(transfer_offer.c.id == offer_id)).first()
+    if (row is None or row.owner_club_id != meta.user_club_id or row.status != "pending"
+            or row.by_user):
+        return OfferResult("refused", "That offer isn't open.")
+    if action == "reject":
+        conn.execute(update(transfer_offer).where(transfer_offer.c.id == offer_id)
+                     .values(status="rejected"))
+        return OfferResult("rejected", "You turned it down.")
+    fee = row.fee_cents // 100
+    if action == "counter":
+        if fee_eur is None:
+            return OfferResult("refused", "Say what you want for him.")
+        market = _user_market(conn, world, meta, day)
+        k = market.players.index[row.player_id]
+        bidder = market.clubs[row.bidder_club_id]
+        ceiling = buyer_ceiling(float(market.value[k]), 0.5, market.rules)
+        wage = row.wage_weekly_cents // 100
+        if fee_eur > ceiling or fee_eur + wage * market.weeks_left > bidder.budget:
+            conn.execute(update(transfer_offer).where(transfer_offer.c.id == offer_id)
+                         .values(status="withdrawn", counter_fee_cents=fee_eur * 100))
+            return OfferResult("rejected", "They won't pay that, and have walked away.")
+        fee = fee_eur
+    elif action != "accept":
+        return OfferResult("refused", f"Unknown answer {action}.")
+    market = _user_market(conn, world, meta, day)
+    move = Move(row.player_id, row.bidder_club_id, fee * 100, row.wage_weekly_cents,
+                _contract_end(market, row.years or 1), by_user=True)
+    try:
+        news = complete_move(conn, world, meta, move, day)
+    except MoveRefused as exc:
+        conn.execute(update(transfer_offer).where(transfer_offer.c.id == offer_id)
+                     .values(status="failed"))
+        return OfferResult("refused", str(exc))
+    conn.execute(update(transfer_offer).where(transfer_offer.c.id == offer_id)
+                 .values(status="accepted", counter_fee_cents=fee * 100))
+    return OfferResult("accepted", news[0], fee, row.wage_weekly_cents // 100, row.years or 1)
+
+
+def bid_arrived(conn: Connection, meta: CareerMeta, day: date) -> bool:
+    """Whether an AI club bid for one of the user's players on ``day`` (sim-to-date stops)."""
+    if meta.user_club_id is None:
+        return False
+    return conn.execute(text(
+        "SELECT 1 FROM transfer_offer WHERE owner_club_id = :u AND status = 'pending' "
+        "AND by_user = 0 AND created = :d LIMIT 1"),
+        {"u": meta.user_club_id, "d": day.isoformat()}).first() is not None

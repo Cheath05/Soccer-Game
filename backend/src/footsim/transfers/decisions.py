@@ -160,3 +160,47 @@ def free_agent_accepts(buyer_reputation: float, own_level: float, rules: MarketD
     (the reputation of a club whose squad is as good as he is): he won't drop far below where
     he belongs."""
     return buyer_reputation >= own_level - rules.reach
+
+
+
+@dataclass(frozen=True)
+class Haggle:
+    """Where talks stand after a bid: ``accept`` (at the bid), ``counter`` (at ``ask``, its last
+    word when ``final``), ``reject`` (too low to talk about), or ``ended`` (out of patience)."""
+
+    kind: str
+    ask: int
+    rounds: int
+    final: bool = False
+
+
+def reservation_price(ask: int, role: Role, listed: bool, distressed: bool,
+                      rules: MarketDef) -> int:
+    """The lowest a club takes for a player in talks: a share of its asking price by how much
+    it needs him (none off for a key player), a little lower if listed or if it needs money."""
+    share = getattr(rules.reservation, role.value)
+    if listed or distressed:
+        share *= rules.reservation_listed
+    return quote_eur(ask * share)
+
+
+def haggle(bid: int, ask: int, reservation: int, rounds: int, rules: MarketDef) -> Haggle:
+    """One round of talks over a fee. A bid at the club's current price is accepted. A fair bid
+    (at least its walk-away price) brings its price ``concession`` of the way down towards it,
+    never below the walk-away price. A bid below that is countered at the same price, and an
+    insulting one (below ``insult`` of the price) costs two rounds of patience. After
+    ``max_rounds`` the price is final; past it, talks end."""
+    if bid >= ask:
+        return Haggle("accept", bid, rounds)
+    if rounds >= rules.max_rounds:
+        return Haggle("ended", ask, rounds, True)
+    if bid < rules.insult * ask:
+        rounds += 2
+        if rounds > rules.max_rounds:
+            return Haggle("ended", ask, rounds, True)
+        return Haggle("reject", ask, rounds, rounds >= rules.max_rounds)
+    rounds += 1
+    new_ask = ask
+    if bid >= reservation:
+        new_ask = max(reservation, quote_eur(ask - rules.concession * (ask - bid)))
+    return Haggle("counter", new_ask, rounds, rounds >= rules.max_rounds)

@@ -176,9 +176,15 @@ def _to_v14(conn: Connection) -> None:
     apply_club_names(conn)
 
 
+def _to_v15(conn: Connection) -> None:
+    """Haggling over a fee (the rounds of an offer's talks) and position training."""
+    metadata.create_all(conn)
+    _add_column(conn, "transfer_offer", "rounds", "INTEGER NOT NULL DEFAULT 0")
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
-    11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14}
+    11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15}
 
 
 def migrate(engine: Engine) -> int:

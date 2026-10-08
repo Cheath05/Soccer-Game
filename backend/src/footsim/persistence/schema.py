@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 14  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 15  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -401,7 +401,18 @@ transfer_offer = Table(
     Column("created", Text, nullable=False),
     Column("expires", Text, nullable=False),
     Column("by_user", Integer, nullable=False),
+    # The user's haggling (W4 follow-up): the rounds of offers so far in these talks.
+    Column("rounds", Integer, nullable=False, server_default="0"),
     Index("ix_transfer_offer_owner", "owner_club_id", "status"),
+)
+
+position_training = Table(
+    "position_training",  # a player learning a position (the user's choice), a month at a time
+    metadata,
+    Column("player_id", ForeignKey("player.person_id"), primary_key=True),
+    Column("position", Text, nullable=False),
+    Column("progress", Float, nullable=False, server_default="0"),  # toward the next point
+    Column("started", Text, nullable=False),
 )
 
 club_finance = Table(

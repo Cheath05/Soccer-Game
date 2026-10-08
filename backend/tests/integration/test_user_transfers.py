@@ -215,3 +215,30 @@ def test_the_user_borrows_and_lends(game: tuple[TestClient, CareerSession, int])
     assert lent["status"] == "accepted", lent
     loans = client.get("/api/transfers/loans").json()
     assert any(lo["player"]["id"] == player and lo["yours_out"] for lo in loans)
+
+
+
+def test_the_user_haggles_over_a_fee(game: tuple[TestClient, CareerSession, int]) -> None:
+    client, session, club_id = game
+    limit = get_world().defs.lifecycle.squads.max_players
+    squad = client.get(f"/api/clubs/{club_id}/squad").json()
+    for p in sorted(squad, key=lambda p: p["overall"])[:max(0, len(squad) - limit + 2)]:
+        client.post(f"/api/players/{p['id']}/release")
+    found = client.get("/api/transfers/search", params={"min_overall": 70, "max_overall": 78,
+                                                        "max_age": 26}).json()
+    target = next(p for p in found if p["club"] is not None)
+    price = client.post("/api/transfers/offer", json={
+        "player_id": target["id"], "fee_eur": int(target["value_eur"] * 0.7)}).json()
+    assert price["status"] in ("countered", "rejected") and price["fee_eur"] > 0, price
+    first = price["fee_eur"]
+    lower = client.post("/api/transfers/offer", json={
+        "player_id": target["id"], "fee_eur": int(first * 0.9)}).json()
+    assert lower["status"] in ("countered", "rejected", "accepted")
+    if lower["status"] == "countered":
+        assert lower["fee_eur"] <= first  # they came down, or held
+        assert lower["rounds_left"] < price["rounds_left"] or lower["final"]
+    # Patience runs out: lowballing again and again ends the talks for the window.
+    for _ in range(6):
+        last = client.post("/api/transfers/offer", json={"player_id": target["id"],
+                                                         "fee_eur": 1000}).json()
+    assert last["status"] == "rejected" and "talks" in last["message"]

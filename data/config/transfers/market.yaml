@@ -62,6 +62,17 @@ max_premium: 1.45           # a buyer pays up to this many times the value ...
 urgent_premium: 0.35        # ... plus this much more for an urgent need
 max_deal_share: 0.8         # of its budget a club spends on one signing, at most
 
+# --- haggling (the user's offers): a club has a walk-away price below its asking price ---
+reservation:                # the lowest it takes, as a share of its asking price, by his role
+  key: 1.0
+  starter: 0.92
+  rotation: 0.85
+  surplus: 0.75
+reservation_listed: 0.95    # and a little lower again if listed, or if the club is in debt
+concession: 0.5             # each fair offer, it comes this share of the way down to the bid
+insult: 0.6                 # a bid below this share of its price costs two rounds of patience
+max_rounds: 4               # rounds of talks before its price is final (and then talks end)
+
 # --- wages and contracts ---
 move_raise: 1.15            # a player moving wants this many times his wage, at least ...
 free_agent_discount: 0.85   # ... his new league's going rate (a free agent: this share of it)

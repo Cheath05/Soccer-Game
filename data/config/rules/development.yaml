@@ -72,3 +72,17 @@ trend_memory: 0.7         # a player's trend: his monthly change in overall, smo
                           # of last month's trend kept), so one month's noise doesn't flip it
 trend_shown: 0.12         # overall a month (about 1.5 a year) that shows the green up or red
                           # down arrow by his overall
+
+# Position training (the user's choice of a position for a player to learn). Each month his
+# familiarity there grows by `rate_per_month`, faster when young (`age_factor`: (age up to,
+# multiplier)), until he's natural in it (`natural`, the familiarity at which he plays it at his
+# full rating: ratings/overall.py familiarity bands). Familiarity runs 0-20.
+position_training:
+  rate_per_month: 1.0
+  age_factor:
+    - [21, 1.5]
+    - [25, 1.2]
+    - [29, 1.0]
+    - [32, 0.7]
+    - [99, 0.5]
+  natural: 18

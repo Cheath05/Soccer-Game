@@ -50,6 +50,7 @@ from footsim.world.overall_history import record_season_start
 from footsim.world.renewals import contract_reminders, settle_expiring
 from footsim.world.reputation import drift_reputations
 from footsim.world.squads import club_name, display_name, load_squad
+from footsim.world.training import train_positions
 
 DEVELOPMENT_SHARE = 1 / 12  # of a year's development, applied on the first of each month
 
@@ -186,6 +187,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
         settle_month(conn, world, meta, day, _league_positions(conn, world, meta))
+        messages += train_positions(conn, world, meta, day)
         messages += contract_reminders(conn, world, meta, day,
                                        season_calendar(world, meta, meta.season_id).season_end)
     messages += progress_cups(conn, world, meta, day)

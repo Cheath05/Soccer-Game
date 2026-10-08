@@ -63,6 +63,11 @@ class MarketDef(DefModel):
     max_premium: float = Field(gt=0)
     urgent_premium: float = Field(ge=0)
     max_deal_share: float = Field(gt=0, le=1)
+    reservation: RoleMultipliers
+    reservation_listed: float = Field(gt=0, le=1)
+    concession: float = Field(ge=0, le=1)
+    insult: float = Field(ge=0, le=1)
+    max_rounds: int = Field(ge=1)
     move_raise: float = Field(ge=1)
     free_agent_discount: float = Field(gt=0, le=1)
     max_wage_share: float = Field(gt=0, le=1)

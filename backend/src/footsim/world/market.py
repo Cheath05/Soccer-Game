@@ -32,6 +32,7 @@ from footsim.defs.positions import PositionGroup
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.persistence.schema import transfer_offer
 from footsim.transfers.decisions import (
+    Haggle,
     Prospect,
     Role,
     asking_price,
@@ -39,8 +40,10 @@ from footsim.transfers.decisions import (
     club_level,
     contract_years,
     free_agent_accepts,
+    haggle,
     opening_bid,
     player_accepts,
+    reservation_price,
     seller_answer,
     squad_roles,
     wage_demand,
@@ -723,6 +726,8 @@ class OfferResult:
     fee_eur: int = 0
     wage_eur: int = 0
     years: int = 0
+    final: bool = False  # their price is their last word (talks end on the next refusal)
+    rounds_left: int = 0  # rounds of talks left before their price is final
 
 
 def _user_market(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Market:
@@ -782,7 +787,8 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
     if owner == club.id:
         return OfferResult("refused", "He's already yours.")
     nation = club_window_nation(conn, club.id, meta.season_id)
-    if open_window(world, nation, meta.season_id, day) is None:
+    window = open_window(world, nation, meta.season_id, day)
+    if window is None:
         return OfferResult("refused", "The transfer window is closed.")
     value = float(market.value[k])
     if fee_eur > club.budget:
@@ -801,19 +807,33 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
         role = market.view(seller).roles.get(k, Role.SURPLUS)
         ask = asking_price(value, role, float(market.years_left[k]), bool(market.listed[k]),
                            seller.distressed, rules)
-        answer = seller_answer(fee_eur, ask, rules)
-        if answer.kind == "reject":
-            return OfferResult("rejected", "They turned it down: it's well short of what they "
-                               "want.")
-        if answer.kind == "counter":
+        talks = _talks(conn, player_id, club.id, window.start)
+        if talks is not None and talks.status == "ended":
+            return OfferResult("rejected", "They've ended talks for this window.", final=True)
+        current = talks.counter_fee_cents // 100 if talks is not None else ask
+        reservation = reservation_price(ask, role, bool(market.listed[k]), seller.distressed,
+                                        rules)
+        step = haggle(fee_eur, current, reservation, talks.rounds if talks is not None else 0,
+                      rules)
+        if step.kind != "accept":
+            _save_talks(conn, talks, player_id, club.id, owner, day, window, fee_eur, step)
             # Amounts go as numbers: the page shows them in the user's currency.
-            return OfferResult("countered", "They want more for him.", fee_eur=ask)
+            left = max(0, rules.max_rounds - step.rounds)
+            if step.kind == "ended":
+                return OfferResult("rejected", "They've had enough: talks are over for this "
+                                   "window.", fee_eur=step.ask, final=True)
+            if step.kind == "reject":
+                return OfferResult("rejected", "That's well short: they won't move for it.",
+                                   fee_eur=step.ask, final=step.final, rounds_left=left)
+            moved = step.ask < current
+            message = ("They come down a little." if moved else "They won't come down.") + (
+                " That's their final price." if step.final else "")
+            return OfferResult("countered", message, fee_eur=step.ask, final=step.final,
+                               rounds_left=left)
         asked = wage_demand(going, float(market.wage[k]), False, rules)
         group = str(market.players.primary[k])
         starters = market.view(club).starters.get(group, [])
         weakest = min((float(market.players.in_group[group][j]) for j in starters), default=0.0)
-        window = open_window(world, nation, meta.season_id, day)
-        assert window is not None
         mood = derive_rng(meta.seed, "market-mood", player_id, club.id,
                           window.start.isoformat()).normal()
         wanted = wage_eur if wage_eur is not None else asked
@@ -835,7 +855,35 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
         news = complete_move(conn, world, meta, move, day)
     except MoveRefused as exc:
         return OfferResult("refused", str(exc))
+    conn.execute(update(transfer_offer).where(
+        transfer_offer.c.player_id == player_id, transfer_offer.c.bidder_club_id == club.id,
+        transfer_offer.c.by_user == 1, transfer_offer.c.status == "negotiating")
+        .values(status="accepted", fee_cents=fee_eur * 100))
     return OfferResult("accepted", news[0], fee_eur, wage, length)
+
+
+def _talks(conn: Connection, player_id: int, club_id: int, since: date) -> Any:
+    """The user's talks over a player this window, if any (the latest)."""
+    return conn.execute(select(transfer_offer).where(
+        transfer_offer.c.player_id == player_id, transfer_offer.c.bidder_club_id == club_id,
+        transfer_offer.c.by_user == 1, transfer_offer.c.status.in_(("negotiating", "ended")),
+        transfer_offer.c.created >= since.isoformat()).order_by(transfer_offer.c.id.desc())
+    ).first()
+
+
+def _save_talks(conn: Connection, talks: Any, player_id: int, club_id: int, owner: int,
+                day: date, window: DateRange, bid: int, step: Haggle) -> None:
+    status = "ended" if step.kind == "ended" else "negotiating"
+    values = {"status": status, "fee_cents": bid * 100, "counter_fee_cents": step.ask * 100,
+              "rounds": step.rounds}
+    if talks is not None:
+        conn.execute(update(transfer_offer).where(transfer_offer.c.id == talks.id)
+                     .values(**values))
+        return
+    conn.execute(transfer_offer.insert().values(
+        player_id=player_id, bidder_club_id=club_id, owner_club_id=owner, kind="transfer",
+        wage_weekly_cents=None, years=None, created=day.isoformat(),
+        expires=window.end.isoformat(), by_user=1, **values))
 
 
 def answer_bid(conn: Connection, world: World, meta: CareerMeta, day: date, offer_id: int,

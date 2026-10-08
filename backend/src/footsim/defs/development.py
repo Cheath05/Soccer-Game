@@ -5,6 +5,14 @@ from pydantic import Field, model_validator
 from footsim.defs.common import DefModel
 
 
+class PositionTrainingDef(DefModel):
+    """A player learning a position the user chose for him."""
+
+    rate_per_month: float = Field(ge=0)
+    age_factor: list[tuple[float, float]]  # (age up to, multiplier)
+    natural: int = Field(ge=1, le=20)
+
+
 class DevelopmentDef(DefModel):
     growth_by_age: list[tuple[int, float]]  # (up to age, share of the gap closed in a year)
     late_growth: float = Field(ge=0, le=1)  # the share once past his peak age
@@ -30,6 +38,7 @@ class DevelopmentDef(DefModel):
     trend_memory: float = Field(ge=0, lt=1)  # share of last month's trend his trend keeps
     trend_shown: float = Field(ge=0)  # trend (overall a month) that shows an up or down arrow
 
+    position_training: PositionTrainingDef
     @model_validator(mode="after")
     def _ordered(self) -> "DevelopmentDef":
         for low, high in (self.peak_age, self.decline_start):

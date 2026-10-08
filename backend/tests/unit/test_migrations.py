@@ -349,3 +349,21 @@ def test_version_12_gains_the_playing_view_and_one_loan_per_player(tmp_path: Pat
             assert playing == active  # no loans yet: everyone plays where he's contracted
             STEPS[13](conn)
     session.close()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_14_gains_haggling_and_position_training(tmp_path: Path) -> None:
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE position_training"))
+        conn.execute(text("ALTER TABLE transfer_offer DROP COLUMN rounds"))
+    write_meta(engine, {"schema_version": 14})
+    assert migrate(engine) == 14
+    for _ in range(2):
+        with engine.begin() as conn:
+            assert "rounds" in {c["name"] for c in inspect(conn).get_columns("transfer_offer")}
+            assert "position_training" in inspect(conn).get_table_names()
+            STEPS[15](conn)
+    session.close()

@@ -11,9 +11,11 @@ from footsim.transfers.decisions import (
     club_level,
     contract_years,
     free_agent_accepts,
+    haggle,
     opening_bid,
     player_accepts,
     player_utility,
+    reservation_price,
     seller_answer,
     squad_roles,
     wage_demand,
@@ -112,3 +114,30 @@ def test_a_free_agent_wont_drop_far_below_his_level() -> None:
     rules = _rules()
     assert free_agent_accepts(50, 55, rules)
     assert not free_agent_accepts(30, 55, rules)
+
+
+
+def test_a_club_gives_ground_to_fair_offers_down_to_its_walk_away_price() -> None:
+    rules = _rules()
+    ask = 40_000_000
+    floor = reservation_price(ask, Role.STARTER, False, False, rules)
+    assert floor < ask and reservation_price(ask, Role.KEY, False, False, rules) == ask
+    assert reservation_price(ask, Role.SURPLUS, True, False, rules) < reservation_price(
+        ask, Role.SURPLUS, False, False, rules)
+    # A fair offer brings the price halfway down; repeated, it settles at the floor, then final.
+    step = haggle(floor, ask, floor, 0, rules)
+    assert step.kind == "counter" and floor <= step.ask < ask and step.rounds == 1
+    prices = [step.ask]
+    for _ in range(rules.max_rounds - 1):
+        step = haggle(floor, step.ask, floor, step.rounds, rules)
+        prices.append(step.ask)
+    assert prices == sorted(prices, reverse=True) and step.final
+    assert haggle(floor, step.ask, floor, step.rounds, rules).kind in ("accept", "ended")
+    # Meeting the price is accepted; an insult costs two rounds; patience runs out.
+    assert haggle(ask, ask, floor, 0, rules).kind == "accept"
+    insult = haggle(int(ask * 0.3), ask, floor, 0, rules)
+    assert insult.kind == "reject" and insult.rounds == 2 and insult.ask == ask
+    assert haggle(int(ask * 0.3), ask, floor, rules.max_rounds - 1, rules).kind == "ended"
+    # Below the floor (but not an insult): countered at the same price.
+    low = haggle(int(floor * 0.9), ask, floor, 0, rules)
+    assert low.kind == "counter" and low.ask == ask

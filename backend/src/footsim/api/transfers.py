@@ -63,9 +63,11 @@ class OfferIn(BaseModel):
 class OfferOut(BaseModel):
     status: str  # accepted | countered | rejected | refused
     message: str
-    fee_eur: int
+    fee_eur: int  # countered or rejected by the club: its price now
     wage_eur: int
     years: int
+    final: bool = False  # the club's last word: another refusal ends talks for the window
+    rounds_left: int = 0
 
 
 class BidOut(BaseModel):
@@ -99,7 +101,8 @@ class HistoryOut(BaseModel):
 
 def _offer_out(result: OfferResult) -> OfferOut:
     return OfferOut(status=result.status, message=result.message, fee_eur=result.fee_eur,
-                    wage_eur=result.wage_eur, years=result.years)
+                    wage_eur=result.wage_eur, years=result.years, final=result.final,
+                    rounds_left=result.rounds_left)
 
 
 @router.get("/search")

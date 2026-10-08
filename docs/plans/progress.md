@@ -16,7 +16,21 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): U2, finding clubs, simming to cups, names** (a Sonnet agent's work, reviewed here; the commit that adds this line, after 0460499). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U2).
+- **Latest checkpoint (9 Oct): haggling and position training (schema 15)** (the commit that adds this line; after e2a96aa, which fixed offers showing the club's price in euros beside a button in dollars). The user asked for room to haggle and a way to make players natural in their other positions. Backend only; the detailed offer screen and the training controls follow (an agent, after the current UI one).
+  - **Haggling** (`decisions.reservation_price`, `decisions.haggle`; `make_offer` keeps the talks in a `transfer_offer` row, `by_user` 1, with `rounds`):
+    - a club's walk-away price is a share of its asking price by role (key 100%, starter 92%, rotation 85%, surplus 75%; ×0.95 when listed or in debt);
+    - a fair offer (at least that price) brings its price `concession` (50%) of the way down to the bid;
+    - lower offers are countered at the same price, and insults (below 60%) cost two rounds;
+    - after `max_rounds` (4) its price is final, and past that talks end for the window.
+    - The API's offer answer has `final` and `rounds_left`. The AI's own deals are unchanged.
+  - **Position training** (`world/training.py`; the `position_training` table; development.yaml `position_training`):
+    - the user picks a position for one of their players;
+    - each month his familiarity there grows by 1 × an age factor (1.5 up to 21, down to 0.5 past 32) until natural (18: his full rating there);
+    - news when he gets there.
+    - `GET`/`PUT /api/players/{id}/training` (own players only).
+    - Training removes the familiarity penalty, not role differences: an AM's rating at CM still weighs the CM role's attributes.
+  - **Tests:** `test_decisions.py` (haggling), `test_user_transfers.py` (haggling through the API), `test_training.py`, and the v14 → v15 migration.
+- **9 Oct: U2, finding clubs, simming to cups, names** (b8d8ee9, after 0460499; a Sonnet agent's work, reviewed here). The user's 8 Oct requests (`docs/plans/ui-requests-8oct.md` U2).
   - **Club search** in the header (`GET /api/clubs/search?q=`: accents folded; ranked by prefix, word start, substring, then reputation), opening the club page.
   - **"Next cup match"** in the Sim to… menu (`GET /api/career/sim/targets`; `POST /api/career/sim` takes `{"target": ...}` and resolves it on the server). There's one entry per competition with an upcoming drawn match, so continental competitions will just appear. It stops the day before, like Sim to date.
   - **Competition names** beside results in the sim progress and summary, the dashboard and club pages.

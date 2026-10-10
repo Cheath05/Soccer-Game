@@ -16,7 +16,11 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): live match controls, added time, Continue stays put** (the commit that adds this line; after 57aa15c). The user's play-test of a live match: no sign of who was booked; a change made while paused couldn't be undone; no way to pick the newcomer's role; after a red card nobody could be moved into the empty CB slot; added time always 7+; Continue jumped to the match day page.
+- **Latest checkpoint (10 Oct): calibration batches work again on real squads** (the commit that adds this line; after 293e8c5).
+  - **The bug:** `calibrate-engine` on a world stopped at its first match with "no such table: playing". Squads have been read through the `playing` view since W4-8a (schema 13), and the base world file is older than that. No real-squad batch had run since.
+  - **The fix:** the batch now migrates a temporary copy of the world (`engine_batch.current_world`) and leaves the original alone.
+  - **Checks:** a 4-fixture ENG1 run; ruff and mypy. The 200-fixture batch on this commit is next (the measure worktree).
+- **9 Oct: live match controls, added time, Continue stays put** (293e8c5, after 57aa15c). The user's play-test of a live match: no sign of who was booked; a change made while paused couldn't be undone; no way to pick the newcomer's role; after a red card nobody could be moved into the empty CB slot; added time always 7+; Continue jumped to the match day page.
   - **Engine** (`match/engine/engine.py`; logged commands, so a watched match still replays exactly):
     - `move_to_slot`: a player takes a formation slot, swapping with its holder or filling it if a red card left it empty. The keeper stays in goal while he's on.
     - `set_role`: a player on the pitch, or a substitute still waiting to come on (pending subs now carry a role, which `_bring_on` applies).

@@ -12,10 +12,13 @@ from the tactic rather than from luck.
 import json
 import math
 import os
+import shutil
 import sqlite3
+import tempfile
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from multiprocessing import get_context
@@ -135,6 +138,24 @@ def play_task(task: MatchTask) -> dict[str, Any]:
                    xi_rating=[round(float(np.mean([sp.rating for sp in sheet.starters])), 2)
                               for sheet in (home, away)])
     return summary
+
+
+@contextmanager
+def current_world(world: Path) -> Iterator[Path]:
+    """A copy of ``world`` at this build's schema: the base world is built once and kept, but
+    squads are read the way the game reads them now (the ``playing`` view, schema 13), so the
+    batch works on a migrated copy and leaves the original alone."""
+    from footsim.persistence.migrations import migrate
+
+    with tempfile.TemporaryDirectory(prefix="footsim-batch-") as folder:
+        copy = Path(folder) / world.name
+        shutil.copyfile(world, copy)
+        engine = create_engine(f"sqlite:///{copy}")
+        try:
+            migrate(engine)
+        finally:
+            engine.dispose()
+        yield copy
 
 
 def run_tasks(tasks: Sequence[MatchTask], world: Path | None, workers: int) -> list[dict[str, Any]]:

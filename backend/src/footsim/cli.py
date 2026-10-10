@@ -204,7 +204,9 @@ def _fit_synthetic(args: argparse.Namespace) -> int:
 
 
 def _calibrate_engine(args: argparse.Namespace) -> int:
-    from footsim.calibration.engine_batch import BASELINE, calibrate, parse_arm
+    from contextlib import nullcontext
+
+    from footsim.calibration.engine_batch import BASELINE, calibrate, current_world, parse_arm
 
     arms = [BASELINE, *(parse_arm(spec) for spec in args.ab)]
     world = None if args.synthetic else args.world
@@ -212,10 +214,11 @@ def _calibrate_engine(args: argparse.Namespace) -> int:
         print(f"No world at {world}: build one with `just build-world`, or use --synthetic.")
         return 1
     low, _, high = args.quality.partition("-")
-    path = calibrate(args.division, args.n, args.seed, arms, world, args.synthetic,
-                     args.workers, args.focus_club, args.out,
-                     ai_manager=args.ai_manager == "on",
-                     quality=(float(low), float(high or low)), equal=args.equal)
+    with current_world(world) if world is not None else nullcontext(None) as current:
+        path = calibrate(args.division, args.n, args.seed, arms, current, args.synthetic,
+                         args.workers, args.focus_club, args.out,
+                         ai_manager=args.ai_manager == "on",
+                         quality=(float(low), float(high or low)), equal=args.equal)
     print(path.read_text(encoding="utf-8"))
     print(f"Report written to {path}")
     return 0

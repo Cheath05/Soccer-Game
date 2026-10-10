@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useCareer, useSaveTactics, useSquad, useTactics } from '../api/hooks'
 import type { SheetEntry, TacticsUpdate } from '../api/types'
 import PitchBoard from '../components/PitchBoard'
+import SavedTactics from '../components/SavedTactics'
 import { SlotBreakdown } from '../components/SlotBreakdown'
 import { positionColor, ratingColor } from '../lib/format'
 import { fullLineup, freeBenchPlace, placeOf, swapInto } from '../lib/lineup'
@@ -270,6 +271,7 @@ export default function TacticsPage() {
           <Button variant="default" onClick={() => update({ lineup: null })}>
             Pick best XI and bench
           </Button>
+          <SavedTactics />
         </Group>
       </Group>
       {save.error && <Alert color="red">{save.error.message}</Alert>}

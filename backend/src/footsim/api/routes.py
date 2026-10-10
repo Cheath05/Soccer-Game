@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from footsim import __version__
@@ -41,6 +42,7 @@ from footsim.api.session import CareerSession, NoCareer
 from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
+from footsim.world import tactic_presets
 from footsim.world.career import advance, play_user_instant, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
@@ -376,6 +378,66 @@ def play_now(fixture_id: int, session: Session) -> MatchOut:
     session.autosave()
     with session.read() as conn:
         return queries.match_detail(conn, fixture_id)
+
+
+class PresetOut(BaseModel):
+    id: int
+    name: str
+    formation: str
+    with_lineup: bool
+    saved: str
+
+
+class PresetIn(BaseModel):
+    name: str
+    with_lineup: bool = False
+
+
+def _presets(session: CareerSession) -> list[PresetOut]:
+    with session.read() as conn:
+        return [PresetOut(**vars(p)) for p in tactic_presets.presets(conn, read_meta(conn))]
+
+
+@router.get("/tactics/presets")
+def get_presets(session: Session) -> list[PresetOut]:
+    """The user's saved tactics."""
+    return _presets(session)
+
+
+@router.post("/tactics/presets")
+def save_preset(body: PresetIn, session: Session) -> list[PresetOut]:
+    """Save the tactic now under a name (replacing one saved under that name)."""
+    try:
+        with session.write() as conn:
+            meta = read_meta(conn)
+            tactic_presets.save_preset(conn, meta, body.name, body.with_lineup,
+                                       meta.current_date)
+    except tactic_presets.PresetRefused as exc:
+        raise HTTPException(400, str(exc)) from exc
+    session.autosave()
+    return _presets(session)
+
+
+@router.post("/tactics/presets/{preset_id}/load")
+def load_preset(preset_id: int, session: Session) -> TacticsOut:
+    """Make a saved tactic the club's tactic."""
+    world = get_world()
+    try:
+        with session.write() as conn:
+            tactic_presets.load_preset(conn, world, read_meta(conn), preset_id)
+    except tactic_presets.PresetRefused as exc:
+        raise HTTPException(400, str(exc)) from exc
+    session.autosave()
+    with session.read() as conn:
+        return queries.tactics(conn, world)
+
+
+@router.delete("/tactics/presets/{preset_id}")
+def delete_preset(preset_id: int, session: Session) -> list[PresetOut]:
+    with session.write() as conn:
+        tactic_presets.delete_preset(conn, read_meta(conn), preset_id)
+    session.autosave()
+    return _presets(session)
 
 
 @router.get("/tactics")

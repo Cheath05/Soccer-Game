@@ -241,3 +241,39 @@ export function useSaveGame() {
     onSuccess: (data) => client.setQueryData(['saves'], data),
   })
 }
+
+/** The user's saved tactics (api/routes.py tactics/presets). */
+export interface TacticPreset {
+  id: number
+  name: string
+  formation: string
+  with_lineup: boolean // saved with its line-up
+  saved: string // the game date
+}
+
+export const useTacticPresets = () =>
+  useQuery({ queryKey: ['tactic-presets'], queryFn: () => api.get<TacticPreset[]>('/tactics/presets') })
+
+export function useSaveTacticPreset() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; with_lineup: boolean }) => api.post<TacticPreset[]>('/tactics/presets', body),
+    onSuccess: (data) => client.setQueryData(['tactic-presets'], data),
+  })
+}
+
+export function useLoadTacticPreset() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.post<Tactics>(`/tactics/presets/${id}/load`, {}),
+    onSuccess: (data) => client.setQueryData(['tactics'], data),
+  })
+}
+
+export function useDeleteTacticPreset() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.delete<TacticPreset[]>(`/tactics/presets/${id}`),
+    onSuccess: (data) => client.setQueryData(['tactic-presets'], data),
+  })
+}

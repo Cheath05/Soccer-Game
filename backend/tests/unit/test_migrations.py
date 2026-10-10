@@ -384,3 +384,19 @@ def test_version_15_gains_the_loan_list(tmp_path: Path) -> None:
             assert conn.execute(text("SELECT MAX(loan_listed) FROM contract")).scalar_one() == 0
             STEPS[16](conn)
     session.close()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_16_gains_saved_tactics(tmp_path: Path) -> None:
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE tactic_preset"))
+    write_meta(engine, {"schema_version": 16})
+    assert migrate(engine) == 16
+    for _ in range(2):
+        with engine.begin() as conn:
+            assert "tactic_preset" in inspect(conn).get_table_names()
+            STEPS[17](conn)
+    session.close()

@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 16  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 17  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -444,6 +444,22 @@ finance_ledger = Table(
     Column("amount_cents", Integer, nullable=False),
     Column("ref_id", Integer),  # what it refers to (a competition, a transfer)
     Index("ix_finance_ledger_club", "club_id", "season_id"),
+)
+
+# The user's saved tactics: a name, and the tactic as the tactic table keeps it (the line-up
+# only when saved with it).
+tactic_preset = Table(
+    "tactic_preset",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("name", Text, nullable=False),
+    Column("formation", Text, nullable=False),
+    Column("roles", Text, nullable=False),
+    Column("lineup", Text),
+    Column("instructions", Text, nullable=False),
+    Column("saved", Text, nullable=False),  # the game date it was saved
+    UniqueConstraint("club_id", "name", name="ux_tactic_preset_name"),
 )
 
 tactic = Table(

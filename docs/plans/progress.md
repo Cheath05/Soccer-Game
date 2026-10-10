@@ -16,7 +16,23 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (10 Oct): calibration batches work again on real squads** (the commit that adds this line; after 293e8c5).
+- **Latest checkpoint (10 Oct): saved tactics (schema 17)** (the commit that adds this line; after 289e27a). The user asked for several tactic saves.
+  - **`world/tactic_presets.py`** and the `tactic_preset` table (`_to_v17`). Up to 20 per club, unique names; saving under a name replaces it. Each holds the formation, roles and instructions, and the line-up only when "Save the line-up too" is ticked.
+  - **Loading** goes through `set_user_tactic`, with its checks. Players in a saved line-up who have left are dropped, and the rest of the line-up is picked automatically.
+  - **API:** `GET`/`POST /api/tactics/presets`, `POST /api/tactics/presets/{id}/load`, `DELETE /api/tactics/presets/{id}`.
+  - **UI:** a "Saved tactics" menu on the Tactics page (save, load, delete).
+  - **Tests:** `test_tactic_presets.py` (save, replace, load, delete; a departed player dropped from a saved line-up) and the v16 → v17 migration.
+  - **Calibration (measured this session, ENG1, 200 fixtures, default seed, measure worktree):**
+    - **The added-time change is neutral.** 57aa15c (with the harness fix) against 293e8c5 gives identical results: home .305, draw .24, away .455, goals 3.15 vs 3.145. Duration is 99.13 vs 99.02 minutes. Reports: `reports/engine/added-time-before-57aa15c`, `added-time-289e27a`.
+    - **Both differ from the 7 Oct baseline** (`reports/engine/e/ENG1`): home .36, away .335, goals 2.88.
+      - The golden values haven't changed since 2a0b606, so the engine core is the same.
+      - The likely cause: since W4-8a `load_squad` reads the `playing` view with no ORDER BY, so squads can come back in another order. That reshuffles tie-breaks and every match's random path, which makes this a new sample of the same 200 fixtures.
+      - Away .335 → .455 is about 2.5 standard errors, so treat it as a warning, not proof.
+    - **Either way the home/away split is OFF** (home .305 against .41–.47). That's step 2.1, home advantage, still unticked with provisional values.
+    - **Next for calibration:**
+      1. give `_SQUAD_SQL` an ORDER BY, so squads are read in a fixed order;
+      2. then the step 2.1 fit: 400 matches each in ENG1 and ENG4 (seed 31), as planned.
+- **10 Oct: calibration batches work again on real squads** (289e27a, after 293e8c5).
   - **The bug:** `calibrate-engine` on a world stopped at its first match with "no such table: playing". Squads have been read through the `playing` view since W4-8a (schema 13), and the base world file is older than that. No real-squad batch had run since.
   - **The fix:** the batch now migrates a temporary copy of the world (`engine_batch.current_world`) and leaves the original alone.
   - **Checks:** a 4-fixture ENG1 run; ruff and mypy. The 200-fixture batch on this commit is next (the measure worktree).

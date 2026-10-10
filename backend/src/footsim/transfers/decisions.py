@@ -112,10 +112,10 @@ def wage_demand(going_rate: float, current_wage: float | None, free_agent: bool,
         wanted = going_rate * rules.free_agent_discount
     else:
         wanted = max(going_rate, current_wage * rules.move_raise)
-    return _wage_steps(wanted)
+    return wage_steps(wanted)
 
 
-def _wage_steps(eur: float) -> int:
+def wage_steps(eur: float) -> int:
     """Weekly wages as a club writes them: to €50 below €5K, €500 below €50K, €1K above."""
     step = 50 if eur < 5_000 else 500 if eur < 50_000 else 1_000
     return int(max(step, round(eur / step) * step))

@@ -62,6 +62,13 @@ class DisplayRules(DefModel):
     transactions_shown: int = Field(ge=1)  # one-off transactions listed, the latest first
 
 
+class Currency(DefModel):
+    """A currency the user can see money in (world/money.py)."""
+
+    symbol: str = Field(min_length=1)
+    per_euro: float = Field(gt=0)
+
+
 class FinanceDef(DefModel):
     """How clubs' money works (world/finance.py)."""
 
@@ -80,6 +87,16 @@ class FinanceDef(DefModel):
     parachute: float = Field(ge=0, le=1)
     board: BoardRules
     display: DisplayRules
+    # Money is kept in euros; the user sees it, and is quoted prices, in one of these (fixed
+    # rates, display only). frontend/src/lib/format.ts keeps the same table.
+    currencies: dict[str, Currency]
+
+    @model_validator(mode="after")
+    def _euro_is_base(self) -> Self:
+        euro = self.currencies.get("EUR")
+        if euro is None or euro.per_euro != 1:
+            raise ValueError("currencies: EUR must be listed at per_euro 1")
+        return self
 
     @model_validator(mode="after")
     def _prizes_rise(self) -> Self:

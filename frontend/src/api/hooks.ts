@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { type Currency, setCurrency, shownCurrency } from '../lib/format'
 import { ApiError, api } from './client'
 import type {
   AdvanceResult,
@@ -39,6 +40,17 @@ export const useCareer = () =>
     queryFn: () => api.get<Career>('/career'),
     retry: (count, error) => !(error instanceof ApiError && error.status === 409) && count < 2,
   })
+
+/** Show money in another currency: kept with the career, whose prices are then quoted as round
+ * figures in it, so everything is fetched again. */
+export function useChooseCurrency() {
+  const invalidate = useInvalidateAll()
+  const hasCareer = useCareer().data !== undefined
+  return (next: Currency) => {
+    setCurrency(next)
+    if (hasCareer) void api.put<Career>('/career/currency', { currency: next }).then(invalidate, () => undefined)
+  }
+}
 
 export const useSaves = () => useQuery({ queryKey: ['saves'], queryFn: () => api.get<SaveSlot[]>('/saves') })
 
@@ -184,6 +196,7 @@ export function useNewCareer() {
         manager_name: args.manager,
         budget_eur: args.budget ?? null,
         board_enabled: args.boardEnabled ?? true,
+        currency: shownCurrency(),
       }),
     onSuccess: invalidate,
   })

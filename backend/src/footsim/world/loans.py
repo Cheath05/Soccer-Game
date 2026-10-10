@@ -30,6 +30,7 @@ from footsim.world.transfers import (
     on_loan,
     owner_contract,
     senior_squad,
+    void_offers,
 )
 from footsim.world.windows import club_window_nation, window_open
 
@@ -100,6 +101,8 @@ def start_loan(conn: Connection, world: World, meta: CareerMeta, loan: Loan,
     conn.execute(text("UPDATE club_finance SET transfer_budget_cents = transfer_budget_cents "
                       "- :c WHERE club_id = :b"), {"c": cost, "b": loan.borrower_id})
     _drop_from_lineup(conn, owner.club_id, loan.player_id)
+    conn.execute(text("UPDATE contract SET loan_listed = 0 WHERE id = :id"), {"id": owner.id})
+    void_offers(conn, loan.player_id, keep_user_talks=loan.by_user)
     return (f"{_name(conn, loan.player_id)} joins {club_name(conn, loan.borrower_id)} on loan "
             f"from {club_name(conn, owner.club_id)} until {loan.end.strftime('%B %Y')}.")
 

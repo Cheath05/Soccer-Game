@@ -33,6 +33,7 @@ from footsim.transfers.valuation import plain_values, values_eur, years_old
 from footsim.world.context import World
 from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
 from footsim.world.meta import CareerMeta
+from footsim.world.money import money_text
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import club_name, display_name
 from footsim.world.windows import club_window_nation, window_open
@@ -157,6 +158,7 @@ def _drop_from_lineup(conn: Connection, club_id: int, player_id: int) -> None:
 
 
 def fee_text(cents: int) -> str:
+    """An amount in euros (reports; the user's own text uses ``money.money_text``)."""
     eur = cents / 100
     if eur >= 999_500:
         return f"€{eur / 1_000_000:.1f}M".replace(".0M", "M")
@@ -194,7 +196,19 @@ def complete_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
             Entry(seller, "transfer", move.fee_cents, transfer_id)])
     if move.to_club_id is not None:  # a release changes no budget
         _move_budgets(conn, world, meta, move, owner, day)
-    return [_news(conn, move, seller, kind)]
+    void_offers(conn, move.player_id, keep_user_talks=move.by_user)
+    return [_news(conn, world, meta, move, seller, kind)]
+
+
+def void_offers(conn: Connection, player_id: int, keep_user_talks: bool = False) -> None:
+    """A player who has moved (or gone on loan) can't be bought from where he was: other clubs'
+    open bids for him are withdrawn, and the user's talks with his old club end (unless this is
+    the user's own deal, which marks its talks itself)."""
+    conn.execute(text("UPDATE transfer_offer SET status = 'withdrawn' WHERE player_id = :p AND "
+                      "status = 'pending'"), {"p": player_id})
+    if not keep_user_talks:
+        conn.execute(text("UPDATE transfer_offer SET status = 'ended' WHERE player_id = :p AND "
+                          "status = 'negotiating'"), {"p": player_id})
 
 
 def _move_budgets(conn: Connection, world: World, meta: CareerMeta, move: Move,
@@ -214,7 +228,8 @@ def _move_budgets(conn: Connection, world: World, meta: CareerMeta, move: Move,
         "WHERE club_id = :club"), changes)
 
 
-def _news(conn: Connection, move: Move, seller: int | None, kind: str) -> str:
+def _news(conn: Connection, world: World, meta: CareerMeta, move: Move, seller: int | None,
+          kind: str) -> str:
     who = conn.execute(text("SELECT first_name, last_name, known_as FROM person WHERE id = :p"),
                        {"p": move.player_id}).one()
     name = display_name(who.first_name, who.last_name, who.known_as)
@@ -226,7 +241,8 @@ def _news(conn: Connection, move: Move, seller: int | None, kind: str) -> str:
     if kind == "free":
         return f"{name} joins {buyer} on a free transfer."
     assert seller is not None
-    return f"{name} joins {buyer} from {club_name(conn, seller)} for {fee_text(move.fee_cents)}."
+    return (f"{name} joins {buyer} from {club_name(conn, seller)} for "
+            f"{money_text(move.fee_cents / 100, world, meta.currency)}.")
 
 
 # --- market values --------------------------------------------------------------------

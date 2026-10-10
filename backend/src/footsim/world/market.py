@@ -16,7 +16,7 @@ the same way. The user's club and players are left out here: W4-6 brings them in
 """
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -50,11 +50,12 @@ from footsim.transfers.decisions import (
 )
 from footsim.transfers.valuation import values_eur, years_old
 from footsim.world.context import AI_FORMATIONS, World
-from footsim.world.finance import wage_bills
+from footsim.world.finance import wage_bills, weeks_left
 from footsim.world.loans import Loan, start_loan
 from footsim.world.meta import CareerMeta
+from footsim.world.money import money_text, quote, quote_wage
 from footsim.world.squads import display_name
-from footsim.world.transfers import Move, MoveRefused, complete_move, fee_text
+from footsim.world.transfers import Move, MoveRefused, complete_move
 from footsim.world.windows import club_window_nation, open_window
 
 META_KEY = "market_day"  # the last day the market ran (after_day may run a day twice)
@@ -183,11 +184,13 @@ class _Market:
         self.wage = np.zeros(n, dtype=np.int64)  # euros a week (a free agent's last)
         self.years_left = np.zeros(n, dtype=float)
         self.listed = np.zeros(n, dtype=bool)
+        self.loan_listed = np.zeros(n, dtype=bool)  # the user's players up for loan
         self.moved = np.zeros(n, dtype=bool)
         self.plays_for = np.full(n, FREE, dtype=np.int64)  # where he plays (on loan: there)
         self.on_loan = np.zeros(n, dtype=bool)
         for r in conn.execute(text(
-                "SELECT person_id, club_id, wage_weekly_cents, end_date, listed FROM contract "
+                "SELECT person_id, club_id, wage_weekly_cents, end_date, listed, loan_listed "
+                "FROM contract "
                 "WHERE is_active = 1 AND kind != 'loan'")):
             k = p.index.get(int(r.person_id))
             if k is None:
@@ -196,6 +199,7 @@ class _Market:
             self.wage[k] = r.wage_weekly_cents // 100
             self.years_left[k] = max(0.0, (date.fromisoformat(r.end_date) - day).days / 365.25)
             self.listed[k] = bool(r.listed)
+            self.loan_listed[k] = bool(r.loan_listed)
         for r in conn.execute(text(
                 "SELECT person_id, wage_weekly_cents FROM contract k WHERE is_active = 0 "
                 "AND NOT EXISTS (SELECT 1 FROM contract a WHERE a.person_id = k.person_id "
@@ -457,13 +461,14 @@ class _Market:
 
     def loan_candidates(self, club: _Club, need: _Need) -> list[int]:
         """Young players at clubs well above this one who'd cover the need (their clubs decide
-        whether they're spare)."""
+        whether they're spare), and any the user has put up for loan."""
         p, rules = self.players, self.rules
         rating = p.in_group[need.group]
+        young_at_bigger = ((self.age <= rules.loan_max_age)
+                           & (self.market_rep >= club.reputation + rules.loan_level_gap))
         mask = (p.can_play[need.group] & (self.owner != club.id) & (self.owner != FREE)
-                & ~self.moved & ~self.on_loan & (self.age <= rules.loan_max_age)
-                & (rating >= need.low) & (rating <= need.high + 2)
-                & (self.market_rep >= club.reputation + rules.loan_level_gap))
+                & ~self.moved & ~self.on_loan & (young_at_bigger | self.loan_listed)
+                & (rating >= need.low) & (rating <= need.high + 2))
         rows = np.nonzero(mask)[0]
         order = sorted(rows, key=lambda k: (-rating[k], int(p.ids[k])))
         return [int(k) for k in order[:rules.candidates_per_need]]
@@ -546,6 +551,9 @@ class _Market:
                   buyer_ceiling(value, need.urgency, rules))
         wage = wage_demand(self.going_rate(club, float(p.overall[k])), float(self.wage[k]),
                            False, rules)
+        # The user sees the bid in their currency: it's made in round figures there.
+        fee = quote(fee, self.world, meta.currency)
+        wage = quote_wage(wage, self.world, meta.currency)
         if (wage > club.capacity * rules.max_wage_share
                 or fee + wage * self.weeks_left > club.budget):
             return None
@@ -567,7 +575,8 @@ class _Market:
             "SELECT pe.first_name, pe.last_name, pe.known_as, c.name FROM person pe, club c "
             "WHERE pe.id = :p AND c.id = :c"), {"p": player_id, "c": club.id}).one()
         name = display_name(names.first_name, names.last_name, names.known_as)
-        return (f"{names.name} bid {fee_text(fee * 100)} for {name}. Answer them on the "
+        return (f"{names.name} bid {money_text(fee, self.world, meta.currency)} for {name}. "
+                "Answer them on the "
                 "Transfers page.")
 
     def _moved(self, k: int, club: _Club, seller_id: int, wage: int, years: int) -> None:
@@ -713,6 +722,22 @@ class Terms:
     years: int  # the contract he'd sign
     listed: bool
     window_open: bool  # the user's club's window
+    budget_eur: int = 0  # the user's budget left: a signing costs the fee and wages to June
+    weeks_left: float = 0.0  # the weeks of wages a signing costs this season
+    max_rounds: int = 0  # rounds of haggling before a club's price is final
+    talks: "Talks | None" = None  # the user's talks for him this window, if any
+
+
+@dataclass(frozen=True)
+class Talks:
+    """Where the user's haggling over a player stands this window."""
+
+    their_price_eur: int
+    your_last_bid_eur: int
+    rounds_used: int
+    rounds_left: int
+    final: bool  # their price is their last word
+    ended: bool  # they've ended talks for the window
 
 
 @dataclass(frozen=True)
@@ -728,6 +753,7 @@ class OfferResult:
     years: int = 0
     final: bool = False  # their price is their last word (talks end on the next refusal)
     rounds_left: int = 0  # rounds of talks left before their price is final
+    ended: bool = False  # the club has ended talks for this window
 
 
 def _user_market(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Market:
@@ -765,11 +791,24 @@ def player_terms(conn: Connection, world: World, meta: CareerMeta, day: date,
     club, _, going = _user_view(market, k)
     owner = int(market.owner[k])
     free = owner == FREE
-    wage = wage_demand(going, None if free else float(market.wage[k]), free, market.rules)
+    wage = quote_wage(wage_demand(going, None if free else float(market.wage[k]), free,
+                                  market.rules), world, meta.currency)
     nation = club_window_nation(conn, club.id, meta.season_id)
-    return Terms(player_id, None if free else owner, int(market.value[k]), wage,
-                 contract_years(float(market.age[k]), market.rules), bool(market.listed[k]),
-                 open_window(world, nation, meta.season_id, day) is not None)
+    window = open_window(world, nation, meta.season_id, day)
+    rules = market.rules
+    talks = None
+    row = _talks(conn, player_id, club.id, window.start) if window is not None and not free \
+        else None
+    if row is not None:
+        talks = Talks(row.counter_fee_cents // 100, row.fee_cents // 100, row.rounds,
+                      max(0, rules.max_rounds - row.rounds), row.rounds >= rules.max_rounds,
+                      row.status == "ended")
+    return Terms(player_id, None if free else owner,
+                 quote(float(market.value[k]), world, meta.currency), wage,
+                 contract_years(float(market.age[k]), rules), bool(market.listed[k]),
+                 window is not None, budget_eur=club.budget,
+                 weeks_left=weeks_left(conn, meta.season_id, day),
+                 max_rounds=rules.max_rounds, talks=talks)
 
 
 def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, player_id: int,
@@ -801,27 +840,31 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
             float(market.players.overall[k]) - level.club_reference_overall)
         if not free_agent_accepts(club.reputation, own_level, rules):
             return OfferResult("rejected", "He doesn't want to join a club at your level.")
-        asked = wage_demand(going, None, True, rules)
+        asked = quote_wage(wage_demand(going, None, True, rules), world, meta.currency)
     else:
         seller = market.clubs[owner]
         role = market.view(seller).roles.get(k, Role.SURPLUS)
-        ask = asking_price(value, role, float(market.years_left[k]), bool(market.listed[k]),
-                           seller.distressed, rules)
+        # Prices the user is quoted are round figures in their currency (world/money.py).
+        ask = quote(asking_price(value, role, float(market.years_left[k]),
+                                 bool(market.listed[k]), seller.distressed, rules),
+                    world, meta.currency)
         talks = _talks(conn, player_id, club.id, window.start)
         if talks is not None and talks.status == "ended":
-            return OfferResult("rejected", "They've ended talks for this window.", final=True)
+            return OfferResult("rejected", "They've ended talks for this window.", final=True,
+                               ended=True)
         current = talks.counter_fee_cents // 100 if talks is not None else ask
         reservation = reservation_price(ask, role, bool(market.listed[k]), seller.distressed,
                                         rules)
         step = haggle(fee_eur, current, reservation, talks.rounds if talks is not None else 0,
                       rules)
         if step.kind != "accept":
+            step = replace(step, ask=quote(step.ask, world, meta.currency))
             _save_talks(conn, talks, player_id, club.id, owner, day, window, fee_eur, step)
             # Amounts go as numbers: the page shows them in the user's currency.
             left = max(0, rules.max_rounds - step.rounds)
             if step.kind == "ended":
                 return OfferResult("rejected", "They've had enough: talks are over for this "
-                                   "window.", fee_eur=step.ask, final=True)
+                                   "window.", fee_eur=step.ask, final=True, ended=True)
             if step.kind == "reject":
                 return OfferResult("rejected", "That's well short: they won't move for it.",
                                    fee_eur=step.ask, final=step.final, rounds_left=left)
@@ -830,7 +873,8 @@ def make_offer(conn: Connection, world: World, meta: CareerMeta, day: date, play
                 " That's their final price." if step.final else "")
             return OfferResult("countered", message, fee_eur=step.ask, final=step.final,
                                rounds_left=left)
-        asked = wage_demand(going, float(market.wage[k]), False, rules)
+        asked = quote_wage(wage_demand(going, float(market.wage[k]), False, rules), world,
+                           meta.currency)
         group = str(market.players.primary[k])
         starters = market.view(club).starters.get(group, [])
         weakest = min((float(market.players.in_group[group][j]) for j in starters), default=0.0)

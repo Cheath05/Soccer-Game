@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 15  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 16  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -161,6 +161,8 @@ contract = Table(
     Column("release_clause_cents", Integer),
     Column("is_active", Integer, nullable=False),
     Column("listed", Integer, nullable=False, server_default="0"),  # transfer-listed (W4)
+    # Up for loan: the user offers him to clubs that need cover (AI clubs lend only surplus).
+    Column("loan_listed", Integer, nullable=False, server_default="0"),
     Index("ix_contract_club_active", "club_id", "is_active"),
     Index("ix_contract_person", "person_id"),
     # One club owns a player: at most one active contract per person that isn't a loan (W4-3).

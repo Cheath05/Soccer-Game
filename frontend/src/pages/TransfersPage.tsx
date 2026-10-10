@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Select, Stack, Switch, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -11,16 +11,17 @@ import {
   useAskLoan,
   useBids,
   useExpiring,
-  useListed,
+  type AvailabilityStatus,
+  useAvailability,
   useLoans,
-  useMakeOffer,
   useMarketSearch,
   useRenew,
-  useSetListed,
-  useTerms,
+  useSetAvailability,
   useTransferHistory,
 } from '../api/transfers'
+import PlayerLink from '../components/PlayerLink'
 import ClubLink from '../components/ClubLink'
+import OfferModal from '../components/OfferModal'
 import MarketOverview from '../components/MarketOverview'
 import { useUrlState } from '../lib/urlState'
 import { CURRENCIES, money, monthYear, shortDate, toEuros, useCurrency, wage } from '../lib/format'
@@ -29,78 +30,6 @@ const POSITIONS = ['GK', 'CB', 'FB', 'DM', 'CM', 'AM', 'W', 'ST']
 
 function resultColor(result: OfferResult): string {
   return result.status === 'accepted' ? 'green' : result.status === 'countered' ? 'yellow' : 'red'
-}
-
-/** Amounts are typed in the shown currency, in millions or thousands, and sent in euros. */
-function shownFromEuros(eur: number, perEuro: number, scale: number): number {
-  return Math.round((eur * perEuro) / scale * 100) / 100
-}
-
-function OfferModal({ player, onClose }: { player: MarketPlayer; onClose: () => void }) {
-  const currency = useCurrency()
-  const { symbol, perEuro } = CURRENCIES[currency]
-  const terms = useTerms(player.id).data
-  const offer = useMakeOffer()
-  const [fee, setFee] = useState<number | string>('')
-  const [weekly, setWeekly] = useState<number | string>('')
-  const [result, setResult] = useState<OfferResult | null>(null)
-  const free = player.club === null
-  const feeShown = fee === '' ? (terms && !free ? shownFromEuros(terms.value_eur, perEuro, 1e6) : 0) : Number(fee)
-  const wageShown = weekly === '' ? (terms ? shownFromEuros(terms.wage_eur, perEuro, 1e3) : 0) : Number(weekly)
-
-  const send = (feeEuros?: number) => {
-    void offer
-      .mutateAsync({
-        player_id: player.id,
-        fee_eur: free ? 0 : (feeEuros ?? toEuros(feeShown * 1e6)),
-        wage_eur: toEuros(wageShown * 1e3),
-      })
-      .then(setResult)
-  }
-
-  return (
-    <Modal opened onClose={onClose} title={`Sign ${player.name}`} size="md">
-      <Stack>
-        {terms && (
-          <Text size="sm" c="dimmed">
-            Value {money(terms.value_eur)} · asks {wage(terms.wage_eur)} for {terms.years} {terms.years === 1 ? 'year' : 'years'}
-            {terms.listed ? ' · listed for sale' : ''}
-          </Text>
-        )}
-        {terms && !terms.window_open && <Alert color="orange">Your transfer window is closed.</Alert>}
-        {!free && (
-          <NumberInput label={`Fee (${symbol}M)`} min={0} decimalScale={2} value={feeShown} onChange={setFee} />
-        )}
-        <NumberInput label={`Wage (${symbol}K a week)`} min={0} decimalScale={1} value={wageShown} onChange={setWeekly} />
-        {result && (
-          <Alert color={resultColor(result)} title={result.status === 'accepted' ? 'Done' : result.status === 'countered' ? 'They want more' : 'No deal'}>
-            <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
-              <Text size="sm">
-                {result.message}
-                {result.status === 'countered' && ` Their price: ${money(result.fee_eur)}.`}
-                {result.status === 'rejected' && result.wage_eur > 0 && ` He asks ${wage(result.wage_eur)}.`}
-              </Text>
-              {result.status === 'countered' && (
-                <Button size="xs" style={{ flexShrink: 0 }} onClick={() => send(result.fee_eur)}>
-                  Offer {money(result.fee_eur)}
-                </Button>
-              )}
-            </Group>
-          </Alert>
-        )}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            {result?.status === 'accepted' ? 'Close' : 'Cancel'}
-          </Button>
-          {result?.status !== 'accepted' && (
-            <Button loading={offer.isPending} onClick={() => send()}>
-              {free ? 'Offer a contract' : 'Make the offer'}
-            </Button>
-          )}
-        </Group>
-      </Stack>
-    </Modal>
-  )
 }
 
 function LoanModal({ player, onClose }: { player: MarketPlayer; onClose: () => void }) {
@@ -311,8 +240,14 @@ function BidsTab() {
 function SellTab() {
   const career = useCareer().data
   const squad = useSquad(career?.club.id).data ?? []
-  const listed = new Set(useListed().data ?? [])
-  const setListed = useSetListed()
+  const availability = useAvailability().data
+  const setAvailability = useSetAvailability()
+  const names = new Map(squad.map((p) => [p.id, p.name]))
+  const statusOf = (id: number): AvailabilityStatus => (availability?.transfer.includes(id) ? 'transfer' : availability?.loan.includes(id) ? 'loan' : 'none')
+  const lists: { title: string; hint: string; ids: number[] }[] = [
+    { title: 'Transfer list', hint: 'Clubs bid to buy these players.', ids: availability?.transfer ?? [] },
+    { title: 'Loan list', hint: 'Clubs that need cover ask to borrow these players for the season.', ids: availability?.loan ?? [] },
+  ]
   const loans = useLoans().data ?? []
   return (
     <Stack>
@@ -335,22 +270,50 @@ function SellTab() {
           </Table>
         </Card>
       )}
-      <Text size="sm" c="dimmed">
-        Listed players are offered to other clubs at a lower price, and clubs come in for them more readily.
-      </Text>
+      {lists.map((l) => (
+        <Card withBorder key={l.title}>
+          <Text fw={600}>{l.title}</Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            {l.hint} Offers arrive under &ldquo;Offers for your players&rdquo; over the following days while the window is open.
+          </Text>
+          {l.ids.length === 0 && (
+            <Text size="sm" c="dimmed">
+              Nobody.
+            </Text>
+          )}
+          {l.ids.map((id) => (
+            <Group key={id} justify="space-between">
+              <Text size="sm">
+                <PlayerLink player={{ id, name: names.get(id) ?? `Player ${id}` }} />
+              </Text>
+              <Button size="compact-xs" variant="default" loading={setAvailability.isPending} onClick={() => setAvailability.mutate({ playerId: id, status: 'none' })}>
+                Remove
+              </Button>
+            </Group>
+          ))}
+        </Card>
+      ))}
       <Table striped>
         <Table.Tbody>
           {squad.map((p) => (
             <Table.Tr key={p.id}>
-              <Table.Td>{p.name}</Table.Td>
+              <Table.Td>
+                <PlayerLink player={p} />
+              </Table.Td>
               <Table.Td>{p.position}</Table.Td>
               <Table.Td ta="right">{p.overall}</Table.Td>
               <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
               <Table.Td>
-                <Switch
-                  label="For sale"
-                  checked={listed.has(p.id)}
-                  onChange={(e) => setListed.mutate({ playerId: p.id, listed: e.currentTarget.checked })}
+                <SegmentedControl
+                  size="xs"
+                  value={statusOf(p.id)}
+                  disabled={!availability}
+                  onChange={(v) => setAvailability.mutate({ playerId: p.id, status: v as AvailabilityStatus })}
+                  data={[
+                    { value: 'none', label: 'Not for sale' },
+                    { value: 'transfer', label: 'Transfer' },
+                    { value: 'loan', label: 'Loan' },
+                  ]}
                 />
               </Table.Td>
             </Table.Tr>

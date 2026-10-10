@@ -107,7 +107,7 @@ def test_the_window_and_the_budget_bind_the_user_too(
     assert closed["status"] == "refused" and "window" in closed["message"]
 
 
-def _bid(session: CareerSession, club_id: int, fee: int) -> tuple[int, int, int]:
+def _bid(session: CareerSession, club_id: int, fee: int, nth: int = 0) -> tuple[int, int, int]:
     """An AI club's bid for the user's best-paid player, as the market makes one."""
     with session.write() as conn:
         meta = read_meta(conn)
@@ -117,7 +117,7 @@ def _bid(session: CareerSession, club_id: int, fee: int) -> tuple[int, int, int]
         bidder = conn.execute(text(
             "SELECT m.club_id FROM club_league_membership m JOIN competition c ON c.id = "
             "m.competition_id WHERE c.key = 'ENG1' AND m.club_id != :c ORDER BY m.club_id "
-            "LIMIT 1"), {"c": club_id}).scalar_one()
+            "LIMIT 1 OFFSET :n"), {"c": club_id, "n": nth}).scalar_one()
         offer = conn.execute(text(
             "INSERT INTO transfer_offer (player_id, bidder_club_id, owner_club_id, kind, status, "
             "fee_cents, wage_weekly_cents, years, created, expires, by_user) VALUES (:p, :b, :c, "
@@ -147,6 +147,54 @@ def test_the_user_answers_bids_for_their_players(
     assert player not in squad
     assert client.post(f"/api/transfers/bids/{offer}", json={"action": "accept"}
                        ).json()["status"] == "refused"  # once only
+
+
+def test_selling_a_player_withdraws_the_other_bids_for_him(
+        game: tuple[TestClient, CareerSession, int]) -> None:
+    client, session, club_id = game
+    first, player, _ = _bid(session, club_id, 2_000_000)
+    second, same, _ = _bid(session, club_id, 2_500_000, nth=1)
+    assert same == player
+    assert {b["id"] for b in client.get("/api/transfers/bids").json()} == {first, second}
+    sold = client.post(f"/api/transfers/bids/{second}", json={"action": "accept"}).json()
+    assert sold["status"] == "accepted", sold
+    assert client.get("/api/transfers/bids").json() == []  # the other bid is gone
+    with session.read() as conn:
+        statuses = dict(conn.execute(text("SELECT id, status FROM transfer_offer")).all())
+    assert statuses == {first: "withdrawn", second: "accepted"}
+
+
+def test_a_player_goes_up_for_sale_or_for_loan(
+        game: tuple[TestClient, CareerSession, int]) -> None:
+    client, _, club_id = game
+    player = client.get(f"/api/clubs/{club_id}/squad").json()[-1]["id"]
+    put = client.put(f"/api/transfers/availability/{player}", json={"status": "loan"}).json()
+    assert put == {"transfer": [], "loan": [player]}
+    put = client.put(f"/api/transfers/availability/{player}", json={"status": "transfer"}).json()
+    assert put == {"transfer": [player], "loan": []}  # one or the other
+    assert client.get("/api/transfers/listed").json() == [player]
+    put = client.put(f"/api/transfers/availability/{player}", json={"status": "none"}).json()
+    assert put == {"transfer": [], "loan": []}
+
+
+def test_prices_are_quoted_in_the_careers_currency(
+        game: tuple[TestClient, CareerSession, int]) -> None:
+    """What's shown is what's paid: values and wages asked are round figures in dollars (the
+    default), and in euros once the user switches."""
+    client, _, _ = game
+    assert client.get("/api/career").json()["currency"] == "USD"
+    target = client.get("/api/transfers/search", params={"min_overall": 75}).json()[0]
+    for currency, rate in (("USD", 1.1), ("EUR", 1.0)):
+        if currency != "USD":
+            assert client.put("/api/career/currency", json={"currency": currency}
+                              ).json()["currency"] == currency
+        terms = client.get(f"/api/transfers/terms/{target['id']}").json()
+        # Whole euros: shown to within a euro of the round figure (which is what's displayed).
+        shown = round(terms["value_eur"] * rate)
+        assert shown % 100_000 in (0, 1, 99_999), (currency, shown)
+        weekly = round(terms["wage_eur"] * rate)
+        assert weekly % 50 in (0, 1, 49), (currency, weekly)
+    assert client.put("/api/career/currency", json={"currency": "XYZ"}).status_code == 422
 
 
 def test_a_bid_for_a_users_player_stops_the_sim(

@@ -118,3 +118,12 @@ display:
   change_amount: 10_000
   changes_shown: 10
   transactions_shown: 20
+
+# The currencies money is shown in (the user's choice; dollars by default). Money is kept in
+# euros; prices quoted to the user (values, asking prices, counters, wages asked) are rounded to
+# market steps in the user's currency, so the figure shown is the figure paid. Keep in step with
+# frontend/src/lib/format.ts CURRENCIES.
+currencies:
+  USD: {symbol: "$", per_euro: 1.1}
+  EUR: {symbol: "€", per_euro: 1.0}
+  GBP: {symbol: "£", per_euro: 0.85}

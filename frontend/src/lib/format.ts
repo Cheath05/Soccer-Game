@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
 // Money is kept in euros everywhere; the player picks the currency it's shown in (dollars until
-// they choose another). The rates are fixed (display only), so a figure never changes with a
-// market.
+// they choose another), kept with the career. The rates are fixed (display only), so a figure
+// never changes with a market, and match data/config/finance/finance.yaml `currencies`: the
+// server quotes prices as round figures in the chosen currency, so what's shown is what's paid.
 export type Currency = 'EUR' | 'GBP' | 'USD'
 export const CURRENCIES: Record<Currency, { symbol: string; perEuro: number; label: string }> = {
   USD: { symbol: '$', perEuro: 1.1, label: '$' },
@@ -32,6 +33,11 @@ export function setCurrency(next: Currency) {
   listeners.forEach((listener) => listener())
 }
 
+/** The currency shown now (outside React). */
+export function shownCurrency(): Currency {
+  return shown
+}
+
 /** The currency money is shown in; re-renders the caller when the player changes it. */
 export function useCurrency(): Currency {
   return useSyncExternalStore(
@@ -43,20 +49,31 @@ export function useCurrency(): Currency {
   )
 }
 
-/** An amount in euros, shown in the chosen currency: €1.2B, −£35M, $850K. */
+/** One decimal, dropped when it's zero: 27.5, 28. */
+function trimmed(n: number): string {
+  return n.toFixed(1).replace(/\.0$/, '')
+}
+
+/** An amount in euros, shown in the chosen currency: €1.25B, −£35M, $27.5M, $850K. The server
+ * writes amounts in its text the same way (world/money.py money_text). */
 export function money(eur: number): string {
   const { symbol, perEuro } = CURRENCIES[shown]
   const value = eur * perEuro
   const sign = value < 0 ? '−' : ''
   const size = Math.abs(value)
   if (size >= 1_000_000_000) return `${sign}${symbol}${(size / 1_000_000_000).toFixed(size >= 10_000_000_000 ? 1 : 2)}B`
-  if (size >= 1_000_000) return `${sign}${symbol}${(size / 1_000_000).toFixed(size >= 10_000_000 ? 0 : 1)}M`
+  if (size >= 999_950) return `${sign}${symbol}${trimmed(size / 1_000_000)}M`
   if (size >= 1_000) return `${sign}${symbol}${Math.round(size / 1_000)}K`
   return `${sign}${symbol}${Math.round(size)}`
 }
 
+/** A weekly wage, as exact as clubs write them: $2,550/wk, $85.5K/wk, $1.2M/wk. */
 export function wage(eurPerWeek: number): string {
-  return `${money(eurPerWeek)}/wk`
+  const { symbol, perEuro } = CURRENCIES[shown]
+  const size = Math.abs(eurPerWeek * perEuro)
+  if (size >= 999_950) return `${money(eurPerWeek)}/wk`
+  if (size >= 10_000) return `${symbol}${trimmed(size / 1_000)}K/wk`
+  return `${symbol}${Math.round(size).toLocaleString('en-US')}/wk`
 }
 
 /** An amount typed in the shown currency, in euros (what the game keeps): $11M is €10M. */

@@ -30,6 +30,7 @@ from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
 from footsim.world.market import FREE, _Market
 from footsim.world.meta import CareerMeta
+from footsim.world.money import quote_wage
 from footsim.world.squads import display_name
 
 KEY_AGE_LIMIT = 35  # a key player is kept up to this age
@@ -199,6 +200,7 @@ def expiring_for_user(conn: Connection, world: World, meta: CareerMeta, day: dat
         if k is None:
             continue
         asks, years, willing = _terms(market, meta.user_club_id, k)
+        asks = quote_wage(asks, world, meta.currency)  # a round figure in the user's currency
         who = conn.execute(text("SELECT first_name, last_name, known_as FROM person "
                                 "WHERE id = :p"), {"p": person}).one()
         result.append(Expiring(person, display_name(who.first_name, who.last_name, who.known_as),

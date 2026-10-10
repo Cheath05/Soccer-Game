@@ -18,6 +18,7 @@ from footsim.scouting.estimates import (
 from footsim.world.context import get_world
 from footsim.world.market import FREE, _Market, season_calendar_end
 from footsim.world.meta import read_meta
+from footsim.world.money import quote
 from footsim.world.squads import display_name
 
 router = APIRouter(prefix="/api/market")
@@ -94,7 +95,8 @@ def overview(session: Session) -> MarketOverviewOut:
             return OverviewPlayer(
                 player=ClubRef(id=pid, name=people[pid][0]), age=int(market.age[k]),
                 position=str(p.primary[k]), overall=int(p.overall[k]),
-                club=ref(int(market.owner[k])), value_eur=int(market.value[k]))
+                club=ref(int(market.owner[k])),
+                value_eur=quote(float(market.value[k]), world, meta.currency))
 
         prospects = []
         for k in young:

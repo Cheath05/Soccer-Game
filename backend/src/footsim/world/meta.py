@@ -21,6 +21,9 @@ class CareerMeta:
     # user's club has none of them and its budget is its cash. Saves from before it have the
     # board.
     board_enabled: bool = True
+    # The currency the user sees money in (finance.yaml currencies): server text and the prices
+    # quoted to them use it. Saves from before it: dollars, the default.
+    currency: str = "USD"
 
     @property
     def seed(self) -> int:
@@ -37,6 +40,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         user_club_id=values.get("user_club_id"),
         manager_name=values.get("manager_name"),
         board_enabled=bool(values.get("board_enabled", True)),
+        currency=str(values.get("currency", "USD")),
     )
 
 
@@ -49,6 +53,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "user_club_id": meta.user_club_id,
         "manager_name": meta.manager_name,
         "board_enabled": meta.board_enabled,
+        "currency": meta.currency,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

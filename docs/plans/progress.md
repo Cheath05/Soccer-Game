@@ -16,7 +16,43 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): UI polish, tactics, Back, calendar and market overview** (the commit that adds this line; after ebcfaf3; a Sonnet agent's work, reviewed here with its screenshots). The user's 8 Oct requests.
+- **Latest checkpoint (9 Oct): what's shown is what's paid; up for loan; positions; the offer screen** (the commit that adds this line; after 0d3c72f). The user's requests:
+  - after paying a price shown in dollars, they saw euros;
+  - after selling a player, other clubs' bids for him stayed;
+  - a choice to loan a player out or to sell him;
+  - player links on Finances;
+  - the difference between a player's main and other positions;
+  - a clearer way to make several positions natural.
+  - **Currency** (`world/money.py`; finance.yaml `currencies`, the same table as `lib/format.ts`; CareerMeta `currency`, default USD):
+    - The career keeps the user's currency (`PUT /api/career/currency`; new careers take the start page's choice; `CareerOut.currency`, which the client adopts on load).
+    - Prices quoted to the user are round market steps in that currency, stored as the euros that make them, so the figure shown is the figure paid and typed amounts round-trip exactly (half-up, like `Math.round`). That covers values on the squad, player, search and overview pages, asking prices and counters, wages asked (transfers and renewals), and AI clubs' bids for the user's players.
+    - Server text (transfer and bid news) is written in the user's currency.
+    - The AI's own market stays in euros, so a display choice never changes AI-to-AI deals.
+    - The client's `money()` shows $27.5M rather than $28M, and `wage()` shows $2,550/wk and $85.5K/wk.
+  - **Bids void on a move:** `transfers.void_offers` runs in `complete_move` and `start_loan`. Other clubs' pending bids for the player are withdrawn; the user's open talks with his old club end (unless the deal is the user's own).
+  - **Up for loan (schema 16, `contract.loan_listed`):**
+    - `PUT`/`GET /api/transfers/availability` sets each player to none, transfer or loan (one or the other).
+    - AI clubs needing cover consider the user's loan-listed players at any age (`loan_candidates`), and ask through the existing loan offers. The flag clears when he goes on loan.
+  - **Positions:** `PlayerDetail.position_ratings` gives each known position's rating: his best role in that group × the familiarity band (natural 18+ ×1.00, accomplished ×0.97, competent ×0.93, awkward ×0.85, unconvincing ×0.75), with the full rating he'd have when natural.
+  - **The detailed offer screen** (`components/OfferModal.tsx`, a Sonnet agent's work):
+    - fee chips around the value, contract length, and costs (the fee, wages this season, the total against the budget, the whole contract);
+    - a negotiation timeline with rounds left, final price and ended. The server now says `ended` explicitly, so a refusal (budget, window) no longer reads as the end of talks.
+    - `TermsOut` gains `budget_eur`, `weeks_left`, `max_rounds` and `talks`.
+  - **The player page** (agents):
+    - a Positions card: band, rating and loss, familiarity out of 18, Train on each non-natural row;
+    - a training card explaining it works one position at a time and then you train the next;
+    - "Not for sale | Transfer list | Loan list". The Sell tab has both lists. Finances transactions link to the player.
+  - **Tests:**
+    - `test_money.py`: quotes are steps in each currency and idempotent; text matches the client; the client's rates match the YAML.
+    - `test_user_transfers.py`: selling withdraws the other bids; up for sale or loan; prices quoted in the career's currency.
+    - The v15 → v16 migration.
+    - The transfer news now reads "$5.5M".
+    - A browser check on :8765: player page positions, the offer screen (over budget, then retry), the Sell tab.
+  - **Next:**
+    1. a multi-season `footsim market-report` (free agents, the winter window, relegated clubs shedding wages);
+    2. then the user's play-test gate before W5.
+  - **Play-test on:** prod via the updater.
+- **9 Oct: UI polish, tactics, Back, calendar and market overview** (0d3c72f, after ebcfaf3; a Sonnet agent's work, reviewed here with its screenshots). The user's 8 Oct requests.
   - **Tactics:** click a player (pitch, XI, bench or reserves), then click where he should go: he swaps or moves there. Esc cancels. Drag and drop still works. The bench and reserves sit in a column beside the pitch.
   - **Back buttons** on the player, club and match report pages: they use browser history, with a fallback route. Page state lives in the URL (`lib/urlState.ts`): the Transfers tab, search form and filters; the squad's group and sort; the league, season and cup pickers. So Back returns to the same filtered list.
   - **Calendar:** redesigned. Day cards, fixture chips with crest initials, a competition stripe and the result, a legend, an "Up next" list, and a phone layout.

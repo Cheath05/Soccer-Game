@@ -52,6 +52,7 @@ class NewCareerIn(BaseModel):
         validation_alias=AliasChoices("budget_eur", "transfer_budget_eur"))
     # False: play without a board (no expectations or sacking; the budget is all the cash).
     board_enabled: bool = True
+    currency: str = "USD"  # the currency money is shown and quoted in (finance.yaml)
 
 
 class FixtureOut(BaseModel):
@@ -200,6 +201,7 @@ class CareerOut(BaseModel):
     position: int | None
     next_fixture: FixtureOut | None
     recent: list[FixtureOut]
+    currency: str = "USD"  # money is shown and quoted in it
 
 
 class AdvanceOut(BaseModel):
@@ -353,6 +355,19 @@ class RoleRatingOut(BaseModel):
     rating: int
 
 
+class PositionRatingOut(BaseModel):
+    """What a player rates at one of his positions: his best role there, less the familiarity
+    penalty until he's natural in it (ratings/overall.py bands)."""
+
+    position: str
+    name: str
+    familiarity: int  # 0-20; natural (his full rating there) from 18
+    band: str  # natural | accomplished | competent | awkward | unconvincing
+    full_rating: int  # his best role in this position's group: what he'd rate when natural
+    rating: int  # what he rates there now
+    primary: bool  # his main position (the squad's overall)
+
+
 class PotentialOut(BaseModel):
     low: int
     high: int
@@ -479,6 +494,7 @@ class PlayerDetailOut(SquadPlayerOut):
     face_key: list[str]  # the headline ratings that count most towards his overall
     roles: list[RoleRatingOut]
     familiarity: dict[str, int]
+    position_ratings: list[PositionRatingOut]  # every position he knows at all, best first
     potential: PotentialOut
     traits: list[str]
     own_player: bool
@@ -637,6 +653,7 @@ class TransactionOut(BaseModel):
     kind: str
     label: str
     amount_eur: int
+    player: ClubRef | None = None  # a transfer's player (id and name), for a link
 
 
 class BoardOut(BaseModel):
@@ -670,6 +687,10 @@ class FinancesOut(BaseModel):
     transactions: list[TransactionOut]  # one-off money, the latest first
     board_enabled: bool
     board: BoardOut | None  # None when the board is off
+
+
+class CurrencyIn(BaseModel):
+    currency: str
 
 
 class BoardIn(BaseModel):

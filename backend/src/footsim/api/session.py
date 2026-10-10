@@ -16,6 +16,7 @@ from footsim.world.career import initialize_career
 from footsim.world.context import get_world
 from footsim.world.finance import set_sandbox_budget
 from footsim.world.meta import read_meta
+from footsim.world.money import set_currency
 
 
 class NoCareer(Exception):
@@ -60,7 +61,8 @@ class CareerSession:
         self.slot = slot
 
     def new_career(self, slot: int, club_id: int, manager_name: str,
-                   budget_eur: int | None = None, board_enabled: bool = True) -> None:
+                   budget_eur: int | None = None, board_enabled: bool = True,
+                   currency: str = "USD") -> None:
         """Start a career. The sandbox: ``budget_eur`` is the club's budget to start with for
         fees and wages (the owner puts in the cash). ``board_enabled`` False plays without a
         board."""
@@ -71,6 +73,7 @@ class CareerSession:
             with self.engine.begin() as conn:
                 initialize_career(conn, get_world(), club_id, manager_name,
                                   board_enabled=board_enabled)
+                set_currency(conn, get_world(), currency)
                 if budget_eur is not None:
                     set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)
             self.saves.save(slot)

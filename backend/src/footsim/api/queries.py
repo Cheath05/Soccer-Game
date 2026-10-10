@@ -36,6 +36,7 @@ from footsim.api.schemas import (
     PlayerLineOut,
     PlayerSeasonLineOut,
     PlayerSeasonOut,
+    PositionRatingOut,
     PotentialOut,
     RatingAdjustmentOut,
     RoleOut,
@@ -91,6 +92,7 @@ from footsim.world.club_names import load_club_names
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.meta import CareerMeta, read_meta
+from footsim.world.money import quote
 from footsim.world.season import active_leagues, season_calendar, standings
 from footsim.world.squads import display_name, load_squad, short_name, team_sheet
 from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
@@ -280,6 +282,7 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         position=position,
         next_fixture=fixture_out(upcoming, names, comps) if upcoming else None,
         recent=[fixture_out(r, names, comps) for r in recent],
+        currency=meta.currency,
     )
 
 
@@ -587,8 +590,8 @@ def _season_start_overalls(conn: Connection, ids: list[int], season_id: int) -> 
 
 
 def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, int],
-                 stats: Row[Any] | None, day: date,
-                 season_start: int | None = None) -> SquadPlayerOut:
+                 stats: Row[Any] | None, day: date, season_start: int | None = None, *,
+                 currency: str) -> SquadPlayerOut:
     primary = max(fams, key=lambda pos: fams[pos]) if fams else "CM"
     overall = float(world.model.group_overalls(attrs)[world.defs.positions[primary].group])
     age = age_on(date.fromisoformat(r.birth_date), day)
@@ -609,7 +612,8 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
         season_start_overall=season_start,
         condition=round(r.condition if r.condition is not None else 100),
         form=round(r.form if r.form is not None else 6.5, 1), injury=r.injury if injured else None,
-        injured_until=injured, suspended=r.suspended_matches or 0, value_eur=int(value),
+        injured_until=injured, suspended=r.suspended_matches or 0,
+        value_eur=quote(value, world, currency),
         wage_weekly_eur=(r.wage_weekly_cents or 0) // 100, contract_end=r.end_date or "",
         height_cm=r.height_cm, preferred_foot=r.preferred_foot,
         appearances=stats.apps if stats else 0, goals=stats.goals or 0 if stats else 0,
@@ -627,7 +631,8 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
     started = _season_start_overalls(conn, ids, meta.season_id)
     order = list(world.defs.positions)
     entries = [_squad_entry(world, r, attrs[r.id], positions[r.id], stats.get(r.id),
-                            meta.current_date, started.get(r.id)) for r in rows]
+                            meta.current_date, started.get(r.id), currency=meta.currency)
+               for r in rows]
     return sorted(entries, key=lambda e: (order.index(e.position), -e.overall))
 
 
@@ -736,7 +741,7 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     stats = _season_stats(conn, [player_id], meta.season_id).get(player_id)
     started = _season_start_overalls(conn, [player_id], meta.season_id)
     entry = _squad_entry(world, r, attrs, fams, stats, meta.current_date,
-                         started.get(player_id))
+                         started.get(player_id), currency=meta.currency)
     values = {a: int(v) for a, v in zip(ATTRIBUTES, attrs, strict=True)}
     grouped: dict[str, list[AttributeOut]] = defaultdict(list)
     for a in ATTRIBUTES:
@@ -765,9 +770,32 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
         attributes=dict(grouped), face=face_stats(values, goalkeeper=entry.position == "GK"),
         face_key=sorted(weights, key=lambda k: -weights[k])[:3],
         roles=roles, familiarity=fams,
+        position_ratings=_position_ratings(world, attrs, fams, entry.position),
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
         traits=traits, own_player=own, retired=r.retired_on is not None,
     )
+
+
+_BANDS = ((18, "natural"), (15, "accomplished"), (11, "competent"), (6, "awkward"),
+          (1, "unconvincing"))
+
+
+def _position_ratings(world: World, attrs: np.ndarray, fams: dict[str, int],
+                      primary: str) -> list[PositionRatingOut]:
+    """His rating at each position he knows: his best role in its group, times the familiarity
+    factor (full from 18, natural)."""
+    groups = world.model.group_overalls(attrs)
+    result = []
+    for pos, fam in fams.items():
+        if fam < 1 or pos not in world.defs.positions:
+            continue
+        full = float(groups[world.defs.positions[pos].group])
+        band = next(name for least, name in _BANDS if fam >= least)
+        result.append(PositionRatingOut(
+            position=pos, name=world.defs.positions[pos].name, familiarity=fam, band=band,
+            full_rating=round(full), rating=round(full * familiarity_factor(fam)),
+            primary=pos == primary))
+    return sorted(result, key=lambda r: (-r.primary, -r.rating, -r.familiarity))
 
 
 _SEASON_LINES_SQL = """

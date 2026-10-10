@@ -26,6 +26,20 @@ export interface Terms {
   listed: boolean
   free_agent: boolean
   window_open: boolean
+  // Added by the backend alongside the offer screen; optional so older servers still work.
+  budget_eur?: number
+  weeks_left?: number
+  max_rounds?: number
+  talks?: Talks | null
+}
+
+export interface Talks {
+  their_price_eur: number
+  your_last_bid_eur: number
+  rounds_used: number
+  rounds_left: number
+  final: boolean
+  ended: boolean
 }
 
 export interface OfferResult {
@@ -34,6 +48,9 @@ export interface OfferResult {
   fee_eur: number
   wage_eur: number
   years: number
+  final?: boolean
+  rounds_left?: number
+  ended?: boolean // the club has ended talks for this window
 }
 
 export interface Bid {
@@ -130,6 +147,26 @@ export function useSetListed() {
     mutationFn: (args: { playerId: number; listed: boolean }) =>
       api.put<{ listed: boolean }>(`/transfers/listed/${args.playerId}?listed=${args.listed}`, {}),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['listed'] }),
+  })
+}
+
+export interface Availability {
+  transfer: number[]
+  loan: number[]
+}
+export type AvailabilityStatus = 'none' | 'transfer' | 'loan'
+
+export const useAvailability = () =>
+  useQuery({ queryKey: ['availability'], queryFn: () => api.get<Availability>('/transfers/availability') })
+
+export function useSetAvailability() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { playerId: number; status: AvailabilityStatus }) =>
+      api.put<Availability>(`/transfers/availability/${args.playerId}`, { status: args.status }),
+    onSuccess: () => {
+      for (const key of ['availability', 'listed', 'squad', 'player']) void client.invalidateQueries({ queryKey: [key] })
+    },
   })
 }
 

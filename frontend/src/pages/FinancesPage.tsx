@@ -1,8 +1,9 @@
 import { Alert, Badge, Card, Divider, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, Title } from '@mantine/core'
 
-import { useFinances, useSetBoard } from '../api/hooks'
+import PlayerLink from '../components/PlayerLink'
+import { useChooseCurrency, useFinances, useSetBoard } from '../api/hooks'
 import type { Board } from '../api/types'
-import { CURRENCIES, type Currency, confidenceColor, money, monthYear, ordinal, setCurrency, shortDate, useCurrency, wage } from '../lib/format'
+import { CURRENCIES, type Currency, confidenceColor, money, monthYear, ordinal, shortDate, useCurrency, wage } from '../lib/format'
 
 function Figure({ label, value, note, color }: { label: string; value: string; note?: string; color?: string }) {
   return (
@@ -59,6 +60,7 @@ function BoardCard({ board }: { board: Board }) {
 
 export default function FinancesPage() {
   const currency = useCurrency()
+  const chooseCurrency = useChooseCurrency()
   const { data: f, error } = useFinances()
   const setBoard = useSetBoard()
   if (error) return <Text c="dimmed">No finances to show: {error.message}</Text>
@@ -84,7 +86,7 @@ export default function FinancesPage() {
           <SegmentedControl
             size="xs"
             value={currency}
-            onChange={(v) => setCurrency(v as Currency)}
+            onChange={(v) => chooseCurrency(v as Currency)}
             data={(Object.keys(CURRENCIES) as Currency[]).map((c) => ({ value: c, label: CURRENCIES[c].label }))}
           />
         </Group>
@@ -184,7 +186,7 @@ export default function FinancesPage() {
                 <Table.Td w={90} c="dimmed">
                   {shortDate(t.date)}
                 </Table.Td>
-                <Table.Td>{t.label}</Table.Td>
+                <Table.Td>{t.player ? <PlayerLink player={t.player} label={t.label} /> : t.label}</Table.Td>
                 <Table.Td ta="right" c={t.amount_eur < 0 ? 'red.7' : 'green.7'}>
                   {money(t.amount_eur)}
                 </Table.Td>

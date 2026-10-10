@@ -108,7 +108,7 @@ def test_a_transfer_moves_the_player_once_and_the_money_with_him(conn: Connectio
     weeks = weeks_left(conn, 1, OPEN)
     buyer_before, seller_before = _money(conn, buyer), _money(conn, seller)
     news = complete_move(conn, world, _meta(conn), Move(player, buyer, fee, wage, END), OPEN)
-    assert "joins" in news[0] and "€5M" in news[0]
+    assert "joins" in news[0] and "$5.5M" in news[0]  # in the career's currency (dollars)
 
     owners = conn.execute(text(
         "SELECT club_id, start_date, wage_weekly_cents FROM contract "

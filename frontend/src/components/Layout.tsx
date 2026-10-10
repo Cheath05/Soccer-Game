@@ -1,12 +1,12 @@
 import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
-import { competitionNation, longDate, useCurrency } from '../lib/format'
+import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
 import ClubSearch from './ClubSearch'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
@@ -38,6 +38,13 @@ export default function Layout() {
   // How the season went, when Continue ran on to its end.
   const [seasonFinal, setSeasonFinal] = useState<SeasonFinal | null>(null)
   const [saved, setSaved] = useState(false)
+  // The career keeps its currency (its prices are quoted in it): show money in it once loaded.
+  const careerCurrency = career.data?.currency
+  useEffect(() => {
+    if (careerCurrency && careerCurrency in CURRENCIES && careerCurrency !== shownCurrency()) {
+      setCurrency(careerCurrency as Currency)
+    }
+  }, [careerCurrency])
 
   if (career.isPending) {
     return (

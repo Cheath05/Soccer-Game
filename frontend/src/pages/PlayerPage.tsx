@@ -1,10 +1,12 @@
-import { Badge, Button, Card, Grid, Group, Loader, Modal, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Grid, Group, Loader, Modal, Progress, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { useClubPlayers, usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
+import { type Training, useSetTraining, useTraining } from '../api/training'
+import { type AvailabilityStatus, useAvailability, useSetAvailability } from '../api/transfers'
 import BackButton from '../components/BackButton'
-import type { PlayerSeasonLine } from '../api/types'
+import type { FamiliarityBand, PlayerSeasonLine, PositionRating } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
 import { recallPlayerList } from '../lib/playerList'
@@ -229,6 +231,11 @@ export default function PlayerPage() {
         </Grid.Col>
       </Grid>
 
+      <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player} />
+
+      {p.own_player && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} />}
+      {p.own_player && <AvailabilityCard playerId={p.id} />}
+
       <SeasonRecord playerId={p.id} />
     </Stack>
   )
@@ -304,6 +311,215 @@ function SeasonRecord({ playerId }: { playerId: number }) {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+      )}
+    </Card>
+  )
+}
+
+const TRAIN_POSITIONS = ['GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'ST']
+
+const BAND_COLOR: Record<FamiliarityBand, string> = {
+  natural: 'green',
+  accomplished: 'teal',
+  competent: 'yellow',
+  awkward: 'orange',
+  unconvincing: 'red',
+}
+const BAND_HINT: Record<FamiliarityBand, string> = {
+  natural: 'natural',
+  accomplished: 'accomplished, not yet natural',
+  competent: 'competent, not yet natural',
+  awkward: 'awkward, not yet natural',
+  unconvincing: 'unconvincing, not yet natural',
+}
+
+/** Months until the position being trained is natural, from the training rate (at least 1). */
+function monthsLeft(t: Training, familiarity: number): number | null {
+  if (!t.position || t.rate_per_month <= 0) return null
+  return Math.max(1, Math.ceil((t.natural - familiarity - t.progress) / t.rate_per_month))
+}
+
+const monthsText = (m: number) => `about ${m} ${m === 1 ? 'month' : 'months'} left`
+
+/** His rating at every position, with the cost of not being natural there; on the user's own
+ * players, a Train action on each position he isn't natural in. */
+function PositionsCard({ playerId, ratings, own }: { playerId: number; ratings: PositionRating[]; own: boolean }) {
+  const training = useTraining(playerId, own)
+  const set = useSetTraining(playerId)
+  const t = training.data
+  return (
+    <Card withBorder padding="sm" aria-label="Positions">
+      <Title order={4} mb={4}>
+        Positions
+      </Title>
+      <Text size="xs" c="dimmed" mb="xs">
+        A player rates his full ability only in positions he&apos;s natural in (18+ familiarity). Elsewhere a familiarity penalty applies: accomplished −3%, competent −7%, awkward −15%.
+      </Text>
+      <Stack gap={6}>
+        {ratings.map((r) => {
+          const loss = r.full_rating - r.rating
+          const trained = t?.position === r.position
+          const have = t?.positions.find((x) => x.position === r.position)?.familiarity ?? r.familiarity
+          const months = trained && t ? monthsLeft(t, have) : null
+          return (
+            <Group key={r.position} gap="xs" wrap="nowrap" align="center">
+              <Badge color={positionColor(r.position)} variant={r.primary ? 'filled' : 'light'} w={52} title={r.name}>
+                {r.position}
+              </Badge>
+              <Text size="xs" c="dimmed" w={40}>
+                {r.primary ? 'Main' : ''}
+              </Text>
+              <Badge color={BAND_COLOR[r.band]} variant="light" w={110}>
+                {r.band}
+              </Badge>
+              <Text size="sm" style={{ flex: 1 }}>
+                <Text span fw={700} c={ratingColor(r.rating)}>
+                  {r.rating}
+                </Text>
+                {loss > 0 && (
+                  <Text span c="dimmed">
+                    {' '}
+                    (−{loss}: {BAND_HINT[r.band]})
+                  </Text>
+                )}
+                {trained && (
+                  <Text span size="xs" c="blue.7" fw={600}>
+                    {' '}
+                    · training{months !== null ? `, ${monthsText(months)}` : ''}
+                  </Text>
+                )}
+              </Text>
+              <Progress value={Math.min(100, (r.familiarity / 18) * 100)} w={70} title={`Familiarity ${r.familiarity} of 18`} />
+              <Text size="xs" c="dimmed" w={34} ta="right">
+                {r.familiarity}/18
+              </Text>
+              {own && (
+                <div style={{ width: 64 }}>
+                  {r.band !== 'natural' &&
+                    (trained ? (
+                      <Button size="compact-xs" variant="default" loading={set.isPending} onClick={() => set.mutate(null)}>
+                        Stop
+                      </Button>
+                    ) : (
+                      <Button size="compact-xs" loading={set.isPending} onClick={() => set.mutate(r.position)}>
+                        Train
+                      </Button>
+                    ))}
+                </div>
+              )}
+            </Group>
+          )
+        })}
+      </Stack>
+      {set.error && (
+        <Text c="red" size="sm" mt="xs">
+          {set.error.message}
+        </Text>
+      )}
+    </Card>
+  )
+}
+
+/** Teach one of the user's players a new position, one at a time. */
+function TrainingCard({ playerId, familiarity, ratings }: { playerId: number; familiarity: Record<string, number>; ratings: PositionRating[] }) {
+  const training = useTraining(playerId, true)
+  const set = useSetTraining(playerId)
+  const [choice, setChoice] = useState<string | null>(null)
+  const t = training.data
+  if (!t) return null
+  const fam = new Map<string, number>(Object.entries(familiarity))
+  for (const row of t.positions) fam.set(row.position, row.familiarity)
+  const options = TRAIN_POSITIONS.filter((pos) => (fam.get(pos) ?? 0) < t.natural)
+  const current = t.position
+  const have = current ? (fam.get(current) ?? 0) : 0
+  const months = monthsLeft(t, have)
+  const rating = (pos: string | null) => ratings.find((r) => r.position === pos)
+  const now = rating(current)
+  const picked = rating(choice)
+  return (
+    <Card withBorder padding="sm" aria-label="Position training">
+      <Title order={4} mb={4}>
+        Position training
+      </Title>
+      <Text size="xs" c="dimmed" mb="xs">
+        Training works on one position at a time. When it finishes he is natural there, so he plays it at his full rating with no penalty, and you can then train another. It doesn&apos;t change his attributes.
+      </Text>
+      <Stack gap="xs">
+        {current ? (
+          <>
+            <Group justify="space-between">
+              <Text size="sm" fw={600}>
+                Training {current}
+              </Text>
+              <Button size="compact-xs" variant="default" color="red" loading={set.isPending} onClick={() => set.mutate(null)}>
+                Stop
+              </Button>
+            </Group>
+            <Progress value={Math.round(t.progress * 100)} />
+            <Text size="xs" c="dimmed">
+              Familiarity {have} of {t.natural}
+              {months !== null ? ` · ${monthsText(months)} until natural` : ''}
+              {now ? ` · rates ${now.rating} there now, ${now.full_rating} when natural` : ''}
+            </Text>
+          </>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Not training a new position.
+          </Text>
+        )}
+        <Group align="flex-end" gap="xs">
+          <Select label={current ? 'Switch to' : 'Learn'} placeholder="Position" data={options} value={choice} onChange={setChoice} w={140} />
+          <Button disabled={!choice} loading={set.isPending} onClick={() => choice && set.mutate(choice, { onSuccess: () => setChoice(null) })}>
+            Train
+          </Button>
+          {picked && (
+            <Text size="sm" c="dimmed">
+              Rates {picked.rating} there now, {picked.full_rating} when natural
+            </Text>
+          )}
+        </Group>
+        {set.error && (
+          <Text c="red" size="sm">
+            {set.error.message}
+          </Text>
+        )}
+      </Stack>
+    </Card>
+  )
+}
+
+/** Not for sale, on the transfer list (clubs bid to buy him) or on the loan list (clubs ask to borrow him). */
+function AvailabilityCard({ playerId }: { playerId: number }) {
+  const availability = useAvailability().data
+  const set = useSetAvailability()
+  const status: AvailabilityStatus = availability?.transfer.includes(playerId) ? 'transfer' : availability?.loan.includes(playerId) ? 'loan' : 'none'
+  const hint: Record<AvailabilityStatus, string> = {
+    none: 'He stays with you. Clubs may still make an offer, which you can turn down.',
+    transfer: 'Clubs bid to buy him. Offers arrive under Transfers, in Offers for your players, over the following days while the window is open.',
+    loan: 'Clubs that need cover ask to borrow him for the season, at any age. Offers arrive under Transfers, in Offers for your players, while the window is open.',
+  }
+  return (
+    <Card withBorder padding="sm" aria-label="Availability">
+      <Title order={4} mb={4}>
+        Up for sale, or up for loan
+      </Title>
+      <SegmentedControl
+        value={status}
+        disabled={!availability || set.isPending}
+        onChange={(v) => set.mutate({ playerId, status: v as AvailabilityStatus })}
+        data={[
+          { value: 'none', label: 'Not for sale' },
+          { value: 'transfer', label: 'Transfer list' },
+          { value: 'loan', label: 'Loan list' },
+        ]}
+      />
+      <Text size="xs" c="dimmed" mt={6}>
+        {hint[status]}
+      </Text>
+      {set.error && (
+        <Text c="red" size="sm">
+          {set.error.message}
+        </Text>
       )}
     </Card>
   )

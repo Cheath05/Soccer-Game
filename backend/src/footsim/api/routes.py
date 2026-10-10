@@ -22,6 +22,7 @@ from footsim.api.schemas import (
     CompetitionOut,
     CupOut,
     CupSummaryOut,
+    CurrencyIn,
     FinancesOut,
     FixtureOut,
     LeagueOption,
@@ -44,6 +45,7 @@ from footsim.world.career import advance, play_user_instant, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
 from footsim.world.meta import read_meta
+from footsim.world.money import set_currency
 
 router = APIRouter(prefix="/api")
 
@@ -116,7 +118,9 @@ def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     if not session.base_world.exists():
         raise HTTPException(503, "No base world built yet: run `just build-world`.")
     session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
-                       body.budget_eur, body.board_enabled)
+                       body.budget_eur, body.board_enabled,
+                       body.currency if body.currency in get_world().defs.finance.currencies
+                       else "USD")
     _record_club_name(session)
     session.save()
     return _career(session)
@@ -188,6 +192,20 @@ def put_board(body: BoardIn, session: Session) -> FinancesOut:
     session.autosave()
     with session.read() as conn:
         return finances.finances(conn, world)
+
+
+@router.put("/career/currency")
+def put_currency(body: CurrencyIn, session: Session) -> CareerOut:
+    """The currency the career's money is shown and quoted in. Prices quoted from now on are
+    round figures in it; news already written keeps its figures."""
+    _not_simulating(session)
+    world = get_world()
+    if body.currency not in world.defs.finance.currencies:
+        raise HTTPException(422, f"unknown currency {body.currency}")
+    with session.write() as conn:
+        set_currency(conn, world, body.currency)
+    session.autosave()
+    return _career(session)
 
 
 @router.get("/competitions")

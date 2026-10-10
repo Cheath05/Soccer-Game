@@ -2,7 +2,7 @@
 at once, transfer-listing, AI clubs' bids for the user's players, and the history. Thin: the
 rules are world/market.py's and world/transfers.py's, the same as every AI club's."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -22,6 +22,7 @@ from footsim.world.market import (
     season_calendar_end,
 )
 from footsim.world.meta import read_meta
+from footsim.world.money import quote
 from footsim.world.renewals import RenewalRefused, expiring_for_user, renew
 from footsim.world.squads import display_name
 from footsim.world.transfers import MoveRefused, owner_contract
@@ -43,6 +44,17 @@ class MarketPlayerOut(BaseModel):
     listed: bool
 
 
+class TalksOut(BaseModel):
+    """Where your haggling over him stands this window."""
+
+    their_price_eur: int
+    your_last_bid_eur: int
+    rounds_used: int
+    rounds_left: int
+    final: bool
+    ended: bool
+
+
 class TermsOut(BaseModel):
     player_id: int
     value_eur: int
@@ -51,6 +63,10 @@ class TermsOut(BaseModel):
     listed: bool
     free_agent: bool
     window_open: bool
+    budget_eur: int  # your budget left (a signing costs the fee and wages to June)
+    weeks_left: float  # weeks of wages a signing costs this season
+    max_rounds: int
+    talks: TalksOut | None
 
 
 class OfferIn(BaseModel):
@@ -68,6 +84,7 @@ class OfferOut(BaseModel):
     years: int
     final: bool = False  # the club's last word: another refusal ends talks for the window
     rounds_left: int = 0
+    ended: bool = False  # talks are over for this window
 
 
 class BidOut(BaseModel):
@@ -102,7 +119,7 @@ class HistoryOut(BaseModel):
 def _offer_out(result: OfferResult) -> OfferOut:
     return OfferOut(status=result.status, message=result.message, fee_eur=result.fee_eur,
                     wage_eur=result.wage_eur, years=result.years, final=result.final,
-                    rounds_left=result.rounds_left)
+                    rounds_left=result.rounds_left, ended=result.ended)
 
 
 @router.get("/search")
@@ -163,7 +180,8 @@ def search(session: Session, position: str | None = None, min_overall: int = 0,
                 id=player_id, name=display_name(r.first_name, r.last_name, r.known_as),
                 age=int(market.age[k]), position=str(p.primary[k]), overall=int(p.overall[k]),
                 club=ClubRef(id=owner, name=r.club) if owner != FREE else None,
-                league=leagues.get(owner, (None, None))[1], value_eur=int(market.value[k]),
+                league=leagues.get(owner, (None, None))[1],
+                value_eur=quote(float(market.value[k]), world, meta.currency),
                 contract_end=r.end_date, listed=bool(market.listed[k])))
         return result
 
@@ -178,7 +196,9 @@ def terms(player_id: int, session: Session) -> TermsOut:
             raise HTTPException(404, str(exc)) from exc
     return TermsOut(player_id=t.player_id, value_eur=t.value_eur, wage_eur=t.wage_eur,
                     years=t.years, listed=t.listed, free_agent=t.club_id is None,
-                    window_open=t.window_open)
+                    window_open=t.window_open, budget_eur=t.budget_eur,
+                    weeks_left=t.weeks_left, max_rounds=t.max_rounds,
+                    talks=TalksOut(**vars(t.talks)) if t.talks is not None else None)
 
 
 @router.post("/offer")
@@ -209,10 +229,51 @@ def set_listed(player_id: int, session: Session, listed: bool = True) -> dict[st
         owner = owner_contract(conn, player_id)
         if owner is None or owner.club_id != meta.user_club_id:
             raise HTTPException(400, "not one of your players")
-        conn.execute(text("UPDATE contract SET listed = :l WHERE id = :id"),
+        conn.execute(text("UPDATE contract SET listed = :l, loan_listed = 0 WHERE id = :id"),
                      {"l": int(listed), "id": owner.id})
     session.autosave()
     return {"listed": listed}
+
+
+class AvailabilityIn(BaseModel):
+    status: Literal["none", "transfer", "loan"]
+
+
+class AvailabilityOut(BaseModel):
+    transfer: list[int]  # your players up for sale
+    loan: list[int]  # your players up for loan
+
+
+@router.put("/availability/{player_id}")
+def set_availability(player_id: int, body: AvailabilityIn, session: Session
+                     ) -> AvailabilityOut:
+    """Put one of the user's players up for sale (``transfer``: clubs see him as available, and
+    cheaper), up for loan (``loan``: clubs that need cover ask to borrow him, at any age), or
+    neither."""
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        owner = owner_contract(conn, player_id)
+        if owner is None or owner.club_id != meta.user_club_id:
+            raise HTTPException(400, "not one of your players")
+        conn.execute(text("UPDATE contract SET listed = :t, loan_listed = :l WHERE id = :id"),
+                     {"t": int(body.status == "transfer"), "l": int(body.status == "loan"),
+                      "id": owner.id})
+    session.autosave()
+    return availability(session)
+
+
+@router.get("/availability")
+def availability(session: Session) -> AvailabilityOut:
+    """The user's players up for sale and up for loan."""
+    with session.read() as conn:
+        meta = read_meta(conn)
+        rows = conn.execute(text(
+            "SELECT person_id, listed, loan_listed FROM contract WHERE club_id = :u AND "
+            "is_active = 1 AND kind != 'loan' AND (listed = 1 OR loan_listed = 1) "
+            "ORDER BY person_id"), {"u": meta.user_club_id}).all()
+    return AvailabilityOut(transfer=[int(r.person_id) for r in rows if r.listed],
+                           loan=[int(r.person_id) for r in rows if r.loan_listed])
 
 
 @router.get("/bids")

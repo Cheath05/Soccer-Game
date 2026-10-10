@@ -81,6 +81,7 @@ export interface Career {
   position: number | null
   next_fixture: Fixture | null
   recent: Fixture[]
+  currency?: string // the currency money is shown and quoted in, kept with the career
 }
 
 // Sim to date (api/sim.py): the career moving on to a chosen day in the background.
@@ -360,6 +361,19 @@ export interface ClubOverview {
   recent_transfers: string[]
 }
 
+export type FamiliarityBand = 'natural' | 'accomplished' | 'competent' | 'awkward' | 'unconvincing'
+
+/** His rating in one position: primary first, then best rating. */
+export interface PositionRating {
+  position: string
+  name: string
+  familiarity: number // 0-20
+  band: FamiliarityBand
+  full_rating: number // what he'd rate there if natural
+  rating: number // now, after the familiarity penalty
+  primary: boolean
+}
+
 export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_weekly_eur'> {
   condition: number | null // only for the user's own players
   wage_weekly_eur: number | null // only for the user's own players
@@ -372,6 +386,7 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   face_key: string[] // the headline ratings that count most towards his overall
   roles: { key: string; name: string; position_group: string; rating: number }[]
   familiarity: Record<string, number>
+  position_ratings: PositionRating[]
   potential: { low: number; high: number; label: string }
   traits: string[]
   own_player: boolean
@@ -586,6 +601,7 @@ export interface Transaction {
   kind: string
   label: string
   amount_eur: number
+  player: { id: number; name: string } | null // the transfer's player
 }
 
 export interface Board {

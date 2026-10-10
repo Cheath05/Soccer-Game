@@ -115,8 +115,8 @@ def _transactions(conn: Connection, world: World, club_id: int) -> list[Transact
     prize money with the competition."""
     rows = conn.execute(text(
         "SELECT l.date, l.kind, l.amount_cents, c.name AS competition, t.from_club_id, "
-        "t.to_club_id, fc.name AS from_club, tc.name AS to_club, pe.first_name, pe.last_name, "
-        "pe.known_as FROM finance_ledger l "
+        "t.to_club_id, t.player_id, fc.name AS from_club, tc.name AS to_club, pe.first_name, "
+        "pe.last_name, pe.known_as FROM finance_ledger l "
         "LEFT JOIN competition c ON l.kind = 'prize' AND c.id = l.ref_id "
         "LEFT JOIN transfer t ON l.kind = 'transfer' AND t.id = l.ref_id "
         "LEFT JOIN club fc ON fc.id = t.from_club_id LEFT JOIN club tc ON tc.id = t.to_club_id "
@@ -125,8 +125,11 @@ def _transactions(conn: Connection, world: World, club_id: int) -> list[Transact
     ).bindparams(bindparam("kinds", expanding=True)),
         {"club": club_id, "kinds": list(ONE_OFF),
          "n": world.defs.finance.display.transactions_shown}).all()
-    return [TransactionOut(date=r.date, kind=r.kind, label=_label(r, club_id),
-                           amount_eur=_cents_to_eur(r.amount_cents)) for r in rows]
+    return [TransactionOut(
+        date=r.date, kind=r.kind, label=_label(r, club_id),
+        amount_eur=_cents_to_eur(r.amount_cents),
+        player=ClubRef(id=r.player_id, name=display_name(r.first_name, r.last_name, r.known_as))
+        if r.player_id is not None else None) for r in rows]
 
 
 def _label(r: Row[Any], club_id: int) -> str:

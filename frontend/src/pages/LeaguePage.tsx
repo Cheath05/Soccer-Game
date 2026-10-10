@@ -1,10 +1,10 @@
 import { Badge, Group, Select, Stack, Table, Text, Title } from '@mantine/core'
-import { useState } from 'react'
 
 import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
 import { OUTCOMES, longDate } from '../lib/format'
+import { useUrlState } from '../lib/urlState'
 
 const ZONE_COLOR: Record<string, string> = {
   champion: 'var(--mantine-color-yellow-light)',
@@ -16,8 +16,9 @@ const ZONE_COLOR: Record<string, string> = {
 export default function LeaguePage() {
   const career = useCareer().data
   const competitions = useCompetitions()
-  const [key, setKey] = useState<string | null>(null)
-  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const [key, setKey] = useUrlState<string | null>('league', null)
+  const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
+  const seasonId = seasonIdRaw === null ? null : String(seasonIdRaw)
   const seasons = useSeasons().data ?? []
   const history = useClubHistory(career?.club.id).data
   // Between seasons, until the new one's first league match is played, the last finished

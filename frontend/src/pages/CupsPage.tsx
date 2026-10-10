@@ -1,12 +1,12 @@
 import { Badge, Card, Group, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 
 import { useCareer, useCup, useCups, useSeasons } from '../api/hooks'
 import type { CupRound, CupTie } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import NationPicker from '../components/NationPicker'
 import { competitionNation, groupByNation, longDate, score } from '../lib/format'
+import { useUrlState } from '../lib/urlState'
 
 // A cup's country: a server that predates the field only had England's cups.
 const cupNation = (c: { nation?: string }) => c.nation ?? 'ENG'
@@ -17,9 +17,10 @@ export default function CupsPage() {
   const career = useCareer().data
   const allCups = useCups().data ?? []
   const seasons = useSeasons().data ?? []
-  const [nationCode, setNationCode] = useState<string | null>(null)
-  const [key, setKey] = useState<string | null>(null)
-  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const [nationCode, setNationCode] = useUrlState<string | null>('nation', null)
+  const [key, setKey] = useUrlState<string | null>('cup', null)
+  const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
+  const seasonId = seasonIdRaw === null ? null : String(seasonIdRaw)
   // The countries with cups (England first, then by name), and the one shown: the one picked, or
   // the user's club's if it has cups, or else the first.
   const nations = groupByNation(allCups.map((c) => ({ key: c.key, tier: 1, nation: cupNation(c) })))

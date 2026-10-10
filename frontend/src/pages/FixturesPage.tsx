@@ -1,16 +1,17 @@
 import { Group, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 
 import { useCareer, useClubFixtures, useSeasons } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
 import { longDate, score, stageLabel } from '../lib/format'
+import { useUrlState } from '../lib/urlState'
 
 export default function FixturesPage() {
   const career = useCareer().data
   const seasons = useSeasons().data ?? []
-  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
+  const seasonId = seasonIdRaw === null ? null : String(seasonIdRaw)
   const current = seasons.find((s) => s.current)
   // The current season to start with; any past season's fixtures and results can be browsed.
   const shownId = seasonId ? Number(seasonId) : current?.id

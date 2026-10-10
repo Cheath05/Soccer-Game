@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from footsim import __version__
 from footsim.api.live import router as live_router
+from footsim.api.market_overview import router as market_overview_router
 from footsim.api.routes import router
 from footsim.api.session import CareerSession, NoCareer, default_session
 from footsim.api.sim import router as sim_router
@@ -42,6 +43,7 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
     app.include_router(sim_router)
     app.include_router(transfers_router)
     app.include_router(training_router)
+    app.include_router(market_overview_router)
 
     if frontend is not None and (frontend / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")

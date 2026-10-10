@@ -21,6 +21,8 @@ import {
   useTransferHistory,
 } from '../api/transfers'
 import ClubLink from '../components/ClubLink'
+import MarketOverview from '../components/MarketOverview'
+import { useUrlState } from '../lib/urlState'
 import { CURRENCIES, money, monthYear, shortDate, toEuros, useCurrency, wage } from '../lib/format'
 
 const POSITIONS = ['GK', 'CB', 'FB', 'DM', 'CM', 'AM', 'W', 'ST']
@@ -147,12 +149,13 @@ function SearchTab() {
   const { symbol } = CURRENCIES[currency]
   const leagues = useWorldLeagues().data ?? []
   const navigate = useNavigate()
-  const [form, setForm] = useState<SearchFilters & { max_value_shown?: number }>({ min_overall: 60, max_overall: 99, max_age: 35 })
-  const [filters, setFilters] = useState<SearchFilters | null>(null)
+  // In the URL, so Back from a player's page brings the same form and the same results.
+  const [form, setForm] = useUrlState<SearchFilters & { max_value_shown?: number }>('form', { min_overall: 60, max_overall: 99, max_age: 35 })
+  const [filters, setFilters] = useUrlState<SearchFilters | null>('search', null)
   const [target, setTarget] = useState<MarketPlayer | null>(null)
   const [borrow, setBorrow] = useState<MarketPlayer | null>(null)
   const results = useMarketSearch(filters)
-  const set = (patch: Partial<typeof form>) => setForm({ ...form, ...patch })
+  const set = (patch: Partial<typeof form>) => setForm((current) => ({ ...current, ...patch }))
 
   return (
     <Stack>
@@ -445,15 +448,17 @@ function HistoryTab() {
 
 export default function TransfersPage() {
   const bids = useBids().data ?? []
+  const [tab, setTab] = useUrlState<string | null>('tab', null)
   return (
     <Stack>
       <Title order={2}>Transfers</Title>
-      <Tabs defaultValue={bids.length ? 'bids' : 'search'} keepMounted={false}>
+      <Tabs value={tab ?? (bids.length ? 'bids' : 'search')} onChange={setTab} keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="search">Find players</Tabs.Tab>
           <Tabs.Tab value="bids" rightSection={bids.length ? <Badge size="xs" color="orange">{bids.length}</Badge> : undefined}>
             Offers for your players
           </Tabs.Tab>
+          <Tabs.Tab value="market">Market overview</Tabs.Tab>
           <Tabs.Tab value="sell">Sell</Tabs.Tab>
           <Tabs.Tab value="contracts">Contracts</Tabs.Tab>
           <Tabs.Tab value="history">History</Tabs.Tab>
@@ -463,6 +468,9 @@ export default function TransfersPage() {
         </Tabs.Panel>
         <Tabs.Panel value="bids" pt="md">
           <BidsTab />
+        </Tabs.Panel>
+        <Tabs.Panel value="market" pt="md">
+          <MarketOverview />
         </Tabs.Panel>
         <Tabs.Panel value="sell" pt="md">
           <SellTab />

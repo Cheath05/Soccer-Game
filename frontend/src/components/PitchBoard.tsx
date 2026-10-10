@@ -24,6 +24,7 @@ export default function PitchBoard({
   starters,
   selected,
   onSelect,
+  picked,
   dragging,
   onDragPlayer,
   onDropOnSlot,
@@ -32,6 +33,8 @@ export default function PitchBoard({
   starters: SheetEntry[]
   selected: string | null
   onSelect: (slot: string) => void
+  /** Click-to-move: the player waiting for a new place, highlighted on the board. */
+  picked?: number | null
   /** Drag and drop (the tactics screen): the player being dragged, and what to do on a drop. */
   dragging?: number | null
   onDragPlayer?: (playerId: number | null) => void
@@ -71,6 +74,7 @@ export default function PitchBoard({
         const width = labelWidth(slot.id)
         const surname = entry?.name.split(' ').slice(-1)[0]
         const active = selected === slot.id
+        const isPicked = picked != null && picked === entry?.player_id
         const warn = entry ? fitColor(entry) : null
         const target = over === slot.id && dragging != null && dragging !== entry?.player_id
         return (
@@ -101,7 +105,7 @@ export default function PitchBoard({
             }}
             pos="absolute"
             title={entry ? breakdownText(entry) : undefined}
-            style={{ left, top, transform: 'translate(-50%, -50%)', cursor: onDragPlayer ? 'grab' : 'pointer', textAlign: 'center', width }}
+            style={{ left, top, transform: 'translate(-50%, -50%)', cursor: onDragPlayer && picked == null ? 'grab' : 'pointer', textAlign: 'center', width }}
           >
             <Box
               mx="auto"
@@ -109,9 +113,9 @@ export default function PitchBoard({
               h={34}
               style={{
                 borderRadius: '50%',
-                background: active ? '#f59f00' : '#1c7ed6',
+                background: isPicked ? '#fab005' : active ? '#f59f00' : '#1c7ed6',
                 border: `2px solid ${target ? '#ffd43b' : 'white'}`,
-                boxShadow: target ? '0 0 0 4px rgba(255,212,59,0.7)' : warn ? `0 0 0 3px ${warn === 'red' ? '#fa5252' : '#fd7e14'}` : undefined,
+                boxShadow: isPicked ? '0 0 0 4px rgba(255,212,59,0.9)' : target ? '0 0 0 4px rgba(255,212,59,0.7)' : warn ? `0 0 0 3px ${warn === 'red' ? '#fa5252' : '#fd7e14'}` : undefined,
                 color: 'white',
                 fontWeight: 700,
                 fontSize: 13,

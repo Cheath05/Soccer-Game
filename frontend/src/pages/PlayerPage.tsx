@@ -1,8 +1,9 @@
 import { Badge, Button, Card, Grid, Group, Loader, Modal, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
-import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { useClubPlayers, usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
+import BackButton from '../components/BackButton'
 import type { PlayerSeasonLine } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
@@ -21,7 +22,6 @@ export default function PlayerPage() {
   const { playerId } = useParams({ from: '/players/$playerId' })
   const player = usePlayer(Number(playerId))
   const navigate = useNavigate()
-  const router = useRouter()
   const clubPlayers = useClubPlayers(player.data?.club?.id ?? 0)
   // The list he was opened from (the squad as sorted and filtered), else his club's squad.
   const remembered = recallPlayerList()
@@ -33,7 +33,6 @@ export default function PlayerPage() {
   const go = (id: number | undefined) => {
     if (id !== undefined) void navigate({ to: '/players/$playerId', params: { playerId: String(id) }, replace: true })
   }
-  const back = () => (window.history.length > 1 ? router.history.back() : void navigate({ to: '/squad' }))
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -60,9 +59,7 @@ export default function PlayerPage() {
   return (
     <Stack>
       <Group justify="space-between">
-        <Button variant="subtle" size="compact-sm" onClick={back}>
-          ← Back
-        </Button>
+        <BackButton fallback="/squad" />
         {order.length > 1 && (
           <Group gap="xs">
             <Button variant="default" size="compact-sm" disabled={previous === undefined} onClick={() => go(previous)} title={previous !== undefined ? names.get(previous) : undefined}>

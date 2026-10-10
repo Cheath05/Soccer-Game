@@ -1,12 +1,13 @@
 import { Badge, Group, Progress, SegmentedControl, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { useCareer, useSquad, useTactics } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
 import { SeasonChange } from '../components/SeasonChange'
 import { money, positionColor, ratingColor, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
+import { useUrlState } from '../lib/urlState'
 
 type SortKey = 'position' | 'selection' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
 
@@ -45,8 +46,8 @@ export default function SquadPage() {
     tactics?.starters.forEach((s) => map.set(s.player_id, 0))
     return map
   }, [tactics])
-  const [group, setGroup] = useState('All')
-  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'position', desc: false })
+  const [group, setGroup] = useUrlState('group', 'All')
+  const [sort, setSort] = useUrlState<{ key: SortKey; desc: boolean }>('sort', { key: 'position', desc: false })
 
   const rows = useMemo(() => {
     const list = (squad.data ?? []).filter((p) => group === 'All' || GROUPS[group].includes(p.position))

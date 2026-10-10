@@ -176,3 +176,40 @@ export function useAskLoan() {
     },
   })
 }
+
+export interface OverviewPlayer {
+  player: ClubRef
+  age: number
+  position: string
+  overall: number
+  club: ClubRef | null
+  value_eur: number
+}
+
+export interface OverviewTransfer {
+  date: string
+  player: ClubRef
+  age: number | null
+  position: string | null
+  overall: number | null
+  from_club: ClubRef | null
+  to_club: ClubRef | null
+  fee_eur: number
+  yours: boolean
+}
+
+export interface OverviewProspect extends OverviewPlayer {
+  potential_low: number
+  potential_high: number
+  potential_label: string
+}
+
+export interface MarketOverview {
+  season: string
+  biggest_transfers: OverviewTransfer[]
+  most_valuable: OverviewPlayer[]
+  prospects: OverviewProspect[]
+}
+
+/** The world's biggest moves this season, most valuable players and best young prospects. */
+export const useMarketOverview = () => useQuery({ queryKey: ['market-overview'], queryFn: () => api.get<MarketOverview>('/market/overview') })

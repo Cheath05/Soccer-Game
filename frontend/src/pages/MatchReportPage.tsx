@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router'
 
 import { useMatch } from '../api/hooks'
 import type { MatchEvent, PlayerLine } from '../api/types'
+import BackButton from '../components/BackButton'
 import ClubLink from '../components/ClubLink'
 import MatchStats from '../components/MatchStats'
 import { longDate, matchRatingColor, score, stageLabel } from '../lib/format'
@@ -27,6 +28,9 @@ export default function MatchReportPage() {
 
   return (
     <Stack>
+      <Group>
+        <BackButton fallback="/fixtures" />
+      </Group>
       <Card withBorder>
         <Stack gap={2} align="center">
           <Text size="sm" c="dimmed">

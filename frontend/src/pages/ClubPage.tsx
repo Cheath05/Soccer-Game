@@ -1,8 +1,9 @@
 import { Badge, Button, Card, Grid, Group, Loader, SegmentedControl, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { useClub, useClubPlayers } from '../api/hooks'
+import BackButton from '../components/BackButton'
 import type { ClubPlayer, Fixture } from '../api/types'
 import ClubHistoryCard from '../components/ClubHistoryCard'
 import ClubLink from '../components/ClubLink'
@@ -10,6 +11,7 @@ import Overall from '../components/Overall'
 import ResultBadge from '../components/ResultBadge'
 import { money, ordinal, positionColor, score, shortDate, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
+import { useUrlState } from '../lib/urlState'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'contract_end'
 
@@ -45,8 +47,8 @@ export default function ClubPage() {
   const club = useClub(id)
   const players = useClubPlayers(id)
   const navigate = useNavigate()
-  const [group, setGroup] = useState('All')
-  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'position', desc: false })
+  const [group, setGroup] = useUrlState('group', 'All')
+  const [sort, setSort] = useUrlState<{ key: SortKey; desc: boolean }>('sort', { key: 'position', desc: false })
 
   const rows = useMemo(() => {
     const list = (players.data ?? []).filter((p) => group === 'All' || GROUPS[group].includes(p.position))
@@ -61,6 +63,9 @@ export default function ClubPage() {
 
   return (
     <Stack>
+      <Group>
+        <BackButton fallback="/league" />
+      </Group>
       <Group justify="space-between" align="start">
         <div>
           <Group gap="xs">

@@ -1,5 +1,5 @@
 import { Alert, Badge, Button, Card, Group, Loader, ScrollArea, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useCareer, useSaveTactics, useSquad, useTactics } from '../api/hooks'
 import type { SheetEntry, TacticsUpdate } from '../api/types'
@@ -24,6 +24,15 @@ export default function TacticsPage() {
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null) // a list row or list a drag is over
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [picked, setPicked] = useState<number | null>(null) // click-to-move: the player waiting for his new place
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setPicked(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (tactics.isPending) return <Loader />
   if (!tactics.data) return <Text c="red">{tactics.error?.message}</Text>
@@ -58,39 +67,76 @@ export default function TacticsPage() {
     setOver(null)
   }
 
-  const dropOnSlot = (slotId: string) => {
-    const dragged = dragging
-    finishDrag()
-    if (dragged == null) return
+  const moveToSlot = (playerId: number, slotId: string) => {
     const before = fullLineup(t)
-    if (before[slotId] === dragged) return
-    apply(before, swapInto(before, dragged, slotId))
+    if (before[slotId] === playerId) return
+    apply(before, swapInto(before, playerId, slotId))
   }
 
-  /** Dropped on another player's row: they change places (a reserve who changes places with a starter becomes a starter). */
-  const dropOnPlayer = (targetId: number) => {
-    const dragged = dragging
-    finishDrag()
-    if (dragged == null || dragged === targetId) return
+  /** Two players change places (a reserve who changes places with a starter becomes a starter). */
+  const swapPlayers = (movingId: number, targetId: number) => {
+    if (movingId === targetId) return
     const before = fullLineup(t)
-    const draggedAt = placeOf(before, dragged)
+    const movingAt = placeOf(before, movingId)
     const targetAt = placeOf(before, targetId)
-    if (targetAt !== undefined) apply(before, swapInto(before, dragged, targetAt))
-    else if (draggedAt !== undefined) apply(before, swapInto(before, targetId, draggedAt))
+    if (targetAt !== undefined) apply(before, swapInto(before, movingId, targetAt))
+    else if (movingAt !== undefined) apply(before, swapInto(before, targetId, movingAt))
   }
 
-  /** Dropped on the bench itself: a reserve takes a free place, if there is one. */
-  const dropOnBench = () => {
-    const dragged = dragging
-    finishDrag()
-    if (dragged == null) return
+  /** A reserve takes a free bench place, if there is one. */
+  const moveToBench = (playerId: number) => {
     const before = fullLineup(t)
     const free = freeBenchPlace(before, t.bench_size)
     if (free === undefined) {
-      setRefusal('The bench is full: drop the player on one of the substitutes to swap them.')
+      setRefusal('The bench is full: pick one of the substitutes to swap them.')
       return
     }
-    if (placeOf(before, dragged) === undefined) apply(before, swapInto(before, dragged, free))
+    if (placeOf(before, playerId) === undefined) apply(before, swapInto(before, playerId, free))
+  }
+
+  const dropOnSlot = (slotId: string) => {
+    const dragged = dragging
+    finishDrag()
+    if (dragged != null) moveToSlot(dragged, slotId)
+  }
+
+  const dropOnPlayer = (targetId: number) => {
+    const dragged = dragging
+    finishDrag()
+    if (dragged != null) swapPlayers(dragged, targetId)
+  }
+
+  const dropOnBench = () => {
+    const dragged = dragging
+    finishDrag()
+    if (dragged != null) moveToBench(dragged)
+  }
+
+  /** Click-to-move on a pitch slot: pick the player there, or put the picked player in this slot. */
+  const clickSlot = (slotId: string) => {
+    const e = t.starters.find((s) => s.slot === slotId)
+    setSelected(slotId)
+    if (picked != null) {
+      if (!(e && e.player_id === picked)) moveToSlot(picked, slotId)
+      setPicked(null)
+      return
+    }
+    setPicked(e?.available ? e.player_id : null)
+  }
+
+  /** Click-to-move on a list row: pick the player, or swap the picked player with this one. */
+  const clickPlayer = (e: SheetEntry, kind: 'xi' | 'bench' | 'reserve') => {
+    if (kind === 'xi') setSelected(e.slot)
+    if (picked === e.player_id) {
+      setPicked(null)
+      return
+    }
+    if (picked != null) {
+      swapPlayers(picked, e.player_id)
+      setPicked(null)
+      return
+    }
+    setPicked(e.available ? e.player_id : null)
   }
 
   const players = (squad.data ?? []).map((p) => ({
@@ -126,12 +172,18 @@ export default function TacticsPage() {
           ev.stopPropagation()
           dropOnPlayer(e.player_id)
         }}
-        onClick={kind === 'xi' ? () => setSelected(e.slot) : undefined}
+        onClick={() => clickPlayer(e, kind)}
         style={{
-          cursor: draggable ? 'grab' : 'default',
+          cursor: picked != null || !draggable ? 'pointer' : 'grab',
           opacity: draggable ? 1 : 0.55,
           outline: target ? '2px solid var(--mantine-color-yellow-5)' : undefined,
-          background: kind === 'xi' && e.slot === selected ? 'var(--mantine-color-orange-light)' : undefined,
+          background:
+            e.player_id === picked
+              ? 'var(--mantine-color-yellow-light)'
+              : kind === 'xi' && e.slot === selected
+                ? 'var(--mantine-color-orange-light)'
+                : undefined,
+          boxShadow: e.player_id === picked ? 'inset 3px 0 0 var(--mantine-color-yellow-6)' : undefined,
         }}
       >
         <Table.Td w={52}>
@@ -177,8 +229,29 @@ export default function TacticsPage() {
   }
 
   const list = (entries: SheetEntry[], kind: 'bench' | 'reserve') => (
-    <Table verticalSpacing={2}>
-      <Table.Tbody>{entries.map((e) => row(e, kind))}</Table.Tbody>
+    <Table verticalSpacing={1}>
+      <Table.Tbody>
+        {entries.map((e) => row(e, kind))}
+        {kind === 'bench' &&
+          Array.from({ length: Math.max(0, t.bench_size - entries.length) }, (_, i) => (
+            <Table.Tr
+              key={`free-${i}`}
+              onClick={() => {
+                if (picked != null) {
+                  moveToBench(picked)
+                  setPicked(null)
+                }
+              }}
+              style={{ cursor: picked != null ? 'pointer' : 'default' }}
+            >
+              <Table.Td colSpan={4}>
+                <Text size="xs" c="dimmed">
+                  Empty place{picked != null ? ': click to move him here' : ''}
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+      </Table.Tbody>
     </Table>
   )
 
@@ -205,23 +278,57 @@ export default function TacticsPage() {
           {refusal}
         </Alert>
       )}
+      {picked != null && (
+        <Alert color="yellow" py={6} withCloseButton onClose={() => setPicked(null)} closeButtonLabel="Cancel move">
+          Moving {everyone.get(picked)?.name}: click a position on the pitch, a substitute or a reserve to swap him there. Esc or
+          clicking him again cancels.
+        </Alert>
+      )}
       <Group align="start" gap="lg" wrap="wrap">
         <Stack gap={4}>
           <PitchBoard
             formation={formation}
             starters={t.starters}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={clickSlot}
+            picked={picked}
             dragging={dragging}
             onDragPlayer={setDragging}
             onDropOnSlot={dropOnSlot}
           />
           <Text size="xs" c="dimmed" maw={340}>
-            Drag a player onto another to swap them: on the pitch, or with a substitute or reserve. The number is his rating in
-            that position; a ring marks a player who is not fully at home there (amber a little, red out of position).
+            Click a player, then click where he should go (or drag him there). The number is his rating in that position; a ring
+            marks a player who is not fully at home there (amber a little, red out of position).
           </Text>
         </Stack>
-        <Stack style={{ flex: 1, minWidth: 320 }}>
+        <Stack gap="xs" style={{ flex: '0 1 300px', minWidth: 280 }}>
+          <Card
+            withBorder
+            p="xs"
+            onDragOver={(ev: React.DragEvent) => {
+              if (dragging == null) return
+              ev.preventDefault()
+              setOver('bench')
+            }}
+            onDrop={(ev: React.DragEvent) => {
+              ev.preventDefault()
+              dropOnBench()
+            }}
+            style={over === 'bench' && dragging != null ? { outline: '2px dashed var(--mantine-color-yellow-5)' } : undefined}
+          >
+            <Text fw={600} size="sm" mb={2}>
+              Bench ({t.bench.length}/{t.bench_size}) {t.bench_chosen ? '' : '(auto)'}
+            </Text>
+            {list(t.bench, 'bench')}
+          </Card>
+          <Card withBorder p="xs">
+            <Text fw={600} size="sm" mb={2}>
+              Reserves ({t.reserves.length})
+            </Text>
+            <ScrollArea.Autosize mah={320}>{list(t.reserves, 'reserve')}</ScrollArea.Autosize>
+          </Card>
+        </Stack>
+        <Stack style={{ flex: '1 1 320px', minWidth: 300 }}>
           <Card withBorder>
             {slot && entry ? (
               <Stack gap="xs">
@@ -288,40 +395,6 @@ export default function TacticsPage() {
             </Stack>
           </Card>
         </Stack>
-      </Group>
-      <Group align="start" grow wrap="wrap">
-        <Card
-          withBorder
-          onDragOver={(ev: React.DragEvent) => {
-            if (dragging == null) return
-            ev.preventDefault()
-            setOver('bench')
-          }}
-          onDrop={(ev: React.DragEvent) => {
-            ev.preventDefault()
-            dropOnBench()
-          }}
-          style={over === 'bench' && dragging != null ? { outline: '2px dashed var(--mantine-color-yellow-5)' } : undefined}
-        >
-          <Group justify="space-between" mb="xs">
-            <Text fw={600}>
-              Bench ({t.bench.length}/{t.bench_size}) {t.bench_chosen ? '' : '(picked automatically)'}
-            </Text>
-            <Text size="xs" c="dimmed">
-              Drag a reserve onto a substitute to swap them
-            </Text>
-          </Group>
-          {list(t.bench, 'bench')}
-        </Card>
-        <Card withBorder>
-          <Group justify="space-between" mb="xs">
-            <Text fw={600}>Reserves ({t.reserves.length})</Text>
-            <Text size="xs" c="dimmed">
-              Not in the matchday squad
-            </Text>
-          </Group>
-          <ScrollArea.Autosize mah={420}>{list(t.reserves, 'reserve')}</ScrollArea.Autosize>
-        </Card>
       </Group>
       {save.isPending && <Loader size="sm" />}
     </Stack>

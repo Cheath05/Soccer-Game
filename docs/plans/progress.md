@@ -16,7 +16,16 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): haggling and position training (schema 15)** (the commit that adds this line; after e2a96aa, which fixed offers showing the club's price in euros beside a button in dollars). The user asked for room to haggle and a way to make players natural in their other positions. Backend only; the detailed offer screen and the training controls follow (an agent, after the current UI one).
+- **Latest checkpoint (9 Oct): UI polish, tactics, Back, calendar and market overview** (the commit that adds this line; after ebcfaf3; a Sonnet agent's work, reviewed here with its screenshots). The user's 8 Oct requests.
+  - **Tactics:** click a player (pitch, XI, bench or reserves), then click where he should go: he swaps or moves there. Esc cancels. Drag and drop still works. The bench and reserves sit in a column beside the pitch.
+  - **Back buttons** on the player, club and match report pages: they use browser history, with a fallback route. Page state lives in the URL (`lib/urlState.ts`): the Transfers tab, search form and filters; the squad's group and sort; the league, season and cup pickers. So Back returns to the same filtered list.
+  - **Calendar:** redesigned. Day cards, fixture chips with crest initials, a competition stripe and the result, a legend, an "Up next" list, and a phone layout.
+  - **Market overview** (a Transfers tab; `GET /api/market/overview`): the season's biggest transfers, the 20 most valuable players, and the top 20 prospects aged 21 or under, ranked by the public potential estimate (the hidden potential never leaves the server).
+  - **Checks:** `test_market_overview.py`; ruff, mypy, tsc, lint and build clean. A browser run on a throwaway server covered tactics click-to-move, Transfers Back with the filters restored, and the calendar and overview screenshots.
+  - **Not browser-checked:** the club and match report Back buttons, and URL state on the League, Cups and Fixtures pages.
+  - **Next:** the currency fix (the user saw euro amounts after paying in dollars). Then the detailed offer screen and the position-training controls (an agent). Then a multi-season market report, then the play-test gate.
+  - **Play-test on:** the user's server (prod via the updater), or :8765 for checks.
+- **9 Oct: haggling and position training (schema 15)** (ebcfaf3, after e2a96aa, which fixed offers showing the club's price in euros beside a button in dollars). The user asked for room to haggle and a way to make players natural in their other positions. Backend only; the detailed offer screen and the training controls follow (an agent, after the current UI one).
   - **Haggling** (`decisions.reservation_price`, `decisions.haggle`; `make_offer` keeps the talks in a `transfer_offer` row, `by_user` 1, with `rounds`):
     - a club's walk-away price is a share of its asking price by role (key 100%, starter 92%, rotation 85%, surplus 75%; ×0.95 when listed or in debt);
     - a fair offer (at least that price) brings its price `concession` (50%) of the way down to the bid;

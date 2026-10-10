@@ -131,12 +131,14 @@ class MatchEngine:
         self.restart: Restart | None = None
         self.taking_restart: str | None = None  # set while a restart's first pass is played
         # Substitutions wait for the ball to go dead: (team, player off, player on).
-        self.pending_subs: list[tuple[int, int, int]] = []
+        # (team, player off, player on, his role or None for the outgoing player's)
+        self.pending_subs: list[tuple[int, int, int, str | None]] = []
+        self.sub_stoppage = -1  # the tick of the last substitution made in play
         self.last_completed_pass: tuple[int, int, float] | None = None  # passer, receiver, time
 
         self.t = 0.0
         self.tick_count = 0
-        self.clock = MatchClock()
+        self.clock = MatchClock(defs.clock)
         self.next_period = 2  # the period that follows the current break
         # A watched match waits at half-time (and before or during extra time) until the
         # viewer starts the next period; a headless match carries straight on.
@@ -791,7 +793,72 @@ class MatchEngine:
         self._announce("tactics", team, f"{self.players[a].player.name} and "
                                         f"{self.players[b].player.name} swap positions")
 
-    def substitute(self, team: int, out_player_id: int, in_player_id: int) -> None:
+    def _on_pitch(self, team: int, player_id: int) -> int | None:
+        return next((int(i) for i in self.team_indices(team)
+                     if self.players[i].player_id == player_id), None)
+
+    def move_to_slot(self, team: int, player_id: int, slot_id: str) -> None:
+        """A player on the pitch takes another slot of the formation: he swaps with whoever
+        holds it, or, if it's empty (its player sent off), moves into it and leaves his own
+        empty. Made at once, through targets, like a swap. The goalkeeper stays in goal while
+        he's on the pitch; once he's gone, an outfielder can take the gloves."""
+        i = self._on_pitch(team, player_id)
+        slot = next((sl for sl in self.formation[team].slots if sl.id == slot_id), None)
+        if i is None or slot is None:
+            raise ValueError("invalid move")
+        holder = next((int(j) for j in self.team_indices(team) if self.slot[j] == slot_id),
+                      None)
+        if holder == i:
+            return
+        if holder is not None:
+            self.swap_positions(team, player_id, self.players[holder].player_id)
+            return
+        if self.position[i] == "GK":
+            raise ValueError("the goalkeeper stays in goal")
+        self.slot[i] = slot.id
+        self.position[i] = slot.position
+        self.group[i] = self.defs.positions[slot.position].group
+        self.role[i] = self.defs.roles[slot.default_role]
+        self.lineup_version += 1
+        self.emit("move", team, i, slot=slot.id)
+        self._announce("tactics", team, f"{self.players[i].player.name} moves to "
+                                        f"{self.defs.positions[slot.position].name}")
+
+    def set_role(self, team: int, player_id: int, role_key: str) -> None:
+        """The role a player on the pitch plays in his position, or that a substitute waiting
+        to come on will play (one of the roles of that position's group)."""
+        role = self.defs.roles.get(role_key)
+        i = self._on_pitch(team, player_id)
+        if i is not None:
+            if role is None or role.group != self.group[i]:
+                raise ValueError(f"{role_key} isn't a role for {self.position[i]}")
+            self.role[i] = role
+            self.roles[team][self.slot[i]] = role.key
+            self.lineup_version += 1
+            self._announce("tactics", team, f"{self.players[i].player.name} now plays as "
+                                            f"{role.name}")
+            return
+        for k, (t, off, on, _) in enumerate(self.pending_subs):
+            if t == team and on == player_id:
+                j = self._on_pitch(team, off)
+                if j is None or role is None or role.group != self.group[j]:
+                    raise ValueError(f"{role_key} isn't a role for that position")
+                self.pending_subs[k] = (t, off, on, role.key)
+                return
+        raise ValueError("that player isn't on the pitch or waiting to come on")
+
+    def cancel_substitution(self, team: int, out_player_id: int) -> None:
+        """Take back a substitution still waiting for a stoppage."""
+        for k, (t, off, _on, _) in enumerate(self.pending_subs):
+            if t == team and off == out_player_id:
+                del self.pending_subs[k]
+                self.subs_used[team] -= 1
+                self._announce("sub_pending", team, "Substitution called off")
+                return
+        raise ValueError("no such substitution is waiting")
+
+    def substitute(self, team: int, out_player_id: int, in_player_id: int,
+                   role: str | None = None) -> None:
         """Make a substitution: straight away if play is stopped, otherwise at the next
         stoppage (the fourth official waits for the ball to go dead)."""
         if self.subs_used[team] >= MAX_SUBS:
@@ -802,10 +869,14 @@ class MatchEngine:
         if idx is None or incoming is None:
             raise ValueError("invalid substitution")
         if any(t == team and (out_player_id == off or in_player_id == on)
-               for t, off, on in self.pending_subs):
+               for t, off, on, _ in self.pending_subs):
             raise ValueError("that change is already waiting to be made")
+        if role is not None:
+            known = self.defs.roles.get(role)
+            if known is None or known.group != self.group[idx]:
+                raise ValueError(f"{role} isn't a role for {self.position[idx]}")
         self.subs_used[team] += 1
-        self.pending_subs.append((team, out_player_id, in_player_id))
+        self.pending_subs.append((team, out_player_id, in_player_id, role))
         if self.ball_dead:
             self.apply_pending_subs()
         else:
@@ -815,11 +886,16 @@ class MatchEngine:
 
     def pending_for(self, team: int) -> list[tuple[int, int]]:
         """Substitutions waiting for a stoppage: (player off, player on)."""
-        return [(off, on) for t, off, on in self.pending_subs if t == team]
+        return [(off, on) for t, off, on, _ in self.pending_subs if t == team]
+
+    def pending_role(self, team: int, in_player_id: int) -> str | None:
+        """The role a waiting substitute will play, if one was chosen."""
+        return next((role for t, _, on, role in self.pending_subs
+                     if t == team and on == in_player_id), None)
 
     def apply_pending_subs(self) -> None:
         pending, self.pending_subs = self.pending_subs, []
-        for team, out_player_id, in_player_id in pending:
+        for team, out_player_id, in_player_id, role in pending:
             idx = next((int(i) for i in self.team_indices(team)
                         if self.players[i].player_id == out_player_id), None)
             incoming = next((sp for sp in self.bench[team] if sp.player_id == in_player_id),
@@ -827,15 +903,19 @@ class MatchEngine:
             if idx is None or incoming is None:  # e.g. sent off while waiting
                 self.subs_used[team] -= 1
                 continue
-            self._bring_on(team, idx, incoming)
+            self._bring_on(team, idx, incoming, role)
 
-    def _bring_on(self, team: int, idx: int, incoming: SheetPlayer) -> None:
+    def _bring_on(self, team: int, idx: int, incoming: SheetPlayer,
+                  role: str | None = None) -> None:
         outgoing = self.players[idx]
         self.bench[team].remove(incoming)
         entering = SheetPlayer(incoming.player, incoming.number, self.slot[idx],
-                               self.position[idx], self.group[idx], self.role[idx].key,
-                               incoming.rating)
+                               self.position[idx], self.group[idx],
+                               role or self.role[idx].key, incoming.rating)
         self._load(int(idx), entering)
+        if role is not None:  # the user chose how he plays the outgoing player's position
+            self.role[idx] = self.defs.roles[role]
+            self.roles[team][self.slot[idx]] = role
         # The replacement comes on at the halfway line and jogs to his position.
         self.pos[idx] = (MID_X, -0.8)
         self.vel[idx] = 0.0
@@ -849,7 +929,11 @@ class MatchEngine:
                                                     self.sheets[team].club_id, started=False)
         self.record_event("sub", team, outgoing.player_id, entering.player_id)
         if not self.at_break:  # half-time changes don't stop play
-            self.clock.ledger.add("substitution")
+            # Changes made together are one stoppage: the referee allows for the first, and a
+            # little for each one with it.
+            together = self.sub_stoppage == self.tick_count
+            self.clock.ledger.add("substitution_extra" if together else "substitution")
+            self.sub_stoppage = self.tick_count
         self.emit("sub", team, int(idx), out=outgoing.player_id, entering=entering.player_id)
         self.lineup_version += 1
         self._announce("sub", team, f"Substitution: {entering.player.name} replaces "

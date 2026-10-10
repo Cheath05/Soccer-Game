@@ -1,5 +1,7 @@
 """Match-simulation parameters (data/config/match/*.yaml)."""
 
+from typing import Self
+
 from pydantic import Field, model_validator
 
 from footsim.defs.common import DefModel
@@ -16,6 +18,25 @@ class InstructionDef(DefModel):
     def _default_is_option(self) -> "InstructionDef":
         if self.default not in self.options:
             raise ValueError(f"{self.key}: default {self.default!r} is not an option")
+        return self
+
+
+class ClockDef(DefModel):
+    """Added time (data/config/match/clock.yaml; match/engine/clock.py)."""
+
+    limits: dict[int, tuple[int, int]]  # per period: the least and most minutes shown
+    base_seconds: dict[int, float]  # per period: time lost that's always there
+    allowance: dict[str, float]  # seconds per kind of stoppage
+    max_overrun_seconds: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _every_period(self) -> Self:
+        for period in (1, 2, 3, 4):
+            if period not in self.limits or period not in self.base_seconds:
+                raise ValueError(f"clock: period {period} needs limits and base_seconds")
+            low, high = self.limits[period]
+            if not 0 <= low <= high:
+                raise ValueError(f"clock: period {period} limits must be 0 <= least <= most")
         return self
 
 

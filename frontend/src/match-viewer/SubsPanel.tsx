@@ -2,7 +2,9 @@ import { Badge, Button, Checkbox, Group, Progress, ScrollArea, SegmentedControl,
 import { useState } from 'react'
 
 import { POSITION_ORDER, matchRatingColor } from '../lib/format'
-import type { BenchStatus, PlayerStatus } from './protocol'
+import { currentRoleKey } from './protocol'
+import type { BenchStatus } from './protocol'
+import { CardIcon, PendingSubs, RoleSelect } from './SubsParts'
 import SubsPitch from './SubsPitch'
 import type { LiveMatch } from './useLiveMatch'
 
@@ -30,11 +32,6 @@ export function MatchRating({ value }: { value: number }) {
   )
 }
 
-function Cards({ player }: { player: PlayerStatus }) {
-  if (player.red) return <>🟥</>
-  return <>{player.yellow ? '🟨' : ''}</>
-}
-
 // Everything needed to choose a substitution; the choice stays the manager's.
 export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onInspect: (index: number) => void }) {
   const { live, send } = match
@@ -50,7 +47,6 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
   const leaving = players.find((p) => p.player_id === off)
   const coming = bench.find((b) => b.player_id === on)
   const left = live.subsLeft[team]
-  const waiting = live.pendingSubs?.[team] ?? []
   const nameOf = (id: number) =>
     players.find((p) => p.player_id === id)?.short_name ?? bench.find((b) => b.player_id === id)?.short_name ?? '?'
   const dead = live.paused || live.atBreak || live.restart !== null
@@ -67,6 +63,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
           onChange={(e) => send({ type: 'auto_subs', value: e.currentTarget.checked })}
         />
       </Group>
+      <PendingSubs match={match} nameOf={nameOf} />
       <SegmentedControl size="xs" value={view} onChange={setView} data={[{ value: 'pitch', label: 'Pitch' }, { value: 'list', label: 'List' }]} />
       {view === 'pitch' && <SubsPitch match={match} onInspect={onInspect} />}
       {view === 'list' && (<>
@@ -79,6 +76,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
               <Table.Th>Pos</Table.Th>
               <Table.Th ta="center">OVR</Table.Th>
               <Table.Th ta="center">Rating</Table.Th>
+              <Table.Th>Role</Table.Th>
               <Table.Th>Energy</Table.Th>
               <Table.Th ta="right">Cond</Table.Th>
               <Table.Th />
@@ -112,6 +110,15 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
                 <Table.Td ta="center">
                   <MatchRating value={p.rating} />
                 </Table.Td>
+                <Table.Td w={150}>
+                  {p.roles && p.roles.length > 0 && (
+                    <RoleSelect
+                      roles={p.roles}
+                      current={currentRoleKey(p)}
+                      onChange={(key) => send({ type: 'role', player: p.player_id, role: key })}
+                    />
+                  )}
+                </Table.Td>
                 <Table.Td w={70}>
                   <Tooltip label={`${p.energy}% energy left`}>
                     <Progress value={p.energy} size="sm" color={energyColor(p.energy)} />
@@ -125,7 +132,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
                   </Tooltip>
                 </Table.Td>
                 <Table.Td>
-                  <Cards player={p} />
+                  <CardIcon player={p} />
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -191,15 +198,10 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
         }}
       >
         {leaving && coming
-          ? `${coming.short_name} on for ${leaving.short_name}${dead ? '' : ' at the next stoppage'}`
+          ? `${coming.short_name} on for ${leaving.short_name}${dead ? ', made when play resumes' : ', at the next stoppage'}`
           : 'Pick a player off and one on'}
       </Button>
       </>)}
-      {waiting.map((w) => (
-        <Text key={w.out} size="xs" c="orange">
-          Waiting for the ball to go out: {nameOf(w.in)} on for {nameOf(w.out)}
-        </Text>
-      ))}
     </Stack>
   )
 }

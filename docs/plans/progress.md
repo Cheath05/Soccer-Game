@@ -16,7 +16,35 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (9 Oct): what's shown is what's paid; up for loan; positions; the offer screen** (the commit that adds this line; after 0d3c72f). The user's requests:
+- **Latest checkpoint (9 Oct): live match controls, added time, Continue stays put** (the commit that adds this line; after 57aa15c). The user's play-test of a live match: no sign of who was booked; a change made while paused couldn't be undone; no way to pick the newcomer's role; after a red card nobody could be moved into the empty CB slot; added time always 7+; Continue jumped to the match day page.
+  - **Engine** (`match/engine/engine.py`; logged commands, so a watched match still replays exactly):
+    - `move_to_slot`: a player takes a formation slot, swapping with its holder or filling it if a red card left it empty. The keeper stays in goal while he's on.
+    - `set_role`: a player on the pitch, or a substitute still waiting to come on (pending subs now carry a role, which `_bring_on` applies).
+    - `cancel_substitution`: calls off a change still waiting for a stoppage.
+  - **LiveSession:**
+    - Substitutions chosen while paused or at a break are staged: they can be called off or given a role, and are made (and logged) when play resumes or the next period starts.
+    - `pending_subs` shows staged and waiting changes with the newcomer's role options and ratings. `status` gives each of the user's players his role options, and lists `vacant_slots`.
+    - The protocol (`api/live.py`) adds `move`, `role` and `cancel_sub`.
+  - **Viewer** (a Sonnet agent's work, reviewed here):
+    - card icons on the subs pitch and list;
+    - waiting and staged changes with Undo and a role select;
+    - role selects for players on the pitch;
+    - empty slots drawn on the subs pitch, filled by drag or click.
+    - Formation changes with 10 men already worked in the engine. What was missing was being able to see and fill the empty slot.
+  - **Added time.**
+    - **Measured** over 40 synthetic matches before the change: first half mean 2.9 (2–5); second half mean 6.0 (4–9, mostly 5–7), with about 4.5 changes per match.
+    - **Why the user's matches ran long:** a user makes their own changes, each charged a full 25 s even when made together.
+    - **Reference:** the Premier League's 2023-24 matches lasted 101:36 on average, about 11.6 minutes added in all (theanalyst.com); other leagues add less.
+    - **Fix:** changes made at one stoppage (either side's) are one stoppage, 25 s for the first and `substitution_extra` 8 s for each other.
+    - **Config:** the clock's numbers moved to `data/config/match/clock.yaml` (`ClockDef`), with no change of behaviour; the golden values are unchanged.
+  - **Continue** no longer opens the match day page when it stops at a match. The button turns orange ("Match day") and the user goes when ready.
+  - **Tests:**
+    - `test_live_session.py`: a change chosen while paused is taken back, given a role, then made and replayed exactly; a player fills the slot a red card left and changes role.
+    - `test_clock.py`: changes made together are one stoppage.
+    - The golden values are unchanged.
+  - **Calibration:** a 200-fixture `calibrate-engine` batch on this commit (measure worktree) should confirm that the goal and card rates are unchanged; the change only touches the added time of matches with grouped changes.
+  - **Next:** a multi-season `footsim market-report`, then the play-test gate.
+- **9 Oct: what's shown is what's paid; up for loan; positions; the offer screen** (57aa15c, after 0d3c72f). The user's requests:
   - after paying a price shown in dollars, they saw euros;
   - after selling a player, other clubs' bids for him stayed;
   - a choice to loan a player out or to sell him;

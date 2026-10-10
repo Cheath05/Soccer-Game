@@ -1,8 +1,10 @@
 import { Box, CloseButton, Group, Paper, Progress, SimpleGrid, Stack, Text } from '@mantine/core'
 
 import { TEAM_COLORS } from './draw'
+import { currentRoleKey } from './protocol'
 import type { PlayerStatus } from './protocol'
 import { MatchRating, Ovr } from './SubsPanel'
+import { CardIcon, RoleSelect } from './SubsParts'
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -18,7 +20,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 // A compact card for the player clicked on the pitch; small enough to leave the play visible.
-export default function PlayerCard({ player, onClose }: { player: PlayerStatus; onClose: () => void }) {
+export default function PlayerCard({ player, onClose, onRole }: { player: PlayerStatus; onClose: () => void; onRole?: (roleKey: string) => void }) {
   const keeper = player.position === 'GK'
   return (
     <Paper
@@ -46,9 +48,14 @@ export default function PlayerCard({ player, onClose }: { player: PlayerStatus; 
         <Group gap={6}>
           <Ovr value={player.ovr} />
           <MatchRating value={player.rating} />
-          {player.red ? '🟥' : player.yellow ? '🟨' : null}
+          <CardIcon player={player} />
         </Group>
       </Group>
+      {onRole && player.roles && player.roles.length > 0 && (
+        <Box mb={6}>
+          <RoleSelect roles={player.roles} current={currentRoleKey(player)} onChange={onRole} label="Role" />
+        </Box>
+      )}
       <Group gap="xs" grow mb={6}>
         <Stack gap={2}>
           <Text size="10px" c="dimmed">

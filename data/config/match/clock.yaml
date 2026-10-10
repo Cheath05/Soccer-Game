@@ -1,0 +1,21 @@
+# Added time (match/engine/clock.py; IFAB Law 7). A StoppageLedger collects the time lost to
+# events in each period; at the end of the period the fourth official shows the minimum added
+# time: `base_seconds` (time lost that's always there: throw-in delays, treatment, checks) plus
+# the ledger, rounded to the minute and kept within `limits`.
+
+# Minutes of added time the fourth official may show, per period: [least, most].
+limits: {1: [1, 5], 2: [2, 9], 3: [0, 3], 4: [1, 4]}
+# Seconds lost that are always there, per period, on top of the ledger.
+base_seconds: {1: 90.0, 2: 150.0, 3: 30.0, 4: 60.0}
+# Seconds added for each kind of stoppage (the first 30 s of a goal celebration are part of the
+# game, so a goal adds what goes beyond that).
+allowance:
+  goal: 40.0
+  substitution: 25.0  # the first change at a stoppage
+  substitution_extra: 8.0  # each further change at the same stoppage (either side's)
+  injury: 45.0
+  card: 15.0
+  penalty: 45.0
+  red_card: 25.0
+# The referee blows up at the first safe moment after added time, but no later than this.
+max_overrun_seconds: 45.0

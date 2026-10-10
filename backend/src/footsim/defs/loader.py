@@ -22,6 +22,7 @@ from footsim.defs.formations import FormationDef
 from footsim.defs.lifecycle import LifecycleDef
 from footsim.defs.market import MarketDef
 from footsim.defs.match import (
+    ClockDef,
     DefendingDef,
     DuelsDef,
     HomeAdvantageDef,
@@ -68,6 +69,7 @@ class GameDefinitions:
     quick_engine: QuickEngineParams
     instructions: dict[str, InstructionDef]
     presentation: PresentationDef
+    clock: ClockDef
     restarts: RestartsDef
     duels: DuelsDef
     passing: PassingDef
@@ -136,6 +138,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
         instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
         presentation=_parse(PresentationDef, root / "match" / "presentation.yaml"),
+        clock=_parse(ClockDef, root / "match" / "clock.yaml"),
         restarts=_parse(RestartsDef, root / "match" / "restarts.yaml"),
         duels=_parse(DuelsDef, root / "match" / "duels.yaml"),
         passing=_parse(PassingDef, root / "match" / "passing.yaml"),

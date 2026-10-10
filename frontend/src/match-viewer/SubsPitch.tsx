@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { matchRatingColor } from '../lib/format'
 import type { BenchStatus, PlayerStatus } from './protocol'
+import { CardIcon } from './SubsParts'
 import type { LiveMatch } from './useLiveMatch'
 
 const W = 330
@@ -25,6 +26,7 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
   const { live, send } = match
   const [drag, setDrag] = useState<Drag | null>(null)
   const [over, setOver] = useState<string | null>(null)
+  const [picked, setPicked] = useState<number | null>(null) // click a player, then an empty slot
   if (!live) return null
   const team = live.userTeam
   const shape = live.formations.find((f) => f.key === live.formation[team])
@@ -36,6 +38,24 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
   const coming = new Set(waiting.map((w) => w.in))
   const canSub = live.subsLeft[team] > 0 && !live.finished
   if (!shape?.slots) return null
+  const vacant = (live.status.vacant_slots ?? []).flatMap((v) => {
+    const slot = shape.slots?.find((sl) => sl.id === v.id)
+    return slot ? [{ ...slot, position: v.position }] : []
+  })
+  const mover = (id: number | null) => players.find((p) => p.player_id === id)
+  const canMove = (id: number | null) => {
+    const p = mover(id)
+    return p !== undefined && p.position !== 'GK'
+  }
+  const dropOnSlot = (slotId: string) => {
+    const dragged = drag
+    finish()
+    if (dragged?.kind === 'pitch' && canMove(dragged.id)) send({ type: 'move', player: dragged.id, slot: slotId })
+  }
+  const clickSlot = (slotId: string) => {
+    if (picked !== null && canMove(picked)) send({ type: 'move', player: picked, slot: slotId })
+    setPicked(null)
+  }
 
   const finish = () => {
     setDrag(null)
@@ -84,12 +104,55 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
             <rect x={W * 0.2} y={H - 6 - H * 0.16} width={W * 0.6} height={H * 0.16} />
           </g>
         </svg>
+        {vacant.map((slot) => {
+          const { left, top } = place(slot)
+          const hot = over === `s${slot.id}` || picked !== null
+          return (
+            <Box
+              key={`vacant-${slot.id}`}
+              pos="absolute"
+              onDragOver={(e: React.DragEvent) => {
+                if (drag?.kind !== 'pitch' || !canMove(drag.id)) return
+                e.preventDefault()
+                setOver(`s${slot.id}`)
+              }}
+              onDragLeave={() => setOver((o) => (o === `s${slot.id}` ? null : o))}
+              onDrop={(e: React.DragEvent) => {
+                e.preventDefault()
+                dropOnSlot(slot.id)
+              }}
+              onClick={() => clickSlot(slot.id)}
+              title={`Empty ${slot.position} slot: drag a player here, or pick a player and click it`}
+              style={{ left, top, transform: 'translate(-50%, -50%)', width: 66, textAlign: 'center', cursor: picked !== null ? 'pointer' : 'default' }}
+            >
+              <Box
+                mx="auto"
+                w={32}
+                h={32}
+                style={{
+                  borderRadius: '50%',
+                  border: `2px dashed ${hot ? '#ffd43b' : 'rgba(255,255,255,0.8)'}`,
+                  background: over === `s${slot.id}` ? 'rgba(255,212,59,0.3)' : 'rgba(0,0,0,0.15)',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: 10,
+                  lineHeight: '28px',
+                }}
+              >
+                {slot.position}
+              </Box>
+              <Text c="white" fw={600} style={{ fontSize: 10, textShadow: '0 1px 2px black' }}>
+                empty
+              </Text>
+            </Box>
+          )
+        })}
         {shape.slots.map((slot) => {
           const p = bySlot.get(slot.id)
           const { left, top } = place(slot)
           if (!p) return null
           const target = over === `p${p.player_id}` && droppable(p)
-          const ring = target ? '#ffd43b' : leaving.has(p.player_id) ? '#fd7e14' : 'white'
+          const ring = target || picked === p.player_id ? '#ffd43b' : leaving.has(p.player_id) ? '#fd7e14' : 'white'
           return (
             <Box
               key={slot.id}
@@ -107,7 +170,10 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
                 e.preventDefault()
                 dropOnPlayer(p)
               }}
-              onClick={() => onInspect(p.index)}
+              onClick={() => {
+                onInspect(p.index)
+                if (vacant.length) setPicked(picked === p.player_id || p.position === 'GK' ? null : p.player_id)
+              }}
               title={`${p.name} · ${p.position} · OVR ${p.ovr} · match rating ${p.rating.toFixed(1)} · energy ${p.energy}%${leaving.has(p.player_id) ? ' · going off at the next stoppage' : ''}`}
               style={{ left, top, transform: 'translate(-50%, -50%)', width: 66, textAlign: 'center', cursor: 'grab' }}
             >
@@ -128,6 +194,11 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
               >
                 {p.number}
               </Box>
+              {(p.yellow > 0 || p.red) && (
+                <Box pos="absolute" style={{ top: -3, right: 12 }}>
+                  <CardIcon player={p} />
+                </Box>
+              )}
               <Text c="white" fw={600} truncate style={{ fontSize: 11, textShadow: '0 1px 2px black' }}>
                 {p.short_name}
               </Text>
@@ -140,7 +211,8 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
       </Box>
       <Text size="xs" c="dimmed" mt={4}>
         Drag a substitute onto a player to bring him on, or one player onto another to swap their positions. The ring
-        shows energy; click a player for his card.
+        shows energy; a card marks a booking; click a player for his card.
+        {vacant.length > 0 && ' To fill an empty position, drag a player onto it, or click a player and then the position.'}
       </Text>
       <Text size="xs" fw={600} mt={6} mb={2}>
         Bench {canSub ? '' : '(no substitutions left)'}

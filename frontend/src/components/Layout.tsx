@@ -70,7 +70,7 @@ export default function Layout() {
       onSuccess: (result) => {
         if (result.stop === 'season_end' && result.season_final) setSeasonFinal(result.season_final)
         else if (result.messages.length) setMessages(result.messages)
-        if (result.stop === 'match') void navigate({ to: '/matchday' })
+        // A match day: stay on this page; the button turns into "Match day" for when you're ready.
         if (result.stop === 'offer') void navigate({ to: '/transfers' })
       },
     })

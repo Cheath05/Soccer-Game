@@ -14,19 +14,10 @@ announced. The announcement is capped so added time can't dominate a match.
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from footsim.defs.match import ClockDef
+
 PERIOD_SECONDS = {1: 45 * 60, 2: 45 * 60, 3: 15 * 60, 4: 15 * 60}
 PERIOD_START_MINUTE = {1: 0, 2: 45, 3: 90, 4: 105}
-# Minutes of added time the fourth official may show, per period.
-ADDED_LIMITS = {1: (1, 5), 2: (2, 9), 3: (0, 3), 4: (1, 4)}
-# Time lost that is always there (throw-in delays, treatment, VAR, general stoppages), per
-# period, on top of what the ledger records from events.
-BASE_ADDED_SECONDS = {1: 90.0, 2: 150.0, 3: 30.0, 4: 60.0}
-# Seconds added for each kind of stoppage (the first 30 s of a goal celebration are part
-# of the game, so a goal adds what goes beyond that).
-ALLOWANCE = {"goal": 40.0, "substitution": 25.0, "injury": 45.0, "card": 15.0,
-             "penalty": 45.0, "red_card": 25.0}
-# The referee blows up at the first safe moment after added time, but no later than this.
-MAX_OVERRUN = 45.0
 
 
 class ClockState(StrEnum):
@@ -37,24 +28,29 @@ class ClockState(StrEnum):
 
 @dataclass
 class StoppageLedger:
-    """Time lost in the current period, by cause."""
+    """Time lost in the current period, by cause (allowances: data/config/match/clock.yaml)."""
 
+    allowance: dict[str, float]
     seconds: float = 0.0
     items: list[tuple[str, float]] = field(default_factory=list)
 
     def add(self, cause: str, seconds: float | None = None) -> None:
-        amount = ALLOWANCE.get(cause, 0.0) if seconds is None else seconds
+        amount = self.allowance.get(cause, 0.0) if seconds is None else seconds
         self.seconds += amount
         self.items.append((cause, amount))
 
 
 @dataclass
 class MatchClock:
+    rules: ClockDef
     period: int = 1
     elapsed: float = 0.0  # seconds played in this period, advanced only by ticks
     state: ClockState = ClockState.PLAYING
     announced: int | None = None  # minutes of added time shown, once regulation is over
-    ledger: StoppageLedger = field(default_factory=StoppageLedger)
+    ledger: StoppageLedger = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.ledger = StoppageLedger(self.rules.allowance)
 
     @property
     def regulation(self) -> float:
@@ -71,8 +67,8 @@ class MatchClock:
         return PERIOD_START_MINUTE[self.period] + int(self.elapsed // 60) + 1
 
     def announce(self) -> int:
-        low, high = ADDED_LIMITS[self.period]
-        lost = BASE_ADDED_SECONDS[self.period] + self.ledger.seconds
+        low, high = self.rules.limits[self.period]
+        lost = self.rules.base_seconds[self.period] + self.ledger.seconds
         self.announced = int(min(high, max(low, round(lost / 60))))
         return self.announced
 
@@ -82,13 +78,14 @@ class MatchClock:
 
     def overrun(self) -> bool:
         return (self.announced is not None
-                and self.elapsed >= self.regulation + 60 * self.announced + MAX_OVERRUN)
+                and self.elapsed >= self.regulation + 60 * self.announced
+                + self.rules.max_overrun_seconds)
 
     def start_period(self, period: int) -> None:
         self.period = period
         self.elapsed = 0.0
         self.announced = None
-        self.ledger = StoppageLedger()
+        self.ledger = StoppageLedger(self.rules.allowance)
         self.state = ClockState.PLAYING
 
     def display(self) -> str:

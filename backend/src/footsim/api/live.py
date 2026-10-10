@@ -10,7 +10,10 @@ Protocol v2 (JSON).
   Server -> client: init | frames | ack | end | error.
   Client -> server: pause | resume | speed {value} | mode {value: full|highlights} |
     formation {key} | instruction {key, value} | sub {out, in} |
-    swap {a, b} (two players on the pitch change positions) | auto_subs {value} |
+    swap {a, b} (two players on the pitch change positions) |
+    move {player, slot} (a player takes a slot: swapping with its holder, or filling it if
+    it's empty after a red card) | role {player, role} (a player's role, or a waiting
+    substitute's) | cancel_sub {out} (call off a substitution not yet made) | auto_subs {value} |
     assistant {value} (the AI manager adjusts the user's tactics) | start_period | finish.
     Any command may carry a cmd_id, echoed back in its ack.
 """

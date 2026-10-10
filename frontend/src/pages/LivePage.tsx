@@ -65,7 +65,11 @@ export default function LivePage() {
             <GoalBanner goal={goalView.banner} live={live} />
             {selectedStatus && (
               <Box pos="absolute" top={8} left={8}>
-                <PlayerCard player={selectedStatus} onClose={() => setSelected(null)} />
+                <PlayerCard
+                  player={selectedStatus}
+                  onClose={() => setSelected(null)}
+                  onRole={(role) => send({ type: 'role', player: selectedStatus.player_id, role })}
+                />
               </Box>
             )}
             {live?.atBreak && !live.finished && (

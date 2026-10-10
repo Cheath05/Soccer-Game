@@ -279,3 +279,79 @@ def test_the_init_message_carries_each_formations_slots(world: World) -> None:
     init = _session(world).init_message(("Home", "Away"), 0.0)
     shape = next(f for f in init["formations"] if f["key"] == "4-3-3")
     assert len(shape["slots"]) == 11 and {"id", "position", "x", "y"} <= set(shape["slots"][0])
+
+
+def _replays(watched: LiveSession, world: World) -> None:
+    replayed = _engine(world)
+    replay(replayed, 0, watched.log)
+    assert replayed.tick_count == watched.engine.tick_count
+    assert replayed.score == watched.engine.score
+    assert replayed.pos.tobytes() == watched.engine.pos.tobytes()
+
+
+def test_a_substitution_chosen_while_paused_can_be_taken_back(world: World) -> None:
+    """Play-test, 9 Oct: a change made with the match paused couldn't be undone. Now it's kept
+    aside until play goes on: it can be called off or given a role, then it's made and logged."""
+    watched = _session(world)
+    watched.apply({"type": "resume"}, 0.0)
+    now = _play(watched, 0.0, 5.0)
+    watched.apply({"type": "pause"}, now)
+    engine = watched.engine
+    off = next(engine.players[int(i)] for i in engine.team_indices(0)
+               if engine.position[int(i)] != "GK")
+    first, second = engine.bench[0][0], engine.bench[0][1]
+    assert watched.apply({"type": "sub", "out": off.player_id, "in": first.player_id},
+                         now) is None
+    assert engine.subs_used[0] == 0 and engine.players[engine._on_pitch(0, off.player_id)] is off
+    waiting = watched.state(now)["pending_subs"][0]
+    assert [(w["out"], w["in"], w["staged"]) for w in waiting] == \
+        [(off.player_id, first.player_id, True)]
+    assert waiting[0]["roles"] and watched.state(now)["subs_left"][0] == 4
+    # Changed their mind: call it off, and bring the other one on in another role.
+    assert watched.apply({"type": "cancel_sub", "out": off.player_id}, now) is None
+    assert watched.state(now)["pending_subs"][0] == [] and watched.state(now)["subs_left"][0] == 5
+    assert watched.apply({"type": "sub", "out": off.player_id, "in": second.player_id},
+                         now) is None
+    role = watched.state(now)["pending_subs"][0][0]["roles"][-1]["key"]
+    assert watched.apply({"type": "role", "player": second.player_id, "role": role}, now) is None
+    assert watched.apply({"type": "role", "player": second.player_id, "role": "goalkeeper"},
+                         now) is not None
+    assert watched.log == []  # nothing has happened to the match yet
+    watched.apply({"type": "resume"}, now)
+    assert [cmd["type"] for _, cmd in watched.log] == ["sub"]
+    now = _play(watched, now, 20.0)  # long enough for a stoppage
+    index = engine._on_pitch(0, second.player_id)
+    assert index is not None and engine.role[index].key == role
+    watched.finish()
+    _replays(watched, world)
+
+
+def test_a_player_fills_the_slot_a_red_card_left_and_roles_change(world: World) -> None:
+    """Play-test, 9 Oct: after a red card the user couldn't move a player into the empty
+    centre-back slot."""
+    watched = _session(world)
+    watched.apply({"type": "resume"}, 0.0)
+    now = _play(watched, 0.0, 3.0)
+    engine = watched.engine
+    team = [int(i) for i in engine.team_indices(0)]
+    back = next(i for i in team if engine.position[i] == "CB")
+    gone_slot = engine.slot[back]
+    engine.send_off(back, "test")
+    vacant = watched.status()["vacant_slots"]
+    assert [v["id"] for v in vacant] == [gone_slot]
+    mover = next(i for i in team if engine.group[i].value in ("CM", "DM"))
+    mover_id, old_slot = engine.players[mover].player_id, engine.slot[mover]
+    keeper = next(i for i in team if engine.position[i] == "GK")
+    assert watched.apply({"type": "move", "player": engine.players[keeper].player_id,
+                          "slot": gone_slot}, now) is not None
+    assert watched.apply({"type": "move", "player": mover_id, "slot": gone_slot}, now) is None
+    assert engine.slot[mover] == gone_slot and engine.position[mover] == "CB"
+    assert [v["id"] for v in watched.status()["vacant_slots"]] == [old_slot]
+    options = next(p for p in watched.status()["players"] if p["player_id"] == mover_id)["roles"]
+    assert all(o["key"] in world.defs.roles for o in options)
+    assert watched.apply({"type": "role", "player": mover_id, "role": options[-1]["key"]},
+                         now) is None
+    assert engine.role[mover].key == options[-1]["key"]
+    now = _play(watched, now, 5.0)
+    watched.finish()
+    assert [cmd["type"] for _, cmd in watched.log] == ["move", "role"]

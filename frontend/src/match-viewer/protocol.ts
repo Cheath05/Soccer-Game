@@ -52,6 +52,7 @@ export interface PlayerStatus {
   condition: number
   yellow: number
   red: boolean
+  roles?: RoleOption[] // the user's players on the pitch: each role of his position, best first
   goals: number
   assists: number
   shots: number
@@ -79,9 +80,26 @@ export interface BenchStatus {
   fit?: Record<string, number> // OVR if he replaced the player with this id
 }
 
+export interface RoleOption {
+  key: string
+  name: string
+  ovr: number
+}
+
+// A substitution not made yet. ``staged``: chosen while paused or at a break, made when play goes on.
+// Otherwise it waits for the next stoppage. Either can be called off.
+export interface PendingSub {
+  out: number
+  in: number
+  role: string | null
+  staged: boolean
+  roles?: RoleOption[] // the user's: roles the newcomer could play in the outgoing player's position
+}
+
 export interface Status {
   players: PlayerStatus[]
   bench: BenchStatus[][]
+  vacant_slots?: { id: string; position: string }[] // the user's formation slots with no player
 }
 
 export interface LiveState {
@@ -101,7 +119,7 @@ export interface LiveState {
   finished: boolean
   atBreak: boolean
   restart: { kind: string; variant: string; team: number } | null
-  pendingSubs: { out: number; in: number }[][]
+  pendingSubs: PendingSub[][]
   subsLeft: [number, number]
   lineup: PlayerInfo[]
   formation: string[]
@@ -150,4 +168,9 @@ export interface DebugSnapshot {
   stamina: number[]
   decision: { t: number; player: number; options: DebugOption[] } | null
   instructions: Record<string, string>[]
+}
+
+/** The role key of a player on the pitch (status gives its name). */
+export function currentRoleKey(p: PlayerStatus): string | undefined {
+  return p.roles?.find((r) => r.name === p.role)?.key
 }

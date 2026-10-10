@@ -12,9 +12,13 @@ engine runs a little ahead of it (``lookahead_seconds``), and the viewer steers 
 At a goal the timeline holds still for ``goal_pause`` real seconds, at any speed, while the
 viewer shows who scored.
 
-Commands that do change the match (formation, instructions, substitutions, starting the
-next period) are applied between two ticks and logged with that tick, so a watched match
-can be replayed exactly with ``replay``.
+Commands that do change the match (formation, instructions, substitutions, positions and
+roles, starting the next period) are applied between two ticks and logged with that tick, so a
+watched match can be replayed exactly with ``replay``.
+
+Substitutions chosen while the match is paused (or at a break) are only staged: the viewer
+can change their mind (``cancel_sub``) or pick the newcomer's role until play goes on, when
+they're applied and logged like any other command.
 """
 
 import math
@@ -23,6 +27,7 @@ from typing import Any
 
 from footsim.defs.match import PresentationDef
 from footsim.match.engine.engine import MatchEngine
+from footsim.match.engine.state import MAX_SUBS
 from footsim.match.ratings import match_rating
 from footsim.match.teams import SquadPlayer
 from footsim.ratings.overall import familiarity_factor
@@ -30,7 +35,7 @@ from footsim.world.context import World
 
 HIGHLIGHT_TYPES = frozenset({"goal", "shot", "penalty", "red"})
 MATCH_COMMANDS = frozenset({"formation", "instruction", "sub", "auto_subs", "assistant",
-                            "start_period", "swap"})
+                            "start_period", "swap", "move", "role", "cancel_sub"})
 MAX_TICKS_PER_PUMP = 3000  # never hold the event loop for long, even after falling behind
 SKIP_TICKS = 600  # highlights mode: most match time skipped in one go (60 s)
 STATUS_EVERY = 1.0  # real seconds between player status updates
@@ -47,9 +52,17 @@ def apply_command(engine: MatchEngine, team: int, cmd: Command) -> None:
     elif kind == "instruction":
         engine.set_instruction(team, str(cmd["key"]), str(cmd["value"]))
     elif kind == "sub":
-        engine.substitute(team, int(cmd["out"]), int(cmd["in"]))
+        role = cmd.get("role")
+        engine.substitute(team, int(cmd["out"]), int(cmd["in"]),
+                          str(role) if role is not None else None)
+    elif kind == "cancel_sub":
+        engine.cancel_substitution(team, int(cmd["out"]))
     elif kind == "swap":
         engine.swap_positions(team, int(cmd["a"]), int(cmd["b"]))
+    elif kind == "move":
+        engine.move_to_slot(team, int(cmd["player"]), str(cmd["slot"]))
+    elif kind == "role":
+        engine.set_role(team, int(cmd["player"]), str(cmd["role"]))
     elif kind == "auto_subs":
         engine.auto_subs[team] = bool(cmd.get("value"))
     elif kind == "assistant":
@@ -116,6 +129,7 @@ class LiveSession:
         self.last_status = -99.0
         self.last_stats = -99.0
         self._ovr_cache: dict[tuple[int, str, str], int] = {}
+        self.staged: list[Command] = []  # substitutions chosen while paused, not yet made
 
     # --- time ----------------------------------------------------------------------------
 
@@ -190,6 +204,7 @@ class LiveSession:
             elif kind == "resume":
                 if engine.at_break:
                     return "start the next period first"
+                self._make_staged()
                 self._reanchor(now)
                 self.paused = False
             elif kind == "speed":
@@ -209,6 +224,10 @@ class LiveSession:
             elif kind in MATCH_COMMANDS:
                 if engine.finished:
                     return "the match is over"
+                if self._stage(cmd):
+                    return None
+                if kind == "start_period":
+                    self._make_staged()
                 apply_command(engine, self.user_team, cmd)
                 self.log.append((engine.tick_count,
                                  {k: v for k, v in cmd.items() if k != "cmd_id"}))
@@ -221,8 +240,62 @@ class LiveSession:
             return str(exc)
         return None
 
+    def _stage(self, cmd: Command) -> bool:
+        """Keep a substitution chosen while paused (or at a break) aside, or change or call off
+        one kept aside. True if ``cmd`` was dealt with here. Raises ValueError like the
+        engine would."""
+        kind, e, team = cmd.get("type"), self.engine, self.user_team
+        holding = self.paused or e.at_break
+        if kind == "sub" and holding:
+            off, on = int(cmd["out"]), int(cmd["in"])
+            out_index = e._on_pitch(team, off)
+            if out_index is None or not any(sp.player_id == on for sp in e.bench[team]):
+                raise ValueError("invalid substitution")
+            waiting = [(int(c["out"]), int(c["in"])) for c in self.staged] + e.pending_for(team)
+            if any(off == w_off or on == w_on for w_off, w_on in waiting):
+                raise ValueError("that change is already waiting to be made")
+            if e.subs_used[team] + len(self.staged) >= MAX_SUBS:
+                raise ValueError("no substitutions left")
+            role = cmd.get("role")
+            if role is not None:
+                self._check_role(out_index, str(role))
+            self.staged.append({"type": "sub", "out": off, "in": on, "role": role})
+            return True
+        if kind == "cancel_sub":
+            found = next((c for c in self.staged if int(c["out"]) == int(cmd["out"])), None)
+            if found is not None:
+                self.staged.remove(found)
+                return True
+        if kind == "role":
+            found = next((c for c in self.staged if int(c["in"]) == int(cmd["player"])), None)
+            if found is not None:
+                out_index = e._on_pitch(team, int(found["out"]))
+                assert out_index is not None
+                self._check_role(out_index, str(cmd["role"]))
+                found["role"] = str(cmd["role"])
+                return True
+        return False
+
+    def _check_role(self, index: int, role: str) -> None:
+        known = self.world.defs.roles.get(role)
+        if known is None or known.group != self.engine.group[index]:
+            raise ValueError(f"{role} isn't a role for {self.engine.position[index]}")
+
+    def _make_staged(self) -> None:
+        """Play goes on: the substitutions kept aside are made (and logged) now."""
+        staged, self.staged = self.staged, []
+        for cmd in staged:
+            if cmd.get("role") is None:
+                cmd = {k: v for k, v in cmd.items() if k != "role"}
+            try:
+                apply_command(self.engine, self.user_team, cmd)
+            except ValueError:
+                continue  # e.g. the player went off injured meanwhile
+            self.log.append((self.engine.tick_count, cmd))
+
     def finish(self) -> None:
         """Play the rest of the match straight away (Instant)."""
+        self._make_staged()
         self.engine.hold_at_breaks = False
         self.engine.record = False
         self.debug = self.engine.debug = False
@@ -338,9 +411,39 @@ class LiveSession:
                 "at_break": e.at_break,
                 "restart": ({"kind": e.restart.kind, "variant": e.restart.variant,
                              "team": e.restart.team} if e.restart is not None else None),
-                "pending_subs": [[{"out": off, "in": on} for off, on in e.pending_for(t)]
-                                 for t in (0, 1)],
-                "subs_left": [5 - e.subs_used[0], 5 - e.subs_used[1]]}
+                "pending_subs": [self._waiting(team) for team in (0, 1)],
+                "subs_left": [MAX_SUBS - e.subs_used[team]
+                              - (len(self.staged) if team == self.user_team else 0)
+                              for team in (0, 1)]}
+
+    def _waiting(self, team: int) -> list[dict[str, Any]]:
+        """Substitutions not made yet: kept aside while paused (``staged``, which the viewer
+        can still call off) or waiting for a stoppage. For the user's, the roles the newcomer
+        could play in the outgoing player's position, with his rating in each."""
+        e = self.engine
+        rows: list[tuple[int, int, str | None, bool]] = [
+            (off, on, e.pending_role(team, on), False) for off, on in e.pending_for(team)]
+        if team == self.user_team:
+            rows += [(int(c["out"]), int(c["in"]), c.get("role"), True) for c in self.staged]
+        result = []
+        for off, on, role, staged in rows:
+            entry: dict[str, Any] = {"out": off, "in": on, "role": role, "staged": staged}
+            index = e._on_pitch(team, off)
+            incoming = next((sp for sp in e.bench[team] if sp.player_id == on), None)
+            if team == self.user_team and index is not None and incoming is not None:
+                entry["role"] = role or e.role[index].key
+                entry["roles"] = self._role_options(incoming.player, index)
+            result.append(entry)
+        return result
+
+    def _role_options(self, player: SquadPlayer, index: int) -> list[dict[str, Any]]:
+        """The roles of the position at ``index`` and ``player``'s rating in each there."""
+        position = self.engine.position[index]
+        return sorted(({"key": r.key, "name": r.name,
+                        "ovr": self._ovr(player, position, r.key)}
+                       for r in self.world.defs.roles.values()
+                       if r.group == self.engine.group[index]),
+                      key=lambda r: -int(r["ovr"]))
 
     def _ovr(self, player: SquadPlayer, position: str, role: str) -> int:
         """Ability in a slot: the role overall, adjusted for familiarity with the position."""
@@ -379,6 +482,8 @@ class LiveSession:
                 "fouls": e.player_fouls.get(sp.player_id, 0), "saves": line.saves,
                 "xg": round(e.player_xg.get(sp.player_id, 0.0), 2),
                 "minutes": round(minutes),
+                **({"roles": self._role_options(sp.player, i)}
+                   if team == self.user_team and e.active[i] else {}),
             })
         bench = []
         for team in (0, 1):
@@ -398,7 +503,10 @@ class LiveSession:
                         sp.player, e.position[i], e.role[i].key) for i in on_pitch}
                 entries.append(entry)
             bench.append(entries)
-        return {"players": players, "bench": bench}
+        held = {e.slot[i] for i in e.team_indices(self.user_team)}
+        vacant = [{"id": sl.id, "position": sl.position}
+                  for sl in e.formation[self.user_team].slots if sl.id not in held]
+        return {"players": players, "bench": bench, "vacant_slots": vacant}
 
     def init_message(self, names: tuple[str, str], now: float) -> dict[str, Any]:
         e = self.engine

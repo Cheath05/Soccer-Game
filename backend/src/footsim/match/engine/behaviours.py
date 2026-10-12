@@ -21,7 +21,7 @@ from footsim.defs.formations import Phase
 from footsim.defs.positions import PositionGroup
 from footsim.defs.roles import RunType
 from footsim.match.engine import set_pieces
-from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH, norm, norms
+from footsim.match.engine.pitch import LENGTH, MID_X, MID_Y, WIDTH, clamp, clip, norm, norms
 from footsim.match.engine.state import TAKER_REACH, Restart
 
 if TYPE_CHECKING:
@@ -34,6 +34,7 @@ MARKING_GROUPS_HIGH_PRESS = MARKING_GROUPS | {PositionGroup.AM, PositionGroup.W}
 X_BACK, X_FRONT = 0.18, 0.70  # formation x of the back line and the strikers
 X_MID = 0.42  # formation x of the midfield line (central midfielders .40, wide ones .44)
 CANDIDATE_ANGLES = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+_CANDIDATE_RING = np.column_stack((np.cos(CANDIDATE_ANGLES), np.sin(CANDIDATE_ANGLES)))
 JOG = 0.62  # share of top speed a player not in a hurry covers ground at (MatchEngine)
 
 
@@ -90,7 +91,7 @@ def _team(eng: "MatchEngine", team: int) -> None:
     lines: tuple[float, float, float] | None = None  # out of possession: back, mid, front
     if attacking and not kickoff:
         push = eng.effect(team, "mentality").push
-        back = float(np.clip(bx - 32 + push, 14, 52))
+        back = clamp(bx - 32 + push, 14, 52)
         front = min(back + 42 + push * 0.5, 96.0)
         width = eng.effect(team, "width").width
         shift = 0.22
@@ -146,8 +147,8 @@ def _team(eng: "MatchEngine", team: int) -> None:
         y = MID_Y + (yn - 0.5) * width + (by - MID_Y) * shift
         targets[k] = (x, y)
 
-    targets[:, 0] = np.clip(targets[:, 0], 1.0, LENGTH - 1.0)
-    targets[:, 1] = np.clip(targets[:, 1], 1.5, WIDTH - 1.5)
+    targets[:, 0] = clip(targets[:, 0], 1.0, LENGTH - 1.0)
+    targets[:, 1] = clip(targets[:, 1], 1.5, WIDTH - 1.5)
 
     opp_pts = eng.att_points(team, eng.pos[eng.team_indices(1 - team)])
     if restart is not None:
@@ -188,11 +189,11 @@ def _defending_lines(eng: "MatchEngine", bx: float, height: float, span: float,
     side within the instruction's span."""
     rules = eng.defs.shape.defending
     top = height + 4 if pressing_high and bx > 60 else height
-    back = float(np.clip(min(top, bx - rules.back_buffer), rules.back_floor, top))
+    back = clamp(min(top, bx - rules.back_buffer), rules.back_floor, top)
     low, high = rules.mid_gap
-    mid = float(np.clip(bx - rules.mid_buffer, back + low, back + min(high, span)))
+    mid = clamp(bx - rules.mid_buffer, back + low, back + min(high, span))
     low, high = rules.front_gap
-    front = float(np.clip(bx + rules.front_ahead, mid + low, min(mid + high, back + span)))
+    front = clamp(bx + rules.front_ahead, mid + low, min(mid + high, back + span))
     return back, mid, max(front, mid)
 
 
@@ -241,7 +242,7 @@ def _meet_ball(eng: "MatchEngine", i: int) -> np.ndarray:
     stop = eng.ball + direction * speed**2 / (2 * eng.roll_friction)  # where it will stop
     segment = stop - eng.ball
     length_sq = max(float(segment @ segment), 1e-6)
-    t = float(np.clip((eng.pos[i] - eng.ball) @ segment / length_sq, 0, 1))
+    t = clamp((eng.pos[i] - eng.ball) @ segment / length_sq, 0, 1)
     result: np.ndarray = eng.ball + t * segment
     return result
 
@@ -266,10 +267,10 @@ def _ball_to_goal(eng: "MatchEngine", team: int) -> tuple[float, float] | None:
 
 def _keeper_spot(bx: float, by: float, attacking: bool, back: float) -> tuple[float, float]:
     if attacking:
-        return float(np.clip(back - 18, 4, 18)), MID_Y + (by - MID_Y) * 0.2
+        return clamp(back - 18, 4, 18), MID_Y + (by - MID_Y) * 0.2
     dx, dy = bx, by - MID_Y
     distance = max(np.hypot(dx, dy), 1.0)
-    depth = float(np.clip(1.5 + distance * 0.06, 1.0, 7.0))
+    depth = clamp(1.5 + distance * 0.06, 1.0, 7.0)
     return depth * dx / distance + 0.5, MID_Y + depth * dy / distance
 
 
@@ -306,19 +307,24 @@ def _attack(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
     ball = np.array([bx, by])
     near = [k for k, i in enumerate(idx) if i != carrier and eng.group[i] is not PositionGroup.GK
             and norm(targets[k] - ball) < 28 and not eng.running[i]]
-    for k in near:
-        i = idx[k]
-        radius = 3.0 + eng.role[i].movement.freedom * 40
-        candidates = targets[k] + radius * np.column_stack((np.cos(CANDIDATE_ANGLES),
-                                                            np.sin(CANDIDATE_ANGLES)))
-        candidates = np.vstack([targets[k], candidates])
-        candidates[:, 0] = np.clip(candidates[:, 0], 2, min(line - 0.5, LENGTH - 2))
-        candidates[:, 1] = np.clip(candidates[:, 1], 2, WIDTH - 2)
-        gaps = norms(candidates[:, None, :] - opp_pts[None, :, :], axis=2).min(axis=1)
-        lane = _lane_clearance(ball, candidates, opp_pts)
-        drift = norms(candidates - targets[k], axis=1)
-        score = np.minimum(gaps, 8.0) + 0.6 * np.minimum(lane, 5.0) - 0.25 * drift
-        targets[k] = candidates[int(np.argmax(score))]
+    if not near:
+        return
+    # Each of them weighs up staying put and eight spots around (his freedom sets how far):
+    # room from the nearest opponent, a clear lane from the ball, and not drifting far. All of
+    # them at once, as rows: each player's sums are the ones he'd make on his own.
+    ks = np.array(near)
+    here = targets[ks]
+    radius = np.array([3.0 + eng.role[idx[k]].movement.freedom * 40 for k in near])
+    candidates = np.empty((len(near), 1 + len(_CANDIDATE_RING), 2))
+    candidates[:, 0] = here
+    candidates[:, 1:] = here[:, None, :] + radius[:, None, None] * _CANDIDATE_RING[None]
+    candidates[..., 0] = clip(candidates[..., 0], 2, min(line - 0.5, LENGTH - 2))
+    candidates[..., 1] = clip(candidates[..., 1], 2, WIDTH - 2)
+    gaps = norms(candidates[:, :, None, :] - opp_pts[None, None, :, :], axis=3).min(axis=2)
+    lane = _lane_clearance(ball, candidates.reshape(-1, 2), opp_pts).reshape(gaps.shape)
+    drift = norms(candidates - here[:, None, :], axis=2)
+    score = np.minimum(gaps, 8.0) + 0.6 * np.minimum(lane, 5.0) - 0.25 * drift
+    targets[ks] = candidates[np.arange(len(near)), np.argmax(score, axis=1)]
 
 
 def _lane_clearance(ball: np.ndarray, points: np.ndarray, opp_pts: np.ndarray) -> np.ndarray:
@@ -327,7 +333,7 @@ def _lane_clearance(ball: np.ndarray, points: np.ndarray, opp_pts: np.ndarray) -
     length = np.maximum(norms(d, axis=1), 1e-6)
     u = d / length[:, None]
     rel = opp_pts[None, :, :] - ball[None, None, :]
-    s = np.clip(np.einsum("pkd,pd->pk", rel, u), 0, length[:, None])
+    s = clip(np.einsum("pkd,pd->pk", rel, u), 0, length[:, None])
     closest = ball[None, None, :] + s[..., None] * u[:, None, :]
     perp = norms(opp_pts[None, :, :] - closest, axis=2)
     result: np.ndarray = perp.min(axis=1)
@@ -380,20 +386,23 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
         return
     markers_from = MARKING_GROUPS_HIGH_PRESS if ins.get("pressing") == "high" else MARKING_GROUPS
     rules = eng.defs.defending.marking
+    # Every player's distance to every attacker, from where he stands now (one marker's move
+    # doesn't change another's distances).
+    all_gaps = norms(opp_pts[None, :, :] - targets[:, None, :], axis=2)
     for k in outfield:
         if k in chasers and eng.urgent[idx[k]]:
             continue
         if eng.group[idx[k]] not in markers_from:
             continue  # forwards screen and press rather than man-mark
-        gaps = norms(opp_pts - targets[k], axis=1)
+        gaps = all_gaps[k]
         nearest = int(np.argmin(gaps))
         if gaps[nearest] < 12.0:
             above = eng.a(idx[k], "marking") - rules.reference
             side = max(rules.goal_side_min, rules.goal_side - rules.goal_side_per_point * above)
             mark = opp_pts[nearest] - np.array([side, 0.0])
             track = eng.role[idx[k]].defending.track_runners
-            weight = float(np.clip(rules.commitment + rules.commitment_per_point * above
-                                   + 0.3 * track, 0.0, rules.commitment_max))
+            weight = clamp(rules.commitment + rules.commitment_per_point * above
+                                   + 0.3 * track, 0.0, rules.commitment_max)
             targets[k] = weight * mark + (1 - weight) * targets[k]
             if opp_pts[nearest, 0] < targets[k, 0] - 3:
                 eng.urgent[idx[k]] = True  # an attacker is getting in behind: recover

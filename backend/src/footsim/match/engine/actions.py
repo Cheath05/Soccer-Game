@@ -27,6 +27,8 @@ from footsim.match.engine.pitch import (
     LENGTH,
     MID_Y,
     WIDTH,
+    clamp,
+    clip,
     goal_angle,
     in_own_box,
     loss_cost,
@@ -172,7 +174,7 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     opps = eng.team_indices(1 - team)
     opp_pts = pts[opps]
     nearest = float(np.min(norms(opp_pts - ball, axis=1))) if len(opps) else 99.0
-    pressure = float(np.clip((3.2 - nearest) / 3.2, 0, 1))
+    pressure = clamp((3.2 - nearest) / 3.2, 0, 1)
     line = offside_line(opp_pts, bx)
     options: list[Option] = []
 
@@ -351,7 +353,7 @@ def _pass_options(eng: "MatchEngine", i: int, team: int, mates: list[int], pts: 
                                    bool(lofted[k]), float(success[k]))))
     # A clearance is the last resort: heavy pressure close to our own goal.
     if mode is None and bx < 25 and pressure > 0.6:
-        clear_to = (min(bx + 45, 80.0), float(np.clip(by + eng.rng.normal(0, 12), 4, 64)))
+        clear_to = (min(bx + 45, 80.0), clamp(by + eng.rng.normal(0, 12), 4, 64))
         clear_utility = 0.005 + 0.12 * pressure**2 * here
         options.append((clear_utility, "clearance", PassOption(-1, clear_to, True, 0.3)))
     return options
@@ -368,7 +370,7 @@ def _carry_options(eng: "MatchEngine", i: int, team: int, ball: np.ndarray,
     opp_pts = eng.att_points(team, eng.pos[opps])
     dribble = duels.dribble_score(eng, i)
     for dy in (-6.0, 0.0, 6.0):
-        aim = np.array([min(bx + 8.0, LENGTH - 2), float(np.clip(toward_goal + dy, 3, 65))])
+        aim = np.array([min(bx + 8.0, LENGTH - 2), clamp(toward_goal + dy, 3, 65)])
         step = aim - ball
         step /= max(norm(step), 1e-6)
         probe = ball + step * 4.0
@@ -433,7 +435,7 @@ def _take_chance(eng: "MatchEngine", interceptions: Any, anticipation: Any, clos
     for the ball (resolve_loose_or_pass) and the passer's estimate."""
     p = (0.18 + 0.4 * interceptions / 100 + 0.1 * anticipation / 100) * closeness
     p = p * eng.defs.passing.intercept_scale
-    p = p * np.clip(1.2 - speed / 25, 0.4, 1.0)
+    p = p * clip(1.2 - speed / 25, 0.4, 1.0)
     return np.where(lofted, p * 0.7, p)
 
 
@@ -465,7 +467,7 @@ def _ground_arrival(eng: "MatchEngine", recv: np.ndarray, length: np.ndarray,
     friction = eng.roll_friction
     # Axes: option, angle node, length node, and where along its path he meets it.
     angle = spread[:, None, None, None] * _NODES[None, :, None, None]
-    factor = np.clip(1 + length_spread[:, None, None, None] * _NODES[None, None, :, None],
+    factor = clip(1 + length_spread[:, None, None, None] * _NODES[None, None, :, None],
                      0.5, 1.6)
     distance = length[:, None, None, None]
     v0 = np.sqrt(arrive[:, None, None, None] ** 2 + 2 * friction * factor * distance)
@@ -548,9 +550,9 @@ def _cross_landing(eng: "MatchEngine", i: int, j: int, team: int, ball: np.ndarr
     distance = max(float(norm(delta)), 0.5)
     heading = math.atan2(float(delta[1]), float(delta[0]))
     angles = heading + spread * _NODES[:, None]
-    reach = distance * np.clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
+    reach = distance * clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
     land = np.stack([ball[0] + np.cos(angles) * reach, ball[1] + np.sin(angles) * reach], axis=-1)
-    flight = np.broadcast_to(np.clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
+    flight = np.broadcast_to(clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
     in_play = ((land[..., 0] >= 0) & (land[..., 0] <= LENGTH)
                & (land[..., 1] >= 0) & (land[..., 1] <= WIDTH))
     est = eng.defs.passing.estimate
@@ -618,9 +620,9 @@ def _long_landing(eng: "MatchEngine", j: int, ball: np.ndarray, target: np.ndarr
     distance = max(float(norm(delta)), 0.5)
     heading = math.atan2(float(delta[1]), float(delta[0]))
     angles = heading + spread * _NODES[:, None]
-    reach = distance * np.clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
+    reach = distance * clip(1 + length_spread * _NODES[None, :], 0.5, 1.6)
     land = np.stack([ball[0] + np.cos(angles) * reach, ball[1] + np.sin(angles) * reach], axis=-1)
-    flight = np.broadcast_to(np.clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
+    flight = np.broadcast_to(clip(0.9 + reach / 25, 1.1, 2.8), land.shape[:2])
     in_play = ((land[..., 0] >= 0) & (land[..., 0] <= LENGTH)
                & (land[..., 1] >= 0) & (land[..., 1] <= WIDTH))
     recv = np.array([j])
@@ -670,8 +672,8 @@ def _heuristic_success(eng: "MatchEngine", i: int, receivers: list[int], kinds: 
     Measured in 2.3a: it underrates short and medium passes and overrates crosses."""
     delta = target - ball
     unit = delta / length[:, None]
-    ground_speed = np.clip(10 + 0.35 * length, 12, 26)
-    flight = np.clip(0.9 + length / 25, 1.1, 2.8)
+    ground_speed = clip(10 + 0.35 * length, 12, 26)
+    flight = clip(0.9 + length / 25, 1.1, 2.8)
     speed = np.where(lofted, length / flight, ground_speed)
     rel = opp_pts[None, :, :] - ball[None, None, :]
     along = np.einsum("pkd,pd->pk", rel, unit)
@@ -698,7 +700,7 @@ def _heuristic_success(eng: "MatchEngine", i: int, receivers: list[int], kinds: 
     recv_gap = norms(recv_pts - target, axis=1)
     p_reach = np.exp(-np.maximum(0.0, recv_gap - recv_speed * arrival) / 2.5)
     contest = _sigmoid((marker - recv_gap + 1.0) * 0.8)
-    success: np.ndarray = np.clip(
+    success: np.ndarray = clip(
         p_lane * p_receive * p_exec * p_reach * (0.5 + 0.5 * contest), 0.02, 0.98)
     return success
 
@@ -713,7 +715,7 @@ class EstimateParts:
     secure: np.ndarray  # he keeps it: his first touch, or the contest where a lofted ball lands
 
     def success(self) -> np.ndarray:
-        result: np.ndarray = np.clip(self.path * self.reach * self.arrive * self.secure,
+        result: np.ndarray = clip(self.path * self.reach * self.arrive * self.secure,
                                      0.02, 0.98)
         return result
 
@@ -752,7 +754,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
     back = (target[:, 0] < pace.back_zone) & (target[:, 0] < float(ball[0]))
     arrive = np.where(back, pace.arrive_back, pace.arrive + pace.arrive_per_metre * length)
     v0 = np.sqrt(arrive**2 + 2 * friction * length)
-    flight = np.clip(0.9 + length / 25, 1.1, 2.8)
+    flight = clip(0.9 + length / 25, 1.1, 2.8)
     t_arrive = np.where(lofted, flight, (v0 - arrive) / friction)
     # Can the receiver get there, and still adjust once he has read where it's really going?
     # Until then he runs for where it was meant to go; the ground he covers beyond that is
@@ -780,7 +782,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
         rel = opp_pts[None, :, :] - ball[None, None, :]
         along = np.einsum("pkd,pd->pk", rel, unit)
         perp = norms(rel - along[..., None] * unit[:, None, :], axis=2)
-        s = np.clip(along, 0.0, length[:, None])
+        s = clip(along, 0.0, length[:, None])
         v_s = np.sqrt(np.maximum(v0[:, None] ** 2 - 2 * friction * s, arrive[:, None] ** 2))
         t_ball = np.where(lofted[:, None], s * (flight / length)[:, None],
                           (v0[:, None] - v_s) / friction)
@@ -799,7 +801,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
                   & (np.abs(near[..., 1] - MID_Y) <= BOX_HALF))
         keeper = np.array([eng.group[int(o)] is PositionGroup.GK for o in opps])[None, :] & in_box
         reach = np.where(keeper, KEEPER_REACH, CONTROL_RADIUS)
-        closeness = np.sqrt(np.clip(1 - off_line / reach, 0.0, 1.0))
+        closeness = np.sqrt(clip(1 - off_line / reach, 0.0, 1.0))
         take = _take_chance(eng, eng.attr[opps, ATTR_INDEX["interceptions"]][None, :],
                             eng.attr[opps, ATTR_INDEX["anticipation"]][None, :], closeness,
                             speed, lofted[:, None])
@@ -822,7 +824,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
     else:
         marker = np.full(len(recv), 20.0)
         quality = np.ones(len(recv))
-    close = np.clip((control.pressure_radius - marker) / control.pressure_radius, 0.0, 1.0)
+    close = clip((control.pressure_radius - marker) / control.pressure_radius, 0.0, 1.0)
     close = close * quality  # a better marker puts him off more (as _touch_pressure)
     touch = eng.attr[recv, ATTR_INDEX["first_touch"]]
     w = control.touch_skill
@@ -830,7 +832,7 @@ def _estimate_parts(eng: "MatchEngine", i: int, team: int, receivers: list[int],
     first_touch = (control.receiver * ((1 - w) + w * touch / 100) * pace_factor
                    * (1 - control.pressure_penalty * close * (1 - touch / 100)))
     free, pressed = est.regather
-    regather = np.clip(free - (free - pressed) * close, 0.0, 1.0)  # a top marker: below pressed
+    regather = clip(free - (free - pressed) * close, 0.0, 1.0)  # a top marker: below pressed
     secure = first_touch + (1 - first_touch) * regather
     # A long ball is whoever's who gets to where it drops, as the physics plays it.
     for k in np.flatnonzero(lofted & ~cross):
@@ -862,7 +864,7 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     spread, length_spread = pass_error(eng, team, skill, pressure, fatigue, distance, lofted,
                                        eng.a(i, "composure"))
     angle_error = eng.rng.normal(0, spread)
-    length_error = float(np.clip(eng.rng.normal(1.0, length_spread), 0.5, 1.6))
+    length_error = clamp(eng.rng.normal(1.0, length_spread), 0.5, 1.6)
     angle = math.atan2(ty - by, tx - bx) + angle_error
     reach = distance * length_error
     ax, ay = bx + math.cos(angle) * reach, by + math.sin(angle) * reach
@@ -870,7 +872,7 @@ def start_pass(eng: "MatchEngine", i: int, j: int, target: tuple[float, float], 
     direction = aim - eng.ball
     direction /= max(float(norm(direction)), 1e-6)
     if lofted:
-        flight = float(np.clip(0.9 + reach / 25, 1.1, 2.8))
+        flight = clamp(0.9 + reach / 25, 1.1, 2.8)
         eng.ball_v = direction * reach / flight
         eng.ball_vz = 9.81 * flight / 2
         eng.ball_z = 0.1
@@ -1058,7 +1060,7 @@ def _path_distance(eng: "MatchEngine") -> np.ndarray:
     if length_sq < 1e-9:
         result: np.ndarray = norms(eng.pos - end, axis=1)
         return result
-    t = np.clip(((eng.pos - start) @ seg) / length_sq, 0, 1)
+    t = clip(((eng.pos - start) @ seg) / length_sq, 0, 1)
     closest = start + t[:, None] * seg[None, :]
     result = norms(eng.pos - closest, axis=1)
     return result
@@ -1292,7 +1294,7 @@ def shot_chance(eng: "MatchEngine", i: int, team: int, bx: float, by: float,
     reach = np.maximum(rules.reach_min, rules.reach + rules.reach_per_point
                        * (eng.attr[opps, ATTR_INDEX["def_positioning"]] - rules.reference))
     in_line = (along > rules.near) & (along < min(distance, rules.far)) & (perp < reach)
-    chance = np.clip(rules.chance + rules.chance_per_point
+    chance = clip(rules.chance + rules.chance_per_point
                      * (eng.attr[opps, ATTR_INDEX["bravery"]] - rules.reference),
                      0.0, rules.chance_max)
     block = min(rules.max, 1.0 - float(np.prod(1.0 - chance[in_line])))
@@ -1310,7 +1312,7 @@ def shot_pressure(eng: "MatchEngine", i: int, team: int, bx: float, by: float) -
         return 0.0
     gaps = norms(eng.att_points(team, eng.pos[opps]) - np.array([bx, by]), axis=1)
     k = int(opps[int(np.argmin(gaps))])
-    closeness = float(np.clip((rules.radius - float(np.min(gaps))) / rules.radius, 0, 1))
+    closeness = clamp((rules.radius - float(np.min(gaps))) / rules.radius, 0, 1)
     closer = (eng.a(k, "def_positioning") + eng.a(k, "standing_tackle")) / 2
     composure = (1.2 - eng.a(i, "composure") / 100) / (1.2 - rules.composure_reference / 100)
     return closeness * composure * max(0.0, 1 + rules.per_point * (closer - rules.reference))
@@ -1351,8 +1353,8 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
             skill, average = eng.a(i, "finishing"), ref.finishing
         xg = (max(0.02, 0.09 - 0.0025 * max(distance - 18, 0)) if free_kick
               else chance.xg)
-        p_on = float(np.clip(0.20 + 0.40 * skill / 100 - 0.012 * max(distance - 10, 0)
-                             - 0.08 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92))
+        p_on = clamp(0.20 + 0.40 * skill / 100 - 0.012 * max(distance - 10, 0)
+                             - 0.08 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92)
         finishing = (0.7 + 0.35 * skill / 100) / (0.7 + 0.35 * average / 100)
         keeping = (1.3 - 0.6 * gk / 100) / (1.3 - 0.6 * ref.keeper / 100)
         # The xG has blocks in it; a shot that gets through scores that much more often.
@@ -1405,8 +1407,8 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
         resolve = max(0.5, min(math.hypot(kx - bx, ky - by) - 0.5, travel - 1.5))
         # He goes for the point where the shot will pass him, and keeps going until it does.
         path = aim - eng.ball
-        along = float(np.clip((eng.pos[keeper] - eng.ball) @ path / max(float(path @ path), 1e-9),
-                              0.0, 1.0))
+        along = clamp((eng.pos[keeper] - eng.ball) @ path / max(float(path @ path), 1e-9),
+                              0.0, 1.0)
         eng.target[keeper] = eng.ball + along * path
     elif outcome == "blocked":
         resolve = float(eng.rng.uniform(min(1.5, travel / 2), max(min(8.0, travel), 1.5)))

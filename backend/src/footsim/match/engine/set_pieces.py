@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from footsim.defs.positions import PositionGroup
-from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH, norm
+from footsim.match.engine.pitch import BOX_DEPTH, BOX_HALF, LENGTH, MID_X, MID_Y, WIDTH, clip, norm
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -57,8 +57,8 @@ def arrange(eng: "MatchEngine", team: int, idx: np.ndarray, targets: Array,
     # Everyone else keeps their shape; the opponents keep their distance.
     if not attacking:
         _keep_distance(targets, outfield, spot, variant)
-    targets[:, 0] = np.clip(targets[:, 0], 0.5, LENGTH - 0.5)
-    targets[:, 1] = np.clip(targets[:, 1], 0.5, WIDTH - 0.5)
+    targets[:, 0] = clip(targets[:, 0], 0.5, LENGTH - 0.5)
+    targets[:, 1] = clip(targets[:, 1], 0.5, WIDTH - 0.5)
 
 
 def _heading(eng: "MatchEngine", i: int) -> float:

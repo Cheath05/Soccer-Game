@@ -6,6 +6,7 @@ pitch coordinates.
 """
 
 import math
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -52,6 +53,19 @@ def in_box(x: float, y: float) -> bool:
 
 def in_own_box(x: float, y: float) -> bool:
     return x <= BOX_DEPTH and abs(y - MID_Y) <= BOX_HALF
+
+
+def clamp(x: float, low: float, high: float) -> float:
+    """``float(np.clip(x, low, high))`` for one number, without NumPy's call overhead (the
+    engine made half a million of these a match): the same max-then-min, so the same result to
+    the last bit."""
+    return float(min(max(x, low), high))
+
+
+def clip(a: Any, low: Any, high: Any) -> Any:
+    """``np.clip`` on arrays as its ufunc computes it (the maximum with ``low``, then the
+    minimum with ``high``), minus the layers of argument handling around it."""
+    return np.minimum(np.maximum(a, low), high)
 
 
 def norm(v: Array) -> float:

@@ -36,6 +36,7 @@ from footsim.match.engine.pitch import (
     MID_X,
     MID_Y,
     WIDTH,
+    clip,
     in_box,
     norm,
     norms,
@@ -86,6 +87,13 @@ class MatchEngine:
         self.running = np.zeros(n, dtype=bool)  # making a forward run
         self.settle = np.zeros(n, dtype=bool)  # going to a fixed spot: a restart's taker
         self.active = np.ones(n, dtype=bool)
+        # Each side's players on the pitch (team_indices), asked for thousands of times a match
+        # and changed only when a player comes on or goes off: _squad_changed forgets them.
+        self._team_idx: dict[int, npt.NDArray[np.int64]] = {}
+        # What each side's instructions do (effect), until an instruction changes.
+        self._effects: dict[tuple[int, str], Any] = {}
+        # How hard each player's running drains him, from his stamina attribute (_fatigue).
+        self._drain_factor: Array | None = None
         self.attr = np.zeros((n, len(ATTR_INDEX)))
         self.max_speed = np.zeros(n)
         self.accel = np.zeros(n)
@@ -202,6 +210,7 @@ class MatchEngine:
         self.accel[i] = 2.6 + 4.2 * a[ATTR_INDEX["acceleration"]] / 100
         self.stamina[i] = max(0.35, sp.player.condition / 100)
         self.active[i] = True
+        self._squad_changed()
         # Match state belongs to the player, not the slot: a substitute comes on unbooked, free
         # to tackle, and sizing up any duel afresh. The outgoing player's booking stays on his
         # own line.
@@ -230,14 +239,20 @@ class MatchEngine:
     def att_points(self, team: int, pts: Array) -> Array:
         if self.attack_dir[team] > 0:
             return pts.copy()
-        result: Array = np.column_stack((LENGTH - pts[:, 0], WIDTH - pts[:, 1]))
+        result: Array = np.empty_like(pts, dtype=float)
+        result[:, 0] = LENGTH - pts[:, 0]
+        result[:, 1] = WIDTH - pts[:, 1]
         return result
 
     def effect(self, team: int, key: str) -> Any:
         """What ``team``'s current level of instruction ``key`` does (tactics.yaml)."""
-        levels = getattr(self.defs.tactics, key)
-        level = self.instructions[team].get(key, self.defs.instructions[key].default)
-        return levels.get(level) or levels[self.defs.instructions[key].default]
+        found = self._effects.get((team, key))
+        if found is None:
+            levels = getattr(self.defs.tactics, key)
+            level = self.instructions[team].get(key, self.defs.instructions[key].default)
+            found = levels.get(level) or levels[self.defs.instructions[key].default]
+            self._effects[(team, key)] = found
+        return found
 
     def venue_bias(self, team: int, gap: float) -> float:
         """Home advantage as a multiplier on one of ``team``'s rates that hurt it (fouls given,
@@ -248,8 +263,16 @@ class MatchEngine:
         return 1 + gap / 2 if team == 1 else 1 - gap / 2
 
     def team_indices(self, team: int) -> npt.NDArray[np.int64]:
-        idx: npt.NDArray[np.int64] = np.flatnonzero(self.active & (self.team_of == team))
+        idx = self._team_idx.get(team)
+        if idx is None:
+            idx = np.flatnonzero(self.active & (self.team_of == team))
+            idx.flags.writeable = False  # shared by every caller until the side changes
+            self._team_idx[team] = idx
         return idx
+
+    def _squad_changed(self) -> None:
+        self._team_idx.clear()
+        self._drain_factor = None
 
     def outfield_indices(self, team: int) -> npt.NDArray[np.int64]:
         """``team``'s players on the pitch other than its keeper."""
@@ -462,16 +485,18 @@ class MatchEngine:
         self.vel = self.vel + change * scale[:, None]
         self.vel[~self.active] = 0
         self.pos = self.pos + self.vel * DT
-        self.pos[:, 0] = np.clip(self.pos[:, 0], -2, LENGTH + 2)
-        self.pos[:, 1] = np.clip(self.pos[:, 1], -2, WIDTH + 2)
+        self.pos[:, 0] = clip(self.pos[:, 0], -2, LENGTH + 2)
+        self.pos[:, 1] = clip(self.pos[:, 1], -2, WIDTH + 2)
         self.pos[~self.active] = (-10.0, -10.0)
 
     def _fatigue(self) -> None:
         speed_sq = np.sum(self.vel**2, axis=1)
-        stamina_attr = self.attr[:, ATTR_INDEX["stamina"]] / 100
+        if self._drain_factor is None:
+            stamina_attr = self.attr[:, ATTR_INDEX["stamina"]] / 100
+            self._drain_factor = 1.35 - 0.7 * stamina_attr
         effort = [self.effect(t, "pressing").fatigue for t in (0, 1)]
         press = np.where(self.team_of == 0, effort[0], effort[1])
-        drain = DT * (FATIGUE_BASE + FATIGUE_SPEED * speed_sq) * (1.35 - 0.7 * stamina_attr)
+        drain = DT * (FATIGUE_BASE + FATIGUE_SPEED * speed_sq) * self._drain_factor
         self.stamina = np.maximum(0.0, self.stamina - drain * press * self.active)
 
     # --- ball ---------------------------------------------------------------------------
@@ -715,6 +740,7 @@ class MatchEngine:
         if options is None or value not in options.options:
             raise ValueError(f"invalid instruction {key}={value}")
         self.instructions[team][key] = value
+        self._effects.clear()
         self.emit("instruction", team, key=key, value=value,
                   by="manager" if by_manager else "user")
         if not by_manager:
@@ -948,6 +974,7 @@ class MatchEngine:
         self.clock.ledger.add("red_card")
         self._announce("red", team, f"RED CARD! {sp.player.name} is sent off ({detail})")
         self.active[i] = False
+        self._squad_changed()
         self.left[sp.player_id] = self.t
         if self.owner == i:
             self.owner = -1

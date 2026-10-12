@@ -17,7 +17,28 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (11 Oct): renaming an account** (the commit that adds this line). The user asked how to remove a user or change their name. Removing already existed (`deploy/users.sh remove NAME`).
+- **Latest checkpoint (12 Oct): a faster match engine, same results** (the commit that adds this line). The user asked for one person's sim to use every core.
+  - **Why not more cores:** a profile of 100 days of a sim (Brentford, from the season's start) showed:
+    - 69% of the time is the user's own matches in the agent engine, one match ticking in order;
+    - 22% is the daily world updates, each day depending on the last;
+    - 9% is the other 1,466 matches on the fast engine.
+    Parallelising the only parallel part would gain at most ~1.1×. The user chose to speed up the engine instead.
+  - **What changed, all bit-for-bit identical:**
+    - NumPy's clip on single numbers replaced by plain min/max (`pitch.clamp`), and on arrays by the minimum/maximum its ufunc computes (`pitch.clip`), without the call layers (about half a million calls a match).
+    - Cached until they change: each side's players (`team_indices`, until a player comes on or goes off), what each instruction does (`effect`, until an instruction changes), the fatigue factor from stamina.
+    - `_attack`'s search for space done for all nearby players at once; `_defend`'s marking distances for all players at once; the ring of candidate directions computed once.
+  - **Measured on the Mac:**
+    - Three synthetic full matches: 20.2 s → 14.7 s (1.38×).
+    - A user's match in a sim: 7.45 s → 5.14 s.
+    - 100 days of a sim: 86.9 s → 62.4 s, for different careers (each new career has its own seed).
+  - **Checks:**
+    - The golden values are unchanged (no History note: nothing plays differently).
+    - A fingerprint of three more full matches (final positions, velocities, stamina, stats and the whole event feed) is identical before and after every step.
+    - The full suite passes (665 s); ruff and mypy are clean.
+    - A Sonnet reviewer confirmed every converted clip site gets a scalar, every cache is cleared wherever its inputs change, and the batched arithmetic is per-row identical. It also checked einsum with the bigger batch bit-for-bit on 300 random cases.
+  - **Platform note:** identity was proved on the Mac (arm64). The VM (x86-64 Linux) has no pinned golden values. The batched einsum is the one place another CPU's NumPy could take a different SIMD path.
+  - **Further gains** would need bigger changes (vectorising the per-player loops in `_team`, or compiling the hot loops), each with the same identity checks.
+- **Earlier checkpoint (11 Oct): renaming an account** (the commit that adds this line). The user asked how to remove a user or change their name. Removing already existed (`deploy/users.sh remove NAME`).
   - **`footsim users rename NAME NEW_NAME`** (`AccountStore.rename`; `deploy/users.sh rename`). It changes the name they sign in with. Their careers folder, password and sign-ins stay, since they belong to the account, not its name. The new name follows the same rules, and only a change of case is allowed onto a name already in use.
   - **Checks:** `test_accounts.py` (rename keeps the id, folder and sign-in; case-only rename; a taken or invalid name is refused); ruff and mypy.
 - **Earlier checkpoint (11 Oct): M5, the phone in the browser tests; the phone-and-accounts plan is done** (the commit that adds this line).

@@ -20,6 +20,7 @@ from footsim.match.engine.pitch import (
     MID_Y,
     PENALTY_SPOT,
     WIDTH,
+    clamp,
     in_box,
     in_own_box,
     norm,
@@ -231,7 +232,7 @@ def commit_foul(eng: "MatchEngine", fouler: int, victim: int, *, sliding: bool =
     pid = eng.players[fouler].player_id
     eng.player_fouls[pid] = eng.player_fouls.get(pid, 0) + 1
     low, high = p.aggression_cards
-    aggressive = float(np.clip((eng.a(fouler, "aggression") - low) / (high - low), 0.0, 1.0))
+    aggressive = clamp((eng.a(fouler, "aggression") - low) / (high - low), 0.0, 1.0)
     if tactical:
         yellow, red = p.yellow.tactical, 0.0
     else:

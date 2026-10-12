@@ -6,6 +6,7 @@ import type { SheetEntry, TacticsUpdate } from '../api/types'
 import PitchBoard from '../components/PitchBoard'
 import SavedTactics from '../components/SavedTactics'
 import { SlotBreakdown } from '../components/SlotBreakdown'
+import { useDevice } from '../lib/device'
 import { positionColor, ratingColor } from '../lib/format'
 import { fullLineup, freeBenchPlace, placeOf, swapInto } from '../lib/lineup'
 import type { Lineup } from '../lib/lineup'
@@ -17,6 +18,7 @@ const GROUP_OF: Record<string, string> = {
 }
 
 export default function TacticsPage() {
+  const { phone, touch } = useDevice()
   const career = useCareer().data
   const tactics = useTactics()
   const squad = useSquad(career?.club.id)
@@ -154,7 +156,7 @@ export default function TacticsPage() {
     return (
       <Table.Tr
         key={key}
-        draggable={draggable}
+        draggable={draggable && !touch}
         title={kind === 'xi' ? breakdownText(e) : undefined}
         onDragStart={(ev: React.DragEvent) => {
           ev.dataTransfer.effectAllowed = 'move'
@@ -175,7 +177,8 @@ export default function TacticsPage() {
         }}
         onClick={() => clickPlayer(e, kind)}
         style={{
-          cursor: picked != null || !draggable ? 'pointer' : 'grab',
+          cursor: picked != null || !draggable || touch ? 'pointer' : 'grab',
+          height: touch ? 44 : undefined,
           opacity: draggable ? 1 : 0.55,
           outline: target ? '2px solid var(--mantine-color-yellow-5)' : undefined,
           background:
@@ -247,7 +250,7 @@ export default function TacticsPage() {
             >
               <Table.Td colSpan={4}>
                 <Text size="xs" c="dimmed">
-                  Empty place{picked != null ? ': click to move him here' : ''}
+                  Empty place{picked != null ? (touch ? ': tap to move him here' : ': click to move him here') : ''}
                 </Text>
               </Table.Td>
             </Table.Tr>
@@ -260,13 +263,13 @@ export default function TacticsPage() {
     <Stack>
       <Group justify="space-between">
         <Title order={2}>Tactics</Title>
-        <Group>
+        <Group w={phone ? '100%' : undefined} wrap={phone ? 'wrap' : 'nowrap'}>
           <Select
             data={t.formations.map((f) => ({ value: f.key, label: f.name }))}
             value={t.formation}
             onChange={(v) => v && update({ formation: v, roles: {}, lineup: null })}
             allowDeselect={false}
-            w={220}
+            w={phone ? '100%' : 220}
           />
           <Button variant="default" onClick={() => update({ lineup: null })}>
             Pick best XI and bench
@@ -282,12 +285,13 @@ export default function TacticsPage() {
       )}
       {picked != null && (
         <Alert color="yellow" py={6} withCloseButton onClose={() => setPicked(null)} closeButtonLabel="Cancel move">
-          Moving {everyone.get(picked)?.name}: click a position on the pitch, a substitute or a reserve to swap him there. Esc or
-          clicking him again cancels.
+          {touch
+            ? `Moving ${everyone.get(picked)?.name}: tap a position on the pitch, a substitute or a reserve to swap him there. Tap him again to cancel.`
+            : `Moving ${everyone.get(picked)?.name}: click a position on the pitch, a substitute or a reserve to swap him there. Esc or clicking him again cancels.`}
         </Alert>
       )}
       <Group align="start" gap="lg" wrap="wrap">
-        <Stack gap={4}>
+        <Stack gap={4} w={phone ? '100%' : undefined}>
           <PitchBoard
             formation={formation}
             starters={t.starters}
@@ -299,11 +303,11 @@ export default function TacticsPage() {
             onDropOnSlot={dropOnSlot}
           />
           <Text size="xs" c="dimmed" maw={340}>
-            Click a player, then click where he should go (or drag him there). The number is his rating in that position; a ring
+            {touch ? 'Tap a player, then tap where he should go.' : 'Click a player, then click where he should go (or drag him there).'} The number is his rating in that position; a ring
             marks a player who is not fully at home there (amber a little, red out of position).
           </Text>
         </Stack>
-        <Stack gap="xs" style={{ flex: '0 1 300px', minWidth: 280 }}>
+        <Stack gap="xs" style={{ flex: phone ? '1 1 100%' : '0 1 300px', minWidth: phone ? 0 : 280 }}>
           <Card
             withBorder
             p="xs"
@@ -330,7 +334,7 @@ export default function TacticsPage() {
             <ScrollArea.Autosize mah={320}>{list(t.reserves, 'reserve')}</ScrollArea.Autosize>
           </Card>
         </Stack>
-        <Stack style={{ flex: '1 1 320px', minWidth: 300 }}>
+        <Stack style={{ flex: phone ? '1 1 100%' : '1 1 320px', minWidth: phone ? 0 : 300 }}>
           <Card withBorder>
             {slot && entry ? (
               <Stack gap="xs">
@@ -382,12 +386,13 @@ export default function TacticsPage() {
             </Text>
             <Stack gap="xs">
               {t.instruction_options.map((ins) => (
-                <Group key={ins.key} justify="space-between" wrap="nowrap">
-                  <Text size="sm" w={120}>
+                <Group key={ins.key} justify="space-between" wrap={phone ? 'wrap' : 'nowrap'} gap={phone ? 4 : undefined}>
+                  <Text size="sm" w={phone ? '100%' : 120}>
                     {ins.label}
                   </Text>
                   <SegmentedControl
-                    size="xs"
+                    fullWidth={phone}
+                    size={touch ? 'sm' : 'xs'}
                     value={t.instructions[ins.key] ?? ins.default}
                     onChange={(v) => update({ instructions: { ...t.instructions, [ins.key]: v } })}
                     data={ins.options.map((o) => ({ value: o, label: o }))}

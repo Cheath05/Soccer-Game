@@ -17,7 +17,12 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): M2, phone tables** (the commit that adds this line).
+- **Latest checkpoint (11 Oct): M3, tactics on a phone** (the commit that adds this line).
+  - **`PitchBoard`** scales with the screen (viewBox, discs placed in percentages, 340 px wide at most as before); the centre-back label fix scales with it.
+  - **Touch** (`useDevice().touch`): tap-to-pick is the way to move players (HTML5 drag is off, as it's unreliable on touch screens); the picked player gets a double ring and a "Tap a slot or player to swap" tag; bench rows are 44 px. A computer keeps drag and click.
+  - **Phone layout:** the bench and instructions stack under the pitch; the formation select is full width; instruction labels sit above their controls.
+  - **Checks** (a Sonnet agent, reviewed here): `npm run build`; at 390×844 touch, no sideways scroll and a bench-to-LB swap made by tapping, still there after a reload; at 1440 the layout and drag handles as before.
+- **Earlier checkpoint (11 Oct): M2, phone tables** (the commit that adds this line).
   - **Pattern:** below 48em each table keeps its key columns (others `visibleFrom="sm"`), drops its desktop `minWidth`, and puts the hidden details in a small line under the name.
   - **Squad:** Pos, Name (age, XI/Bench, G/A under it), Ovr, Condition, Value. **Transfers search:** Player (age, club), Pos, OVR, Value, and the filters behind a "Filters" button. **League:** #, Club, P, GD, Pts. **Fixtures:** date, opponent (H/A and competition under it), score. **Club, Player seasons, Club history, Market overview** likewise. **Match report:** its stats table now scrolls inside itself; Player, G, A, Rating on a phone, and the score header stacks.
   - **Checks** (a Sonnet agent, reviewed here): `npm run build`; at 390px no page scrolls sideways (`scrollWidth <= innerWidth`) on Squad, Transfers (all tabs), League, Fixtures, Club, Player, Finances; desktop columns all present at 1440. The match report was checked by build only (no match played in the test career).

@@ -2,6 +2,7 @@ import { Box, Text } from '@mantine/core'
 import { useState } from 'react'
 
 import type { Formation, SheetEntry } from '../api/types'
+import { useDevice } from '../lib/device'
 import { ratingColor } from '../lib/format'
 import { breakdownText, fitColor } from '../lib/slotRating'
 
@@ -40,6 +41,7 @@ export default function PitchBoard({
   onDragPlayer?: (playerId: number | null) => void
   onDropOnSlot?: (slot: string) => void
 }) {
+  const { touch } = useDevice()
   const [over, setOver] = useState<string | null>(null)
   const bySlot = new Map(starters.map((s) => [s.slot, s]))
   // A label is as wide as the room beside it: no wider than the gap to the nearest player it
@@ -54,8 +56,8 @@ export default function PitchBoard({
     return Math.max(LABEL_MIN, Math.min(LABEL_MAX, ...gaps))
   }
   return (
-    <Box pos="relative" w={W} h={H} style={{ borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-      <svg width={W} height={H} style={{ position: 'absolute', inset: 0 }}>
+    <Box pos="relative" w="100%" maw={W} style={{ aspectRatio: `${W} / ${H}`, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
         <rect width={W} height={H} fill="#2f7d3b" />
         {Array.from({ length: 8 }, (_, i) => (
           <rect key={i} y={(i * H) / 8} width={W} height={H / 16} fill="#2c7437" />
@@ -68,6 +70,15 @@ export default function PitchBoard({
           <rect x={W * 0.2} y={H - 6 - H * 0.16} width={W * 0.6} height={H * 0.16} />
         </g>
       </svg>
+      {touch && picked != null && (
+        <Text
+          size="xs"
+          fw={700}
+          style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', background: '#fab005', color: 'black', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap', zIndex: 2, pointerEvents: 'none' }}
+        >
+          Tap a slot or player to swap
+        </Text>
+      )}
       {formation.slots.map((slot) => {
         const entry = bySlot.get(slot.id)
         const { left, top } = place(slot)
@@ -81,7 +92,7 @@ export default function PitchBoard({
           <Box
             key={slot.id}
             onClick={() => onSelect(slot.id)}
-            draggable={!!entry && !!onDragPlayer}
+            draggable={!touch && !!entry && !!onDragPlayer}
             onDragStart={(e: React.DragEvent) => {
               if (!entry) return
               e.dataTransfer.effectAllowed = 'move'
@@ -105,7 +116,7 @@ export default function PitchBoard({
             }}
             pos="absolute"
             title={entry ? breakdownText(entry) : undefined}
-            style={{ left, top, transform: 'translate(-50%, -50%)', cursor: onDragPlayer && picked == null ? 'grab' : 'pointer', textAlign: 'center', width }}
+            style={{ left: `${(left / W) * 100}%`, top: `${(top / H) * 100}%`, transform: 'translate(-50%, -50%)', cursor: onDragPlayer && picked == null && !touch ? 'grab' : 'pointer', textAlign: 'center', width: `${(width / W) * 100}%` }}
           >
             <Box
               mx="auto"
@@ -115,7 +126,7 @@ export default function PitchBoard({
                 borderRadius: '50%',
                 background: isPicked ? '#fab005' : active ? '#f59f00' : '#1c7ed6',
                 border: `2px solid ${target ? '#ffd43b' : 'white'}`,
-                boxShadow: isPicked ? '0 0 0 4px rgba(255,212,59,0.9)' : target ? '0 0 0 4px rgba(255,212,59,0.7)' : warn ? `0 0 0 3px ${warn === 'red' ? '#fa5252' : '#fd7e14'}` : undefined,
+                boxShadow: isPicked ? '0 0 0 4px #ffd43b, 0 0 0 7px rgba(18,184,134,0.9)' : target ? '0 0 0 4px rgba(255,212,59,0.7)' : warn ? `0 0 0 3px ${warn === 'red' ? '#fa5252' : '#fd7e14'}` : undefined,
                 color: 'white',
                 fontWeight: 700,
                 fontSize: 13,

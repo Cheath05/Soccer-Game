@@ -68,6 +68,13 @@ def _disable(store: AccountStore, args: argparse.Namespace) -> int:
     return 0
 
 
+def _rename(store: AccountStore, args: argparse.Namespace) -> int:
+    old = store.get(args.name).name
+    account = store.rename(args.name, args.new_name)
+    print(f"{old} is now {account.name}: they sign in with the new name; careers unchanged")
+    return 0
+
+
 def _remove(store: AccountStore, args: argparse.Namespace) -> int:
     account = store.get(args.name)
     if account.is_owner:
@@ -128,6 +135,11 @@ def add_parser(sub: "argparse._SubParsersAction[argparse.ArgumentParser]") -> No
     reset.add_argument("name")
     password_options(reset)
     reset.set_defaults(action=_reset)
+
+    rename = actions.add_parser("rename", help="change the name an account signs in with")
+    rename.add_argument("name")
+    rename.add_argument("new_name")
+    rename.set_defaults(action=_rename)
 
     disable = actions.add_parser("disable", help="stop an account signing in")
     disable.add_argument("name")

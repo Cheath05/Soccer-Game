@@ -17,7 +17,10 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (11 Oct): M5, the phone in the browser tests; the phone-and-accounts plan is done** (the commit that adds this line).
+- **Latest checkpoint (11 Oct): renaming an account** (the commit that adds this line). The user asked how to remove a user or change their name. Removing already existed (`deploy/users.sh remove NAME`).
+  - **`footsim users rename NAME NEW_NAME`** (`AccountStore.rename`; `deploy/users.sh rename`). It changes the name they sign in with. Their careers folder, password and sign-ins stay, since they belong to the account, not its name. The new name follows the same rules, and only a change of case is allowed onto a name already in use.
+  - **Checks:** `test_accounts.py` (rename keeps the id, folder and sign-in; case-only rename; a taken or invalid name is refused); ruff and mypy.
+- **Earlier checkpoint (11 Oct): M5, the phone in the browser tests; the phone-and-accounts plan is done** (the commit that adds this line).
   - **`frontend/e2e/phone.mjs`** (an iPhone 13 at 390×844, touch, in `just e2e` now):
     - starts a career, then opens Squad, Transfers, Finances, League and Fixtures through the menu;
     - taps a bench player onto the tactics pitch;

@@ -6,6 +6,7 @@
 #   deploy/users.sh add Sam --generate      a friend; prints a password to send them
 #   deploy/users.sh list
 #   deploy/users.sh reset-password Sam --generate
+#   deploy/users.sh rename Sam Samuel      a new name to sign in with; careers unchanged
 #   deploy/users.sh disable Sam             (disable Sam --enable to let them back in)
 #   deploy/users.sh remove Sam              their careers stay unless --delete-saves
 # Accounts only matter once they are switched on: deploy/accounts.sh on.

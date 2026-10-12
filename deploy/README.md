@@ -125,6 +125,7 @@ Until accounts are on, everyone who reaches the server plays the same careers (y
 
 - `deploy/users.sh list`: every account, and on how many devices it's signed in.
 - `deploy/users.sh reset-password Sam --generate`: a forgotten password. It signs them out everywhere.
+- `deploy/users.sh rename Sam Samuel`: a new name to sign in with. Their careers and password stay, and they stay signed in.
 - `deploy/users.sh disable Sam`: stop someone signing in. `disable Sam --enable` lets them back.
 - `deploy/users.sh remove Sam`: delete the account. Their careers stay unless you add `--delete-saves`.
 - `deploy/accounts.sh status`: whether accounts are on, and the list.

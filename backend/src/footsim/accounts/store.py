@@ -190,10 +190,7 @@ class AccountStore:
 
     def add(self, name: str, password: str, *, min_password_length: int, owner: bool = False,
             now: datetime | None = None) -> Account:
-        name = name.strip()
-        if not NAME_PATTERN.match(name):
-            raise AccountError("a name is 1-32 letters, digits, spaces, dots, dashes or "
-                               "underscores, starting with a letter or digit")
+        name = _check_name(name)
         _check_new_password(password, min_password_length)
         with self.engine.begin() as conn:
             if conn.execute(select(user.c.id).where(user.c.name_key == name.lower())).first():
@@ -217,6 +214,20 @@ class AccountStore:
             conn.execute(user.update().where(user.c.id == account.id)
                          .values(password_hash=hash_password(password)))
             conn.execute(login_session.delete().where(login_session.c.user_id == account.id))
+
+    def rename(self, name: str, new_name: str) -> Account:
+        """A new name to sign in with. Their careers and sign-ins stay as they are (the folder
+        and the sign-ins belong to the account, not its name)."""
+        account = self.get(name)
+        new_name = _check_name(new_name)
+        with self.engine.begin() as conn:
+            taken = conn.execute(select(user.c.id).where(user.c.name_key == new_name.lower(),
+                                                         user.c.id != account.id)).first()
+            if taken:
+                raise AccountError(f"there is already an account called {new_name!r}")
+            conn.execute(user.update().where(user.c.id == account.id)
+                         .values(name=new_name, name_key=new_name.lower()))
+        return self.get(new_name)
 
     def set_disabled(self, name: str, disabled: bool) -> None:
         account = self.get(name)
@@ -287,6 +298,14 @@ class AccountStore:
             return int(conn.execute(select(func.count()).select_from(login_session).where(
                 login_session.c.user_id == account.id,
                 login_session.c.expires > _stamp(_now()))).scalar_one())
+
+
+def _check_name(name: str) -> str:
+    name = name.strip()
+    if not NAME_PATTERN.match(name):
+        raise AccountError("a name is 1-32 letters, digits, spaces, dots, dashes or "
+                           "underscores, starting with a letter or digit")
+    return name
 
 
 def _check_new_password(password: str, min_length: int) -> None:

@@ -119,6 +119,21 @@ def test_long_and_unicode_passwords(store: AccountStore) -> None:
     assert store.verify("sam", "y" * 5000) is None
 
 
+def test_rename_keeps_careers_and_sign_ins(store: AccountStore) -> None:
+    sam = store.add("sam", "password2", min_password_length=8)
+    store.add("kim", "password3", min_password_length=8)
+    token = store.start_session(sam, days=30, now=T0)
+    renamed = store.rename("sam", "Samuel")
+    assert (renamed.id, renamed.folder, renamed.name) == (sam.id, sam.folder, "Samuel")
+    assert store.verify("samuel", "password2") is not None and store.find("sam") is None
+    assert store.session_account(token, 30, now=T0) == renamed  # still signed in
+    assert store.rename("samuel", "SAMUEL").name == "SAMUEL"  # just the case
+    with pytest.raises(AccountError, match="already an account"):
+        store.rename("samuel", "Kim")
+    with pytest.raises(AccountError, match="a name is"):
+        store.rename("samuel", "no/slashes")
+
+
 def test_server_settings_load() -> None:
     server = load_server()
     assert server.session_days > 0 and server.min_password_length >= 8

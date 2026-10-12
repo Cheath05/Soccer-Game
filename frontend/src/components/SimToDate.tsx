@@ -1,6 +1,6 @@
-import { Badge, Button, Group, List, Menu, Modal, Progress, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
+import { ActionIcon, Badge, Button, Group, List, Menu, Modal, Progress, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { useSimStatus, useSimTargets, useStartSim, useStopSim } from '../api/hooks'
 import type { Career, SimResult, SimStatus } from '../api/types'
@@ -46,7 +46,19 @@ function Results({ results }: { results: SimResult[] }) {
 
 // "Sim to…": moves the career on to a chosen day, playing the user's matches instantly, with
 // progress and a Stop button meanwhile and a summary at the end.
-export default function SimToDate({ career, matchToday }: { career: Career; matchToday: boolean }) {
+// `compact` (phone header) swaps the button for a "⋯" icon whose menu starts with `extraItems`
+// (the header's Save), so a phone has one overflow menu instead of two buttons.
+export default function SimToDate({
+  career,
+  matchToday,
+  compact = false,
+  extraItems,
+}: {
+  career: Career
+  matchToday: boolean
+  compact?: boolean
+  extraItems?: ReactNode
+}) {
   const status = useSimStatus()
   const targets = useSimTargets(career.date)
   const start = useStartSim()
@@ -94,11 +106,22 @@ export default function SimToDate({ career, matchToday }: { career: Career; matc
     <>
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
-          <Button size="sm" variant="light" loading={start.isPending || running}>
-            Sim to…
-          </Button>
+          {compact ? (
+            <ActionIcon variant="default" size={44} aria-label="More" loading={start.isPending || running}>
+              <span aria-hidden style={{ fontSize: 22, lineHeight: 1 }}>
+                ⋯
+              </span>
+            </ActionIcon>
+          ) : (
+            <Button size="sm" variant="light" loading={start.isPending || running}>
+              Sim to…
+            </Button>
+          )}
         </Menu.Target>
         <Menu.Dropdown>
+          {extraItems}
+          {compact && <Menu.Divider />}
+          {compact && <Menu.Label>Sim to…</Menu.Label>}
           {matchToday && <Menu.Label>Today&apos;s match is played instantly</Menu.Label>}
           <Menu.Item onClick={() => go(addDays(career.date, 7))}>One week</Menu.Item>
           <Menu.Item onClick={() => go(addMonths(career.date, 1))}>One month</Menu.Item>

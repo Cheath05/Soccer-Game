@@ -16,7 +16,14 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Latest checkpoint (10 Oct): saved tactics (schema 17)** (the commit that adds this line; after 289e27a). The user asked for several tactic saves.
+- **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
+- **Latest checkpoint (11 Oct): M1, the phone shell** (the commit that adds this line; after 79128aa).
+  - **`frontend/src/lib/device.ts` `useDevice()`** is the one place the app decides phone (below 48em, the width at which the menu folds away) vs computer, plus touch (`pointer: coarse`). It doesn't read the user agent.
+  - **Phone header** (`Layout.tsx`): burger, club name, the version tag, one main button (Continue or Match day), and a "⋯" menu holding Save and the Sim-to items (`SimToDate` `compact`/`extraItems`). The desktop header is unchanged. Tap targets are 44px; picking a page closes the menu (Match day too now).
+  - **Add to Home Screen:** `manifest.webmanifest`, icons, Apple web-app metas, `viewport-fit=cover` with safe-area padding on the header. The server already serves these files from `dist` with the right types.
+  - **Checks** (a Sonnet agent, reviewed here): `npm run build`; on :8765 with a temporary saves folder at 390×844 (touch) and 1440×900.
+  - **Next:** U1 (accounts store and `footsim users`), then U2, with M2 alongside. Play-test on :8000 as usual (accounts are off unless `FOOTSIM_AUTH=1`).
+- **Earlier checkpoint (10 Oct): saved tactics (schema 17)** (the commit that adds this line; after 289e27a). The user asked for several tactic saves.
   - **`world/tactic_presets.py`** and the `tactic_preset` table (`_to_v17`). Up to 20 per club, unique names; saving under a name replaces it. Each holds the formation, roles and instructions, and the line-up only when "Save the line-up too" is ticked.
   - **Loading** goes through `set_user_tactic`, with its checks. Players in a saved line-up who have left are dropped, and the rest of the line-up is picked automatically.
   - **API:** `GET`/`POST /api/tactics/presets`, `POST /api/tactics/presets/{id}/load`, `DELETE /api/tactics/presets/{id}`.

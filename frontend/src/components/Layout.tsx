@@ -1,4 +1,4 @@
-import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Menu, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
+import { useDevice } from '../lib/device'
 import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
 import ClubSearch from './ClubSearch'
 import SeasonSummary from './SeasonSummary'
@@ -28,6 +29,7 @@ const NAV = [
 
 export default function Layout() {
   const [opened, { toggle, close }] = useDisclosure()
+  const { phone } = useDevice()
   const career = useCareer()
   const advance = useAdvance()
   const saveGame = useSaveGame()
@@ -76,18 +78,53 @@ export default function Layout() {
     })
   }
 
+  const onSave = () => saveGame.mutate(undefined, { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 1500) } })
+
   return (
-    <AppShell header={{ height: 60 }} navbar={{ width: 210, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding="md">
-      <AppShell.Header>
+    <AppShell
+      header={{ height: 'calc(60px + env(safe-area-inset-top))' }}
+      navbar={{ width: 210, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+      padding="md"
+    >
+      {/* Standalone on an iPhone (viewport-fit=cover) the header must clear the notch and the landscape insets. */}
+      <AppShell.Header style={{ paddingTop: 'env(safe-area-inset-top)', paddingInline: 'env(safe-area-inset-left) env(safe-area-inset-right)' }}>
+        {phone ? (
+          <Group h="100%" px="xs" gap={6} wrap="nowrap">
+            <Burger opened={opened} onClick={toggle} size="sm" aria-label="Menu" style={{ minWidth: 44, minHeight: 44 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Title order={4} fz={16} lineClamp={1}>
+                {data.club.name}
+              </Title>
+              {/* The navbar is folded away on a phone, so the version tag sits under the name there. */}
+              <VersionTag truncate />
+            </div>
+            <Button
+              size="md"
+              h={44}
+              px={12}
+              color={matchToday ? 'orange' : 'teal'}
+              loading={advance.isPending}
+              onClick={onContinue}
+              style={{ flexShrink: 0 }}
+            >
+              {matchToday ? 'Match day' : 'Continue'}
+            </Button>
+            <SimToDate
+              career={data}
+              matchToday={matchToday}
+              compact
+              extraItems={
+                <Menu.Item disabled={saveGame.isPending} onClick={onSave}>
+                  {saveGame.isPending ? 'Saving…' : saved ? 'Saved' : 'Save'}
+                </Menu.Item>
+              }
+            />
+          </Group>
+        ) : (
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <div>
               <Title order={4}>{data.club.name}</Title>
-              {/* The navbar is folded away on a phone, so the version tag sits under the name there. */}
-              <Box hiddenFrom="sm" maw={150}>
-                <VersionTag truncate />
-              </Box>
             </div>
             <Badge variant="light" visibleFrom="sm">
               {data.season}
@@ -100,12 +137,7 @@ export default function Layout() {
             <Text size="sm" fw={500} visibleFrom="xs">
               {longDate(data.date)}
             </Text>
-            <Button
-              variant="default"
-              size="sm"
-              loading={saveGame.isPending}
-              onClick={() => saveGame.mutate(undefined, { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 1500) } })}
-            >
+            <Button variant="default" size="sm" loading={saveGame.isPending} onClick={onSave}>
               {saved ? 'Saved' : 'Save'}
             </Button>
             <SimToDate career={data} matchToday={matchToday} />
@@ -114,6 +146,7 @@ export default function Layout() {
             </Button>
           </Group>
         </Group>
+        )}
       </AppShell.Header>
       <AppShell.Navbar p="sm">
         <Box hiddenFrom="md" mb="xs">
@@ -123,6 +156,7 @@ export default function Layout() {
           <div key={item.to}>
             {item.to === '/start' && data && (
               <NavLink
+                mih={phone ? 44 : undefined}
                 label="Club & history"
                 active={path === `/clubs/${data.club.id}`}
                 onClick={() => {
@@ -132,6 +166,7 @@ export default function Layout() {
               />
             )}
             <NavLink
+              mih={phone ? 44 : undefined}
               label={item.label}
               active={item.to === '/' ? path === '/' : path.startsWith(item.to)}
               onClick={() => {
@@ -142,7 +177,16 @@ export default function Layout() {
           </div>
         ))}
         {matchToday && (
-          <NavLink label="Match day" color="orange" active={path === '/matchday'} onClick={() => void navigate({ to: '/matchday' })} />
+          <NavLink
+            mih={phone ? 44 : undefined}
+            label="Match day"
+            color="orange"
+            active={path === '/matchday'}
+            onClick={() => {
+              close()
+              void navigate({ to: '/matchday' })
+            }}
+          />
         )}
         <AppShell.Section mt="auto" pt="sm" px="sm">
           <VersionTag />

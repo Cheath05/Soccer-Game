@@ -17,7 +17,12 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): M1, the phone shell** (the commit that adds this line; after 79128aa).
+- **Latest checkpoint (11 Oct): M2, phone tables** (the commit that adds this line).
+  - **Pattern:** below 48em each table keeps its key columns (others `visibleFrom="sm"`), drops its desktop `minWidth`, and puts the hidden details in a small line under the name.
+  - **Squad:** Pos, Name (age, XI/Bench, G/A under it), Ovr, Condition, Value. **Transfers search:** Player (age, club), Pos, OVR, Value, and the filters behind a "Filters" button. **League:** #, Club, P, GD, Pts. **Fixtures:** date, opponent (H/A and competition under it), score. **Club, Player seasons, Club history, Market overview** likewise. **Match report:** its stats table now scrolls inside itself; Player, G, A, Rating on a phone, and the score header stacks.
+  - **Checks** (a Sonnet agent, reviewed here): `npm run build`; at 390px no page scrolls sideways (`scrollWidth <= innerWidth`) on Squad, Transfers (all tabs), League, Fixtures, Club, Player, Finances; desktop columns all present at 1440. The match report was checked by build only (no match played in the test career).
+  - **Left:** the Squad and Contracts tables are a few pixels wider than a 390px screen, so they scroll inside themselves.
+- **Earlier checkpoint (11 Oct): M1, the phone shell** (the commit that adds this line; after 79128aa).
   - **`frontend/src/lib/device.ts` `useDevice()`** is the one place the app decides phone (below 48em, the width at which the menu folds away) vs computer, plus touch (`pointer: coarse`). It doesn't read the user agent.
   - **Phone header** (`Layout.tsx`): burger, club name, the version tag, one main button (Continue or Match day), and a "⋯" menu holding Save and the Sim-to items (`SimToDate` `compact`/`extraItems`). The desktop header is unchanged. Tap targets are 44px; picking a page closes the menu (Match day too now).
   - **Add to Home Screen:** `manifest.webmanifest`, icons, Apple web-app metas, `viewport-fit=cover` with safe-area padding on the header. The server already serves these files from `dist` with the right types.

@@ -1,10 +1,12 @@
 import { Badge, Card, Group, Table, Text, Title } from '@mantine/core'
 
 import { useClubHistory } from '../api/hooks'
+import { useDevice } from '../lib/device'
 import { OUTCOMES, ordinal } from '../lib/format'
 
 /** Where a club finished in each season of the career so far, and this season's position. */
 export default function ClubHistoryCard({ clubId }: { clubId: number }) {
+  const { phone } = useDevice()
   const history = useClubHistory(clubId).data
   if (!history) return null
   const honours = [
@@ -20,21 +22,21 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
           {honours.length ? honours.join(' · ') : 'No honours yet in this career'}
         </Text>
       </Group>
-      <Table.ScrollContainer minWidth={760}>
+      <Table.ScrollContainer minWidth={phone ? 0 : 760}>
         <Table striped>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Season</Table.Th>
               <Table.Th>League</Table.Th>
               <Table.Th ta="right">Pos</Table.Th>
-              <Table.Th ta="right">P</Table.Th>
-              <Table.Th ta="right">W</Table.Th>
-              <Table.Th ta="right">D</Table.Th>
-              <Table.Th ta="right">L</Table.Th>
-              <Table.Th ta="right">GD</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">P</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">W</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">D</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">L</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">GD</Table.Th>
               <Table.Th ta="right">Pts</Table.Th>
               <Table.Th />
-              <Table.Th>Cups</Table.Th>
+              <Table.Th visibleFrom="sm">Cups</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -48,11 +50,11 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
                   <Table.Td ta="right" fw={700}>
                     {s.position ? ordinal(s.position) : '–'}
                   </Table.Td>
-                  <Table.Td ta="right">{s.played}</Table.Td>
-                  <Table.Td ta="right">{s.won}</Table.Td>
-                  <Table.Td ta="right">{s.drawn}</Table.Td>
-                  <Table.Td ta="right">{s.lost}</Table.Td>
-                  <Table.Td ta="right">{gd > 0 ? `+${gd}` : gd}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{s.played}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{s.won}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{s.drawn}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{s.lost}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{gd > 0 ? `+${gd}` : gd}</Table.Td>
                   <Table.Td ta="right" fw={700}>
                     {s.points}
                   </Table.Td>
@@ -69,7 +71,7 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
                       </Badge>
                     )}
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td visibleFrom="sm">
                     <Group gap={4} wrap="nowrap">
                       {s.cups.map((run) => (
                         <Badge key={run.key} size="sm" variant={run.won ? 'filled' : 'light'} color={run.won ? 'yellow' : run.out ? 'gray' : 'blue'}>

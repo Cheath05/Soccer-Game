@@ -4,10 +4,12 @@ import { useNavigate } from '@tanstack/react-router'
 import { useCareer, useClubFixtures, useSeasons } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import ResultBadge from '../components/ResultBadge'
-import { longDate, score, stageLabel } from '../lib/format'
+import { longDate, score, shortDate, stageLabel } from '../lib/format'
+import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
 export default function FixturesPage() {
+  const { phone } = useDevice()
   const career = useCareer().data
   const seasons = useSeasons().data ?? []
   const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
@@ -40,13 +42,13 @@ export default function FixturesPage() {
           />
         )}
       </Group>
-      <Table.ScrollContainer minWidth={700}>
+      <Table.ScrollContainer minWidth={phone ? 0 : 700}>
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Date</Table.Th>
-              <Table.Th>Competition</Table.Th>
-              <Table.Th>Venue</Table.Th>
+              <Table.Th visibleFrom="sm">Competition</Table.Th>
+              <Table.Th visibleFrom="sm">Venue</Table.Th>
               <Table.Th>Opponent</Table.Th>
               <Table.Th>Score</Table.Th>
               <Table.Th />
@@ -63,16 +65,22 @@ export default function FixturesPage() {
                   style={{ cursor: played ? 'pointer' : undefined }}
                   onClick={() => played && void navigate({ to: '/match/$fixtureId', params: { fixtureId: String(f.id) } })}
                 >
-                  <Table.Td>{longDate(f.date)}</Table.Td>
                   <Table.Td>
+                    <Text span visibleFrom="sm" inherit>{longDate(f.date)}</Text>
+                    <Text span hiddenFrom="sm" inherit>{shortDate(f.date)}</Text>
+                  </Table.Td>
+                  <Table.Td visibleFrom="sm">
                     <Text size="sm">{f.competition_name}</Text>
                     <Text size="xs" c="dimmed">
                       {stageLabel(f.stage, f.round, f.tie, f.leg, f.stage_name)}
                     </Text>
                   </Table.Td>
-                  <Table.Td>{f.neutral ? 'N' : home ? 'H' : 'A'}</Table.Td>
+                  <Table.Td visibleFrom="sm">{f.neutral ? 'N' : home ? 'H' : 'A'}</Table.Td>
                   <Table.Td fw={500}>
                     <ClubLink club={opponent} />
+                    <Text size="xs" c="dimmed" fw={400} hiddenFrom="sm">
+                      {f.neutral ? 'N' : home ? 'H' : 'A'} · {f.competition_name}
+                    </Text>
                   </Table.Td>
                   <Table.Td>{played ? score(f) : '–'}</Table.Td>
                   <Table.Td>

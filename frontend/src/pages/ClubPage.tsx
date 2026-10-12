@@ -11,6 +11,7 @@ import Overall from '../components/Overall'
 import ResultBadge from '../components/ResultBadge'
 import { money, ordinal, positionColor, score, shortDate, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
+import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
 type SortKey = 'position' | 'name' | 'age' | 'overall' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'contract_end'
@@ -41,7 +42,10 @@ const STATUS: Record<ClubPlayer['status'], { label: string; color: string } | nu
   suspended: { label: 'SUS', color: 'orange' },
 }
 
+const PHONE_HIDDEN: SortKey[] = ['age', 'form', 'appearances', 'goals', 'contract_end']
+
 export default function ClubPage() {
+  const { phone } = useDevice()
   const { clubId } = useParams({ from: '/clubs/$clubId' })
   const id = Number(clubId)
   const club = useClub(id)
@@ -112,12 +116,12 @@ export default function ClubPage() {
         <Title order={3}>Squad</Title>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
-      <Table.ScrollContainer minWidth={760}>
+      <Table.ScrollContainer minWidth={phone ? 0 : 760}>
         <Table highlightOnHover striped>
           <Table.Thead>
             <Table.Tr>
               {COLUMNS.map((col) => (
-                <Table.Th key={col.key} ta={col.numeric ? 'right' : undefined}>
+                <Table.Th key={col.key} ta={col.numeric ? 'right' : undefined} visibleFrom={PHONE_HIDDEN.includes(col.key) ? 'sm' : undefined}>
                   <UnstyledButton fw={600} fz="sm" onClick={() => setSort((s) => ({ key: col.key, desc: s.key === col.key ? !s.desc : !!col.numeric }))}>
                     {col.label}
                     {sort.key === col.key ? (sort.desc ? ' ▾' : ' ▴') : ''}
@@ -139,9 +143,14 @@ export default function ClubPage() {
                 </Table.Td>
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
-                    <Text size="sm" fw={500}>
-                      {p.name}
-                    </Text>
+                    <div>
+                      <Text size="sm" fw={500}>
+                        {p.name}
+                      </Text>
+                      <Text size="xs" c="dimmed" hiddenFrom="sm">
+                        {p.age}y · {p.appearances} apps · {p.goals} goals
+                      </Text>
+                    </div>
                     {STATUS[p.status] && (
                       <Badge color={STATUS[p.status]!.color} size="xs">
                         {STATUS[p.status]!.label}
@@ -149,15 +158,15 @@ export default function ClubPage() {
                     )}
                   </Group>
                 </Table.Td>
-                <Table.Td ta="right">{p.age}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.age}</Table.Td>
                 <Table.Td ta="right">
                   <Overall value={p.overall} trend={p.trend} />
                 </Table.Td>
-                <Table.Td ta="right">{p.form.toFixed(1)}</Table.Td>
-                <Table.Td ta="right">{p.appearances}</Table.Td>
-                <Table.Td ta="right">{p.goals}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.form.toFixed(1)}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.appearances}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.goals}</Table.Td>
                 <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
-                <Table.Td>{p.contract_end.slice(0, 4)}</Table.Td>
+                <Table.Td visibleFrom="sm">{p.contract_end.slice(0, 4)}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

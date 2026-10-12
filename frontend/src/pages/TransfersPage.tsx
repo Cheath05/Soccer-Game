@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Anchor, Badge, Button, Card, Collapse, Group, Modal, NumberInput, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -23,6 +23,7 @@ import PlayerLink from '../components/PlayerLink'
 import ClubLink from '../components/ClubLink'
 import OfferModal from '../components/OfferModal'
 import MarketOverview from '../components/MarketOverview'
+import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 import { CURRENCIES, money, monthYear, shortDate, toEuros, useCurrency, wage } from '../lib/format'
 
@@ -74,6 +75,8 @@ function LoanModal({ player, onClose }: { player: MarketPlayer; onClose: () => v
 }
 
 function SearchTab() {
+  const { phone } = useDevice()
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const currency = useCurrency()
   const { symbol } = CURRENCIES[currency]
   const leagues = useWorldLeagues().data ?? []
@@ -84,11 +87,25 @@ function SearchTab() {
   const [target, setTarget] = useState<MarketPlayer | null>(null)
   const [borrow, setBorrow] = useState<MarketPlayer | null>(null)
   const results = useMarketSearch(filters)
+  const runSearch = () => {
+    const { max_value_shown, ...rest } = form
+    setFilters({ ...rest, max_value_eur: max_value_shown === undefined ? undefined : toEuros(max_value_shown * 1e6) })
+    setFiltersOpen(false)
+  }
   const set = (patch: Partial<typeof form>) => setForm((current) => ({ ...current, ...patch }))
 
   return (
     <Stack>
       <Card withBorder>
+        {phone && (
+          <Group justify="space-between" mb={filtersOpen ? 'sm' : 0}>
+            <Button variant="default" onClick={() => setFiltersOpen((o) => !o)}>
+              {filtersOpen ? 'Hide filters' : 'Filters'}
+            </Button>
+            <Button onClick={runSearch}>Search</Button>
+          </Group>
+        )}
+        <Collapse expanded={!phone || filtersOpen}>
         <Group align="end" wrap="wrap">
           <TextInput label="Name" value={form.name ?? ''} onChange={(e) => set({ name: e.currentTarget.value })} w={160} />
           <Select label="Position" data={POSITIONS} value={form.position ?? null} onChange={(v) => set({ position: v ?? undefined })} clearable w={110} />
@@ -107,30 +124,24 @@ function SearchTab() {
           />
           <Switch label="Free agents" checked={!!form.free_agents} onChange={(e) => set({ free_agents: e.currentTarget.checked })} />
           <Switch label="Listed only" checked={!!form.listed_only} onChange={(e) => set({ listed_only: e.currentTarget.checked })} />
-          <Button
-            onClick={() => {
-              const { max_value_shown, ...rest } = form
-              setFilters({ ...rest, max_value_eur: max_value_shown === undefined ? undefined : toEuros(max_value_shown * 1e6) })
-            }}
-          >
-            Search
-          </Button>
+          {!phone && <Button onClick={runSearch}>Search</Button>}
         </Group>
+        </Collapse>
       </Card>
       {results.isFetching && <Text c="dimmed">Searching…</Text>}
       {results.data && results.data.length === 0 && <Text c="dimmed">Nobody matches.</Text>}
       {results.data && results.data.length > 0 && (
-        <Table.ScrollContainer minWidth={760}>
+        <Table.ScrollContainer minWidth={phone ? 0 : 760}>
           <Table highlightOnHover striped>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Player</Table.Th>
                 <Table.Th>Pos</Table.Th>
-                <Table.Th ta="right">Age</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">Age</Table.Th>
                 <Table.Th ta="right">OVR</Table.Th>
-                <Table.Th>Club</Table.Th>
+                <Table.Th visibleFrom="sm">Club</Table.Th>
                 <Table.Th ta="right">Value</Table.Th>
-                <Table.Th>Contract</Table.Th>
+                <Table.Th visibleFrom="sm">Contract</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
@@ -146,17 +157,20 @@ function SearchTab() {
                         listed
                       </Badge>
                     )}
+                    <Text size="xs" c="dimmed" hiddenFrom="sm">
+                      {p.age}y · {p.club?.name ?? 'Free agent'}
+                    </Text>
                   </Table.Td>
                   <Table.Td>{p.position}</Table.Td>
-                  <Table.Td ta="right">{p.age}</Table.Td>
+                  <Table.Td ta="right" visibleFrom="sm">{p.age}</Table.Td>
                   <Table.Td ta="right" fw={700}>
                     {p.overall}
                   </Table.Td>
-                  <Table.Td>{p.club ? <ClubLink club={p.club} /> : <Text size="sm" c="dimmed">Free agent</Text>}</Table.Td>
+                  <Table.Td visibleFrom="sm">{p.club ? <ClubLink club={p.club} /> : <Text size="sm" c="dimmed">Free agent</Text>}</Table.Td>
                   <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
-                  <Table.Td>{p.contract_end ? monthYear(p.contract_end) : '–'}</Table.Td>
+                  <Table.Td visibleFrom="sm">{p.contract_end ? monthYear(p.contract_end) : '–'}</Table.Td>
                   <Table.Td>
-                    <Group gap={4} wrap="nowrap">
+                    <Group gap={4} wrap={phone ? 'wrap' : 'nowrap'}>
                       <Button size="xs" variant="light" onClick={() => setTarget(p)}>
                         {p.club ? 'Offer' : 'Sign'}
                       </Button>
@@ -238,6 +252,7 @@ function BidsTab() {
 }
 
 function SellTab() {
+  const { phone } = useDevice()
   const career = useCareer().data
   const squad = useSquad(career?.club.id).data ?? []
   const availability = useAvailability().data
@@ -256,6 +271,7 @@ function SellTab() {
           <Text fw={600} mb="xs">
             Loans
           </Text>
+          <Table.ScrollContainer minWidth={phone ? 0 : 500}>
           <Table>
             <Table.Tbody>
               {loans.map((l) => (
@@ -268,6 +284,7 @@ function SellTab() {
               ))}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         </Card>
       )}
       {lists.map((l) => (
@@ -293,6 +310,7 @@ function SellTab() {
           ))}
         </Card>
       ))}
+      <Table.ScrollContainer minWidth={0}>
       <Table striped>
         <Table.Tbody>
           {squad.map((p) => (
@@ -300,9 +318,9 @@ function SellTab() {
               <Table.Td>
                 <PlayerLink player={p} />
               </Table.Td>
-              <Table.Td>{p.position}</Table.Td>
+              <Table.Td visibleFrom="sm">{p.position}</Table.Td>
               <Table.Td ta="right">{p.overall}</Table.Td>
-              <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{money(p.value_eur)}</Table.Td>
               <Table.Td>
                 <SegmentedControl
                   size="xs"
@@ -320,11 +338,13 @@ function SellTab() {
           ))}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
     </Stack>
   )
 }
 
 function ContractsTab() {
+  const { phone } = useDevice()
   const currency = useCurrency()
   const { symbol, perEuro } = CURRENCIES[currency]
   const expiring = useExpiring().data ?? []
@@ -342,24 +362,30 @@ function ContractsTab() {
         </Alert>
       )}
       {expiring.length === 0 && <Text c="dimmed">No contracts end this season.</Text>}
+      <Table.ScrollContainer minWidth={phone ? 0 : 640}>
       <Table striped>
         <Table.Tbody>
           {expiring.map((e) => {
             const shown = wages[e.player_id] ?? Math.round((e.asks_eur * perEuro) / 100) / 10
             return (
               <Table.Tr key={e.player_id}>
-                <Table.Td>{e.name}</Table.Td>
-                <Table.Td ta="right">{e.age}</Table.Td>
+                <Table.Td>
+                  {e.name}
+                  <Text size="xs" c="dimmed" hiddenFrom="sm">
+                    {e.age}y · now {wage(e.wage_eur)}
+                  </Text>
+                </Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{e.age}</Table.Td>
                 <Table.Td ta="right" fw={700}>
                   {e.overall}
                 </Table.Td>
-                <Table.Td>now {wage(e.wage_eur)}</Table.Td>
+                <Table.Td visibleFrom="sm">now {wage(e.wage_eur)}</Table.Td>
                 <Table.Td>
                   {e.willing ? `asks ${wage(e.asks_eur)} for ${e.years} ${e.years === 1 ? 'year' : 'years'}` : <Text c="red" size="sm">won't sign</Text>}
                 </Table.Td>
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
-                    <NumberInput size="xs" w={110} decimalScale={1} disabled={!e.willing} value={shown} onChange={(v) => setWages({ ...wages, [e.player_id]: v })} rightSection={<Text size="xs">{symbol}K</Text>} />
+                    <NumberInput size="xs" w={phone ? 84 : 110} decimalScale={1} disabled={!e.willing} value={shown} onChange={(v) => setWages({ ...wages, [e.player_id]: v })} rightSection={<Text size="xs">{symbol}K</Text>} />
                     <Button
                       size="xs"
                       disabled={!e.willing}
@@ -379,17 +405,20 @@ function ContractsTab() {
           })}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
     </Stack>
   )
 }
 
 function HistoryTab() {
+  const { phone } = useDevice()
   const [mine, setMine] = useState(true)
   const rows = useTransferHistory(mine).data ?? []
   return (
     <Stack>
       <Switch label="Only your club's" checked={mine} onChange={(e) => setMine(e.currentTarget.checked)} />
       {rows.length === 0 && <Text c="dimmed">No moves yet.</Text>}
+      <Table.ScrollContainer minWidth={phone ? 0 : 500}>
       <Table striped>
         <Table.Tbody>
           {rows.map((r, i) => (
@@ -398,13 +427,14 @@ function HistoryTab() {
                 {shortDate(r.date)}
               </Table.Td>
               <Table.Td>{r.player.name}</Table.Td>
-              <Table.Td>{r.from_club ? <ClubLink club={r.from_club} /> : 'Free agent'}</Table.Td>
+              <Table.Td visibleFrom="sm">{r.from_club ? <ClubLink club={r.from_club} /> : 'Free agent'}</Table.Td>
               <Table.Td>→ {r.to_club ? <ClubLink club={r.to_club} /> : 'released'}</Table.Td>
               <Table.Td ta="right">{r.kind === 'transfer' ? money(r.fee_eur) : r.kind === 'free' ? 'free' : ''}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
     </Stack>
   )
 }
@@ -416,7 +446,7 @@ export default function TransfersPage() {
     <Stack>
       <Title order={2}>Transfers</Title>
       <Tabs value={tab ?? (bids.length ? 'bids' : 'search')} onChange={setTab} keepMounted={false}>
-        <Tabs.List>
+        <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
           <Tabs.Tab value="search">Find players</Tabs.Tab>
           <Tabs.Tab value="bids" rightSection={bids.length ? <Badge size="xs" color="orange">{bids.length}</Badge> : undefined}>
             Offers for your players

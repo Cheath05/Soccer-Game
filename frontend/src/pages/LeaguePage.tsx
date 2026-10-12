@@ -4,6 +4,7 @@ import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
 import { OUTCOMES, longDate } from '../lib/format'
+import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
 const ZONE_COLOR: Record<string, string> = {
@@ -14,6 +15,7 @@ const ZONE_COLOR: Record<string, string> = {
 }
 
 export default function LeaguePage() {
+  const { phone } = useDevice()
   const career = useCareer().data
   const competitions = useCompetitions()
   const [key, setKey] = useUrlState<string | null>('league', null)
@@ -66,21 +68,21 @@ export default function LeaguePage() {
           {unstarted.data?.first_match ? `: the ${unstarted.data.season} season starts on ${longDate(unstarted.data.first_match)}.` : '.'}
         </Text>
       )}
-      <Table.ScrollContainer minWidth={640}>
+      <Table.ScrollContainer minWidth={phone ? 0 : 640}>
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>#</Table.Th>
               <Table.Th>Club</Table.Th>
               <Table.Th ta="right">P</Table.Th>
-              <Table.Th ta="right">W</Table.Th>
-              <Table.Th ta="right">D</Table.Th>
-              <Table.Th ta="right">L</Table.Th>
-              <Table.Th ta="right">GF</Table.Th>
-              <Table.Th ta="right">GA</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">W</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">D</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">L</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">GF</Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">GA</Table.Th>
               <Table.Th ta="right">GD</Table.Th>
               <Table.Th ta="right">Pts</Table.Th>
-              <Table.Th>Form</Table.Th>
+              <Table.Th visibleFrom="sm">Form</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -98,16 +100,16 @@ export default function LeaguePage() {
                   </Group>
                 </Table.Td>
                 <Table.Td ta="right">{r.played}</Table.Td>
-                <Table.Td ta="right">{r.won}</Table.Td>
-                <Table.Td ta="right">{r.drawn}</Table.Td>
-                <Table.Td ta="right">{r.lost}</Table.Td>
-                <Table.Td ta="right">{r.goals_for}</Table.Td>
-                <Table.Td ta="right">{r.goals_against}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{r.won}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{r.drawn}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{r.lost}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{r.goals_for}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{r.goals_against}</Table.Td>
                 <Table.Td ta="right">{r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}</Table.Td>
                 <Table.Td ta="right" fw={700}>
                   {r.points}
                 </Table.Td>
-                <Table.Td>
+                <Table.Td visibleFrom="sm">
                   <Group gap={2} wrap="nowrap">
                     {r.form.map((f, i) => (
                       <Badge key={i} size="xs" w={18} px={0} color={f === 'W' ? 'green' : f === 'L' ? 'red' : 'gray'}>

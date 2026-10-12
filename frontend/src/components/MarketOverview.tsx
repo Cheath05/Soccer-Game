@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { type OverviewPlayer, type OverviewProspect, useMarketOverview } from '../api/transfers'
 import type { ClubRef } from '../api/types'
+import { useDevice } from '../lib/device'
 import { money, positionColor, ratingColor, shortDate } from '../lib/format'
 import ClubLink from './ClubLink'
 
@@ -22,6 +23,7 @@ function Club({ club, fallback }: { club: ClubRef | null; fallback: string }) {
 
 /** Top transfers, the most valuable players and the best young prospects across the world. */
 export default function MarketOverview() {
+  const { phone } = useDevice()
   const overview = useMarketOverview()
   const [view, setView] = useState('transfers')
   if (overview.isPending) return <Loader />
@@ -46,16 +48,16 @@ export default function MarketOverview() {
         </Text>
       </Group>
       <Card withBorder p={0}>
-        <Table.ScrollContainer minWidth={640}>
+        <Table.ScrollContainer minWidth={phone ? 0 : 640}>
           {view === 'transfers' && (
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Date</Table.Th>
+                  <Table.Th visibleFrom="sm">Date</Table.Th>
                   <Table.Th>Player</Table.Th>
-                  <Table.Th>Pos</Table.Th>
+                  <Table.Th visibleFrom="sm">Pos</Table.Th>
                   <Table.Th ta="right">OVR</Table.Th>
-                  <Table.Th>Move</Table.Th>
+                  <Table.Th visibleFrom="sm">Move</Table.Th>
                   <Table.Th ta="right">Fee</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -69,11 +71,16 @@ export default function MarketOverview() {
                 )}
                 {o.biggest_transfers.map((t, i) => (
                   <Table.Tr key={`${t.player.id}-${i}`} fw={t.yours ? 600 : undefined}>
-                    <Table.Td c="dimmed">{shortDate(t.date)}</Table.Td>
-                    <Table.Td><PlayerLink player={t.player} /></Table.Td>
-                    <Table.Td>{t.position && <Badge size="sm" variant="light" color={positionColor(t.position)}>{t.position}</Badge>}</Table.Td>
-                    <Table.Td ta="right" fw={700}>{t.overall ?? '–'}</Table.Td>
+                    <Table.Td c="dimmed" visibleFrom="sm">{shortDate(t.date)}</Table.Td>
                     <Table.Td>
+                      <PlayerLink player={t.player} />
+                      <Text size="xs" c="dimmed" hiddenFrom="sm">
+                        {shortDate(t.date)}{t.position ? ` · ${t.position}` : ''} · {t.from_club?.name ?? 'Free agent'} → {t.to_club?.name ?? 'released'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td visibleFrom="sm">{t.position && <Badge size="sm" variant="light" color={positionColor(t.position)}>{t.position}</Badge>}</Table.Td>
+                    <Table.Td ta="right" fw={700}>{t.overall ?? '–'}</Table.Td>
+                    <Table.Td visibleFrom="sm">
                       <Club club={t.from_club} fallback="Free agent" /> → <Club club={t.to_club} fallback="released" />
                     </Table.Td>
                     <Table.Td ta="right" fw={600}>{money(t.fee_eur)}</Table.Td>
@@ -86,30 +93,35 @@ export default function MarketOverview() {
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th w={36}>#</Table.Th>
+                  <Table.Th w={36} visibleFrom="sm">#</Table.Th>
                   <Table.Th>Player</Table.Th>
-                  <Table.Th>Pos</Table.Th>
-                  <Table.Th ta="right">Age</Table.Th>
+                  <Table.Th visibleFrom="sm">Pos</Table.Th>
+                  <Table.Th ta="right" visibleFrom="sm">Age</Table.Th>
                   <Table.Th ta="right">OVR</Table.Th>
                   {view === 'prospects' && <Table.Th>Potential</Table.Th>}
-                  <Table.Th>Club</Table.Th>
+                  <Table.Th visibleFrom="sm">Club</Table.Th>
                   <Table.Th ta="right">Value</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {rows.map((p, i) => (
                   <Table.Tr key={p.player.id}>
-                    <Table.Td c="dimmed">{i + 1}</Table.Td>
-                    <Table.Td><PlayerLink player={p.player} /></Table.Td>
-                    <Table.Td><Badge size="sm" variant="light" color={positionColor(p.position)}>{p.position}</Badge></Table.Td>
-                    <Table.Td ta="right">{p.age}</Table.Td>
+                    <Table.Td c="dimmed" visibleFrom="sm">{i + 1}</Table.Td>
+                    <Table.Td>
+                      <PlayerLink player={p.player} />
+                      <Text size="xs" c="dimmed" hiddenFrom="sm">
+                        {p.position} · {p.age}y · {p.club?.name ?? 'Free agent'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td visibleFrom="sm"><Badge size="sm" variant="light" color={positionColor(p.position)}>{p.position}</Badge></Table.Td>
+                    <Table.Td ta="right" visibleFrom="sm">{p.age}</Table.Td>
                     <Table.Td ta="right" fw={700} c={ratingColor(p.overall)}>{p.overall}</Table.Td>
                     {view === 'prospects' && (
                       <Table.Td title={p.potential_label}>
                         <Text span size="sm" fw={600}>{p.potential_low}–{p.potential_high}</Text>
                       </Table.Td>
                     )}
-                    <Table.Td><Club club={p.club} fallback="Free agent" /></Table.Td>
+                    <Table.Td visibleFrom="sm"><Club club={p.club} fallback="Free agent" /></Table.Td>
                     <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
                   </Table.Tr>
                 ))}

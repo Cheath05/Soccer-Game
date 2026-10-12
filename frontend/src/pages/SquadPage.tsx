@@ -7,6 +7,7 @@ import type { SquadPlayer } from '../api/types'
 import { SeasonChange } from '../components/SeasonChange'
 import { money, positionColor, ratingColor, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
+import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
 type SortKey = 'position' | 'selection' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
@@ -33,7 +34,10 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: 'wage_weekly_eur', label: 'Wage', numeric: true },
 ]
 
+const PHONE_HIDDEN: SortKey[] = ['selection', 'age', 'form', 'appearances', 'goals', 'wage_weekly_eur']
+
 export default function SquadPage() {
+  const { phone } = useDevice()
   const career = useCareer().data
   const squad = useSquad(career?.club.id)
   const navigate = useNavigate()
@@ -62,12 +66,12 @@ export default function SquadPage() {
         <Title order={2}>Squad</Title>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
-      <Table.ScrollContainer minWidth={1040}>
+      <Table.ScrollContainer minWidth={phone ? 0 : 1040}>
         <Table highlightOnHover striped>
           <Table.Thead>
             <Table.Tr>
               {COLUMNS.map((c) => (
-                <Table.Th key={c.key} ta={c.numeric ? 'right' : undefined}>
+                <Table.Th key={c.key} ta={c.numeric ? 'right' : undefined} visibleFrom={PHONE_HIDDEN.includes(c.key) ? 'sm' : undefined}>
                   <UnstyledButton
                     fw={600}
                     fz="sm"
@@ -78,7 +82,7 @@ export default function SquadPage() {
                   </UnstyledButton>
                 </Table.Th>
               ))}
-              <Table.Th>Contract</Table.Th>
+              <Table.Th visibleFrom="sm">Contract</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -92,7 +96,7 @@ export default function SquadPage() {
                     {p.position}
                   </Badge>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td visibleFrom="sm">
                   {selection.has(p.id) && (
                     <Badge size="sm" variant={selection.get(p.id) === 0 ? 'filled' : 'light'} color={selection.get(p.id) === 2 ? 'gray' : selection.get(p.id) === 1 ? 'teal' : 'blue'} w={72}>
                       {['XI', 'Bench', 'Reserve'][selection.get(p.id) ?? 2]}
@@ -101,9 +105,14 @@ export default function SquadPage() {
                 </Table.Td>
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
-                    <Text size="sm" fw={500}>
-                      {p.name}
-                    </Text>
+                    <div>
+                      <Text size="sm" fw={500}>
+                        {p.name}
+                      </Text>
+                      <Text size="xs" c="dimmed" hiddenFrom="sm">
+                        {p.age}y{selection.has(p.id) ? ` · ${['XI', 'Bench', 'Reserve'][selection.get(p.id) ?? 2]}` : ''} · {p.goals}/{p.assists} G/A
+                      </Text>
+                    </div>
                     {p.injury && (
                       <Badge color="red" size="xs">
                         INJ
@@ -116,13 +125,13 @@ export default function SquadPage() {
                     )}
                   </Group>
                 </Table.Td>
-                <Table.Td ta="right">{p.age}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.age}</Table.Td>
                 <Table.Td ta="right">
                   <Group gap={6} wrap="nowrap" justify="flex-end" component="span" display="inline-flex">
                     <Text fw={700} c={ratingColor(p.overall)} size="sm" span>
                       {p.overall}
                     </Text>
-                    <Text span w={44} ta="left">
+                    <Text span w={phone ? 20 : 44} ta="left">
                       <SeasonChange start={p.season_start_overall} now={p.overall} />
                     </Text>
                   </Group>
@@ -130,14 +139,14 @@ export default function SquadPage() {
                 <Table.Td>
                   <Progress value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size="sm" />
                 </Table.Td>
-                <Table.Td ta="right">{p.form.toFixed(1)}</Table.Td>
-                <Table.Td ta="right">{p.appearances}</Table.Td>
-                <Table.Td ta="right">
+                <Table.Td ta="right" visibleFrom="sm">{p.form.toFixed(1)}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{p.appearances}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">
                   {p.goals}/{p.assists}
                 </Table.Td>
                 <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
-                <Table.Td ta="right">{wage(p.wage_weekly_eur)}</Table.Td>
-                <Table.Td>{p.contract_end.slice(0, 4)}</Table.Td>
+                <Table.Td ta="right" visibleFrom="sm">{wage(p.wage_weekly_eur)}</Table.Td>
+                <Table.Td visibleFrom="sm">{p.contract_end.slice(0, 4)}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

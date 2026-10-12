@@ -6,6 +6,7 @@ import type { MatchEvent, PlayerLine } from '../api/types'
 import BackButton from '../components/BackButton'
 import ClubLink from '../components/ClubLink'
 import MatchStats from '../components/MatchStats'
+import { useDevice } from '../lib/device'
 import { longDate, matchRatingColor, score, stageLabel } from '../lib/format'
 
 const EVENT_LABEL: Record<string, string> = {
@@ -20,6 +21,7 @@ const EVENT_LABEL: Record<string, string> = {
 }
 
 export default function MatchReportPage() {
+  const { phone } = useDevice()
   const { fixtureId } = useParams({ from: '/match/$fixtureId' })
   const match = useMatch(Number(fixtureId))
   if (match.isPending) return <Loader />
@@ -36,12 +38,12 @@ export default function MatchReportPage() {
           <Text size="sm" c="dimmed">
             {fixture.competition_name} · {stageLabel(fixture.stage, fixture.round, fixture.tie, fixture.leg)} · {longDate(fixture.date)}
           </Text>
-          <Group gap="xl" wrap="nowrap">
-            <Title order={3} ta="right" style={{ flex: 1 }}>
+          <Group gap={phone ? 'xs' : 'xl'} wrap={phone ? 'wrap' : 'nowrap'} justify={phone ? 'center' : undefined}>
+            <Title order={3} ta={phone ? 'center' : 'right'} style={{ flex: phone ? '1 1 100%' : 1 }}>
               <ClubLink club={fixture.home} />
             </Title>
             <Title order={1}>{score(fixture)}</Title>
-            <Title order={3} style={{ flex: 1 }}>
+            <Title order={3} ta={phone ? 'center' : undefined} style={{ flex: phone ? '1 1 100%' : 1 }}>
               <ClubLink club={fixture.away} />
             </Title>
           </Group>
@@ -103,17 +105,18 @@ function Lineup({ title, lines }: { title: string; lines: PlayerLine[] }) {
       <Text fw={600} mb="xs">
         {title}
       </Text>
+      <Table.ScrollContainer minWidth={0}>
       <Table verticalSpacing={2}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Player</Table.Th>
-            <Table.Th ta="right">Min</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">Min</Table.Th>
             <Table.Th ta="right">G</Table.Th>
             <Table.Th ta="right">A</Table.Th>
-            <Table.Th ta="right">Sh (OT)</Table.Th>
-            <Table.Th ta="right">Pass</Table.Th>
-            <Table.Th ta="right">Tkl</Table.Th>
-            <Table.Th ta="right">Int</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">Sh (OT)</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">Pass</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">Tkl</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">Int</Table.Th>
             <Table.Th ta="right">Rating</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -125,17 +128,17 @@ function Lineup({ title, lines }: { title: string; lines: PlayerLine[] }) {
                 {l.yellow > 0 && ' 🟨'}
                 {l.red > 0 && ' 🟥'}
               </Table.Td>
-              <Table.Td ta="right">{l.minutes}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{l.minutes}</Table.Td>
               <Table.Td ta="right">{l.goals || ''}</Table.Td>
               <Table.Td ta="right">{l.assists || ''}</Table.Td>
-              <Table.Td ta="right">
+              <Table.Td ta="right" visibleFrom="sm">
                 {l.shots} ({l.shots_on_target})
               </Table.Td>
-              <Table.Td ta="right">
+              <Table.Td ta="right" visibleFrom="sm">
                 {l.passes_completed}/{l.passes}
               </Table.Td>
-              <Table.Td ta="right">{l.tackles}</Table.Td>
-              <Table.Td ta="right">{l.interceptions}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{l.tackles}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{l.interceptions}</Table.Td>
               <Table.Td ta="right">
                 <Text span fw={700} c={matchRatingColor(l.rating)}>
                   {l.rating.toFixed(1)}
@@ -145,6 +148,7 @@ function Lineup({ title, lines }: { title: string; lines: PlayerLine[] }) {
           ))}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
     </Card>
   )
 }

@@ -9,6 +9,7 @@ import BackButton from '../components/BackButton'
 import type { FamiliarityBand, PlayerSeasonLine, PositionRating } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
+import { useDevice } from '../lib/device'
 import { recallPlayerList } from '../lib/playerList'
 import { attributeLabel, matchRatingColor, money, positionColor, ratingColor, wage } from '../lib/format'
 
@@ -244,15 +245,16 @@ export default function PlayerPage() {
 /** The player's record season by season, the current one first: a line for each competition
  * and a total. A retired player keeps his. */
 function SeasonRecord({ playerId }: { playerId: number }) {
+  const { phone } = useDevice()
   const seasons = usePlayerSeasons(playerId).data
   if (!seasons) return null
   const cells = (line: PlayerSeasonLine) => (
     <>
       <Table.Td ta="right">{line.appearances}</Table.Td>
-      <Table.Td ta="right">{line.starts}</Table.Td>
-      <Table.Td ta="right">{line.minutes}</Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">{line.starts}</Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">{line.minutes}</Table.Td>
       <Table.Td ta="right">{line.goals}</Table.Td>
-      <Table.Td ta="right">{line.assists}</Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">{line.assists}</Table.Td>
       <Table.Td ta="right">
         {line.average_rating !== null && (
           <Text size="sm" fw={600} c={matchRatingColor(line.average_rating)} span>
@@ -260,8 +262,8 @@ function SeasonRecord({ playerId }: { playerId: number }) {
           </Text>
         )}
       </Table.Td>
-      <Table.Td ta="right">{line.yellow}</Table.Td>
-      <Table.Td ta="right">{line.red}</Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">{line.yellow}</Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">{line.red}</Table.Td>
     </>
   )
   return (
@@ -274,21 +276,21 @@ function SeasonRecord({ playerId }: { playerId: number }) {
           No matches played yet.
         </Text>
       ) : (
-        <Table.ScrollContainer minWidth={760}>
+        <Table.ScrollContainer minWidth={phone ? 0 : 760}>
           <Table verticalSpacing={4}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Season</Table.Th>
                 <Table.Th>Club</Table.Th>
-                <Table.Th>Competition</Table.Th>
+                <Table.Th visibleFrom="sm">Competition</Table.Th>
                 <Table.Th ta="right">Apps</Table.Th>
-                <Table.Th ta="right">Starts</Table.Th>
-                <Table.Th ta="right">Mins</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">Starts</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">Mins</Table.Th>
                 <Table.Th ta="right">Goals</Table.Th>
-                <Table.Th ta="right">Assists</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">Assists</Table.Th>
                 <Table.Th ta="right">Rating</Table.Th>
-                <Table.Th ta="right">YC</Table.Th>
-                <Table.Th ta="right">RC</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">YC</Table.Th>
+                <Table.Th ta="right" visibleFrom="sm">RC</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -296,15 +298,20 @@ function SeasonRecord({ playerId }: { playerId: number }) {
                 ...s.lines.map((line, i) => (
                   <Table.Tr key={`${s.season_id}-${line.competition_key}-${line.club?.id}`}>
                     <Table.Td fw={600}>{i === 0 ? s.season : ''}</Table.Td>
-                    <Table.Td>{line.club ? <ClubLink club={line.club} /> : '–'}</Table.Td>
-                    <Table.Td>{line.competition}</Table.Td>
+                    <Table.Td>
+                      {line.club ? <ClubLink club={line.club} /> : '–'}
+                      <Text size="xs" c="dimmed" hiddenFrom="sm">{line.competition}</Text>
+                    </Table.Td>
+                    <Table.Td visibleFrom="sm">{line.competition}</Table.Td>
                     {cells(line)}
                   </Table.Tr>
                 )),
                 <Table.Tr key={`${s.season_id}-total`} fw={700} bg="var(--mantine-color-default-hover)">
+                  <Table.Td>
+                    <Text span inherit hiddenFrom="sm">Total</Text>
+                  </Table.Td>
                   <Table.Td />
-                  <Table.Td />
-                  <Table.Td>Total {s.season}</Table.Td>
+                  <Table.Td visibleFrom="sm">Total {s.season}</Table.Td>
                   {cells(s.total)}
                 </Table.Tr>,
               ])}

@@ -1,8 +1,10 @@
 import { Alert, Box, Button, Card, Checkbox, Group, ScrollArea, SegmentedControl, Select, Stack, Tabs, Text } from '@mantine/core'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useMediaQuery } from '@mantine/hooks'
 import { useState } from 'react'
 
 import { useCareer } from '../api/hooks'
+import { useDevice } from '../lib/device'
 
 import GoalBanner from '../match-viewer/GoalBanner'
 import HalfTimePanel from '../match-viewer/HalfTimePanel'
@@ -30,6 +32,11 @@ export default function LivePage() {
   // What the pitch shows of a goal (the ball in the net, or on its way): the banner and the
   // score and commentary follow it.
   const [goalView, setGoalView] = useState<GoalView>({ banner: null, unseenT: null })
+  const { phone, touch } = useDevice()
+  const upright = useMediaQuery('(orientation: portrait)', false, { getInitialValueInEffect: false })
+  const short = useMediaQuery('(max-height: 31.25em)', false, { getInitialValueInEffect: false })
+  const portrait = phone && !!upright // a phone held upright: the pitch is drawn vertically
+  const compact = phone || (touch && !!short) // phones, and phones on their side
   const career = useCareer()
   const fixture = career.data?.next_fixture
   const competition = fixture && String(fixture.id) === fixtureId ? (fixture.stage_name ? `${fixture.competition_name} · ${fixture.stage_name}` : fixture.competition_name) : null
@@ -56,12 +63,12 @@ export default function LivePage() {
   const selectedStatus = selected !== null ? live?.status.players.find((p) => p.index === selected) : undefined
 
   return (
-    <Stack gap="sm">
-      <ScoreBar match={match} competition={competition} unseenGoalT={goalView.unseenT} />
-      <Group align="start" gap="sm" wrap="wrap">
-        <Stack gap="xs" style={{ flex: '3 1 560px', minWidth: 'min(320px, 100%)' }}>
+    <Stack gap={compact ? 'xs' : 'sm'}>
+      <ScoreBar match={match} competition={competition} unseenGoalT={goalView.unseenT} compact={compact} />
+      <Group align="start" gap={compact ? 'xs' : 'sm'} wrap="wrap">
+        <Stack gap="xs" style={{ flex: compact ? '1 1 100%' : '3 1 560px', minWidth: 'min(320px, 100%)', maxWidth: '100%' }}>
           <Box pos="relative">
-            <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} onGoalView={setGoalView} />
+            <PitchView match={match} showNames={showNames} debug={debug} selected={selected} onSelect={setSelected} onGoalView={setGoalView} portrait={portrait} />
             <GoalBanner goal={goalView.banner} live={live} />
             {selectedStatus && (
               <Box pos="absolute" top={8} left={8}>
@@ -72,7 +79,8 @@ export default function LivePage() {
                 />
               </Box>
             )}
-            {live?.atBreak && !live.finished && (
+            {live?.atBreak && !live.finished && phone && <HalfTimePanel match={match} sheet />}
+            {live?.atBreak && !live.finished && !phone && (
               <Box pos="absolute" top={0} left={0} right={0} bottom={0} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <HalfTimePanel match={match} />
               </Box>
@@ -113,7 +121,7 @@ export default function LivePage() {
           )}
         </Stack>
 
-        <Card withBorder radius="lg" padding="xs" style={{ flex: '1 1 340px', minWidth: 'min(320px, 100%)' }}>
+        <Card withBorder radius="lg" padding="xs" style={{ flex: compact ? '1 1 100%' : '1 1 340px', minWidth: 'min(320px, 100%)', maxWidth: '100%' }}>
           <Tabs defaultValue="feed" variant="pills" radius="xl">
             <Tabs.List grow>
               <Tabs.Tab value="feed">Commentary</Tabs.Tab>
@@ -123,7 +131,7 @@ export default function LivePage() {
             </Tabs.List>
 
             <Tabs.Panel value="feed" pt="xs">
-              <ScrollArea h={430}>
+              <ScrollArea h={phone ? '40vh' : 430}>
                 <Stack gap={4}>
                   {feed.map((f, i) => (
                     <Text key={`${f.t}-${i}`} size="sm" fw={IMPORTANT.has(f.type) ? 700 : 400} c={f.type === 'goal' ? 'teal' : undefined}>

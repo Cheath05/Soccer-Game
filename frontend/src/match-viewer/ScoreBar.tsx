@@ -22,6 +22,7 @@ interface Props {
   match: LiveMatch
   competition?: string | null // e.g. "Premier League", shown above the score
   unseenGoalT?: number | null // a goal the picture has not shown in the net yet: not counted
+  compact?: boolean // phones: tighter padding, no competition line
 }
 
 function Team({ name, color, side }: { name: string; color: string; side: 'home' | 'away' }) {
@@ -39,7 +40,7 @@ function Team({ name, color, side }: { name: string; color: string; side: 'home'
 
 // Score and football clock. The clock follows the pitch picture (which runs a moment behind
 // the engine) so a goal and its minute appear together.
-export default function ScoreBar({ match, competition, unseenGoalT = null }: Props) {
+export default function ScoreBar({ match, competition, unseenGoalT = null, compact = false }: Props) {
   const live = match.live
   if (!live) return null
   const playhead = match.playhead.current
@@ -65,16 +66,16 @@ export default function ScoreBar({ match, competition, unseenGoalT = null }: Pro
       style={{
         background: 'linear-gradient(135deg, #0e1a2b 0%, #16263d 55%, #12202f 100%)',
         borderRadius: 14,
-        padding: '10px 18px 12px',
+        padding: compact ? '6px 12px 8px' : '10px 18px 12px',
         boxShadow: '0 1px 2px rgba(0,0,0,0.2), 0 6px 18px rgba(10,20,35,0.22)',
       }}
     >
-      {competition && (
+      {competition && !compact && (
         <Text ta="center" size="xs" fw={600} tt="uppercase" mb={4} style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: 1.2 }}>
           {competition}
         </Text>
       )}
-      <Box style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', columnGap: 14 }}>
+      <Box style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', columnGap: compact ? 8 : 14 }}>
         <Team name={live.teams[0].name} color={TEAM_COLORS[0].shirt} side="home" />
         <Box style={{ textAlign: 'center' }}>
           <Text

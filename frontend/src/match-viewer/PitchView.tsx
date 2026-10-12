@@ -5,7 +5,7 @@ import { Box } from '@mantine/core'
 import { useEffect, useRef } from 'react'
 import type { MouseEvent } from 'react'
 
-import { PITCH_LENGTH, PITCH_WIDTH, debugAt, drawDebug, drawFrame, drawNetOverlay, drawPitch, interpolate, padFor } from './draw'
+import { PITCH_LENGTH, PITCH_WIDTH, PORTRAIT_TURN, debugAt, drawDebug, drawFrame, drawNetOverlay, drawPitch, interpolate, padFor, portraitMatrix } from './draw'
 import type { Snapshot } from './draw'
 import { findRelease, goalBall, inNetAt, restAt, startGoal } from './goal'
 import type { GoalMoment } from './goal'
@@ -26,11 +26,12 @@ interface Props {
   selected: number | null
   onSelect: (index: number | null) => void
   onGoalView?: (view: GoalView) => void
+  portrait?: boolean // a phone held upright: draw the pitch vertically (+x end at the top)
 }
 
 const STEER = 4 // per second: how quickly the picture closes a gap to the server's timeline
 
-export default function PitchView({ match, showNames, debug = false, selected, onSelect, onGoalView }: Props) {
+export default function PitchView({ match, showNames, debug = false, selected, onSelect, onGoalView, portrait = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const scaleRef = useRef(1)
@@ -45,13 +46,16 @@ export default function PitchView({ match, showNames, debug = false, selected, o
   const namesRef = useRef(showNames)
   const selectedRef = useRef(selected)
   const debugRef = useRef(debug)
+  const portraitRef = useRef(portrait)
+  const lengthRef = useRef(0) // landscape canvas width in CSS px, for the portrait hit test
 
   useEffect(() => {
     namesRef.current = showNames
     selectedRef.current = selected
     debugRef.current = debug
+    portraitRef.current = portrait
     onGoalViewRef.current = onGoalView
-  }, [showNames, selected, debug, onGoalView])
+  }, [showNames, selected, debug, onGoalView, portrait])
 
   useEffect(() => {
     let raf = 0
@@ -64,13 +68,22 @@ export default function PitchView({ match, showNames, debug = false, selected, o
       const state = match.liveRef.current
       const frames = match.buffer.current
       if (canvas && box && state) {
-        const width = box.clientWidth
-        // Room for the nets behind the goals; the pitch fills what is left.
-        const scale = Math.min((width - 32) / PITCH_LENGTH, width / (PITCH_LENGTH + 2 * (2.8 + 0.2)))
+        const boxWidth = box.clientWidth
+        const turned = portraitRef.current
+        // Room for the nets behind the goals; the pitch fills what is left. Portrait: the pitch's
+        // short side runs across the screen, and its height is capped so the controls stay near.
+        const across = turned ? PITCH_WIDTH : PITCH_LENGTH
+        const along = turned ? PITCH_LENGTH : PITCH_WIDTH
+        let scale = Math.min((boxWidth - 32) / across, boxWidth / (across + 2 * (2.8 + 0.2)))
+        if (turned) scale = Math.min(scale, (window.innerHeight * 0.72 - 32) / along)
         const pad = padFor(scale)
         scaleRef.current = scale
         padRef.current = pad
-        const height = Math.round(PITCH_WIDTH * scale + pad * 2)
+        const lengthPx = Math.round(PITCH_LENGTH * scale + pad * 2)
+        const widthPx = Math.round(PITCH_WIDTH * scale + pad * 2)
+        lengthRef.current = lengthPx
+        const width = turned ? widthPx : boxWidth
+        const height = turned ? lengthPx : widthPx
         const dpr = Math.min(3, window.devicePixelRatio || 1)
         if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
           canvas.width = Math.round(width * dpr)
@@ -79,22 +92,34 @@ export default function PitchView({ match, showNames, debug = false, selected, o
           canvas.style.height = `${height}px`
         }
         const ctx = canvas.getContext('2d')
-        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        // Everything is drawn in landscape coordinates; portrait adds a quarter turn.
+        const setView = (c: CanvasRenderingContext2D) => {
+          if (turned) {
+            const [a, b, cc, d, e, f] = portraitMatrix(lengthPx)
+            c.setTransform(dpr * a, dpr * b, dpr * cc, dpr * d, dpr * e, dpr * f)
+          } else c.setTransform(dpr, 0, 0, dpr, 0, 0)
+        }
+        if (ctx) setView(ctx)
         // The pitch is drawn once per size and copied in each frame.
-        const layerKey = `${width}x${height}@${dpr}`
+        const layerKey = `${width}x${height}@${dpr}${turned ? 'p' : ''}`
         if (ctx && layerRef.current?.key !== layerKey) {
           const layer = document.createElement('canvas')
           layer.width = canvas.width
           layer.height = canvas.height
           const lctx = layer.getContext('2d')
           if (lctx) {
-            lctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+            setView(lctx)
             drawPitch(lctx, scale, pad)
           }
           layerRef.current = { canvas: layer, key: layerKey }
         }
         const backdrop = () => {
-          if (ctx && layerRef.current) ctx.drawImage(layerRef.current.canvas, 0, 0, width, height)
+          if (ctx && layerRef.current) {
+            ctx.save()
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
+            ctx.drawImage(layerRef.current.canvas, 0, 0)
+            ctx.restore()
+          }
         }
         if (ctx && frames.length) {
           const newest = frames[frames.length - 1].t
@@ -168,7 +193,7 @@ export default function PitchView({ match, showNames, debug = false, selected, o
           canvas.dataset.holding = state.holding ? String(state.holding.t) : ''
           if (k > 60) match.buffer.current = frames.slice(k - 20) // keep a little history
           backdrop()
-          drawFrame(ctx, scale, pad, snap, state.lineup, namesRef.current, selectedRef.current)
+          drawFrame(ctx, scale, pad, snap, state.lineup, namesRef.current, selectedRef.current, turned ? PORTRAIT_TURN : 0)
           if (nearGoal) drawNetOverlay(ctx, scale, pad)
           if (debugRef.current) {
             const dbg = debugAt(match.debugBuffer.current, pt)
@@ -189,8 +214,13 @@ export default function PitchView({ match, showNames, debug = false, selected, o
     const state = match.liveRef.current
     if (!snap || !state) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const x = (event.clientX - rect.left - padRef.current) / scaleRef.current
-    const y = (event.clientY - rect.top - padRef.current) / scaleRef.current
+    const sx = event.clientX - rect.left
+    const sy = event.clientY - rect.top
+    // Undo the quarter turn in portrait: screen (X, Y) is pitch (length - Y, X).
+    const lx = portraitRef.current ? lengthRef.current - sy : sx
+    const ly = portraitRef.current ? sx : sy
+    const x = (lx - padRef.current) / scaleRef.current
+    const y = (ly - padRef.current) / scaleRef.current
     let best: number | null = null
     let bestDistance = 3 // metres
     for (const p of state.lineup) {
@@ -215,7 +245,7 @@ export default function PitchView({ match, showNames, debug = false, selected, o
         boxShadow: '0 1px 2px rgba(0,0,0,0.18), 0 8px 24px rgba(8,30,18,0.28)',
       }}
     >
-      <canvas ref={canvasRef} style={{ display: 'block', cursor: 'pointer' }} onClick={onClick} />
+      <canvas ref={canvasRef} style={{ display: 'block', margin: '0 auto', cursor: 'pointer' }} onClick={onClick} />
     </Box>
   )
 }

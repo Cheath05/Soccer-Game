@@ -1,6 +1,7 @@
 import { Badge, Box, Group, Text } from '@mantine/core'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+import { useDevice } from '../lib/device'
 import { matchRatingColor } from '../lib/format'
 import type { BenchStatus, PlayerStatus } from './protocol'
 import { CardIcon } from './SubsParts'
@@ -27,6 +28,22 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
   const [drag, setDrag] = useState<Drag | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const [picked, setPicked] = useState<number | null>(null) // click a player, then an empty slot
+  const { touch } = useDevice()
+  // Touch: tap a player or substitute, then tap who he swaps with (or an empty slot).
+  const [sel, setSel] = useState<Drag | null>(null)
+  // The drawing is 330 x 400; on a narrower screen it is scaled to fit the width.
+  const holder = useRef<HTMLDivElement>(null)
+  const [k, setK] = useState(1)
+  const ready = live !== null
+  useEffect(() => {
+    const el = holder.current
+    if (!el) return
+    const measure = () => setK(Math.min(1, el.clientWidth / W || 1))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ready])
   if (!live) return null
   const team = live.userTeam
   const shape = live.formations.find((f) => f.key === live.formation[team])
@@ -53,8 +70,35 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
     if (dragged?.kind === 'pitch' && canMove(dragged.id)) send({ type: 'move', player: dragged.id, slot: slotId })
   }
   const clickSlot = (slotId: string) => {
-    if (picked !== null && canMove(picked)) send({ type: 'move', player: picked, slot: slotId })
+    const who = touch ? (sel?.kind === 'pitch' ? sel.id : null) : picked
+    if (who !== null && canMove(who)) send({ type: 'move', player: who, slot: slotId })
     setPicked(null)
+    setSel(null)
+  }
+  const tapPitch = (p: PlayerStatus) => {
+    onInspect(p.index)
+    if (!touch) {
+      if (vacant.length) setPicked(picked === p.player_id || p.position === 'GK' ? null : p.player_id)
+      return
+    }
+    if (!sel) return setSel({ kind: 'pitch', id: p.player_id })
+    if (sel.kind === 'pitch' && sel.id === p.player_id) return setSel(null)
+    if (sel.kind === 'bench') {
+      if (canSub && !leaving.has(p.player_id)) send({ type: 'sub', out: p.player_id, in: sel.id })
+    } else if (mover(sel.id)?.position !== 'GK' && p.position !== 'GK') {
+      send({ type: 'swap', a: sel.id, b: p.player_id })
+    } else {
+      return setSel({ kind: 'pitch', id: p.player_id })
+    }
+    setSel(null)
+  }
+  const tapBench = (b: BenchStatus) => {
+    if (!touch || !canSub || coming.has(b.player_id)) return
+    if (sel?.kind === 'pitch') {
+      if (!leaving.has(sel.id)) send({ type: 'sub', out: sel.id, in: b.player_id })
+      return setSel(null)
+    }
+    setSel(sel?.id === b.player_id ? null : { kind: 'bench', id: b.player_id })
   }
 
   const finish = () => {
@@ -90,7 +134,8 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
 
   return (
     <Box>
-      <Box pos="relative" w={W} h={H} mx="auto" style={{ borderRadius: 8, overflow: 'hidden' }}>
+      <div ref={holder} style={{ width: '100%', maxWidth: W, height: H * k, margin: '0 auto' }}>
+      <Box pos="relative" w={W} h={H} style={{ borderRadius: 8, overflow: 'hidden', transform: `scale(${k})`, transformOrigin: 'top left' }}>
         <svg width={W} height={H} style={{ position: 'absolute', inset: 0 }}>
           <rect width={W} height={H} fill="#2f7d3b" />
           {Array.from({ length: 8 }, (_, i) => (
@@ -106,7 +151,7 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
         </svg>
         {vacant.map((slot) => {
           const { left, top } = place(slot)
-          const hot = over === `s${slot.id}` || picked !== null
+          const hot = over === `s${slot.id}` || picked !== null || sel?.kind === 'pitch'
           return (
             <Box
               key={`vacant-${slot.id}`}
@@ -123,7 +168,7 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
               }}
               onClick={() => clickSlot(slot.id)}
               title={`Empty ${slot.position} slot: drag a player here, or pick a player and click it`}
-              style={{ left, top, transform: 'translate(-50%, -50%)', width: 66, textAlign: 'center', cursor: picked !== null ? 'pointer' : 'default' }}
+              style={{ left, top, transform: 'translate(-50%, -50%)', width: 66, textAlign: 'center', cursor: picked !== null || sel ? 'pointer' : 'default' }}
             >
               <Box
                 mx="auto"
@@ -152,12 +197,12 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
           const { left, top } = place(slot)
           if (!p) return null
           const target = over === `p${p.player_id}` && droppable(p)
-          const ring = target || picked === p.player_id ? '#ffd43b' : leaving.has(p.player_id) ? '#fd7e14' : 'white'
+          const ring = target || picked === p.player_id || (sel?.kind === 'pitch' && sel.id === p.player_id) ? '#ffd43b' : leaving.has(p.player_id) ? '#fd7e14' : 'white'
           return (
             <Box
               key={slot.id}
               pos="absolute"
-              draggable
+              draggable={!touch}
               onDragStart={(e: React.DragEvent) => dragStart(e, { kind: 'pitch', id: p.player_id })}
               onDragEnd={finish}
               onDragOver={(e: React.DragEvent) => {
@@ -170,10 +215,7 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
                 e.preventDefault()
                 dropOnPlayer(p)
               }}
-              onClick={() => {
-                onInspect(p.index)
-                if (vacant.length) setPicked(picked === p.player_id || p.position === 'GK' ? null : p.player_id)
-              }}
+              onClick={() => tapPitch(p)}
               title={`${p.name} · ${p.position} · OVR ${p.ovr} · match rating ${p.rating.toFixed(1)} · energy ${p.energy}%${leaving.has(p.player_id) ? ' · going off at the next stoppage' : ''}`}
               style={{ left, top, transform: 'translate(-50%, -50%)', width: 66, textAlign: 'center', cursor: 'grab' }}
             >
@@ -209,11 +251,20 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
           )
         })}
       </Box>
-      <Text size="xs" c="dimmed" mt={4}>
-        Drag a substitute onto a player to bring him on, or one player onto another to swap their positions. The ring
-        shows energy; a card marks a booking; click a player for his card.
-        {vacant.length > 0 && ' To fill an empty position, drag a player onto it, or click a player and then the position.'}
-      </Text>
+      </div>
+      {touch ? (
+        <Text size="xs" c="dimmed" mt={4}>
+          Tap a substitute, then the player he replaces; or tap two players to swap them. Tap again to cancel. The ring
+          shows energy; a card marks a booking.
+          {vacant.length > 0 && ' To fill an empty position, tap a player and then the position.'}
+        </Text>
+      ) : (
+        <Text size="xs" c="dimmed" mt={4}>
+          Drag a substitute onto a player to bring him on, or one player onto another to swap their positions. The ring
+          shows energy; a card marks a booking; click a player for his card.
+          {vacant.length > 0 && ' To fill an empty position, drag a player onto it, or click a player and then the position.'}
+        </Text>
+      )}
       <Text size="xs" fw={600} mt={6} mb={2}>
         Bench {canSub ? '' : '(no substitutions left)'}
       </Text>
@@ -227,7 +278,8 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
               radius="sm"
               variant={coming.has(b.player_id) ? 'filled' : 'light'}
               color={coming.has(b.player_id) ? 'orange' : 'teal'}
-              draggable={canSub && !coming.has(b.player_id)}
+              draggable={!touch && canSub && !coming.has(b.player_id)}
+              onClick={() => tapBench(b)}
               onDragStart={(e: React.DragEvent) => dragStart(e, { kind: 'bench', id: b.player_id })}
               onDragEnd={finish}
               onDragOver={(e: React.DragEvent) => {
@@ -241,7 +293,7 @@ export default function SubsPitch({ match, onInspect }: { match: LiveMatch; onIn
                 dropOnBench(b)
               }}
               title={`${b.name} · ${b.positions.join(', ') || b.position} · OVR ${b.ovr} · condition ${b.condition}%`}
-              style={{ cursor: canSub ? 'grab' : 'default', textTransform: 'none', outline: target ? '2px solid #ffd43b' : undefined }}
+              style={{ cursor: canSub ? (touch ? 'pointer' : 'grab') : 'default', textTransform: 'none', outline: target || (sel?.kind === 'bench' && sel.id === b.player_id) ? '2px solid #ffd43b' : undefined, minHeight: touch ? 44 : undefined }}
             >
               {b.number} {b.short_name} · {b.position} {b.ovr}
             </Badge>

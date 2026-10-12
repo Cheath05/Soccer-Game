@@ -213,7 +213,7 @@ function pentagon(ctx: CanvasRenderingContext2D, x: number, y: number, r: number
 
 /** The ball: white with dark panels and a dark outline so it shows against the white lines as
  * well as the grass, a soft shadow on the ground and a lift when it is in the air. */
-function drawBall(ctx: CanvasRenderingContext2D, scale: number, ball: [number, number, number]) {
+function drawBall(ctx: CanvasRenderingContext2D, scale: number, ball: [number, number, number], turn = 0) {
   const [bx, by, bz] = ball
   const r = Math.max(5, scale * 0.62)
   const gx = bx * scale
@@ -223,7 +223,9 @@ function drawBall(ctx: CanvasRenderingContext2D, scale: number, ball: [number, n
   // Shadow on the ground: smaller and fainter the higher the ball is.
   const fade = 1 / (1 + height * 0.35)
   ctx.save()
-  ctx.translate(gx + lift * 0.1, gy + r * 0.35)
+  ctx.translate(gx, gy)
+  ctx.rotate(turn) // shadow and lift stay "down" and "up" on screen when the pitch is turned
+  ctx.translate(lift * 0.1, r * 0.35)
   ctx.scale(1, 0.5)
   const shadow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.7 * (1 + height * 0.05))
   shadow.addColorStop(0, `rgba(0,0,0,${0.55 * fade})`)
@@ -235,7 +237,9 @@ function drawBall(ctx: CanvasRenderingContext2D, scale: number, ball: [number, n
   ctx.restore()
   // The ball itself, turning as it travels.
   ctx.save()
-  ctx.translate(gx, gy - lift)
+  ctx.translate(gx, gy)
+  ctx.rotate(turn)
+  ctx.translate(0, -lift)
   ctx.rotate((bx + by * 0.6) / 0.35)
   const body = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r)
   body.addColorStop(0, '#ffffff')
@@ -277,6 +281,7 @@ export function drawFrame(
   lineup: PlayerInfo[],
   showNames: boolean,
   selected: number | null = null,
+  turn = 0, // the pitch is drawn turned by this much (portrait phones): labels turn back to stay upright
 ) {
   ctx.save()
   ctx.translate(pad, pad)
@@ -297,9 +302,14 @@ export function drawFrame(
   }
   for (const p of lineup) {
     if (!p.active) continue
-    const x = snap.players[p.index * 2] * scale
-    const y = snap.players[p.index * 2 + 1] * scale
-    if (x < 0) continue
+    const px = snap.players[p.index * 2] * scale
+    const py = snap.players[p.index * 2 + 1] * scale
+    if (px < 0) continue
+    ctx.save()
+    ctx.translate(px, py)
+    ctx.rotate(turn)
+    const x = 0
+    const y = 0
     const colors = TEAM_COLORS[p.team]
     const keeper = p.position === 'GK'
     if (p.index === selected) {
@@ -335,14 +345,20 @@ export function drawFrame(
     }
     ctx.fillStyle = text
     ctx.fillText(String(p.number), x, y + 0.5)
+    ctx.restore()
   }
   if (showNames) {
     ctx.font = `600 ${Math.max(9, Math.round(radius * 0.8))}px system-ui, -apple-system, 'Segoe UI', sans-serif`
     for (const p of lineup) {
       if (!p.active) continue
-      const x = snap.players[p.index * 2] * scale
-      const y = snap.players[p.index * 2 + 1] * scale
-      if (x < 0) continue
+      const px = snap.players[p.index * 2] * scale
+      const py = snap.players[p.index * 2 + 1] * scale
+      if (px < 0) continue
+      ctx.save()
+      ctx.translate(px, py)
+      ctx.rotate(turn)
+      const x = 0
+      const y = 0
       const width = ctx.measureText(p.name).width + 8
       const height = Math.max(12, radius * 1.15)
       const top = y + radius + 3
@@ -352,9 +368,10 @@ export function drawFrame(
       ctx.fill()
       ctx.fillStyle = '#f8fafc'
       ctx.fillText(p.name, x, top + height / 2 + 0.5)
+      ctx.restore()
     }
   }
-  drawBall(ctx, scale, snap.ball)
+  drawBall(ctx, scale, snap.ball, turn)
   ctx.restore()
 }
 
@@ -487,4 +504,12 @@ export function drawDebug(
   ctx.textBaseline = 'top'
   lines.forEach((line, k) => ctx.fillText(line, 10, 9 + k * 14))
   ctx.restore()
+}
+
+/** The portrait view: the landscape drawing turned a quarter turn anticlockwise, so the +x end
+ * of the pitch (the end the engine's team 0 attacks) is at the top and the y axis runs left to
+ * right. ``length`` is the landscape canvas width in CSS pixels (pitch length plus padding). */
+export const PORTRAIT_TURN = Math.PI / 2 // labels are turned back by this much
+export function portraitMatrix(length: number): [number, number, number, number, number, number] {
+  return [0, -1, 1, 0, 0, length]
 }

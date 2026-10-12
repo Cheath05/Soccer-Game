@@ -17,7 +17,13 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): U4, accounts on the production machine** (the commit that adds this line). Nothing changes on Cardinal until the user runs these.
+- **Latest checkpoint (11 Oct): M4, the live match on a phone** (the commit that adds this line). Drawing and layout only: protocol and engine untouched.
+  - **Upright phone:** the pitch is drawn vertically (a quarter turn anticlockwise, team 0's attacking end at the top) to fill the width, its height capped at 72% of the screen. Numbers, names and the ball's lift stay upright. Tapping a player goes through the inverse mapping (screen X, Y is pitch length − Y, X).
+  - **Phone layout:** one column (pitch, compact score bar, 44 px controls, then the tabs, the commentary 40% of the screen high). Half-time is a full-screen sheet; "Tactics and substitutions" sets it aside with a bar to come back or start the second half.
+  - **Subs pitch** scales with the screen; on touch it's tap-to-pick (bench then pitch, pitch then bench, two pitch players, or a player into an empty slot), with the picked player ringed. Cards, empty slots, role selects and staged changes with Undo unchanged.
+  - **Checks** (a Sonnet agent, reviewed here): `npm run build`; on :8765 at 390×844 touch: the vertical pitch plays, tapping a player opens his card, pause/play, a substitution made by tapping while paused is staged with Undo and made on resuming, the half-time sheet, no sideways scroll; 844×390 landscape fits; 1440 as before.
+  - **Left:** at landscape-phone width (844 px, above the 48em phone breakpoint) the menu shows as on a computer, so the pitch is narrower than the screen; the player card covers part of the upright pitch; the red-card empty-slot flow on touch wasn't tried.
+- **Earlier checkpoint (11 Oct): U4, accounts on the production machine** (the commit that adds this line). Nothing changes on Cardinal until the user runs these.
   - **`deploy/users.sh`** wraps `footsim users` with the machine's saves folder (from `deploy.env`).
   - **`deploy/accounts.sh status|on|off`** sets `FOOTSIM_AUTH` in `~/.config/footsim/deploy.env` and restarts the service only when no match or sim is running (it waits up to ten minutes). `on` refuses until an owner account exists. Port, Tailscale Serve and Cardinal are untouched.
   - **`deploy/status.sh`** says whether accounts are on. **`deploy/README.md`** gains "Friends: accounts and their own careers": the one-off switch, then for each friend Tailscale machine sharing, their account, and Add to Home Screen; plus managing accounts and what a dozen players cost.

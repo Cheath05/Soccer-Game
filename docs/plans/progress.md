@@ -17,7 +17,13 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): U2 + U2b, each player's own careers, and heavy simulation in worker processes** (the commit that adds this line). One checkpoint, as both change the same routes.
+- **Latest checkpoint (11 Oct): U3, the sign-in screen** (the commit that adds this line).
+  - **`components/AuthGate.tsx`** wraps the app (`main.tsx`): it asks `GET /api/auth/me`; with accounts on and nobody signed in it shows a sign-in card (phone-sized, the browser's password manager can fill it). Without accounts the game shows straight away, as before.
+  - Any 401 (sign-in expired, or signed out elsewhere) brings the sign-in card back (`client.ts` fires `footsim:signed-out`).
+  - Signing in or out forgets everything cached for the previous player in that browser.
+  - **"Signed in as … / Sign out"** at the foot of the menu and on the start page.
+  - **Checks:** `npm run build`; on :8765 with `FOOTSIM_AUTH=1` and two accounts made with `footsim users` in a temporary saves folder, at 390×844: 401 without a sign-in, a wrong password says so, Sam signs in and sees an empty set of slots, signs out, Alex signs in on the same page. (First try stayed on the sign-in card: clearing the whole query cache dropped the gate's own query; now everything but that one is forgotten.)
+- **Earlier checkpoint (11 Oct): U2 + U2b, each player's own careers, and heavy simulation in worker processes** (the commit that adds this line). One checkpoint, as both change the same routes.
   - **`SessionRegistry`** (`api/session.py`): one `CareerSession` per account, made on first use; the world's definitions are shared. Without accounts (`FOOTSIM_AUTH` unset, the default) everyone is the owner, playing from the saves folder itself: nothing changes for local play, :8765 checks or the tests (`create_app(session=...)` wraps one career). Careers unused for `idle_close_minutes` let go of their database connections (they reconnect on the next request); never mid-match or mid-sim.
   - **Signing in** (`api/auth.py`, with `FOOTSIM_AUTH=1`): an HTTP middleware requires a signed-in account for every `/api` route but `/api/health` (exact) and `/api/auth/*`, else 401.
     - Cookie `footsim_session`: HttpOnly, SameSite=Strict, Secure behind HTTPS (`X-Forwarded-Proto`), renewed when the page opens (`GET /api/auth/me`).

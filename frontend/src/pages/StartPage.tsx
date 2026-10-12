@@ -1,10 +1,11 @@
-import { Alert, Badge, Button, Card, Container, Group, Loader, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Box, Button, Card, Container, Group, Loader, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
 import VersionTag from '../components/VersionTag'
+import { AccountFooter } from '../components/AuthGate'
 import { CURRENCIES, type Currency, longDate, setCurrency, toEuros, useCurrency } from '../lib/format'
 
 const MAX_BUDGET_EUR = 10_000_000_000 // the most the sandbox gives (the server's limit)
@@ -42,6 +43,9 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
             <Title order={1}>Footsim</Title>
             <Text c="dimmed">A football management simulation.</Text>
             <VersionTag />
+            <Box mt="xs">
+              <AccountFooter />
+            </Box>
           </div>
           {hasCareer && (
             <Button variant="default" onClick={goHome}>

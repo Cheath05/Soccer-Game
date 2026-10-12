@@ -8,6 +8,7 @@ import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
 import { useDevice } from '../lib/device'
 import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
+import { AccountFooter } from './AuthGate'
 import ClubSearch from './ClubSearch'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
@@ -189,6 +190,7 @@ export default function Layout() {
           />
         )}
         <AppShell.Section mt="auto" pt="sm" px="sm">
+          <AccountFooter />
           <VersionTag />
         </AppShell.Section>
       </AppShell.Navbar>

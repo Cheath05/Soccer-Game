@@ -1,6 +1,7 @@
 // Drives the running app through a career start, a match and the main screens, saving
 // screenshots. Usage: node e2e/smoke.mjs <base url> <screenshot dir>
 import { chromium } from 'playwright'
+import { toMatchDay } from './flow.mjs'
 import { target } from './target.mjs'
 
 const base = await target(process.argv[2])
@@ -26,17 +27,8 @@ await shot('01-start')
 await page.getByRole('button', { name: 'Start career' }).click()
 await page.getByText('Dashboard', { exact: true }).first().waitFor()
 await shot('02-dashboard')
-await page.getByRole('button', { name: 'Continue' }).click()
-await page.getByText('Your starting XI').waitFor({ timeout: 60000 })
+await toMatchDay(page)
 await shot('03-matchday')
-// Passing the 1st of a month brings the players' development news (P13): close it first.
-const monthNews = page.getByRole('dialog', { name: 'News' })
-await monthNews.waitFor({ timeout: 3000 }).catch(() => {})
-if (await monthNews.isVisible()) {
-  console.log(`news: ${(await monthNews.innerText()).split('\n').slice(1, 3).join(' | ')}`)
-  await monthNews.getByRole('button', { name: 'OK' }).click()
-  await monthNews.waitFor({ state: 'hidden' })
-}
 await page.getByRole('button', { name: 'Instant result' }).click()
 await page.getByText('Statistics').waitFor({ timeout: 60000 })
 await shot('04-report')

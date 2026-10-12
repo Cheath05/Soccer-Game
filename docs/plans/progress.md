@@ -16,8 +16,23 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
-- **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): M4, the live match on a phone** (the commit that adds this line). Drawing and layout only: protocol and engine untouched.
+- **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
+- **Latest checkpoint (11 Oct): M5, the phone in the browser tests; the phone-and-accounts plan is done** (the commit that adds this line).
+  - **`frontend/e2e/phone.mjs`** (an iPhone 13 at 390×844, touch, in `just e2e` now):
+    - starts a career, then opens Squad, Transfers, Finances, League and Fixtures through the menu;
+    - taps a bench player onto the tactics pitch;
+    - watches a match on the upright pitch;
+    - makes a substitution by tapping while paused (held with Undo, made on resuming);
+    - takes the instant result and the report.
+    - It fails if any screen scrolls sideways.
+  - **`frontend/e2e/flow.mjs`:** `toMatchDay` presses Continue until the header's Match day button appears, closing (and logging) news and bids on the way, since Continue stays on the page (293e8c5). smoke, live and debug use it; they had still expected Continue to open the match day page.
+  - **Fix:** a waiting substitution's Undo button was squeezed to "Und" on a phone.
+  - **Checks:** phone, smoke and live pass on :8765 with a temporary saves folder, with no browser errors; `npm run build`.
+  - **Next (the plan's hand-off):**
+    1. The user switches accounts on, on the VM: `deploy/users.sh add <name> --owner`, then `deploy/accounts.sh on`.
+    2. Shares the machine with a friend and adds them (`deploy/README.md`, "Friends").
+    3. Then the roadmap resumes: the calibration follow-ups (ORDER BY in `_SQUAD_SQL`, then step 2.1) and the market report.
+- **Earlier checkpoint (11 Oct): M4, the live match on a phone** (the commit that adds this line). Drawing and layout only: protocol and engine untouched.
   - **Upright phone:** the pitch is drawn vertically (a quarter turn anticlockwise, team 0's attacking end at the top) to fill the width, its height capped at 72% of the screen. Numbers, names and the ball's lift stay upright. Tapping a player goes through the inverse mapping (screen X, Y is pitch length − Y, X).
   - **Phone layout:** one column (pitch, compact score bar, 44 px controls, then the tabs, the commentary 40% of the screen high). Half-time is a full-screen sheet; "Tactics and substitutions" sets it aside with a bar to come back or start the second half.
   - **Subs pitch** scales with the screen; on touch it's tap-to-pick (bench then pitch, pitch then bench, two pitch players, or a player into an empty slot), with the picked player ringed. Cards, empty slots, role selects and staged changes with Undo unchanged.

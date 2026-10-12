@@ -2,6 +2,7 @@
 // drawn over a live match, and still there while paused.
 // Usage: node e2e/debug.mjs <url> <dir>
 import { chromium } from 'playwright'
+import { toMatchDay } from './flow.mjs'
 import { target } from './target.mjs'
 
 const base = await target(process.argv[2])
@@ -20,8 +21,7 @@ await page.getByPlaceholder('Your name').fill('Debug')
 // The club tile is a button; the saved-careers list may show the same name as text.
 await page.getByRole('button', { name: /^Arsenal Squad/ }).click()
 await page.getByRole('button', { name: 'Start career' }).click()
-await page.getByRole('button', { name: 'Continue' }).click()
-await page.getByText('Your starting XI').waitFor({ timeout: 60000 })
+await toMatchDay(page)
 await page.getByRole('button', { name: 'Watch match' }).click()
 await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })
 

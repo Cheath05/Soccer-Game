@@ -2,6 +2,7 @@
 // changes, the subs panel, a player card, then an instant finish and the report.
 // Usage: node e2e/live.mjs <url> <dir>
 import { chromium } from 'playwright'
+import { toMatchDay } from './flow.mjs'
 import { target } from './target.mjs'
 
 const base = await target(process.argv[2])
@@ -21,16 +22,7 @@ await page.getByPlaceholder('Your name').fill('Alex')
 // The club tile is a button; the saved-careers list may show the same name as text.
 await page.getByRole('button', { name: /^Liverpool Squad/ }).click()
 await page.getByRole('button', { name: 'Start career' }).click()
-await page.getByRole('button', { name: 'Continue' }).click()
-await page.getByText('Your starting XI').waitFor({ timeout: 60000 })
-// Passing the 1st of a month brings the players' development news (P13): close it first.
-const monthNews = page.getByRole('dialog', { name: 'News' })
-await monthNews.waitFor({ timeout: 3000 }).catch(() => {})
-if (await monthNews.isVisible()) {
-  console.log(`news: ${(await monthNews.innerText()).split('\n').slice(1, 3).join(' | ')}`)
-  await monthNews.getByRole('button', { name: 'OK' }).click()
-  await monthNews.waitFor({ state: 'hidden' })
-}
+await toMatchDay(page)
 await page.getByRole('button', { name: 'Watch match' }).click()
 await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })
 await page.waitForTimeout(1000)

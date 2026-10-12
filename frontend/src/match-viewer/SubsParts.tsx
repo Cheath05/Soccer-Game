@@ -72,7 +72,7 @@ export function PendingSubs({ match, nameOf }: { match: LiveMatch; nameOf: (id: 
             <Text size="xs" c="orange" fw={600}>
               Waiting: {nameOf(w.out)} ⇄ {nameOf(w.in)}, {w.staged ? 'made when play resumes' : 'made at the next stoppage'}
             </Text>
-            <Button size="compact-xs" variant="default" onClick={() => send({ type: 'cancel_sub', out: w.out })}>
+            <Button size="compact-xs" variant="default" style={{ flexShrink: 0 }} onClick={() => send({ type: 'cancel_sub', out: w.out })}>
               Undo
             </Button>
           </Group>

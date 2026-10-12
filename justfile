@@ -47,7 +47,7 @@ calibrate-engine *args:
 # Browser tests against a running throwaway server (default :8765; see the run-footsim skill).
 # They start a new career, which overwrites save slot 1, so they refuse the user's :8000 game.
 e2e url="http://127.0.0.1:8765":
-    cd {{frontend}} && node e2e/smoke.mjs {{url}} /tmp && node e2e/live.mjs {{url}} /tmp
+    cd {{frontend}} && node e2e/smoke.mjs {{url}} /tmp && node e2e/live.mjs {{url}} /tmp && node e2e/phone.mjs {{url}} /tmp
 
 # API server on http://127.0.0.1:8000
 api:

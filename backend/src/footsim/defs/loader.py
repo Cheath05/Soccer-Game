@@ -40,6 +40,7 @@ from footsim.defs.overall import OverallDef
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
 from footsim.defs.reputation import ReputationDriftDef
 from footsim.defs.roles import RoleDef
+from footsim.defs.server import ServerDef
 from footsim.defs.valuation import ValuationDef
 from footsim.defs.world_build import WorldBuildRules
 from footsim.domain.personality import PERSONALITY_TRAITS
@@ -115,6 +116,12 @@ def _load_dir[M: BaseModel](model: type[M], directory: Path, key_attr: str = "ke
                 raise DefinitionError(f"{path}: duplicate {model.__name__} key {key!r}")
             items[key] = item
     return items
+
+
+def load_server(root: Path | None = None) -> ServerDef:
+    """The server's own settings (data/config/server.yaml), apart from the game's definitions:
+    the accounts command and the API read them without loading the whole game."""
+    return _parse(ServerDef, (root or config_dir()) / "server.yaml")
 
 
 def load_definitions(root: Path | None = None) -> GameDefinitions:

@@ -17,7 +17,15 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): M3, tactics on a phone** (the commit that adds this line).
+- **Latest checkpoint (11 Oct): U1, accounts** (the commit that adds this line). Nothing uses them yet; U2 wires them into the server.
+  - **`accounts/store.py`:** `accounts.sqlite` at the top of the saves folder, apart from every career (own `user_version`).
+    - Passwords as scrypt hashes (n=2^14, r=8, salted, NFKC-normalised, at most 256 characters); unknown names cost the same as wrong passwords.
+    - A sign-in is a random 256-bit token; only its SHA-256 is stored; it lasts `session_days` from last use. A new password or disabling an account signs it out everywhere.
+    - **Where careers live:** the owner (one only, enforced by a unique index) plays from the saves folder itself, so the existing careers stay put. Each friend gets `users/<folder>/`, a random name made with the account, so a new account can never inherit a removed one's careers.
+  - **`footsim users add NAME [--owner] [--generate | --password-stdin]`, `list`, `reset-password`, `disable [--enable]`, `remove [--delete-saves]`** (`accounts/cli.py`). The owner can't be removed; careers are kept unless asked.
+  - **`data/config/server.yaml`** (`defs/server.py`, `load_server()`): sign-in lifetime, password length, login throttle, idle time, worker count, backups kept.
+  - **Checks:** `test_accounts.py` (hashing, names, expiry and renewal, sign-out on password change or disable, tokens stored only as hashes, one owner even in the database, folders never reused, Unicode passwords, the CLI); ruff and mypy. A Sonnet reviewer found no critical issues; its medium and low points are fixed. The full suite runs with U2 (it was too slow to finish alongside the browser agents).
+- **Earlier checkpoint (11 Oct): M3, tactics on a phone** (the commit that adds this line).
   - **`PitchBoard`** scales with the screen (viewBox, discs placed in percentages, 340 px wide at most as before); the centre-back label fix scales with it.
   - **Touch** (`useDevice().touch`): tap-to-pick is the way to move players (HTML5 drag is off, as it's unreliable on touch screens); the picked player gets a double ring and a "Tap a slot or player to swap" tag; bench rows are 44 px. A computer keeps drag and click.
   - **Phone layout:** the bench and instructions stack under the pitch; the formation select is full width; instruction labels sit above their controls.

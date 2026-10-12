@@ -1,0 +1,19 @@
+# How the server hosts its players (defs/server.py). Nothing here changes the game itself.
+
+# Accounts and sign-in (accounts/, used when FOOTSIM_AUTH=1).
+session_days: 30  # a sign-in lasts this long since it was last used
+min_password_length: 8
+login_attempts: 5  # failed sign-ins allowed per name and per address...
+login_window_seconds: 600  # ...within this many seconds
+failure_delay_seconds: 1.0
+
+# Each player's open career (api/session.py).
+idle_close_minutes: 30  # closed after this long unused, never mid-match or mid-sim
+
+# Sim to date, Continue and Instant play run in worker processes, so two players' sims use
+# two cores (Python runs one thread at a time per process). 0 runs them in the server itself.
+sim_workers: 3
+
+# Manual-save backups kept per slot (persistence/saves.py). Friends keep fewer to save disk.
+owner_keep_backups: 5
+friend_keep_backups: 2

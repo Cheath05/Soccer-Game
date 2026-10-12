@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from footsim.accounts import cli as accounts_cli
 from footsim.core.paths import config_dir, data_dir
 
 
@@ -314,6 +315,8 @@ def main(argv: list[str] | None = None) -> int:
     eng.add_argument("--ai-manager", choices=("on", "off"), default="on",
                      help="in-match AI managers (never for the focus side of an A/B run)")
     eng.set_defaults(func=_calibrate_engine)
+
+    accounts_cli.add_parser(sub)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

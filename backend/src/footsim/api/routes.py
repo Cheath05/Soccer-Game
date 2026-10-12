@@ -11,7 +11,8 @@ from sqlalchemy import select
 
 from footsim import __version__
 from footsim.api import calendar as calendar_view
-from footsim.api import finances, queries, season_review, sim
+from footsim.api import finances, queries, season_review, sim, workers
+from footsim.api.auth import registry, session_for
 from footsim.api.schemas import (
     AdvanceOut,
     BoardIn,
@@ -43,7 +44,7 @@ from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
 from footsim.world import tactic_presets
-from footsim.world.career import advance, play_user_instant, set_user_tactic
+from footsim.world.career import advance, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
 from footsim.world.meta import read_meta
@@ -53,26 +54,33 @@ router = APIRouter(prefix="/api")
 
 
 def get_session(request: Request) -> CareerSession:
-    session: CareerSession = request.app.state.session
-    return session
+    """The signed-in account's career (the owner's when there are no accounts)."""
+    return session_for(request)
 
 
 Session = Annotated[CareerSession, Depends(get_session)]
 
 
 @router.get("/health")
-def health(session: Session) -> dict[str, str | bool]:
+def health(request: Request) -> dict[str, str | bool | int]:
     """Liveness, where this server keeps its saves, and which build it is. The browser tests
     refuse to run unless it says the saves aren't in the default folder, where the user's own
     careers live: each test starts a career, which overwrites save slot 1. The build (version
     number such as "1.12", commit, its date, branch, and whether tracked files have changed
     since) is what the version tag in the game shows; ``package_version`` is the Python package's
     own. ``in_use`` says whether a match is being played live or a sim-to-date is running: the
-    updater waits for neither (an open page doesn't count; it reconnects after a restart)."""
-    saves = session.saves.root.resolve()
-    in_use = bool(session.live_matches) or sim.running(session)
-    return {"status": "ok", "package_version": __version__, "saves_dir": str(saves),
-            "default_saves": saves == DEFAULT_SAVES.resolve(), "in_use": in_use, **build_info()}
+    updater waits for neither (an open page doesn't count; it reconnects after a restart).
+    With accounts, ``in_use`` is anyone's, and ``accounts`` says they're on (it's open to all,
+    so it names no one)."""
+    reg = registry(request)
+    saves = reg.saves_root.resolve()
+    accounts = reg.accounts is not None
+    return {"status": "ok", "package_version": __version__,
+            # open to anyone: with accounts on, where the saves are isn't theirs to know
+            "saves_dir": "" if accounts else str(saves),
+            "default_saves": saves == DEFAULT_SAVES.resolve(), "in_use": reg.in_use,
+            "accounts": accounts, "players_open": sum(1 for s in reg.sessions() if s.active),
+            **build_info()}
 
 
 @cache
@@ -154,8 +162,7 @@ def _not_simulating(session: CareerSession) -> None:
 def advance_career(session: Session) -> AdvanceOut:
     _not_simulating(session)
     world = get_world()
-    with session.write() as conn:
-        result = advance(conn, world)
+    result = workers.simulate(session, advance)
     session.autosave()
     final = None
     if result.stop == "season_end":
@@ -362,19 +369,19 @@ def match(fixture_id: int, session: Session) -> MatchOut:
 def play_now(fixture_id: int, session: Session) -> MatchOut:
     """Instant result for the user's match of the day."""
     _not_simulating(session)
-    world = get_world()
     if fixture_id in session.live_matches:
         raise HTTPException(409, "this match is being played live: finish it in the match view")
-    with session.write() as conn:
-        meta = read_meta(conn)
-        fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
+    with session.lock:  # checked and played as one write
+        with session.read() as conn:
+            meta = read_meta(conn)
+            fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
         if fx is None or fx.status != "scheduled":
             raise HTTPException(400, "fixture is not waiting to be played")
         if meta.user_club_id not in (fx.home_club_id, fx.away_club_id):
             raise HTTPException(400, "not your match")
         if fx.date != meta.current_date.isoformat():
             raise HTTPException(400, "this match isn't today")
-        play_user_instant(conn, world, meta, fx, meta.current_date)
+        workers.simulate(session, workers.play_today, fixture_id)
     session.autosave()
     with session.read() as conn:
         return queries.match_detail(conn, fixture_id)

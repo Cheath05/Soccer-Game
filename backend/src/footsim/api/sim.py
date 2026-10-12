@@ -15,6 +15,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import Connection, Row, or_, select
 
+from footsim.api import workers
+from footsim.api.auth import session_for
 from footsim.api.schemas import SeasonFinalOut, SimIn, SimResultOut, SimStatusOut, SimTargetOut
 from footsim.api.season_review import season_final
 from footsim.api.session import CareerSession
@@ -58,8 +60,7 @@ def running(session: CareerSession) -> bool:
 
 
 def _session(request: Request) -> CareerSession:
-    session: CareerSession = request.app.state.session
-    return session
+    return session_for(request)
 
 
 def _result(session: CareerSession, fixture_id: int, user: int) -> SimResultOut:
@@ -121,8 +122,7 @@ def _run(session: CareerSession, job: SimJob, user: int) -> None:
                 if session.generation != job.generation:
                     job.stop = "abandoned"
                     return
-                with session.write() as conn:
-                    step = sim_step(conn, world, job.until)
+                step = workers.simulate(session, sim_step, job.until)
                 if step.fixture_id is not None:
                     job.results.append(_result(session, step.fixture_id, user))
                     session.autosave()

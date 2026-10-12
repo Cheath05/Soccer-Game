@@ -20,7 +20,9 @@ Protocol v2 (JSON).
 
 import asyncio
 import contextlib
-from dataclasses import dataclass
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
@@ -28,6 +30,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from footsim.api import sim
+from footsim.api.auth import registry, same_origin, signed_in
 from footsim.api.session import CareerSession
 from footsim.match.live.session import LiveSession
 from footsim.persistence.schema import club, fixture
@@ -49,11 +52,27 @@ class LiveMatch:
     day: date
     names: tuple[str, str]
     generation: int  # the career it belongs to (CareerSession.generation)
+    # A second tab (or a reconnect) shares the match: whatever touches it runs one at a time.
+    lock: threading.Lock = field(default_factory=threading.Lock)
 
 
-def _session(ws: WebSocket) -> CareerSession:
-    session: CareerSession = ws.app.state.session
-    return session
+async def _guarded[R](live: LiveMatch, fn: Callable[[], R]) -> R:
+    """Run ``fn`` on the match, off the event loop (other players' matches and pages don't
+    wait on this one) and holding the match's lock (never two threads in one engine)."""
+    def run() -> R:
+        with live.lock:
+            return fn()
+    return await asyncio.to_thread(run)
+
+
+async def _session(ws: WebSocket) -> CareerSession | None:
+    """The signed-in account's career, or None when nobody is signed in or, with accounts on,
+    the page isn't this site's (the HTTP middleware doesn't see WebSockets)."""
+    reg = registry(ws)
+    if reg.accounts is not None and not same_origin(ws):
+        return None
+    account = await signed_in(ws)
+    return reg.for_account(account) if account is not None else None
 
 
 def _open(session: CareerSession, fixture_id: int) -> LiveMatch:
@@ -109,8 +128,11 @@ def _finish(session: CareerSession, live: LiveMatch) -> bool:
 
 @router.websocket("/api/fixtures/{fixture_id}/live")
 async def live_match(ws: WebSocket, fixture_id: int) -> None:
+    session = await _session(ws)
+    if session is None:
+        await ws.close(code=4401)  # sign in first
+        return
     await ws.accept()
-    session = _session(ws)
     try:
         live = await asyncio.to_thread(_open, session, fixture_id)
     except Exception as exc:  # noqa: BLE001 - report any setup failure to the client
@@ -118,9 +140,14 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
         await ws.close()
         return
     playback = live.session
-    playback.pause(asyncio.get_running_loop().time())
-    playback.debug = playback.engine.debug = False  # a reloaded viewer starts without it
-    await ws.send_json(playback.init_message(live.names, asyncio.get_running_loop().time()))
+    loop = asyncio.get_running_loop()
+
+    def opening() -> dict[str, Any]:
+        playback.pause(loop.time())
+        playback.debug = playback.engine.debug = False  # a reloaded viewer starts without it
+        return playback.init_message(live.names, loop.time())
+
+    await ws.send_json(await _guarded(live, opening))
 
     inbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
@@ -132,7 +159,6 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
             inbox.put_nowait({"type": "_disconnected"})
 
     task = asyncio.create_task(reader())
-    loop = asyncio.get_running_loop()
     finishing = False
     pending: list[dict[str, Any]] = []  # a command that arrived while we were waiting
     try:
@@ -146,19 +172,19 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
                 if kind in ("finish", "instant"):
                     finishing = True
                     continue
-                error = playback.apply(cmd, loop.time())
+                error, tick = await _guarded(live, lambda c=cmd: (  # type: ignore[misc]
+                    playback.apply(c, loop.time()), playback.engine.tick_count))
                 if error:
                     await ws.send_json({"type": "error", "message": error,
                                         "cmd_id": cmd.get("cmd_id")})
                 elif cmd.get("cmd_id") is not None:
-                    await ws.send_json({"type": "ack", "cmd_id": cmd["cmd_id"],
-                                        "tick": playback.engine.tick_count})
+                    await ws.send_json({"type": "ack", "cmd_id": cmd["cmd_id"], "tick": tick})
             if not _belongs(session, live):
                 await ws.send_json({"type": "error", "message": (
                     "Another career was loaded, so this match was abandoned and not recorded.")})
                 return
             if finishing or playback.engine.finished:
-                if not await asyncio.to_thread(_finish, session, live):
+                if not await _guarded(live, lambda: _finish(session, live)):
                     await ws.send_json({"type": "error", "message": (
                         "Another career was loaded, so this match was not recorded.")})
                     return
@@ -167,15 +193,15 @@ async def live_match(ws: WebSocket, fixture_id: int) -> None:
                                     "stats": engine.live_stats(), "clock": playback.clock(),
                                     "status": playback.status(), "fixture_id": fixture_id})
                 return
-            update = playback.pump(loop.time())
-            await ws.send_json(playback.update_message(update, loop.time()))
+            await ws.send_json(await _guarded(live, lambda: playback.update_message(
+                playback.pump(loop.time()), loop.time())))
             pause = PAUSED_SECONDS if playback.paused else LOOP_SECONDS
             # Wait for the next update, but act on a command the moment it arrives.
             with contextlib.suppress(TimeoutError):
                 pending.append(await asyncio.wait_for(
                     inbox.get(), max(0.0, pause - (loop.time() - started))))
     finally:
-        playback.pause(loop.time())
+        await _guarded(live, lambda: playback.pause(loop.time()))
         task.cancel()
         with contextlib.suppress(Exception):
             await ws.close()

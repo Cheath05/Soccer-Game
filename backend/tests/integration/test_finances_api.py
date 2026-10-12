@@ -155,7 +155,7 @@ def test_transactions_are_one_off_money_with_a_label_for_each(client: TestClient
     other_name = client.get(f"/api/clubs/{other}").json()["club"]["name"]
     bought, sold = _outfielder(client, other), _outfielder(client, mine)
     world, cup = get_world(), get_world().defs.cups["FA_CUP"]
-    session: CareerSession = client.app.state.session
+    session: CareerSession = client.app.state.registry.sessions()[0]
     with session.write() as conn:
         meta = read_meta(conn)
         today = meta.current_date
@@ -192,7 +192,7 @@ def test_changes_in_the_months_money_are_listed_once(client: TestClient) -> None
     """Relegated, a club's TV money falls: one change, not a lower line in every month."""
     club_id = _club(client, "ENG3")
     client.post("/api/saves/1/new", json={"club_id": club_id, "manager_name": "Tester"})
-    session: CareerSession = client.app.state.session
+    session: CareerSession = client.app.state.registry.sessions()[0]
     with session.write() as conn:
         meta = read_meta(conn)
         for day, tv in ((date(2026, 8, 1), 1_400_000), (date(2026, 9, 1), 1_400_000),

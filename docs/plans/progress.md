@@ -17,7 +17,23 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): U1, accounts** (the commit that adds this line). Nothing uses them yet; U2 wires them into the server.
+- **Latest checkpoint (11 Oct): U2 + U2b, each player's own careers, and heavy simulation in worker processes** (the commit that adds this line). One checkpoint, as both change the same routes.
+  - **`SessionRegistry`** (`api/session.py`): one `CareerSession` per account, made on first use; the world's definitions are shared. Without accounts (`FOOTSIM_AUTH` unset, the default) everyone is the owner, playing from the saves folder itself: nothing changes for local play, :8765 checks or the tests (`create_app(session=...)` wraps one career). Careers unused for `idle_close_minutes` let go of their database connections (they reconnect on the next request); never mid-match or mid-sim.
+  - **Signing in** (`api/auth.py`, with `FOOTSIM_AUTH=1`): an HTTP middleware requires a signed-in account for every `/api` route but `/api/health` (exact) and `/api/auth/*`, else 401.
+    - Cookie `footsim_session`: HttpOnly, SameSite=Strict, Secure behind HTTPS (`X-Forwarded-Proto`), renewed when the page opens (`GET /api/auth/me`).
+    - `POST /api/auth/login` (throttled per name and per address, the address being the last `X-Forwarded-For` entry; a 1 s pause after a failure), `POST /api/auth/logout`.
+    - The live WebSocket checks the cookie and, with accounts on, that the page is this site's (Origin against Host or X-Forwarded-Host) before accepting; 4401 otherwise.
+    - `/api/health` adds `accounts` and `players_open`, with `in_use` covering anyone's match or sim (the updater still waits). With accounts on it leaves out the saves path.
+  - **Live matches** run their engine off the event loop (`asyncio.to_thread`), under a per-match lock, so a second tab on the same match can never run it from two threads. Same commands in the same order: a watched match still replays exactly.
+  - **Worker processes** (`api/workers.py`, `sim_workers: 3` in `server.yaml`): Continue, Instant play and each sim-to-date step run in a spawned process on the player's working copy, in one transaction, while the career's lock is held in the server as for any write. Two players' sims use two cores instead of sharing one. One player's sim is no faster (days run in order). A worker costs about 86 MB and loads the definitions in 0.13 s. When all workers are busy, a call waits its turn (the UI just shows it running).
+  - **Checks:**
+    - `test_accounts_api.py`: nobody signed in gets only health and sign-in (HTTP and WebSocket); two players' careers, saves and dates are separate and live in the right folders; Sam loading a save doesn't disturb Alex's live match; a foreign Origin is refused; failed sign-ins are throttled.
+    - `test_workers.py`: the same career advanced inline and in a worker gives an identical database dump; two careers simulate side by side.
+    - Full suite passes (721 s); ruff and mypy clean.
+    - A Sonnet reviewer found no unauthenticated route. Its high finding (two tabs could run one match from two threads once the pump left the event loop) is fixed by the per-match lock; its address, name-length, health and origin points are fixed.
+  - **Left:** an open live socket isn't closed when its account signs out elsewhere (it ends with the match); a friend's name can be locked out for 10 minutes by someone guessing wrong on purpose.
+  - **Next:** U3, the sign-in screen (built, being checked), then M4, the live match on a phone.
+- **Earlier checkpoint (11 Oct): U1, accounts** (the commit that adds this line). Nothing uses them yet; U2 wires them into the server.
   - **`accounts/store.py`:** `accounts.sqlite` at the top of the saves folder, apart from every career (own `user_version`).
     - Passwords as scrypt hashes (n=2^14, r=8, salted, NFKC-normalised, at most 256 characters); unknown names cost the same as wrong passwords.
     - A sign-in is a random 256-bit token; only its SHA-256 is stored; it lasts `session_days` from last use. A new password or disabling an account signs it out everywhere.

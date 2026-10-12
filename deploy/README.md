@@ -95,6 +95,51 @@ for playing, kept up to date from git by itself. Development and testing don't u
 - **When nothing is new,** it logs "up to date: v1.12 on <branch>, port 8001" and stops.
 - **After an update,** the game is restarted, so the browser goes back to the start page. Load your save again; it's autosaved.
 
+## Friends: accounts and their own careers
+
+Until accounts are on, everyone who reaches the server plays the same careers (yours). With accounts on, each person signs in and gets their own three career slots; yours stay exactly where they are.
+
+**Once, to switch accounts on:**
+
+1. Make your own account, the owner. It plays the careers already on the server:
+   ```bash
+   deploy/users.sh add Alex --owner
+   ```
+2. Switch accounts on. This restarts the game once, waiting until no match or sim is running:
+   ```bash
+   deploy/accounts.sh on
+   ```
+3. Open the game and sign in. Your browser keeps you signed in for 30 days from the last time you played.
+
+**For each friend:**
+
+1. **Tailscale:** in the admin console, go to Machines, then **cardinal**, then the "…" menu, then **Share…**, and send the friend the invite. Shared users are free, and they see this one machine only, not the rest of your tailnet.
+2. **The friend** installs the Tailscale app (phone or computer), accepts the invite, and opens `https://cardinal.tailaf3b0c.ts.net:8443`. On a phone they can use Share, then **Add to Home Screen**, to get it as an app.
+3. **Their account:**
+   ```bash
+   deploy/users.sh add Sam --generate
+   ```
+   This prints a password: send it to them. Their careers live in `saves/users/<folder>/`.
+
+**Managing accounts:**
+
+- `deploy/users.sh list`: every account, and on how many devices it's signed in.
+- `deploy/users.sh reset-password Sam --generate`: a forgotten password. It signs them out everywhere.
+- `deploy/users.sh disable Sam`: stop someone signing in. `disable Sam --enable` lets them back.
+- `deploy/users.sh remove Sam`: delete the account. Their careers stay unless you add `--delete-saves`.
+- `deploy/accounts.sh status`: whether accounts are on, and the list.
+- `deploy/accounts.sh off`: everyone plays your careers again, as before. Nothing is deleted.
+
+**What a dozen players cost:**
+
+- **Disk:** about 80–150 MB per career slot including backups. Friends keep 2 backups to your 5 (`data/config/server.yaml`).
+- **CPU:**
+  - Continue, Instant play and Sim to… run in up to three worker processes (`sim_workers`), so two people simming at once each get a core. One person's sim is no faster than before.
+  - A watched match costs very little.
+- **Memory:** about 86 MB per worker.
+
+**Updates still wait** while anyone is watching a match or running a sim (`in_use` in `/api/health` covers everyone).
+
 ## Versions
 
 The game shows its version at the bottom of the menu as `v1.12 · 6 Oct`. On a phone, where the menu is folded away, it's under the club name at the top.

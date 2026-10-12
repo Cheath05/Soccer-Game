@@ -17,7 +17,13 @@
 
 - **Branch:** `phase-1-match-believability`.
 - **Paused (11 Oct): the roadmap waits while the phone layout and accounts for friends are built.** The approved plan is `docs/plans/phone-and-accounts.md` (tracks U and M, in its "Order"). Resume the calibration follow-ups below and the plan's market report after it.
-- **Latest checkpoint (11 Oct): U3, the sign-in screen** (the commit that adds this line).
+- **Latest checkpoint (11 Oct): U4, accounts on the production machine** (the commit that adds this line). Nothing changes on Cardinal until the user runs these.
+  - **`deploy/users.sh`** wraps `footsim users` with the machine's saves folder (from `deploy.env`).
+  - **`deploy/accounts.sh status|on|off`** sets `FOOTSIM_AUTH` in `~/.config/footsim/deploy.env` and restarts the service only when no match or sim is running (it waits up to ten minutes). `on` refuses until an owner account exists. Port, Tailscale Serve and Cardinal are untouched.
+  - **`deploy/status.sh`** says whether accounts are on. **`deploy/README.md`** gains "Friends: accounts and their own careers": the one-off switch, then for each friend Tailscale machine sharing, their account, and Add to Home Screen; plus managing accounts and what a dozen players cost.
+  - **Checks:** `bash -n`; `users.sh add/list` and `accounts.sh status/on` (refused without an owner) against a sandbox `XDG_CONFIG_HOME` and saves folder; the `deploy.env` rewrite on and off. The restart path needs systemd, so it can only be tried on the VM.
+  - **Unverified here:** that a friend reached through Tailscale machine sharing gets Serve's :8443 under the same name and certificate. Tailscale documents shared machines as reachable; check it with the first friend.
+- **Earlier checkpoint (11 Oct): U3, the sign-in screen** (the commit that adds this line).
   - **`components/AuthGate.tsx`** wraps the app (`main.tsx`): it asks `GET /api/auth/me`; with accounts on and nobody signed in it shows a sign-in card (phone-sized, the browser's password manager can fill it). Without accounts the game shows straight away, as before.
   - Any 401 (sign-in expired, or signed out elsewhere) brings the sign-in card back (`client.ts` fires `footsim:signed-out`).
   - Signing in or out forgets everything cached for the previous player in that browser.

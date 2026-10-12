@@ -34,7 +34,13 @@ fi
 # What answers on the port.
 if body=$(health "$port"); then
   ok "footsim answers on 127.0.0.1:$port: version $(json_field "$body" version), commit $(json_field "$body" commit), branch $(json_field "$body" branch)"
-  info "saves: $(json_field "$body" saves_dir)"
+  if grep -Eq '"accounts"[[:space:]]*:[[:space:]]*true' <<<"$body"; then
+    info "accounts on: everyone signs in to their own careers (deploy/accounts.sh status)"
+    info "saves: ${FOOTSIM_SAVES_DIR:-$root/saves}"
+  else
+    info "accounts off: everyone plays the owner's careers (deploy/accounts.sh on to change)"
+    info "saves: $(json_field "$body" saves_dir)"
+  fi
 else
   bad "nothing footsim answers on 127.0.0.1:$port"
 fi

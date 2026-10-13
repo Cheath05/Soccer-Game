@@ -13,6 +13,8 @@ from footsim.match.teams import SquadPlayer, TeamSheet
 from footsim.persistence.schema import club, player_attr, player_position, tactic
 from footsim.world.context import World, default_instructions
 
+# In a fixed order: who's picked when ratings tie, and so every match, mustn't depend on how
+# SQLite happens to walk the playing view (player-id order is what the squads came in before it).
 _SQUAD_SQL = text("""
     SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date,
            pl.height_cm, pl.preferred_foot, pl.weak_foot,
@@ -22,6 +24,7 @@ _SQUAD_SQL = text("""
     JOIN player pl ON pl.person_id = p.id
     LEFT JOIN player_state s ON s.player_id = p.id
     WHERE k.club_id = :club
+    ORDER BY p.id
 """)
 
 

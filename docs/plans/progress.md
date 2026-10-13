@@ -16,8 +16,22 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **Backlog from the user (12 Oct), not scheduled yet: don't start these before they're placed in the order of work.**
+  - **More control over transfers** ("more specifics and control of transfers"):
+    - choose how long to extend a player's contract when renewing (today the length isn't the user's choice);
+    - choose how long a loan lasts, both when another club asks to borrow one of the user's players and when loaning a player out;
+    - clauses in a sale: a buy-back clause, and a percentage of the next sale (sell-on).
+    - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
+  - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (12 Oct): a faster match engine, same results** (the commit that adds this line). The user asked for one person's sim to use every core.
+- **Latest checkpoint (12 Oct): squads load in a fixed order** (the commit that adds this line). Calibration step 1 of the two noted on 10 Oct.
+  - **`world/squads.py` `_SQUAD_SQL`** gains `ORDER BY p.id`. Since W4-8a squads were read through the `playing` view with no order, so the order (and with it tie-breaks in picking the side, and so every match's path) depended on how SQLite walked the view.
+  - Before the view, the `contract` scan gave player-id order for all 670 clubs of the base world (checked), so this restores exactly the order the 7 Oct baseline was measured with.
+  - **Checks:** full suite passes; golden values unchanged (they use synthetic squads).
+  - **Next:**
+    1. A 200-fixture ENG1 batch at this commit, in the measure worktree, to see whether it reproduces the 7 Oct baseline (home .36, draw .305, away .335, goals 2.88). If it does, the 10 Oct shift was the squad order.
+    2. Then step 2.1, the home-advantage fit, which the user wants to start themselves (worth Opus 5.5 Max).
+- **Earlier checkpoint (12 Oct): a faster match engine, same results** (the commit that adds this line). The user asked for one person's sim to use every core.
   - **Why not more cores:** a profile of 100 days of a sim (Brentford, from the season's start) showed:
     - 69% of the time is the user's own matches in the agent engine, one match ticking in order;
     - 22% is the daily world updates, each day depending on the last;

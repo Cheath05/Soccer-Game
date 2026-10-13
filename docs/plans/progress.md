@@ -28,9 +28,13 @@
   - **`world/squads.py` `_SQUAD_SQL`** gains `ORDER BY p.id`. Since W4-8a squads were read through the `playing` view with no order, so the order (and with it tie-breaks in picking the side, and so every match's path) depended on how SQLite walked the view.
   - Before the view, the `contract` scan gave player-id order for all 670 clubs of the base world (checked), so this restores exactly the order the 7 Oct baseline was measured with.
   - **Checks:** full suite passes; golden values unchanged (they use synthetic squads).
-  - **Next:**
-    1. A 200-fixture ENG1 batch at this commit, in the measure worktree, to see whether it reproduces the 7 Oct baseline (home .36, draw .305, away .335, goals 2.88). If it does, the 10 Oct shift was the squad order.
-    2. Then step 2.1, the home-advantage fit, which the user wants to start themselves (worth Opus 5.5 Max).
+  - **Measured at this commit** (measure worktree, ENG1, 200 fixtures):
+    - **Seed 1, the default:** home .305, draw .24, away .455, goals 3.145, the same as the 10 Oct runs.
+    - **Seed 21:** home .36, draw .305, away .335, goals 2.875. All 200 fixtures, XI ratings and scores are identical to the 7 Oct baseline (`reports/engine/e/ENG1`). Only duration (98.78 vs 98.89) and shots (28.19 vs 28.23) moved, from grouped substitutions (293e8c5).
+    - Reports: `reports/engine/squad-order-8947002`, `squad-order-8947002-seed21`.
+  - **Correction to the 10 Oct note:** nothing shifted. The 7 Oct baseline was run with `--seed 21`, and the 10 Oct runs with the default seed 1. Those are different fixture draws (found by matching the pairings to seeds), not a changed engine and not the squad order. The ORDER BY is still right to keep (it pins the order), and it changed nothing measurable here.
+  - **What it says about step 2.1:** two 200-fixture samples of the same engine give home .305 vs .36 and away .455 vs .335. So 200 fixtures can't judge home advantage: use the planned 400 per league, on more than one seed, and read the CIs.
+  - **Next:** step 2.1, the home-advantage fit. The user wants to start it themselves (worth Opus 5.5 Max). In the meantime, the user's report that the season summary's Promoted panel shows nothing (seen with Spain).
 - **Earlier checkpoint (12 Oct): a faster match engine, same results** (the commit that adds this line). The user asked for one person's sim to use every core.
   - **Why not more cores:** a profile of 100 days of a sim (Brentford, from the season's start) showed:
     - 69% of the time is the user's own matches in the agent engine, one match ticking in order;

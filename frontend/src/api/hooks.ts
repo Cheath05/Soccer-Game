@@ -6,6 +6,7 @@ import type {
   AdvanceResult,
   CalendarData,
   Career,
+  Changelog,
   ClubHistory,
   Finances,
   ClubOverview,
@@ -277,3 +278,7 @@ export function useDeleteTacticPreset() {
     onSuccess: (data) => client.setQueryData(['tactic-presets'], data),
   })
 }
+
+/** The patch notes, fetched when the What's new window opens (`enabled`) and kept for a while. */
+export const useChangelog = (enabled: boolean) =>
+  useQuery({ queryKey: ['changelog'], queryFn: () => api.get<Changelog>('/changelog'), enabled, staleTime: 10 * 60_000, retry: 1 })

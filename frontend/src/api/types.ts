@@ -641,3 +641,16 @@ export interface CalendarData {
   window_days: string[]
   international_breaks: { start: string; end: string }[]
 }
+
+// GET /api/changelog: the patch notes under the version tag (data/changelog.yaml).
+export interface ChangelogEntry {
+  version: string // MAJOR.MINOR ("1.53"), the version the change shipped in
+  date: string // ISO date of the update
+  title: string
+  changes: string[] // plain-language bullets
+}
+
+export interface Changelog {
+  version: string // the version this server runs ("unknown" without git)
+  entries: ChangelogEntry[] // newest first
+}

@@ -1,7 +1,10 @@
 import { Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { useState } from 'react'
 
 import { useHealth } from '../api/hooks'
+import { useDevice } from '../lib/device'
+import WhatsNew from './WhatsNew'
 
 const UNKNOWN = 'unknown'
 
@@ -51,11 +54,14 @@ function shown(version: string, commit: string): string {
 
 // Which build this is, for saying "I'm on v1.12". It shows the server's version number and the
 // date of its commit; if the page was built from another commit (the server was updated but the
-// frontend wasn't rebuilt, or the other way round) it shows both versions, in orange. Click to
-// copy a line to paste into a bug report.
+// frontend wasn't rebuilt, or the other way round) it shows both versions, in orange. Click it for
+// what changed in each version and help on the game (WhatsNew); the window also has the button
+// that copies a line to paste into a bug report.
 export default function VersionTag({ truncate = false }: { truncate?: boolean }) {
   const health = useHealth()
+  const { touch } = useDevice()
   const [copied, setCopied] = useState(false)
+  const [opened, { open, close }] = useDisclosure(false)
 
   if (health.isPending) return null
   const data = health.data
@@ -77,6 +83,12 @@ export default function VersionTag({ truncate = false }: { truncate?: boolean })
   else if (server === UNKNOWN && serverVersion === UNKNOWN) label = 'version unknown'
   else label = `${serverName}${dirty}${date ? ` · ${dayMonth(date)}` : ''}`
 
+  // What the window opens with: where the player is.
+  let heading: string
+  if (!data) heading = `This page is ${pageName}. The server can't be reached.`
+  else if (serverName === UNKNOWN) heading = "This server doesn't say which version it is."
+  else heading = `You're on ${serverName}${dirty}${date ? ` · ${dayMonth(date)}` : ''}`
+
   const summary = mismatch
     ? `footsim server ${serverName}${dirty} (${server}) / page ${pageName} (${page}) (${branch}) built ${__BUILD_TIME__}`
     : `footsim ${serverName === UNKNOWN ? pageName : serverName}${dirty} (${server === UNKNOWN ? page : server}, ${branch}) built ${__BUILD_TIME__}`
@@ -89,25 +101,57 @@ export default function VersionTag({ truncate = false }: { truncate?: boolean })
     })
   }
 
-  const details = (
-    <div>
+  const facts = (
+    <>
       <div>Version: {serverName}{dirty && ' (tracked files changed since)'}</div>
       <div>Branch: {branch}</div>
       <div>Commit: {server}</div>
       {date && <div>Committed: {dateTime(date)}</div>}
       <div>Page built at {pageName} ({page}): {dateTime(__BUILD_TIME__)}</div>
       {mismatch && <div>The page and the server are on different commits: rebuild the page, or restart the server.</div>}
-      <div>Click to copy.</div>
-    </div>
+    </>
   )
 
   return (
-    <Tooltip label={details} multiline maw={300} withArrow openDelay={300}>
-      <UnstyledButton onClick={copy} display="block" maw="100%" aria-label="Copy the version">
-        <Text component="span" display="block" size="xs" c={mismatch || !data ? 'orange' : 'dimmed'} truncate={truncate}>
-          {copied ? 'Copied' : label}
-        </Text>
-      </UnstyledButton>
-    </Tooltip>
+    <>
+      <Tooltip
+        label={
+          <div>
+            {facts}
+            <div>Click for what&apos;s new and help.</div>
+          </div>
+        }
+        multiline
+        maw={300}
+        withArrow
+        openDelay={300}
+        disabled={touch} // no hovering on a touch screen: the window has the same details
+      >
+        {/* On a touch screen the line of small text is padded out (without moving anything) to be easier to hit. */}
+        <UnstyledButton
+          onClick={open}
+          display="block"
+          maw="100%"
+          py={touch ? 8 : 0}
+          my={touch ? -8 : 0}
+          aria-label={`What's new and help. ${label}`}
+          aria-haspopup="dialog"
+        >
+          <Text component="span" display="block" size="xs" c={mismatch || !data ? 'orange' : 'dimmed'} truncate={truncate}>
+            {label}
+          </Text>
+        </UnstyledButton>
+      </Tooltip>
+      <WhatsNew
+        opened={opened}
+        onClose={close}
+        heading={heading}
+        version={data && serverVersion !== UNKNOWN ? serverVersion : null}
+        details={facts}
+        mismatch={mismatch}
+        copy={copy}
+        copied={copied}
+      />
+    </>
   )
 }

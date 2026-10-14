@@ -28,7 +28,14 @@
     - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (14 Oct): W6 E2, qualification and the summer play-off round** (the commit that adds this line). Built switched off (`europe/settings.yaml enabled: false`) until E5, so careers are unchanged for now.
+- **Standing rule from 15 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
+- **Latest checkpoint (15 Oct): What's new and Help, under the version tag** (the commit that adds this line; v1.54). The user asked for the versions with a summary of what changed, and a help section on what the game can do. Built by a Sonnet agent, reviewed here.
+  - **`data/changelog.yaml`:** player-facing notes for every version from 1.0 to 1.53 (46 entries; docs- or test-only versions have none) plus this one. The header explains the format and the rule above.
+  - **`GET /api/changelog`** (`api/changelog.py`): the entries newest first and the running version; a malformed file is a 500 and a failing test, never an empty list. Behind the sign-in with the rest of /api.
+  - **The window** (`components/WhatsNew.tsx`, from `VersionTag.tsx`): tapping the version tag (menu footer, under the club name on a phone, the start page) opens "What's new" (the running version marked, newer entries "not on this server yet") and "Help" (17 topics from `lib/help.ts`, with search). "Copy version" and the build details moved into it. Full screen on phones.
+  - **Checks:** `test_changelog.py` (21), `npm run build`, ruff, mypy, and the full suite; in the browser on :8765 at 1440×900 and 390×844 touch (opening from all three places, tabs, search, copy, no sideways scroll, no console errors).
+  - **Left:** two stale strings the agent found: the player page's Release dialog ("Until transfers are in the game…") and the club page's "Recent transfers: … opens in the next update". Fix with the next UI work.
+- **Earlier checkpoint (14 Oct): W6 E2, qualification and the summer play-off round** (the commit that adds this line). Built switched off (`europe/settings.yaml enabled: false`) until E5, so careers are unchanged for now.
   - **Schema v18** (`_to_v18`):
     - `continental_entry`: season, competition, club, stage, route, pot, league-phase position; one club one competition a season.
     - `club_coefficient`.

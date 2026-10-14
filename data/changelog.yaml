@@ -1,0 +1,386 @@
+# What's new: the patch notes the game shows when you click the version tag (bottom of the menu,
+# under the club name on a phone, and on the start page). GET /api/changelog serves this file.
+#
+# Newest first. Each entry has:
+#   version  MAJOR.MINOR as a quoted string: the version the change ships in (see below)
+#   date     the commit's date, as a quoted "YYYY-MM-DD"
+#   title    a short headline
+#   changes  plain-language bullets: what a player can now do, or what changed or was fixed.
+#            Write for the person playing, not for a developer: "Tactics: save several
+#            tactics under a name and load them later", not "tactic_preset table".
+#
+# EVERY USER-VISIBLE CHANGE ADDS AN ENTRY, in the same commit as the change, with the version
+# that commit ships in. The version is MAJOR.MINOR (backend/src/footsim/core/build_info.py):
+# MAJOR is the latest v<major>.0 tag, and MINOR counts the commits since that tag, including the
+# commit itself. So the commit you are about to make ships in the number that
+#     git describe --tags --match 'v[0-9]*' --long
+# shows for HEAD, plus one: if it says v1.0-53-gabc1234, the next commit is "1.54". After a new
+# v2.0 tag, MINOR starts again from 0.
+#
+# Commits with nothing for a player to notice (plans, tests, tooling) use up a version number but
+# get no entry; the game says so at the top of the list. Work that is built but switched off gets
+# a single bullet that says it isn't playable yet.
+#
+# Help for what the game can do lives in frontend/src/lib/help.ts: update it when a change adds or
+# alters something a player can do.
+#
+# backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
+# and newest first.
+
+- version: "1.54"
+  date: "2026-10-15"
+  title: "What's new and help"
+  changes:
+    - "Tap the version tag (at the bottom of the menu, under the club name on a phone, or on the start page) to see what changed in each version, and a help guide to everything you can do in the game, with a search box."
+    - "Copy version (for reporting a problem) is now a button in that window."
+
+- version: "1.53"
+  date: "2026-10-14"
+  title: "European qualification (not playable yet)"
+  changes:
+    - "Groundwork for the Champions League, Europa League and Conference League: who qualifies from each country's league and cups, and the summer play-off round, are built but switched off, so careers play exactly as before."
+
+- version: "1.52"
+  date: "2026-10-14"
+  title: "The European competitions' rules"
+  changes:
+    - "Groundwork for the Champions League, Europa League and Conference League (not playable yet): the 36-club league-phase formats, how many places each country gets, the calendar and the prize money are now in the game's data."
+
+- version: "1.49"
+  date: "2026-10-12"
+  title: "Squads in a fixed order"
+  changes:
+    - "Fix: a squad's players are read in the same order every time again, so how a match plays out no longer depends on how the database happens to list them. Nothing else changes."
+
+- version: "1.48"
+  date: "2026-10-11"
+  title: "A faster match engine"
+  changes:
+    - "Matches are simulated in about 30% less time with exactly the same results, so Continue, Instant result and Sim to… finish sooner."
+
+- version: "1.47"
+  date: "2026-10-11"
+  title: "Renaming an account"
+  changes:
+    - "On a server with accounts, whoever runs it can rename one (deploy/users.sh rename). The player's careers, password and sign-ins stay as they were."
+
+- version: "1.45"
+  date: "2026-10-11"
+  title: "The live match on a phone"
+  changes:
+    - "The pitch is drawn upright to fill a phone's width, with everything else in one column below it: the controls, then Commentary, Stats, Tactics and Subs."
+    - "Half-time is a full-screen sheet. Tactics and substitutions sets it aside, with a bar to bring it back or start the second half."
+    - "Substitutions by tapping: tap a substitute, then the player he replaces, or tap two players to swap them. The buttons are big enough for a thumb."
+
+- version: "1.44"
+  date: "2026-10-11"
+  title: "Adding friends to a server"
+  changes:
+    - "Whoever runs the server can add accounts and switch them on or off with two short commands (deploy/users.sh and deploy/accounts.sh). deploy/README.md explains how to share the server with friends."
+
+- version: "1.43"
+  date: "2026-10-11"
+  title: "Sign-in screen"
+  changes:
+    - "When the server has accounts, the game opens on a sign-in screen (a browser's password manager can fill it). Without accounts it opens straight into the game, as before."
+    - "'Signed in as …' and Sign out are at the foot of the menu and on the start page."
+    - "If your sign-in runs out, or the server ends it (a new password signs you out everywhere), you're taken back to the sign-in screen."
+
+- version: "1.42"
+  date: "2026-10-11"
+  title: "Everyone's own careers"
+  changes:
+    - "With accounts switched on, each player signs in and gets their own three save slots; nobody sees anyone else's careers. Accounts are off unless the server turns them on, so playing on your own computer is unchanged."
+    - "Watching a match no longer slows the rest of the server, and Continue, Instant result and Sim to… run in their own processes, so two people simulating at the same time each get a processor core."
+
+- version: "1.41"
+  date: "2026-10-11"
+  title: "Accounts: groundwork"
+  changes:
+    - "Behind the scenes: accounts with hashed passwords and sign-in tokens, and a footsim users command to add, list, disable and remove them. Nothing changes until accounts are switched on (1.42)."
+
+- version: "1.40"
+  date: "2026-10-11"
+  title: "Tactics on a phone"
+  changes:
+    - "The pitch scales to the screen. Tap a player, then tap where he should go (dragging is off on touch screens, where it isn't reliable). A picked player is ringed and a tag says what to tap next."
+    - "The bench and the instructions stack under the pitch, the formation list is full width, and the bench rows are big enough to tap."
+
+- version: "1.39"
+  date: "2026-10-11"
+  title: "Tables on a phone"
+  changes:
+    - "On a phone, tables keep their key columns and put the rest (age, status, details) in a small line under the name. This covers Squad, Transfers, League, Fixtures, Club, Player, the market overview and the match report."
+    - "The Transfers search filters fold away behind a Filters button."
+
+- version: "1.38"
+  date: "2026-10-11"
+  title: "A phone layout"
+  changes:
+    - "On a phone the header has the menu button, your club's name with the version under it, one main button (Continue, or Match day on a match day) and a ⋯ menu holding Save and Sim to…."
+    - "Add to Home Screen: the game now has an icon, so on a phone you can add it to your Home Screen and open it like an app."
+    - "Buttons and menu rows are at least 44 px tall, and picking a page closes the menu."
+
+- version: "1.37"
+  date: "2026-10-09"
+  title: "Saved tactics"
+  changes:
+    - "Tactics: save the current tactic under a name, then load it again later or delete it, from the new Saved tactics menu. You can keep up to 20, and saving under a name already in use replaces that one."
+    - "A saved tactic holds the formation, roles and instructions, and the line-up too if you tick Save the line-up too. Players in a saved line-up who have since left are dropped and the rest is picked for you."
+
+- version: "1.35"
+  date: "2026-10-09"
+  title: "More control in the live match"
+  changes:
+    - "Substitutions chosen while the match is paused, or at a break, wait in a list: you can undo them, and they are made when play resumes."
+    - "Pick the newcomer's role when you make a substitution, or while he is waiting to come on."
+    - "After a red card you can move a player into the empty position (drag him there, or pick him and then the position), so the team can reshape."
+    - "Yellow and red cards now show on the subs pitch and list."
+    - "Changes made together count as one stoppage, so added time no longer balloons when you make several changes at once."
+    - "Continue no longer jumps to the Match day page when it stops at a match. The button turns orange and says Match day, and you go when you're ready."
+
+- version: "1.34"
+  date: "2026-10-09"
+  title: "What you see is what you pay"
+  changes:
+    - "Prices are now quoted in the currency you play in, as the round figure you'll actually pay: values, asking prices, counter-offers, the wage a player asks and other clubs' bids. Before, you could pay a price shown in dollars and then read about the deal in euros."
+    - "When a player moves, other clubs' pending bids for him are withdrawn, and your talks with his old club end."
+    - "Each of your players can now be Not for sale, on the Transfer list (clubs bid to buy him) or on the Loan list (clubs that need cover ask to borrow him). Both lists are on the Sell tab, and on the player's page."
+    - "The player page has a Positions card: his rating at each position he knows, how natural he is there and what playing him there costs, with a Train button for your own players."
+    - "A new offer screen for signing a player: shortcuts for the fee around his value, the contract length, what it costs against your budget (the fee, this season's wages, the whole contract) and a timeline of the negotiation with the rounds left."
+    - "Transactions on the Finances page link to the players involved."
+
+- version: "1.33"
+  date: "2026-10-09"
+  title: "Click to move, Back that remembers, a new calendar"
+  changes:
+    - "Tactics: click a player, then click where he should go, and he swaps or moves there (Esc cancels). Dragging still works. The bench and reserves sit in a column beside the pitch."
+    - "Back buttons on the player, club and match report pages take you back to where you were. The Transfers tab, search and filters, the squad's group and sort, and the league, season and cup pickers are kept in the page address, so Back returns to the same list."
+    - "The Calendar has a new look: day cards, fixtures with club initials, a stripe for each competition, results, a legend and an Up next list."
+    - "A Market overview tab on Transfers: the season's biggest transfers, the 20 most valuable players, and the top 20 prospects aged 21 or under."
+
+- version: "1.32"
+  date: "2026-10-08"
+  title: "Haggling and position training"
+  changes:
+    - "Haggling: a club will come down from its asking price only so far (not at all for its key players, further for spare ones). A fair offer brings its price halfway down to your bid, a lower offer is countered at the same price, and an insulting one costs two rounds. After four rounds its price is final."
+    - "Position training: choose a position for one of your players on his page. Each month he gets more familiar there (faster when he's young) until he's natural, and plays it at his full rating. The news tells you when he gets there."
+
+- version: "1.31"
+  date: "2026-10-08"
+  title: "Fix: offers in your currency"
+  changes:
+    - "Fix: a club's counter-offer said €284M while the button beside it, in dollars, said $312M for the same amount. Offers now show every amount in your currency."
+
+- version: "1.30"
+  date: "2026-10-08"
+  title: "Club search, Sim to the next cup match, real Italian names"
+  changes:
+    - "Search for any club by name in the header (accents don't matter) and open its page."
+    - "Sim to… has a Next cup match entry for each competition with a match coming up. It stops the day before."
+    - "Competition names now show beside results in the sim progress and summary, on the dashboard and on club pages."
+    - "The big five (England, Spain, Italy, Germany and France) come first in every country and league picker."
+    - "Italian clubs that lacked licensed names have real ones: AC Milan, Inter, Atalanta and Lazio. Saved careers pick the names up when loaded."
+
+- version: "1.29"
+  date: "2026-10-08"
+  title: "Reputation that moves"
+  changes:
+    - "At the end of each season every club's reputation moves a quarter of the way towards what its squad is now worth, plus a little for a league title or a cup. Buying better players lifts a club over a few seasons; selling its best lowers it."
+    - "You get news when your club's reputation moves by 2 or more."
+
+- version: "1.28"
+  date: "2026-10-08"
+  title: "Wages and your budget"
+  changes:
+    - "The Finances page shows how much more a week in wages your budget could pay for the rest of the season. Without a board there is no wage limit: a signing costs its fee plus his wages for the weeks left, against your budget."
+    - "A sandbox career now starts with the board off, unless you switch it on."
+
+- version: "1.27"
+  date: "2026-10-08"
+  title: "Loans"
+  changes:
+    - "Borrow players: Loan on a player aged 23 or under in Find players. Choose how much of his wage you pay (50%, 75% or 100%); he joins until the end of the season. His club lends only players it can spare, and he goes where he'll play."
+    - "Other clubs now ask to borrow your players. Answer in Offers for your players (accept or reject)."
+    - "Your loans in and out are listed on the Sell tab."
+    - "Computer-run clubs borrow young spare players from bigger clubs. In one test summer there were about 250 loans."
+
+- version: "1.26"
+  date: "2026-10-08"
+  title: "Updates wait only for real play"
+  changes:
+    - "A server update used to be held back by any open game tab. It now waits only while a match is being watched or a sim is running."
+
+- version: "1.25"
+  date: "2026-10-08"
+  title: "Loans: groundwork"
+  changes:
+    - "Behind the scenes: the game now tracks where each player plays as well as who owns him, so a loaned player appears in his new club's squad and his wages are paid once. Nothing changes until loans arrive (1.27)."
+
+- version: "1.24"
+  date: "2026-10-08"
+  title: "A calendar to sim from"
+  changes:
+    - "New Calendar page: a month at a time, with your fixtures (home or away, opponent, competition and the result once played), transfer windows and international breaks."
+    - "Click a coming day to sim to it. Your matches on the way are played instantly, and that day's matches are left for you."
+
+- version: "1.23"
+  date: "2026-10-08"
+  title: "Contracts running out"
+  changes:
+    - "Contracts end on 30 June. Computer-run clubs renew the players they want to keep, and the rest leave as free agents, whom any club can sign."
+    - "Your own expiring players are on Transfers, under Contracts, each with the wage and length he asks. Some won't sign. The raise comes out of your budget for the weeks left, and news reminds you on 1 April, 1 May and 1 June. Any you haven't renewed by 30 June leave."
+    - "No club drops below 16 senior players through expiries: its best leavers sign on for a year."
+
+- version: "1.22"
+  date: "2026-10-08"
+  title: "Squad, tactics and substitutions"
+  changes:
+    - "Squad: each player's overall shows its change since the season began ('90 ▲+1'), and a Team column says XI, Bench or Reserve."
+    - "The player page has Back, and Previous and Next arrows to move through the list you came from."
+    - "Tactics explains each starter's rating step by step (his overall, then role, familiarity and fitness). Players out of position are ringed amber or red."
+    - "Tactics: drag players between the pitch, the bench and the reserves, and choose your own bench."
+    - "Live match: the subs panel shows your side on a pitch. Drag a bench player onto a player to substitute him, or one player onto another to swap their positions."
+
+- version: "1.21"
+  date: "2026-10-08"
+  title: "Fewer bids"
+  changes:
+    - "At most four bids a window for your players, and a club you turn down won't bid for the same player again in that window. Each bid still stops Continue and Sim."
+    - "Other clubs' deals stay out of your news, which now covers only what concerns your club."
+
+- version: "1.20"
+  date: "2026-10-08"
+  title: "Transfers"
+  changes:
+    - "New Transfers page. Find players: search by name, position, overall, age, value, league, free agents or listed players, then make an offer."
+    - "An offer is answered by the club first (accept, counter with the price they want, or reject) and then by the player. A free agent costs no fee but asks for the wage he wants. The transfer window and your budget are checked first."
+    - "Computer-run clubs bid for your players. A bid stands for 3 days, and up to 3 can wait at once. Continue and Sim to… stop the day one arrives, and you accept, reject or counter it."
+    - "Sell: put players on the transfer list. History: your club's moves, or everyone's."
+
+- version: "1.19"
+  date: "2026-10-07"
+  title: "One budget, dollars, and an optional board"
+  changes:
+    - "One budget pays for fees and new wages: a signing costs the fee plus his wages for the weeks left in the season. Selling a player gives back part of the fee and the wages he frees."
+    - "With the board on, the season's budget is set from the club's income and cash; with it off, all your cash is your budget. You can choose at the start of a career and on the Finances page. With no board there are no targets and no confidence."
+    - "The Finances page now shows the balance, the budget, wages against what your income supports, each month's income and costs with the profit, changes, and one-off transactions."
+    - "Cup prize money: the winner of each tie gets that round's prize."
+    - "Money shows in dollars by default (euros and pounds are still a click away)."
+
+- version: "1.18"
+  date: "2026-10-07"
+  title: "Development rewards the first team"
+  changes:
+    - "A substitute who doesn't get on still gains some development credit for each match, so players left out of the squad entirely develop more slowly than those on the bench."
+    - "Academy products aged 21 or under who play regularly (about 1,800 minutes in a year) gain up to 3 points of potential a year, 8 in all and never past 94."
+
+- version: "1.16"
+  date: "2026-10-07"
+  title: "A living transfer market"
+  changes:
+    - "Every club except yours now trades in its own country's window: it finds gaps in its squad, buys and sells, and lists its surplus players, old non-starters and, in trouble, its best-paid spare players."
+    - "In a test summer the world's clubs did about 1,500 deals, ten of them over €50M, and no squad fell below its minimum."
+    - "You can't trade yet: that arrives in 1.20."
+
+- version: "1.15"
+  date: "2026-10-07"
+  title: "Transfers: how clubs decide"
+  changes:
+    - "Behind the scenes: the rules clubs use to value a player, ask a price, bid, set a wage and decide whether a player will sign are in place. Nothing changes in the game until clubs start trading (1.16)."
+
+- version: "1.14"
+  date: "2026-10-07"
+  title: "Transfers: one owner per player"
+  changes:
+    - "Behind the scenes: every transfer, free signing and release now goes through one set of checks, the same for you and for computer-run clubs: an open window, the budget, a minimum wage, a limit on the buyer's squad size, and a seller never left with fewer than 16 senior players or too few goalkeepers. A player belongs to one club only."
+    - "Releasing a player follows the same rules: he leaves as a free agent."
+    - "Stars keep prices close to their real-world values."
+
+- version: "1.13"
+  date: "2026-10-07"
+  title: "Transfer windows"
+  changes:
+    - "Every country now has approximate summer and winter transfer windows: England, France, Belgium, Scotland and Turkey open in June, and Spain, Italy, Germany, Portugal, the Netherlands and Saudi Arabia on 1 July. Trading arrives in the next few versions."
+
+- version: "1.12"
+  date: "2026-10-07"
+  title: "Player values from real market data"
+  changes:
+    - "Every value on the squad, player and club pages now comes from a model fitted to the Transfermarkt values of about 12,400 real players. It weighs his ability, his age (young stars cost extra), whether he's a goalkeeper and how big his club is, and it moves as he develops, ages or changes club."
+    - "A free agent is priced by his own standing, so his value doesn't collapse overnight."
+
+- version: "1.11"
+  date: "2026-10-07"
+  title: "Finances page, currencies and a sandbox budget"
+  changes:
+    - "New Finances page in the menu: your balance, transfer budget, wage bill, income and spending this season, the latest transactions, and the board's target, your position, its confidence and its mood. The dashboard has a Finances card too."
+    - "Club pages show real budgets and balances (rounded for other clubs)."
+    - "Money can be shown in euros, pounds or dollars."
+    - "Sandbox: a new career can start with a transfer budget of up to €10bn."
+
+- version: "1.10"
+  date: "2026-10-07"
+  title: "A better-looking match viewer"
+  changes:
+    - "A goal now plays out properly: the ball goes into the net before the banner appears, and the banner, score and commentary wait until you have seen it, at every speed."
+    - "A new look: a mown-stripe pitch with softer lines and drawn nets, players with rings, shadows and name tags, a dark scoreboard in the teams' colours with a live clock, and rounded controls."
+    - "The ball has an outline, panels that turn as it travels and a shadow that shrinks as it rises, so it stands out on the white lines."
+
+- version: "1.9"
+  date: "2026-10-07"
+  title: "Money moves every month"
+  changes:
+    - "On the 1st of each month every club now receives its share of league TV money and its own income, and pays its wages and running costs."
+    - "When a league ends, prize money is paid by final position, from the most for the champions down to nothing for the last club."
+    - "Relegated clubs receive parachute payments."
+    - "The board's confidence moves each month with your position against its target. At the start of a season it moves halfway back to neutral and the budgets and targets are set again."
+    - "The Finances page that shows all this arrives in 1.11."
+
+- version: "1.8"
+  date: "2026-10-07"
+  title: "Season summary, rating changes, tidier tactics"
+  changes:
+    - "Season summary: Champions now lists league and cup winners only. The Promoted section is open, and each club is marked Champions, Automatic or Play-offs, in every country."
+    - "Other news leads with headlines: the champions of each country's top flight, and cup upsets."
+    - "The Squad and Player pages show each player's rating at the start of the season and how it has changed (▲ or ▼)."
+    - "Tactics: each name tag fits the gap to its neighbour, so players standing side by side, like centre-backs, no longer overlap."
+
+- version: "1.7"
+  date: "2026-10-07"
+  title: "Club finances: groundwork"
+  changes:
+    - "Behind the scenes: every club now has a bank balance (always the sum of its recorded money in and out), a transfer budget and a wage budget, and the board expects a league finish based on how strong the squad is. You'll see it from 1.11."
+
+- version: "1.5"
+  date: "2026-10-06"
+  title: "Counter-attacks"
+  changes:
+    - "A side that wins the ball in its own half while two or more opponents are caught upfield now breaks quickly, with balls played in behind. Fast breaks went from about 2% of shots to 6 to 7%, in line with real football."
+
+- version: "1.3"
+  date: "2026-10-06"
+  title: "More realistic turnovers"
+  changes:
+    - "Take-ons (dribbles past a defender) used to succeed far too often (86%, against about 61% in real matches). They now succeed about as often as in real football, and players still try as many as real ones do."
+    - "Interceptions are at real-life numbers, and defenders under pressure in their danger zone clear the ball first time."
+
+- version: "1.2"
+  date: "2026-10-06"
+  title: "Season-end views"
+  changes:
+    - "The season summary after the last match covers your finish and cup runs; by country the champions (leagues, play-offs and cups), the promoted and the relegated; your squad's development from the start of the season to now; retirements and the new youth intake; and other news."
+    - "The League page keeps showing last season's final table until the new season's first match."
+    - "Fixtures has a season picker, and a player's page has a Seasons table with a line for each competition and a total for each season."
+    - "Saves already under way start recording each player's rating at the start of a season from the day they are upgraded."
+
+- version: "1.0"
+  date: "2026-10-06"
+  title: "The starting point"
+  changes:
+    - "Start a career as any club in 19 leagues across 11 countries: England's four divisions, Spain, Italy, Germany and France with their lower divisions, and Portugal, the Netherlands, Scotland, Saudi Arabia, Turkey and Belgium. There are three save slots."
+    - "Your matches are played out player by player, with all 22 on the pitch moving ten times a second, and tuned against real-football numbers. Watch them live (pause, five speeds, highlights, substitutions and tactical changes) or take an instant result."
+    - "Squad, player and club pages; tactics with 11 formations, player roles and team instructions; fixtures, league tables with promotion, play-off and relegation zones, and club histories."
+    - "Continue to the next match, or Sim to a date or the end of the season. Cups in every country: the FA Cup, the EFL Cup, the Copa del Rey, the DFB-Pokal and the rest."
+    - "Players develop month by month, retire (mostly from their mid-thirties) and are replaced as each club takes in a few youngsters from its academy every season."
+    - "The game can run on a home server and keep itself up to date (deploy/README.md), and the version tag tells you which build you're on."

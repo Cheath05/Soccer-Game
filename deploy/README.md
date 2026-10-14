@@ -143,14 +143,21 @@ Until accounts are on, everyone who reaches the server plays the same careers (y
 
 ## Versions
 
-The game shows its version at the bottom of the menu as `v1.12 · 6 Oct`. On a phone, where the menu is folded away, it's under the club name at the top.
+The game shows its version at the bottom of the menu as `v1.12 · 6 Oct`. On a phone, where the menu is folded away, it's under the club name at the top. It's on the start page too.
 
+- **Tap the tag** to open **What's new and help**, a window with two tabs:
+  - **What's new** lists every version, newest first, with what changed in it. The version the server is running is marked ("You're on this version"), and a version that isn't listed changed nothing a player would see.
+  - **Help** explains what you can do in the game, topic by topic, with a search box.
 - **The parts:** the version number, then the date of the commit the server runs. A `+` after the number means files were edited by hand on that machine.
 - **The tag reads `v<major>.<minor>`.**
   - The minor number goes up with every update: it counts the commits since the latest `v<major>.0` tag, so `v1.12` is twelve commits after `v1.0`.
   - The major number goes up for big changes to the simulation (a git tag on the commit that starts it).
-- **When you report something, tell me the version.** Tap the tag to copy a line such as `footsim v1.12 (70b9171, phase-1-match-believability) built 6 Oct 2026, 16:05`, and paste it into the message.
-- **Orange text** such as `server v1.12 · page v1.10` means the page and the server are on different commits. Reload the page.
+- **When you report something, tell me the version.** Tap the tag, then press **Copy version** at the top of the window. It copies a line such as `footsim v1.12 (70b9171, phase-1-match-believability) built 2026-10-06T20:05:00.000Z`; paste it into the message. **Build details**, under the button, shows the branch, the commit and when the page was built.
+- **Orange text** such as `server v1.12 · page v1.10` means the page and the server are on different commits. Reload the page. The orange warning shows on the tag and in the window.
+- **The patch notes** are `data/changelog.yaml`, and the help text is `frontend/src/lib/help.ts`.
+  - Every update with something a player would notice adds an entry to the changelog in the same commit, under the version that commit ships in. The file's header says how to work the number out.
+  - Update the help when what a player can do changes.
+  - `backend/tests/unit/test_changelog.py` checks the changelog file, and `GET /api/changelog` serves it (behind the sign-in, like the rest of `/api` but health).
 - **On the VM,** `curl -s http://127.0.0.1:8001/api/health` shows the same as JSON (`version`, `commit`, `branch`, `dirty`).
 
 ## Proxmox VM commands

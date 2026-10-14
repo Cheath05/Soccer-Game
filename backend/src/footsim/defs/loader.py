@@ -17,6 +17,13 @@ from footsim.defs.calendar import SeasonCalendarDef
 from footsim.defs.competitions import LeagueDef
 from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
+from footsim.defs.europe import (
+    AccessFile,
+    ContinentalDef,
+    EuropeCalendarDef,
+    EuropeSettingsDef,
+    check_europe,
+)
 from footsim.defs.finance import FinanceDef, WageLevelsFile
 from footsim.defs.formations import FormationDef
 from footsim.defs.lifecycle import LifecycleDef
@@ -83,6 +90,10 @@ class GameDefinitions:
     lifecycle: LifecycleDef
     reputation_drift: ReputationDriftDef
     overall: OverallDef
+    continental: dict[str, ContinentalDef]  # the European competitions, by key (UCL...)
+    europe_access: AccessFile
+    europe: EuropeSettingsDef
+    europe_calendars: dict[str, EuropeCalendarDef]
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -158,6 +169,10 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         lifecycle=_parse(LifecycleDef, root / "rules" / "lifecycle.yaml"),
         reputation_drift=_parse(ReputationDriftDef, root / "rules" / "reputation.yaml"),
         overall=_parse(OverallDef, root / "overall.yaml"),
+        continental=_load_dir(ContinentalDef, root / "europe" / "competitions"),
+        europe_access=_parse(AccessFile, root / "europe" / "access.yaml"),
+        europe=_parse(EuropeSettingsDef, root / "europe" / "settings.yaml"),
+        europe_calendars=_load_dir(EuropeCalendarDef, root / "europe" / "calendars"),
     )
     _cross_validate(defs)
     return defs
@@ -188,6 +203,12 @@ def _cross_validate(defs: GameDefinitions) -> None:
         face = GOALKEEPER_FACE if group is PositionGroup.GK else OUTFIELD_FACE
         for stat in set(weights) - set(face):
             errors.append(f"overall.yaml {group}: unknown headline rating {stat}")
+
+    errors += check_europe(
+        defs.continental, defs.europe_access, defs.europe_calendars, defs.europe,
+        defs.finance.europe_prizes, set(defs.nations),
+        {league.nation for league in defs.leagues.values() if league.tier == 1},
+        {cup.key: cup.nation for cup in defs.cups.values()})
 
     names = [n.name for n in defs.nations.values()]
     if len(names) != len(set(names)):

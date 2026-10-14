@@ -28,7 +28,17 @@
     - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (12 Oct): squads load in a fixed order** (the commit that adds this line). Calibration step 1 of the two noted on 10 Oct.
+- **Latest checkpoint (14 Oct): W6 E1, the European competitions' definitions** (the commit that adds this line). No behaviour change yet.
+  - **`defs/europe.py`:** `ContinentalDef` (league phase, knockout, qualifying, `winner_to`), `PlaceDef`/`AccessFile` (league finish, cup or holder places, `fill`), `EuropeSettingsDef` (lottery for countries without a league, coefficients), `EuropeCalendarDef`, `EuropePrizeDef`. `check_europe` cross-checks them in the loader.
+  - **`data/config/europe/`:**
+    - `competitions/ucl|uel|uecl.yaml`: the 2024-25 formats: 36 clubs; 8 matches from 4 pots, or 6 from 6; 1–8 to the round of 16, 9–24 to the play-off.
+    - `access.yaml`: realistic-lite, fitted to the game's countries. UCL: 32 direct (2 holders) plus a play-off of 8. UEL: 26 direct, a play-off of 12, and the UCL's 4 losers. UECL: 23 direct, a play-off of 14, and the UEL's 6 losers.
+    - `settings.yaml`: lottery power 8, coefficient points.
+    - `calendars/uefa-2026-27.yaml`: approximate, around FIFA's 2026 window.
+  - **`finance.yaml europe_prizes`:** the UCL near UEFA's 2024–27 amounts; the UEL and UECL scaled.
+  - **Checks:** `test_europe_defs.py`: formats, counts to 36, a miscount caught, dates on the right weekdays, and every country without a league has the clubs its places need (from the base world). Full suite passes.
+  - **Next:** E2, schema v18 and qualification (built switched off until E5's calendar work keeps European dates clear of domestic ones).
+- **Earlier checkpoint (12 Oct): squads load in a fixed order** (the commit that adds this line). Calibration step 1 of the two noted on 10 Oct.
   - **`world/squads.py` `_SQUAD_SQL`** gains `ORDER BY p.id`. Since W4-8a squads were read through the `playing` view with no order, so the order (and with it tie-breaks in picking the side, and so every match's path) depended on how SQLite walked the view.
   - Before the view, the `contract` scan gave player-id order for all 670 clubs of the base world (checked), so this restores exactly the order the 7 Oct baseline was measured with.
   - **Checks:** full suite passes; golden values unchanged (they use synthetic squads).

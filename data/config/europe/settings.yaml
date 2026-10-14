@@ -1,0 +1,23 @@
+# The European competitions' settings (defs/europe.py EuropeSettingsDef).
+calendar: UEFA-2026-27
+
+# A country with clubs in the world but no league in the game (Austria, Greece, Poland...):
+# each season its clubs are put in order by a lottery, each club's chance weighted by
+# reputation ** lottery_power, and that order stands in for its league table. 8 makes the
+# strongest club usually, not always, first (Salzburg over Rapid, say).
+lottery_power: 8.0
+
+# Club coefficients, a simplified version of UEFA's: points per European match, and a bonus
+# for reaching each knockout round (as listed in the competition: play-off, round of 16,
+# quarter-final, semi-final, final), summed over the last five seasons. Until a club has played
+# in Europe in the game, its reputation stands in: (reputation - floor) * per_point.
+coefficient:
+  win: 2.0
+  draw: 1.0
+  round_bonus:
+    UCL: [0.0, 5.0, 1.0, 1.0, 1.0]
+    UEL: [0.0, 1.0, 1.0, 1.0, 1.0]
+    UECL: [0.0, 1.0, 1.0, 1.0, 1.0]
+  seasons: 5
+  reputation_floor: 40
+  reputation_per_point: 2.5

@@ -1,0 +1,58 @@
+# The European season 2026-27 (approximate: the 2025-26 pattern moved on a year, avoiding
+# FIFA's combined September-October 2026 window, 21 Sep - 6 Oct). Each leg or matchday
+# lists the days its matches are spread over: the Champions League on Tuesdays and
+# Wednesdays, the Europa and Conference Leagues on Thursdays. Later seasons move these on
+# by whole years, keeping the weekdays (competitions/calendars.py).
+key: UEFA-2026-27
+season: "2026-27"
+season_start: 2026-07-01
+competitions:
+  UCL:
+    qualifying: [[2026-08-18, 2026-08-19], [2026-08-25, 2026-08-26]]
+    league_phase:
+      - [2026-09-15, 2026-09-16]
+      - [2026-10-13, 2026-10-14]
+      - [2026-10-20, 2026-10-21]
+      - [2026-11-03, 2026-11-04]
+      - [2026-11-24, 2026-11-25]
+      - [2026-12-08, 2026-12-09]
+      - [2027-01-19, 2027-01-20]
+      - [2027-01-26, 2027-01-27]
+    knockout:   # play-off, round of 16, quarter-finals, semi-finals (two legs), final
+      - [[2027-02-16, 2027-02-17], [2027-02-23, 2027-02-24]]
+      - [[2027-03-09, 2027-03-10], [2027-03-16, 2027-03-17]]
+      - [[2027-04-06, 2027-04-07], [2027-04-13, 2027-04-14]]
+      - [[2027-04-27, 2027-04-28], [2027-05-04, 2027-05-05]]
+      - [[2027-05-29]]
+  UEL:
+    qualifying: [[2026-08-20], [2026-08-27]]
+    league_phase:
+      - [2026-09-17]
+      - [2026-10-15]
+      - [2026-10-22]
+      - [2026-11-05]
+      - [2026-11-26]
+      - [2026-12-10]
+      - [2027-01-21]
+      - [2027-01-28]
+    knockout:   # play-off, round of 16, quarter-finals, semi-finals (two legs), final
+      - [[2027-02-18], [2027-02-25]]
+      - [[2027-03-11], [2027-03-18]]
+      - [[2027-04-08], [2027-04-15]]
+      - [[2027-04-29], [2027-05-06]]
+      - [[2027-05-19]]
+  UECL:
+    qualifying: [[2026-08-20], [2026-08-27]]
+    league_phase:
+      - [2026-10-15]
+      - [2026-10-22]
+      - [2026-11-05]
+      - [2026-11-26]
+      - [2026-12-10]
+      - [2026-12-17]
+    knockout:   # play-off, round of 16, quarter-finals, semi-finals (two legs), final
+      - [[2027-02-18], [2027-02-25]]
+      - [[2027-03-11], [2027-03-18]]
+      - [[2027-04-08], [2027-04-15]]
+      - [[2027-04-29], [2027-05-06]]
+      - [[2027-05-26]]

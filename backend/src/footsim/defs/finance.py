@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from footsim.defs.common import DefModel
+from footsim.defs.europe import EuropePrizeDef
 
 
 class WageLevel(DefModel):
@@ -76,6 +77,8 @@ class FinanceDef(DefModel):
     # Prize money a cup's tie winner earns (EUR), by cup key: one amount for each of the cup's
     # rounds in order, the last the final's. The loader checks every cup has one.
     cup_prizes: dict[str, list[float]]
+    # Prize money in the European competitions, by competition key (defs/europe.py).
+    europe_prizes: dict[str, EuropePrizeDef] = {}
     wage_ratio_start: float = Field(gt=0, le=1)
     club_income_floor: float = Field(ge=0)
     wage_budget_ratio: float = Field(gt=0, le=1.5)

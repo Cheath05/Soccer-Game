@@ -1,0 +1,16 @@
+# The UEFA Conference League from 2024-25: 36 clubs, six matches each against one club from
+# each of six pots (three at home), then the same knockouts. Its winner goes into the next
+# Europa League.
+key: UECL
+name: UEFA Conference League
+short_name: Conference League
+rank: 3
+league_phase: {clubs: 36, matches: 6, pots: 6, to_round_of_16: 8, to_playoff: [9, 24]}
+knockout:
+  - {name: Knockout play-off}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, legs: 1, neutral: true}
+qualifying: {name: Play-off round}
+winner_to: UEL

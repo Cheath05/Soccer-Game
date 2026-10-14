@@ -1,0 +1,17 @@
+# The UEFA Champions League, in its format from 2024-25: a league phase of 36 clubs, eight
+# matches each against two clubs from each of four pots; the top eight go straight to the round
+# of 16, 9th to 24th meet in a knockout play-off, the rest are out. Then two-legged ties to a
+# one-match final. Who qualifies: europe/access.yaml. Dates: europe/calendars.
+key: UCL
+name: UEFA Champions League
+short_name: Champions League
+rank: 1
+league_phase: {clubs: 36, matches: 8, pots: 4, to_round_of_16: 8, to_playoff: [9, 24]}
+knockout:
+  - {name: Knockout play-off}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, legs: 1, neutral: true}
+qualifying: {name: Play-off round, losers_to: UEL}
+winner_to: UCL

@@ -45,6 +45,18 @@ league_income:
 # most (its early rounds are real money to a League Two club), the German cup comes next, the
 # smaller countries' cups least. The loader checks every cup has an amount for each of its
 # rounds.
+# European prize money (EUR, defs/europe.py EuropePrizeDef), approximately UEFA's 2024-27
+# distribution as reported for the Champions League, scaled down for the Europa and Conference
+# Leagues: on entering the league phase, per league-phase win and draw, for reaching each
+# knockout round (play-off, round of 16, quarter-final, semi-final, final), and for winning it.
+europe_prizes:
+  UCL: {participation: 18_620_000, win: 2_100_000, draw: 700_000,
+        rounds: [1_000_000, 11_000_000, 12_500_000, 15_000_000, 18_500_000], winner: 6_500_000}
+  UEL: {participation: 4_310_000, win: 450_000, draw: 150_000,
+        rounds: [300_000, 1_750_000, 2_500_000, 3_500_000, 6_000_000], winner: 4_000_000}
+  UECL: {participation: 3_170_000, win: 400_000, draw: 133_000,
+         rounds: [200_000, 800_000, 1_300_000, 2_500_000, 4_000_000], winner: 3_000_000}
+
 cup_prizes:
   #        (rounds in the cup's order)
   FA_CUP: [45_000, 75_000, 120_000, 190_000, 300_000, 500_000, 900_000, 2_000_000]

@@ -93,7 +93,7 @@ from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.europe.common import stage_name
 from footsim.world.meta import CareerMeta, read_meta
-from footsim.world.money import quote
+from footsim.world.money import money_text, quote
 from footsim.world.season import active_leagues, season_calendar, standings
 from footsim.world.squads import display_name, load_squad, short_name, team_sheet
 from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
@@ -731,8 +731,42 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         top_players=[_outside_view(p) for p in sorted(players, key=lambda p: -p.overall)[:5]],
         recent=[fixture_out(r, names, comps) for r in recent],
         upcoming=[fixture_out(r, names, comps) for r in upcoming],
-        recent_transfers=[],
+        recent_transfers=_recent_transfers(conn, world, club_id, names, meta.currency),
     )
+
+
+RECENT_TRANSFERS = 5
+
+
+def _recent_transfers(conn: Connection, world: World, club_id: int, names: dict[int, str],
+                      currency: str) -> list[str]:
+    """A club's latest moves in and out, newest first, in words: "Signed Ali Diallo from Lyon
+    for $12M (Aug 2026)". Loans' returns are left out."""
+    rows = conn.execute(text("""
+        SELECT t.*, COALESCE(p.known_as, p.first_name || ' ' || p.last_name) AS player
+        FROM transfer t JOIN person p ON p.id = t.player_id
+        WHERE (t.from_club_id = :club OR t.to_club_id = :club) AND t.kind != 'loan_return'
+        ORDER BY t.date DESC, t.id DESC LIMIT :n
+    """), {"club": club_id, "n": RECENT_TRANSFERS}).all()
+    lines = []
+    for t in rows:
+        when = date.fromisoformat(t.date).strftime("%b %Y")
+        fee = money_text(t.fee_cents / 100, world, currency)
+        other = t.from_club_id if t.to_club_id == club_id else t.to_club_id
+        where = names.get(other, "") if other is not None else ""
+        if t.kind == "release":
+            line = f"Released {t.player}"
+        elif t.kind == "loan":
+            line = (f"{t.player} on loan from {where}" if t.to_club_id == club_id
+                    else f"{t.player} loaned to {where}")
+        elif t.to_club_id == club_id:
+            line = (f"Signed {t.player} from {where} for {fee}" if t.fee_cents and where
+                    else f"Signed {t.player} on a free")
+        else:
+            line = (f"Sold {t.player} to {where} for {fee}" if t.fee_cents
+                    else f"{t.player} left for {where} on a free")
+        lines.append(f"{line} ({when})")
+    return lines
 
 
 def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetailOut:

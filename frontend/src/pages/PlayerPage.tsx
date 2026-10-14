@@ -551,7 +551,7 @@ function ReleaseButton({ playerId, name }: { playerId: number; name: string }) {
       </Button>
       <Modal opened={opened} onClose={() => setOpened(false)} title={`Release ${name}?`} centered>
         <Stack>
-          <Text size="sm">His contract ends today and he leaves as a free agent. Until transfers are in the game, a released player isn&apos;t signed by anyone, and most leave the professional game at the end of the season.</Text>
+          <Text size="sm">His contract ends today and he leaves as a free agent: any club can sign him from the transfer market without a fee, yours included. Free agents nobody signs leave the professional game.</Text>
           {release.error && (
             <Text c="red" size="sm">
               {release.error.message}

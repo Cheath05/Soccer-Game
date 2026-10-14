@@ -29,7 +29,11 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 15 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): W6 E3–E5, the league phase, the knockouts and room around European matches** (the commit that adds this line). One checkpoint, as the three share their files. Still switched off (`enabled: false`) until the Europe page (E7).
+- **Latest checkpoint (15 Oct): clubs' recent transfers, and the release dialog** (the commit that adds this line; v1.56). The two stale strings the What's new agent found.
+  - **`queries._recent_transfers`:** a club page's "Recent transfers" (always empty since before W4) now lists its last 5 moves in and out from the `transfer` table, in words and in the user's currency: "Signed X from Y for $12M (Jul 2026)", "Sold…", "X on loan from…", "X loaned to…", "Released X". Loans' returns are left out.
+  - **The player page's Release dialog** no longer says released players can't be signed: any club can sign a free agent; those nobody signs leave the game.
+  - **Checks:** `test_clubs.py` (a new test: a sale, a loan and a loan's return seen from both clubs).
+- **Earlier checkpoint (15 Oct): W6 E3–E5, the league phase, the knockouts and room around European matches** (the commit that adds this line). One checkpoint, as the three share their files. Still switched off (`enabled: false`) until the Europe page (E7).
   - **E3, the league phase** (`world/europe/league_phase.py`):
     - **Pots** by coefficient, the UCL holders in pot 1.
     - **Who plays whom** comes from a pattern over pot places. The pots are paired (A–B, C–D). Within a pair: each pot's own-pot cycle (step s) and two A–B matchings, split into 4 perfect-matching matchdays, found by search once per variant and cached. The other pot pairs make two matchings each, the other 4 matchdays. Every club plays once a matchday, two from each pot, one home and one away against each.

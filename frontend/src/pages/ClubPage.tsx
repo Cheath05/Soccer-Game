@@ -98,7 +98,11 @@ export default function ClubPage() {
         <Fact label="Budget" value={`${c.own_club ? '' : '≈ '}${money(c.budget_eur)}`} note={c.own_club ? 'For transfer fees and new wages this season' : 'From their accounts, rounded'} />
         <Fact label="Bank balance" value={`${c.own_club ? '' : '≈ '}${money(c.balance_eur)}`} note={c.own_club ? undefined : 'Rounded'} />
         <Fact label="Best player" value={c.top_players[0]?.name ?? '–'} note={c.top_players[0] ? `${c.top_players[0].position} · ${c.top_players[0].overall} OVR` : undefined} />
-        <Fact label="Recent transfers" value="None yet" note="The transfer market opens in the next update" />
+        <Fact
+          label="Recent transfers"
+          value={c.recent_transfers[0] ?? 'None yet'}
+          note={c.recent_transfers.length > 1 ? c.recent_transfers.slice(1).join(' · ') : undefined}
+        />
       </SimpleGrid>
 
       <Grid>

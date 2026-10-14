@@ -340,7 +340,7 @@ class ClubOverviewOut(BaseModel):
     top_players: list[ClubPlayerOut]
     recent: list[FixtureOut]  # latest first
     upcoming: list[FixtureOut]
-    recent_transfers: list[str]  # always empty until the transfer market exists
+    recent_transfers: list[str]  # its latest moves in and out, newest first, in words
 
 
 class AttributeOut(BaseModel):

@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.56"
+  date: "2026-10-15"
+  title: "Clubs' recent transfers"
+  changes:
+    - "A club's page lists its latest signings, sales, loans and releases (\"Sold … to … for $12M (Jul 2026)\") instead of \"None yet\"."
+    - "Fix: the Release dialog no longer says released players can't be signed: any club can sign a free agent from the transfer market."
+
 - version: "1.55"
   date: "2026-10-15"
   title: "European competitions take shape (not playable yet)"

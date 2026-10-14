@@ -16,6 +16,10 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **Order of work from 14 Oct (the user):**
+  1. **W6, the European competitions,** is next: `docs/plans/w6-european-competitions.md`, checkpoints E1–E8. Scope: the UCL, UEL and UECL together, with "realistic-lite" qualifying. The draw and qualification design is worth Opus 5.5 Max.
+  2. Then step 2.1 (home advantage, 400 per league, several seeds), the multi-season market report, and the play-test gate.
+  3. **Also from the user:** they'll start a new save; their old one (from a very old version) showed an empty Promoted panel that couldn't be reproduced on new careers in Chromium or WebKit.
 - **Backlog from the user (12 Oct), not scheduled yet: don't start these before they're placed in the order of work.**
   - **More control over transfers** ("more specifics and control of transfers"):
     - choose how long to extend a player's contract when renewing (today the length isn't the user's choice);

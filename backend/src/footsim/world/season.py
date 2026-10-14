@@ -41,6 +41,7 @@ from footsim.persistence.schema import (
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
+from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
@@ -145,7 +146,8 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
             for number, (games, day) in enumerate(zip(rounds, dates, strict=True), start=1)
             for home, away in games
         ])
-    return news + start_cups(conn, world, meta, meta.current_date)
+    news += start_cups(conn, world, meta, meta.current_date)
+    return news + start_europe(conn, world, meta, season_id, meta.current_date)
 
 
 def league_results(conn: Connection, competition_id: int, season_id: int) -> list[Result]:
@@ -191,6 +193,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
         messages += contract_reminders(conn, world, meta, day,
                                        season_calendar(world, meta, meta.season_id).season_end)
     messages += progress_cups(conn, world, meta, day)
+    messages += progress_europe(conn, world, meta, day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
         if not _finalized(conn, cid, meta.season_id):
@@ -341,6 +344,8 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         return None
     if fx.stage in world.defs.cups:
         return cup_decider(conn, world, fx)
+    if fx.stage in world.defs.continental:
+        return europe_decider(conn, world, fx)
     comp_key: str = conn.execute(select(competition.c.key).where(
         competition.c.id == fx.competition_id)).scalar_one()
     playoff = next(p for p in world.defs.leagues[comp_key].playoffs if p.key == fx.stage)

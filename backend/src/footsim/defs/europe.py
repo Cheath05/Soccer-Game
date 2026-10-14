@@ -138,6 +138,7 @@ class CoefficientDef(DefModel):
 
 
 class EuropeSettingsDef(DefModel):
+    enabled: bool = True  # whether new seasons have European competitions
     calendar: str  # the key of the calendar in data/config/europe/calendars
     # A country without a league in the game: its clubs' order each season is a lottery,
     # each club's chance weighted by reputation ** lottery_power.

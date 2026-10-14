@@ -7,9 +7,9 @@
 # no league in the game, its clubs in that season's lottery order, europe/settings.yaml), a
 # domestic cup's winner (cup), or a competition's last winner (holder). A club is placed in the
 # highest competition it earns; its other place goes to the best-placed club of the same
-# country not yet in Europe (a cup's place to the cup country's top league). A place nobody
-# can take (no holder yet, a league not in the career) goes to the first country in ``fill``
-# with a club left. The losers of a competition's play-off round drop into the next
+# country not yet in Europe (a cup's place to the cup country's top league). Places nobody
+# can take (no holder yet, a league not in the career) are filled last, by the ``fill``
+# countries in turn: the first by the first's next club, the second by the second's... The losers of a competition's play-off round drop into the next
 # competition's league phase (competitions/*.yaml qualifying.losers_to).
 competitions:
   UCL:

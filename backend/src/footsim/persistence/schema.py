@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 17  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 18  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -460,6 +460,34 @@ tactic_preset = Table(
     Column("instructions", Text, nullable=False),
     Column("saved", Text, nullable=False),  # the game date it was saved
     UniqueConstraint("club_id", "name", name="ux_tactic_preset_name"),
+)
+
+# The European competitions (world/europe/, docs/plans/w6-european-competitions.md): who is in
+# which competition each season, and how they got there. A club is in one a season.
+continental_entry = Table(
+    "continental_entry",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("stage", Text, nullable=False),  # league_phase | qualifying (until it's decided)
+    # How the place was earned: league:ENG:4, cup:FA_CUP, holder:UCL, fill:ENG,
+    # qualifying (won the play-off round), dropped:UCL (lost the UCL's)
+    Column("route", Text, nullable=False),
+    Column("pot", Integer),  # the league-phase pot, once drawn
+    Column("position", Integer),  # where it finished in the league phase, once it's over
+    UniqueConstraint("season_id", "club_id", name="ux_continental_entry_club"),
+)
+
+# Points towards a club's European coefficient, per season (world/europe/coefficients.py).
+club_coefficient = Table(
+    "club_coefficient",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("points", Float, nullable=False),
+    PrimaryKeyConstraint("club_id", "season_id"),
 )
 
 tactic = Table(

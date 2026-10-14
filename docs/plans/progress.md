@@ -28,7 +28,34 @@
     - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Latest checkpoint (14 Oct): W6 E1, the European competitions' definitions** (the commit that adds this line). No behaviour change yet.
+- **Latest checkpoint (14 Oct): W6 E2, qualification and the summer play-off round** (the commit that adds this line). Built switched off (`europe/settings.yaml enabled: false`) until E5, so careers are unchanged for now.
+  - **Schema v18** (`_to_v18`):
+    - `continental_entry`: season, competition, club, stage, route, pot, league-phase position; one club one competition a season.
+    - `club_coefficient`.
+    - `competition` rows of type `continental`.
+  - **`world/europe/access.py`, `qualify`:**
+    - **Each country's order:** last season's top-league table; in the first season, its clubs by reputation; for a country without a league, a reputation-weighted lottery (`lottery_power`).
+    - **Handing out places:** from the UCL down, holders first, each club in the highest competition it earns. A taken place passes down the table, and a cup's place goes to the country's best club not yet in.
+    - **Vacant places** are filled last, by the `fill` countries in turn.
+  - **`world/europe/stages.py`:**
+    - **`start_europe`,** at each season's fixtures: writes the entries, draws the play-off rounds (seeded by coefficient, avoiding two clubs of one country), and makes the two-legged fixtures (round 0), moving clubs' league matches out of the way.
+    - **`progress_europe`,** daily: winners into the league phase, losers to `losers_to` (UCL → UEL → UECL) or out.
+    - **`europe_decider`:** two legs, extra time, penalties, no away goals.
+  - **`world/europe/coefficients.py`:** a club's last five seasons' points. Seasons before the career count a fifth each of a reputation seed, so the seed fades out over five seasons.
+  - **Checks:**
+    - `test_europe_qualifying.py`:
+      - made-up tables: every count, one place per club, a holder's and a cup winner's places passing down, a lower-division cup winner, a small country running out;
+      - a real watch-only career through August, with europe on: 32+8 / 26+12 / 23+14 entries, England's four by reputation, 36/36/36 after the play-offs with 4 and 6 dropping, every tie decided;
+      - determinism.
+    - The v17→v18 migration.
+    - Full suite passes.
+  - **Fixed on the way:** a vacant holder place was filled before the league places, so it took a country's champions. Vacancies are now filled last, and in turn.
+  - **Next: E3, the league phase.**
+    - **The draw** pairs the pots (A–B, C–D): each pair's own-pot 9-cycles plus two A–B matchings split into 4 perfect matchings (found by search, 18 vertices), and the other cross pairs' matchings make the other 4 matchdays. Each club then has one home and one away against each pot.
+    - **Clubs** are placed in pot positions by a local search avoiding same-country opponents and more than two from a country.
+    - **The UECL:** own-pot matchday plus a 1-factorization of its 6 pots.
+    - **The table:** `league_table` with points, GD, GF, away goals, wins, lots.
+- **Earlier checkpoint (14 Oct): W6 E1, the European competitions' definitions** (the commit that adds this line). No behaviour change yet.
   - **`defs/europe.py`:** `ContinentalDef` (league phase, knockout, qualifying, `winner_to`), `PlaceDef`/`AccessFile` (league finish, cup or holder places, `fill`), `EuropeSettingsDef` (lottery for countries without a league, coefficients), `EuropeCalendarDef`, `EuropePrizeDef`. `check_europe` cross-checks them in the loader.
   - **`data/config/europe/`:**
     - `competitions/ucl|uel|uecl.yaml`: the 2024-25 formats: 36 clubs; 8 matches from 4 pots, or 6 from 6; 1–8 to the round of 16, 9–24 to the play-off.

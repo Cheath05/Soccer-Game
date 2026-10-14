@@ -192,10 +192,15 @@ def _to_v17(conn: Connection) -> None:
     metadata.create_all(conn)
 
 
+def _to_v18(conn: Connection) -> None:
+    """The European competitions: entries and club coefficients."""
+    metadata.create_all(conn)
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
-    16: _to_v16, 17: _to_v17}
+    16: _to_v16, 17: _to_v17, 18: _to_v18}
 
 
 def migrate(engine: Engine) -> int:

@@ -253,11 +253,11 @@ def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCale
     for a, b in ties:
         for club_id in (a, b):
             for day in days:
-                _clear_way(conn, world, club_id, day, today)
+                clear_way(conn, world, club_id, day, today)
     return _draw_news(conn, meta, cup, round_index, ties, exempt, days)
 
 
-def _clear_way(conn: Connection, world: World, club_id: int, cup_day: date,
+def clear_way(conn: Connection, world: World, club_id: int, cup_day: date,
                today: date) -> None:
     """Move any league match of ``club_id`` too close to his cup match on ``cup_day``."""
     window = ((cup_day - timedelta(days=REST_DAYS)).isoformat(),

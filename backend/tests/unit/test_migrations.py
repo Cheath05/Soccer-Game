@@ -400,3 +400,21 @@ def test_version_16_gains_saved_tactics(tmp_path: Path) -> None:
             assert "tactic_preset" in inspect(conn).get_table_names()
             STEPS[17](conn)
     session.close()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_17_gains_the_european_tables(tmp_path: Path) -> None:
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE continental_entry"))
+        conn.execute(text("DROP TABLE club_coefficient"))
+    write_meta(engine, {"schema_version": 17})
+    assert migrate(engine) == 17
+    for _ in range(2):
+        with engine.begin() as conn:
+            tables = set(inspect(conn).get_table_names())
+            assert {"continental_entry", "club_coefficient"} <= tables
+            STEPS[18](conn)
+    session.close()

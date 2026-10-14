@@ -14,7 +14,6 @@ from footsim.core.rng import derive_rng
 from footsim.match.report import Decider
 from footsim.persistence.schema import club, continental_entry, cup_tie, fixture, nation
 from footsim.world.context import World
-from footsim.world.cups import clear_way
 from footsim.world.europe.access import qualify
 from footsim.world.europe.coefficients import coefficients
 from footsim.world.europe.common import (
@@ -25,6 +24,13 @@ from footsim.world.europe.common import (
     enabled,
     europe_calendar,
 )
+from footsim.world.europe.knockout import progress_knockout
+from footsim.world.europe.league_phase import (
+    draw_league_phase,
+    finish_league_phase,
+    league_phase_done,
+)
+from footsim.world.europe.ties import insert_ties, tie_winner
 from footsim.world.meta import CareerMeta
 from footsim.world.squads import club_name
 
@@ -54,7 +60,7 @@ def start_europe(conn: Connection, world: World, meta: CareerMeta, season_id: in
             continue
         ties = _seeded_draw(conn, world, meta, season_id, comp.key, clubs)
         days = calendar.competitions[comp.key].qualifying
-        _insert_ties(conn, world, season_id, ids[comp.key], comp.key, QUALIFYING, ties, days,
+        insert_ties(conn, world, season_id, ids[comp.key], comp.key, QUALIFYING, ties, days,
                      neutral=False, today=today)
         messages += _draw_news(conn, meta, comp.name, comp.qualifying.name, ties, days)
     return messages
@@ -80,47 +86,6 @@ def _seeded_draw(conn: Connection, world: World, meta: CareerMeta, season_id: in
         if all(country.get(a) != country.get(b) for a, b in zip(order, seeded, strict=True)):
             break
     return list(zip(best, seeded, strict=True))
-
-
-def _insert_ties(conn: Connection, world: World, season_id: int, comp_id: int, comp_key: str,
-                 round_number: int, ties: list[tuple[int, int]], days: list[list[date]],
-                 neutral: bool, today: date) -> None:
-    """The ties' rows and fixtures: club A at home in the first leg, B in the second. Each leg's
-    matches are spread over its days in turn; a club's league matches too close are moved."""
-    conn.execute(cup_tie.insert(), [
-        {"season_id": season_id, "competition_id": comp_id, "round": round_number,
-         "tie": str(n), "club_a_id": a, "club_b_id": b, "winner_club_id": None}
-        for n, (a, b) in enumerate(ties, start=1)])
-    for n, (a, b) in enumerate(ties, start=1):
-        legs = [(a, b)] if len(days) == 1 else [(a, b), (b, a)]
-        for leg, ((home, away), leg_days) in enumerate(zip(legs, days, strict=True), start=1):
-            day = leg_days[(n - 1) % len(leg_days)]
-            conn.execute(fixture.insert().values(
-                season_id=season_id, competition_id=comp_id, stage=comp_key, round=round_number,
-                tie=str(n), leg=leg if len(days) == 2 else None, date=day.isoformat(),
-                home_club_id=home, away_club_id=away, neutral=int(neutral), status="scheduled"))
-            for club_id in (home, away):
-                clear_way(conn, world, club_id, day, today)
-
-
-def tie_winner(conn: Connection, season_id: int, comp_key: str, tie: Row[Any]) -> int | None:
-    """Who won a two-legged or one-match tie, once it's all played: on aggregate, then the
-    second leg's penalties (no away goals)."""
-    games = conn.execute(select(fixture).where(
-        fixture.c.season_id == season_id, fixture.c.stage == comp_key,
-        fixture.c.round == tie.round, fixture.c.tie == tie.tie).order_by(fixture.c.leg)).all()
-    if not games or any(g.status != "played" for g in games):
-        return None
-    goals = {tie.club_a_id: 0, tie.club_b_id: 0}
-    for g in games:
-        goals[g.home_club_id] += g.home_goals
-        goals[g.away_club_id] += g.away_goals
-    if goals[tie.club_a_id] != goals[tie.club_b_id]:
-        return int(max(goals, key=lambda c: goals[c]))
-    last = games[-1]
-    if last.home_pens is None:
-        return None
-    return int(last.home_club_id if last.home_pens > last.away_pens else last.away_club_id)
 
 
 def progress_europe(conn: Connection, world: World, meta: CareerMeta, today: date) -> list[str]:
@@ -156,6 +121,41 @@ def progress_europe(conn: Connection, world: World, meta: CareerMeta, today: dat
                     continental_entry.c.season_id == meta.season_id,
                     continental_entry.c.club_id == loser))
             messages += _result_news(conn, world, meta, comp.key, winner, loser)
+    messages += _league_phase(conn, world, meta, today)
+    return messages
+
+
+def _league_phase(conn: Connection, world: World, meta: CareerMeta, today: date) -> list[str]:
+    """Draw the league phases once every play-off round is decided (a club dropping from one
+    competition's is in the next one's), and close each once its last matchday is played."""
+    season_id = meta.season_id
+    entries = conn.execute(select(continental_entry.c.id).where(
+        continental_entry.c.season_id == season_id)).first()
+    if entries is None:
+        return []
+    undecided = conn.execute(select(cup_tie.c.id).where(
+        cup_tie.c.season_id == season_id, cup_tie.c.round == QUALIFYING,
+        cup_tie.c.winner_club_id.is_(None),
+        cup_tie.c.competition_id.in_([competition_id(conn, c)
+                                      for c in competitions_by_rank(world)]))).first()
+    if undecided is not None:
+        return []
+    messages: list[str] = []
+    for comp in competitions_by_rank(world):
+        drawn = conn.execute(select(fixture.c.id).where(
+            fixture.c.season_id == season_id, fixture.c.stage == comp.key,
+            fixture.c.round == 1)).first()
+        if drawn is None:
+            messages += draw_league_phase(conn, world, meta, comp, today)
+            continue
+        finished = conn.execute(select(continental_entry.c.id).where(
+            continental_entry.c.season_id == season_id,
+            continental_entry.c.competition_id == competition_id(conn, comp),
+            continental_entry.c.position.is_not(None))).first()
+        if finished is None and league_phase_done(conn, season_id, comp):
+            rows = finish_league_phase(conn, world, meta, comp, today)
+            messages += _phase_news(conn, meta, comp.name, comp.league_phase.to_playoff, rows)
+        messages += progress_knockout(conn, world, meta, comp, today)
     return messages
 
 
@@ -202,6 +202,18 @@ def _draw_news(conn: Connection, meta: CareerMeta, comp_name: str, round_name: s
             return [f"{comp_name} {round_name.lower()} draw: {club_name(conn, a)} v "
                     f"{club_name(conn, b)} ({when})."]
     return []
+
+
+def _phase_news(conn: Connection, meta: CareerMeta, comp_name: str,
+                playoff: tuple[int, int], rows: list[Any]) -> list[str]:
+    user = meta.user_club_id
+    row = next((r for r in rows if r.club_id == user), None)
+    if user is None or row is None:
+        return []
+    then = ("into the round of 16" if row.position < playoff[0]
+            else "into the knockout play-off" if row.position <= playoff[1] else "out")
+    return [f"{club_name(conn, user)} finish {row.position} in the {comp_name} league phase "
+            f"with {row.points} points: {then}."]
 
 
 def _result_news(conn: Connection, world: World, meta: CareerMeta, comp_key: str,

@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.55"
+  date: "2026-10-15"
+  title: "European competitions take shape (not playable yet)"
+  changes:
+    - "Groundwork for the Champions League, Europa League and Conference League: the league-phase draw with pots (no club meets its own country), the 8 (or 6) matchdays and the table, the knockouts from the play-off to a one-match final, prize money, and the winners' places next season. Built and tested over whole seasons, but still switched off, so careers play exactly as before."
+
 - version: "1.54"
   date: "2026-10-15"
   title: "What's new and help"

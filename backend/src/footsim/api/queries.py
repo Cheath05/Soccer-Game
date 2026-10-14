@@ -91,6 +91,7 @@ from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
+from footsim.world.europe.common import stage_name
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import quote
 from footsim.world.season import active_leagues, season_calendar, standings
@@ -110,7 +111,11 @@ def _competitions(conn: Connection) -> dict[int, Row[Any]]:
 
 def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]) -> FixtureOut:
     comp = comps[row.competition_id]
-    cup = get_world().defs.cups.get(comp.key)
+    defs = get_world().defs
+    cup = defs.cups.get(comp.key)
+    continental = defs.continental.get(comp.key)
+    named = (cup.rounds[row.round].name if cup
+             else stage_name(continental, row.round) if continental else None)
     return FixtureOut(
         id=row.id, date=row.date, competition=comp.key, competition_name=comp.name,
         stage=row.stage, round=row.round, tie=row.tie, leg=row.leg,
@@ -118,7 +123,7 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
         away=ClubRef(id=row.away_club_id, name=names[row.away_club_id]),
         neutral=bool(row.neutral), status=row.status, home_goals=row.home_goals,
         away_goals=row.away_goals, extra_time=bool(row.extra_time), home_pens=row.home_pens,
-        away_pens=row.away_pens, stage_name=cup.rounds[row.round].name if cup else None,
+        away_pens=row.away_pens, stage_name=named,
     )
 
 

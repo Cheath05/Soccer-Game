@@ -8,6 +8,7 @@ for both clubs, a midweek where possible, as real fixture lists are rearranged; 
 ``blocks`` play nothing that day in the first place. The winner of a tie earns that round's prize
 money (``cup_prizes`` in finance.yaml), a one-off ``prize`` in the club's ledger."""
 
+from collections import Counter
 from datetime import date, timedelta
 from typing import Any
 
@@ -32,7 +33,11 @@ from footsim.world.meta import CareerMeta
 from footsim.world.squads import club_name
 
 REST_DAYS = 2  # clear days a club gets between two matches
+# When a crowded season has no such day left for a rearranged match, it takes one clear day
+# (a Thursday European match, then the league on Saturday), never less.
+TIERS = (REST_DAYS, REST_DAYS - 1)
 MIDWEEK = (1, 2)  # Tuesday, Wednesday: where a rearranged match goes if it can
+CUP_SHIFT = 7  # the most days a cup tie moves earlier (or a final later) for a European match
 
 
 def cups_in(world: World, calendar: SeasonCalendarDef) -> list[CupDef]:
@@ -254,7 +259,100 @@ def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCale
         for club_id in (a, b):
             for day in days:
                 clear_way(conn, world, club_id, day, today)
+    # A tie too close to one of its clubs' European matches moves (European dates never do).
+    for fx in conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.stage == cup.key,
+            fixture.c.round == round_index).order_by(fixture.c.id)).all():
+        if _near_europe(conn, world, fx):
+            _move_cup_tie(conn, world, fx, today)
     return _draw_news(conn, meta, cup, round_index, ties, exempt, days)
+
+
+def make_room(conn: Connection, world: World, club_id: int, day: date, today: date) -> None:
+    """A European match for ``club_id`` on ``day``: move its league matches (``clear_way``)
+    and its domestic cup ties too close to it to free days nearby."""
+    clear_way(conn, world, club_id, day, today)
+    window = ((day - timedelta(days=REST_DAYS)).isoformat(),
+              (day + timedelta(days=REST_DAYS)).isoformat())
+    for fx in conn.execute(select(fixture).where(
+            fixture.c.status == "scheduled", fixture.c.stage.in_(list(world.defs.cups)),
+            or_(fixture.c.home_club_id == club_id, fixture.c.away_club_id == club_id),
+            fixture.c.date.between(*window))).all():
+        _move_cup_tie(conn, world, fx, today)
+
+
+def _near_europe(conn: Connection, world: World, fx: Row[Any]) -> bool:
+    day = date.fromisoformat(fx.date)
+    window = ((day - timedelta(days=REST_DAYS)).isoformat(),
+              (day + timedelta(days=REST_DAYS)).isoformat())
+    return conn.execute(select(fixture.c.id).where(
+        fixture.c.stage.in_(list(world.defs.continental)),
+        or_(fixture.c.home_club_id.in_((fx.home_club_id, fx.away_club_id)),
+            fixture.c.away_club_id.in_((fx.home_club_id, fx.away_club_id))),
+        fixture.c.date.between(*window))).first() is not None
+
+
+def _free_cup_day(conn: Connection, world: World, fx: Row[Any], today: date) -> date | None:
+    """The nearest day both clubs of a domestic cup tie are free (REST_DAYS clear of their
+    other matches): after today and at most CUP_SHIFT earlier, or later but before the cup's
+    next round (so the tie is decided in time for its draw; a final at most CUP_SHIFT later),
+    and on the right side of its other leg."""
+    original = date.fromisoformat(fx.date)
+    low = max(today + timedelta(days=1), original - timedelta(days=CUP_SHIFT))
+    high = original + timedelta(days=CUP_SHIFT)
+    calendar = _cup_calendar(world, fx.stage, fx.season_id)
+    if calendar is not None and fx.round + 1 < len(calendar.cups[fx.stage]):
+        high = calendar.cups[fx.stage][fx.round + 1][0] - timedelta(days=REST_DAYS + 1)
+    if fx.leg is not None:
+        other = conn.execute(select(fixture.c.date).where(
+            fixture.c.season_id == fx.season_id, fixture.c.stage == fx.stage,
+            fixture.c.round == fx.round, fixture.c.tie == fx.tie,
+            fixture.c.id != fx.id)).scalar()
+        if other is not None:
+            gap = timedelta(days=REST_DAYS + 1)
+            if fx.leg == 1:
+                high = min(high, date.fromisoformat(other) - gap)
+            else:
+                low = max(low, date.fromisoformat(other) + gap)
+    clubs = (fx.home_club_id, fx.away_club_id)
+    rows = conn.execute(select(fixture.c.date, fixture.c.stage, fixture.c.status).where(
+        fixture.c.id != fx.id,
+        or_(fixture.c.home_club_id.in_(clubs), fixture.c.away_club_id.in_(clubs)))).all()
+    for rest in TIERS:  # full rest if any day has it, else the crowded season's one day
+        fixed: set[date] = set()  # near either club's cup, European or played matches: never
+        league: Counter[date] = Counter()  # near its league matches: they can move instead
+        for row in rows:
+            day = date.fromisoformat(row.date)
+            near = [day + timedelta(days=k) for k in range(-rest, rest + 1)]
+            if row.stage == "league" and row.status == "scheduled":
+                league.update(near)
+            else:
+                fixed.update(near)
+        free = [low + timedelta(days=k) for k in range((high - low).days + 1)
+                if low + timedelta(days=k) not in fixed]
+        if free:
+            return min(free, key=lambda d: (league[d], abs((d - original).days),
+                                            d.weekday() not in MIDWEEK, d < original))
+    return None
+
+
+def _move_cup_tie(conn: Connection, world: World, fx: Row[Any], today: date) -> None:
+    """Move a domestic cup tie to ``_free_cup_day``, and the league matches then too close to
+    it out of its way (``clear_way``)."""
+    moved = _free_cup_day(conn, world, fx, today)
+    if moved is None:
+        return
+    conn.execute(update(fixture).where(fixture.c.id == fx.id).values(date=moved.isoformat()))
+    for club_id in (fx.home_club_id, fx.away_club_id):
+        clear_way(conn, world, club_id, moved, today)
+
+
+def _cup_calendar(world: World, cup_key: str, season_id: int) -> SeasonCalendarDef | None:
+    """The calendar (its country's) that dates a cup, for season ``season_id``."""
+    for key, calendar in world.defs.calendars.items():
+        if cup_key in calendar.cups:
+            return season_calendar_of(world, key, season_id)
+    return None
 
 
 def clear_way(conn: Connection, world: World, club_id: int, cup_day: date,
@@ -283,28 +381,28 @@ def _free_day(conn: Connection, world: World, fx: Row[Any], today: date) -> date
     calendar = season_calendar_of(world, world.defs.leagues[key].calendar, fx.season_id)
     dates = calendar.competitions[key]
     clubs = (fx.home_club_id, fx.away_club_id)
-    busy: set[date] = set()
-    for row in conn.execute(select(fixture.c.date).where(
-            fixture.c.id != fx.id,
-            or_(fixture.c.home_club_id.in_(clubs), fixture.c.away_club_id.in_(clubs)))):
-        played = date.fromisoformat(row.date)
-        busy.update(played + timedelta(days=k) for k in range(-REST_DAYS, REST_DAYS + 1))
+    others = [date.fromisoformat(row.date) for row in conn.execute(select(fixture.c.date).where(
+        fixture.c.id != fx.id,
+        or_(fixture.c.home_club_id.in_(clubs), fixture.c.away_club_id.in_(clubs))))]
     cup_days = {day + timedelta(days=k) for rounds in calendar.cups.values() for legs in rounds
                 for day in legs for k in range(-REST_DAYS, REST_DAYS + 1)}
     original = date.fromisoformat(fx.date)
-    free = []
-    day = max(today + timedelta(days=1), dates.start)
-    while day <= dates.end:
-        paused = dates.pause_for_international_windows and calendar.in_international_window(day)
-        resting = any(b.contains(day) for b in calendar.blackout)
-        if day not in busy and not paused and not resting:
-            free.append(day)
-        day += timedelta(days=1)
-    clear = [d for d in free if d not in cup_days] or free
-    if not clear:
-        return None
-    return min(clear, key=lambda d: (d.weekday() not in MIDWEEK, abs((d - original).days),
-                                     d < original))
+    for rest in TIERS:  # full rest if any day has it, else the crowded season's one day
+        busy = {played + timedelta(days=k) for played in others for k in range(-rest, rest + 1)}
+        free = []
+        day = max(today + timedelta(days=1), dates.start)
+        while day <= dates.end:
+            paused = (dates.pause_for_international_windows
+                      and calendar.in_international_window(day))
+            resting = any(b.contains(day) for b in calendar.blackout)
+            if day not in busy and not paused and not resting:
+                free.append(day)
+            day += timedelta(days=1)
+        clear = [d for d in free if d not in cup_days] or free
+        if clear:
+            return min(clear, key=lambda d: (d.weekday() not in MIDWEEK,
+                                             abs((d - original).days), d < original))
+    return None
 
 
 def _draw_news(conn: Connection, meta: CareerMeta, cup: CupDef, round_index: int,

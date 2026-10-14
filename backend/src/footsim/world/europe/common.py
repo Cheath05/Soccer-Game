@@ -59,6 +59,16 @@ def europe_calendar(world: World, season_id: int) -> EuropeCalendarDef:
             for key, c in base.competitions.items()})
 
 
+def stage_name(comp: ContinentalDef, round_number: int) -> str:
+    """A European fixture's stage in words: "Play-off round", "League phase, matchday 3",
+    "Round of 16"."""
+    if round_number == QUALIFYING:
+        return comp.qualifying.name
+    if round_number < KNOCKOUT:
+        return f"League phase, matchday {round_number}"
+    return comp.knockout[round_number - KNOCKOUT].name
+
+
 def is_european(world: World, fx: Row[Any]) -> bool:
     return bool(fx.stage in world.defs.continental)
 

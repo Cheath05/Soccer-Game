@@ -29,7 +29,44 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 15 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): What's new and Help, under the version tag** (the commit that adds this line; v1.54). The user asked for the versions with a summary of what changed, and a help section on what the game can do. Built by a Sonnet agent, reviewed here.
+- **Latest checkpoint (15 Oct): W6 E3–E5, the league phase, the knockouts and room around European matches** (the commit that adds this line). One checkpoint, as the three share their files. Still switched off (`enabled: false`) until the Europe page (E7).
+  - **E3, the league phase** (`world/europe/league_phase.py`):
+    - **Pots** by coefficient, the UCL holders in pot 1.
+    - **Who plays whom** comes from a pattern over pot places. The pots are paired (A–B, C–D). Within a pair: each pot's own-pot cycle (step s) and two A–B matchings, split into 4 perfect-matching matchdays, found by search once per variant and cached. The other pot pairs make two matchings each, the other 4 matchdays. Every club plays once a matchday, two from each pot, one home and one away against each.
+    - **The UECL:** a matchday within each pot plus a round-robin of its 6 pots, home and away from an Euler tour.
+    - **Placing the clubs** is an exact backtracking search over countries, not clubs (a country's clubs in one pot are interchangeable, and single-club countries can't break a rule): no club meets its own country, nor more than 2 of any. It's tried on up to 500 patterns (about 3 ms each). Only if all fail does the cap go to 3; own-country opponents are never allowed. The extreme test mix of 6 English and 5 Spanish clubs places cleanly on every seed tried.
+    - **The table:** points, GD, GF, away goals, wins, lots. Participation money at the draw; wins and draws when the phase ends; positions recorded.
+  - **E4, the knockouts** (`world/europe/knockout.py`; shared ties in `ties.py`):
+    - **Seeding:** the play-off pairs 9th v 24th … 16th v 17th; the round of 16 pairs 1st with the winner of 16 v 17, down to 8th with 9 v 24.
+    - **The bracket** runs 1, 8, 4, 5, 2, 7, 3, 6, so 1st and 2nd can only meet in the final. Two legs with the better-placed club at home second; a one-match neutral final.
+    - **Prize money** for reaching each round and for winning.
+    - **Holders** take next season's places (UCL and UEL winners into the UCL, the UECL winner into the UEL).
+  - **E6 folded in, the coefficients:** when the last final is decided, each European club's points for the season are recorded (`club_coefficient`): 2 a win, 1 a draw, plus round bonuses. They feed next season's pots and seedings, alongside the reputation seed fading over five seasons.
+  - **E5, room around European matches** (`world/cups.py`):
+    - **`make_room`:** a European match moves the club's league matches (`clear_way`, as before) and now its domestic cup ties too.
+    - **A domestic cup round drawn later** moves any tie too close to one of its clubs' European matches. A moved tie stays at most a week earlier, or later but before the cup's next round, on the right side of its other leg. It prefers days that disturb the fewest league matches, which then move out of its way. European dates never move.
+    - **The crowded-season tier:** a rearranged match first looks for 2 clear days either side, and only then for 1. A club never plays on consecutive days.
+  - **Stage names:** European fixtures say "Play-off round", "League phase, matchday 3" or "Round of 16" wherever fixtures are listed (`queries.fixture_out`).
+  - **The Europe API, written, not yet routed** (`api/europe.py`): `europe()` and `summaries()`: the qualifying round, the league-phase table in zones (round of 16 / play-off / out), the matchdays, the knockout rounds, each entry's route in words ("4th in the Premier League", "FA Cup winners"), and a stage-now and user-status line. The router goes into `app.py` next, with the Europe page (E7).
+  - **Checks:**
+    - `test_europe_draw.py`: the patterns on many seeds, and placing countries on an extreme mix.
+    - `test_europe_league_phase.py` (a career to 1 February):
+      - the three league phases drawn and played on the calendar's matchdays, the right number from each pot, home and away halves, no own-country opponent;
+      - final positions, and the money paid exactly;
+      - no club playing within 2 clear days of a European match;
+      - the Europe page data.
+    - `test_europe_season.py` (a whole season and the rollover):
+      - the knockouts: play-off seeds summing to 33, the round of 16, winners going on, the better-placed club home second, a neutral one-leg final;
+      - the champion's prizes, coefficients for all 115 European clubs;
+      - next season's holders and qualification from last season's tables;
+      - never back to back, and at most 2% of gaps around European matches with only one clear day.
+    - Full suite passes.
+  - **Fixed on the way:**
+    - SQLAlchemy typed `sum(status = 'played')` as a boolean, so the league phase never closed.
+    - A unit and an integration test shared a module name.
+    - Cup ties couldn't move when both clubs' diaries were full: league matches now make way for them.
+  - **Next:** E7, the Europe page (a Sonnet agent, after the "What's new and Help" agent finishes with the frontend's shared files). Then switch Europe on, then E8 (measure winners by strength, goals, congestion, money).
+- **Earlier checkpoint (15 Oct): What's new and Help, under the version tag** (the commit that adds this line; v1.54). The user asked for the versions with a summary of what changed, and a help section on what the game can do. Built by a Sonnet agent, reviewed here.
   - **`data/changelog.yaml`:** player-facing notes for every version from 1.0 to 1.53 (46 entries; docs- or test-only versions have none) plus this one. The header explains the format and the rule above.
   - **`GET /api/changelog`** (`api/changelog.py`): the entries newest first and the running version; a malformed file is a 500 and a failing test, never an empty list. Behind the sign-in with the rest of /api.
   - **The window** (`components/WhatsNew.tsx`, from `VersionTag.tsx`): tapping the version tag (menu footer, under the club name on a phone, the start page) opens "What's new" (the running version marked, newer entries "not on this server yet") and "Help" (17 topics from `lib/help.ts`, with search). "Copy version" and the build details moved into it. Full screen on phones.

@@ -1,0 +1,17 @@
+# The Cupa României. Single matches with extra time and penalties, except the two-legged
+# semi-finals; the final is at a neutral ground in May.
+#
+# Real life: lower-league clubs play qualifying rounds, then a group stage with the SuperLiga
+# clubs. The game has only the SuperLiga's 16, so they start in a round of 16.
+# Round dates are in the season calendar (calendars/rou-*.yaml, cups: CUPA_ROMANIEI).
+key: CUPA_ROMANIEI
+name: Cupa României
+short_name: Cupa României
+nation: ROU
+entrants:
+  - {league: ROU1, round: 1}
+rounds:
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final, legs: 2}
+  - {name: Final, neutral: true}

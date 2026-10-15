@@ -1,0 +1,19 @@
+# The Puchar Polski. Single matches with extra time and penalties; the final is at the National
+# Stadium in Warsaw, here after the league season (real life: on 2 May).
+#
+# Real life: lower-league clubs play the early rounds and the Ekstraklasa clubs join in the round
+# of 32. The game has no clubs outside the Ekstraklasa, so its 18 start in a first round, of
+# whom the 14 highest-ranked are exempt (byes), for the round of 16 to have its 16.
+# Round dates are in the season calendar (calendars/pol-*.yaml, cups: PUCHAR_POLSKI).
+key: PUCHAR_POLSKI
+name: Puchar Polski
+short_name: Puchar Polski
+nation: POL
+entrants:
+  - {league: POL1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 16}
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

@@ -1,0 +1,15 @@
+key: NOR1
+name: Eliteserien
+short_name: Eliteserien
+nation: NOR
+tier: 1
+clubs: 16
+sim_level: simulated
+calendar: NOR-2026-27
+source_leagues: [Eliteserien]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: a spring-to-autumn season (April to November). The game's seasons all run July to
+# June, so it plays autumn to spring here, with a long winter break. 15th and 16th go down and
+# 14th plays off with the OBOS-ligaen, which isn't in the data, so nobody moves.

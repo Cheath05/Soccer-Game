@@ -34,6 +34,14 @@ league_income:
   KSA1: {base: 35_000_000, merit: 23_000_000}   # €55.8m
   TUR1: {base: 14_000_000, merit: 9_400_000}    # €22.6m
   BEL1: {base: 7_900_000, merit: 5_200_000}     # €12.6m
+  POL1: {base: 3_900_000, merit: 2_600_000}     # €6.3m
+  DEN1: {base: 3_800_000, merit: 2_500_000}     # €6.1m
+  SUI1: {base: 3_700_000, merit: 2_500_000}     # €5.9m
+  AUT1: {base: 3_400_000, merit: 2_250_000}     # €5.4m
+  ROU1: {base: 3_300_000, merit: 2_200_000}     # €5.2m
+  NOR1: {base: 3_200_000, merit: 2_100_000}     # €5.1m
+  SWE1: {base: 3_000_000, merit: 2_000_000}     # €4.8m
+  IRL1: {base: 2_100_000, merit: 1_400_000}     # €3.3m
 
 # Prize money for winning a cup tie (EUR), paid once to the winner of each tie as the tie is
 # decided (a bye wins nothing): one amount per round in the cup's order, so the last is the
@@ -87,6 +95,22 @@ cup_prizes:
   #             R32     R16     QF      SF       Final
   KINGS_CUP: [25_000, 50_000, 125_000, 350_000, 1_000_000]
   #           R32     R16     QF       SF       Final
+  PUCHAR_POLSKI: [10_000, 20_000, 40_000, 90_000, 250_000]
+  #               1st     R16     QF      SF      Final
+  CUPA_ROMANIEI: [10_000, 25_000, 60_000, 150_000]
+  #               R16     QF      SF      Final
+  SVENSKA_CUPEN: [8_000, 20_000, 50_000, 120_000]
+  #               R16    QF      SF      Final
+  NM_CUP: [10_000, 25_000, 60_000, 150_000]
+  #        R16     QF      SF      Final
+  DBU_POKALEN: [8_000, 20_000, 50_000, 125_000]
+  #             R16    QF      SF      Final
+  SWISS_CUP: [10_000, 25_000, 60_000, 150_000]
+  #           R16     QF      SF      Final
+  OFB_CUP: [8_000, 20_000, 50_000, 125_000]
+  #         R16    QF      SF      Final
+  FAI_CUP: [5_000, 10_000, 25_000, 60_000]
+  #         1st    QF      SF      Final
 
 wage_ratio_start: 0.6     # a club's wage bill was this share of its revenue when its finances
                           # began (its own income is derived from it)...

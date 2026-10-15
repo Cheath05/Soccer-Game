@@ -1,0 +1,15 @@
+key: AUT1
+name: Austrian Bundesliga
+short_name: Bundesliga
+nation: AUT
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: AUT-2026-27
+source_leagues: ["Ö. Bundesliga"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: 22 rounds, then a championship and a relegation group of ten more (points halved).
+# Splits aren't supported yet, so each club plays the others three times (33). Nobody moves:
+# the 2. Liga isn't in the data.

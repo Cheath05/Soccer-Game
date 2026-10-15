@@ -1,0 +1,18 @@
+# The Danish Cup (DBU Pokalen). Single matches with extra time and penalties, except the
+# two-legged semi-finals; the final is at Parken in May (real life: on Ascension Day).
+#
+# Real life: lower-league clubs play the early rounds. The game has only the Superliga's 12, so
+# they start in a round of 16, of whom the 4 highest-ranked are exempt (byes), for the
+# quarter-finals to have their 8.
+# Round dates are in the season calendar (calendars/den-*.yaml, cups: DBU_POKALEN).
+key: DBU_POKALEN
+name: DBU Pokalen
+short_name: DBU Pokalen
+nation: DEN
+entrants:
+  - {league: DEN1, round: 1}
+rounds:
+  - {name: Round of 16, qualifiers: 8}
+  - {name: Quarter-final}
+  - {name: Semi-final, legs: 2}
+  - {name: Final, neutral: true}

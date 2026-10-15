@@ -1,0 +1,18 @@
+# The Austrian Cup (ÖFB-Cup). Single matches with extra time and penalties; the final is at a
+# neutral ground on 1 May.
+#
+# Real life: amateur and lower-league clubs play the early rounds. The game has only the
+# Bundesliga's 12, so they start in a round of 16, of whom the 4 highest-ranked are exempt
+# (byes), for the quarter-finals to have their 8.
+# Round dates are in the season calendar (calendars/aut-*.yaml, cups: OFB_CUP).
+key: OFB_CUP
+name: ÖFB-Cup
+short_name: ÖFB-Cup
+nation: AUT
+entrants:
+  - {league: AUT1, round: 1}
+rounds:
+  - {name: Round of 16, qualifiers: 8}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true, blocks: [AUT1]}

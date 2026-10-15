@@ -1,0 +1,18 @@
+# The FAI Cup. Single matches with extra time and penalties; the final is at the Aviva Stadium
+# in Dublin, here the Saturday after the league season.
+#
+# Real life: amateur and First Division clubs play too, and the final is in November. The game
+# has only the Premier Division's 10, so they start in a first round, of whom the 6
+# highest-ranked are exempt (byes), for the quarter-finals to have their 8.
+# Round dates are in the season calendar (calendars/irl-*.yaml, cups: FAI_CUP).
+key: FAI_CUP
+name: FAI Cup
+short_name: FAI Cup
+nation: IRL
+entrants:
+  - {league: IRL1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

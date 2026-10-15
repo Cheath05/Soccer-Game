@@ -203,6 +203,14 @@ const NATION_NAMES: Record<string, string> = {
   BEL: 'Belgium',
   TUR: 'Turkey',
   KSA: 'Saudi Arabia',
+  POL: 'Poland',
+  ROU: 'Romania',
+  SWE: 'Sweden',
+  NOR: 'Norway',
+  DEN: 'Denmark',
+  SUI: 'Switzerland',
+  AUT: 'Austria',
+  IRL: 'Ireland',
   USA: 'United States',
 }
 

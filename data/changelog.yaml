@@ -27,6 +27,16 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.61"
+  date: "2026-10-15"
+  title: "Eight more leagues, with their cups"
+  changes:
+    - "New top divisions from FC 27: Poland's Ekstraklasa, Romania's SuperLiga, Sweden's Allsvenskan, Norway's Eliteserien, the Danish Superliga, the Swiss Super League, the Austrian Bundesliga and the League of Ireland Premier Division, with their real squads."
+    - "Each has its cup: Puchar Polski, Cupa României, Svenska Cupen, the Norwegian Cup, DBU Pokalen, the Swiss Cup, the ÖFB-Cup and the FAI Cup."
+    - "Their European places now come from their own league tables (before, from the clubs' standing), and their cup winners earn a Conference League place."
+    - "Sweden, Norway and Ireland play August to May like every league here (in real life spring to autumn). Leagues that split into groups partway through play a plain round robin for now."
+    - "A new career has them from the start; a career already under way gets them when its next season starts."
+
 - version: "1.60"
   date: "2026-10-15"
   title: "European matches in their colours on the calendar"

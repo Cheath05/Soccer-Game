@@ -1,0 +1,15 @@
+key: DEN1
+name: Danish Superliga
+short_name: Superliga
+nation: DEN
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: DEN-2026-27
+source_leagues: [Metropolitan Division]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# FC 27 lists it as the "Metropolitan Division" (no licence). Real life: 22 rounds, then a
+# championship and a relegation round of ten more. Splits aren't supported yet, so each club
+# plays the others three times (33). Nobody moves: the 1st Division isn't in the data.

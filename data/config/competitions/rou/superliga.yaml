@@ -1,0 +1,15 @@
+key: ROU1
+name: Romanian SuperLiga
+short_name: SuperLiga
+nation: ROU
+tier: 1
+clubs: 16
+sim_level: simulated
+calendar: ROU-2026-27
+source_leagues: [SUPERLIGA]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: 30 rounds, then the top six play a championship round and the rest a relegation
+# round (points halved). Splits aren't supported yet, so it's the 30 rounds. Nobody moves: the
+# Liga II isn't in the data.

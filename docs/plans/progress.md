@@ -29,11 +29,32 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): European matches in their colours on the calendar** (the commit that adds this line; v1.60). The user asked for European matches in their competition's colour.
+- **Latest checkpoint (15 Oct): eight more leagues, with their cups** (the commit that adds this line; v1.61). The user asked for the leagues that play in Europe and aren't in the game yet, from the FC 27 data, with their cups.
+  - **Which leagues:** FC 27 has whole top divisions for 8 of the access list's countries without a league:
+    - Poland's Ekstraklasa (18), Romania's SuperLiga (16), Sweden's Allsvenskan (16), Norway's Eliteserien (16);
+    - Denmark's Superliga (12; FC 27's "Metropolitan Division"), the Swiss Super League (12), the Austrian Bundesliga (12), and Ireland's Premier Division (10).
+    - Greece, Czechia, Ukraine, Croatia, Cyprus, Hungary, Bulgaria and Azerbaijan have only 1–4 clubs each, so they stay in the reputation lottery.
+  - **Config only, no world rebuild:** their clubs and squads were already in the base world, outside any league. `ensure_leagues` gives an existing career the new leagues at its next season start.
+  - **Files per league:**
+    - `competitions/<nation>/*.yaml`, `calendars/<nation>-2026-27.yaml` and `cups/*.yaml`;
+    - `finance.yaml` league income, from each league's mean wage bill by the existing formula;
+    - cup prizes.
+  - **Approximations, noted in each file:**
+    - Sweden, Norway and Ireland play August to May (really spring to autumn), with long winter breaks.
+    - The split leagues (DEN, AUT, SUI, ROU) play plain round robins: 33, 33, 33 and 30 rounds. Ireland plays four times round (36).
+    - Nobody moves up or down: there are no lower divisions.
+    - Cups start with the top division only, with byes to make a bracket.
+    - The Danish, Polish and Swiss finals moved to midweeks clear of league rounds, and the Swedish final is neutral.
+  - **`access.yaml`:** a cup place each for POL, ROU, SWE, NOR, DEN, SUI and AUT replaces one of their league places, so the competitions' numbers are unchanged.
+  - **Frontend:** nation names in `format.ts`; help.
+  - **Checks:** the unit tests (`test_cups`: the new cups' sizes, two-legged semi-finals, dates clear of league rounds for four seasons); the full suite.
+    - Its one failure was `test_finance`'s balance bound: a Swiss club's UCL money took it past 1.5× its revenue. European prize money is now left out of that bound for every club.
+  - **Flagged for the user, a finance-model question:** the European prizes are UEFA's real amounts, but league income is at the game's scale (about half the real top-flight TV money). A UCL season can therefore pay a smaller league's club more than its year's revenue. That is realistic in kind; the size is unmeasured. Not changed by eye.
+  - **Next:** unchanged. The user plays a new career; then step 2.1.
+- **Earlier checkpoint (15 Oct): European matches in their colours on the calendar** (v1.60). The user asked for European matches in their competition's colour.
   - **`lib/competitionColors.ts`** (a Sonnet agent): `EUROPE_COLOR` (UCL blue, UEL orange, UECL green) is fixed. Other competitions hash into a palette without those colours. The League page imports it too.
   - **Calendar:** the international-break shading is now grey, not blue.
   - **Checks:** `npm run build` and lint; the agent's browser check (Arsenal to 1 Sep: the Premier League grape, the Carabao Cup red, the UCL blue) at 1440 and 390.
-  - **In progress (the user, 15 Oct): eight more leagues from FC 27,** each with its cup: POL1, ROU1, SWE1, NOR1, DEN1, SUI1, AUT1, IRL1. Their config is written but not committed yet; the next commit.
 - **Earlier checkpoint (14–15 Oct): European places in the league tables** (v1.59). The user asked to see each league's European places in colour (UCL blue, UEL orange, UECL green) and what each needs.
   - **API:** `TableOut` has `europe_places` (the key) and `europe_actual`; each row has `europe` and `europe_stage`. They come from `world/europe/access.country_places`, which reads the access list as written, from the top competition down. `queries.table` fills them:
     - for top divisions only, and only when the game has Europe;

@@ -1,0 +1,13 @@
+key: POL1
+name: Ekstraklasa
+short_name: Ekstraklasa
+nation: POL
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: POL-2026-27
+source_leagues: [Ekstraklasa]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: 16th, 17th and 18th go down to the I liga, which isn't in the data, so nobody moves.

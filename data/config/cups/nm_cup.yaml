@@ -1,0 +1,17 @@
+# The Norwegian Cup (NM Cup). Single matches with extra time and penalties; the final is at
+# Ullevaal in Oslo, here the Saturday after the league season.
+#
+# Real life: amateur and lower-league clubs play the early rounds. The game has only the
+# Eliteserien's 16, so they start in a round of 16.
+# Round dates are in the season calendar (calendars/nor-*.yaml, cups: NM_CUP).
+key: NM_CUP
+name: Norwegian Cup
+short_name: NM Cup
+nation: NOR
+entrants:
+  - {league: NOR1, round: 1}
+rounds:
+  - {name: Round of 16}
+  - {name: Quarter-final}
+  - {name: Semi-final}
+  - {name: Final, neutral: true}

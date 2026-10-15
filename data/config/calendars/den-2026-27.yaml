@@ -1,0 +1,27 @@
+# Denmark 2026-27 (approximate). Seasons share England's boundaries (1 July to 30 June),
+# so every league turns over together.
+key: DEN-2026-27
+season: "2026-27"
+nation: DEN
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  DEN1: {start: 2026-07-17, end: 2027-05-23}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate
+blackout:
+  - {start: 2026-12-07, end: 2027-02-14}   # winter break
+# Cup rounds, one date per leg (approximate): midweeks clear of the league's weekends and the
+# winter break, the final in May.
+cups:
+  DBU_POKALEN:
+    - [2026-10-28]
+    - [2027-03-03]
+    - [2027-04-07, 2027-04-21]
+    - [2027-05-12]

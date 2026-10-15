@@ -11,6 +11,9 @@
 # can take (no holder yet, a league not in the career) are filled last, by the ``fill``
 # countries in turn: the first by the first's next club, the second by the second's... The losers of a competition's play-off round drop into the next
 # competition's league phase (competitions/*.yaml qualifying.losers_to).
+# The cup places of Poland, Romania, Sweden, Norway, Denmark, Switzerland and Austria (15 Oct, when
+# their leagues joined the game) took the place of one of their league places each, so every
+# competition's numbers are unchanged.
 competitions:
   UCL:
     league_phase:              # 32: 2 holders, 30 by league
@@ -98,13 +101,13 @@ competitions:
       - {nation: NOR, ranks: [3, 3]}
       - {nation: POL, ranks: [3, 3]}
       - {nation: DEN, ranks: [3, 3]}
-      - {nation: AUT, ranks: [3, 3]}
-      - {nation: SUI, ranks: [3, 3]}
+      - {nation: AUT, cup: OFB_CUP}
+      - {nation: SUI, cup: SWISS_CUP}
       - {nation: GRE, ranks: [4, 4]}
       - {nation: CYP, ranks: [2, 2]}
       - {nation: CRO, ranks: [2, 2]}
       - {nation: UKR, ranks: [2, 2]}
-      - {nation: ROU, ranks: [2, 2]}
+      - {nation: ROU, cup: CUPA_ROMANIEI}
       - {nation: BUL, ranks: [1, 1]}
       - {nation: IRL, ranks: [1, 1]}
     qualifying:                # 14: 7 go through
@@ -117,9 +120,9 @@ competitions:
       - {nation: POR, ranks: [6, 6]}
       - {nation: BEL, ranks: [6, 6]}
       - {nation: TUR, ranks: [6, 6]}
-      - {nation: NOR, ranks: [4, 4]}
-      - {nation: POL, ranks: [4, 4]}
-      - {nation: DEN, ranks: [4, 4]}
-      - {nation: SWE, ranks: [3, 3]}
+      - {nation: NOR, cup: NM_CUP}
+      - {nation: POL, cup: PUCHAR_POLSKI}
+      - {nation: DEN, cup: DBU_POKALEN}
+      - {nation: SWE, cup: SVENSKA_CUPEN}
       - {nation: AZE, ranks: [1, 1]}
     fill: [ENG, ITA, ESP, GER, FRA]

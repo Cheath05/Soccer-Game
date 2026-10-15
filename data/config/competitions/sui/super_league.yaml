@@ -1,0 +1,15 @@
+key: SUI1
+name: Swiss Super League
+short_name: Super League
+nation: SUI
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: SUI-2026-27
+source_leagues: [Brack Super League]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# Real life: 33 rounds, then the league splits into a top and a bottom six for five more (38).
+# Splits aren't supported yet, so it's the 33 rounds. Nobody moves: the Challenge League isn't
+# in the data. (FC Vaduz plays here from Liechtenstein; the game counts it as Swiss.)

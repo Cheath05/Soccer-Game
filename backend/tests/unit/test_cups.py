@@ -61,11 +61,18 @@ def test_each_countrys_cups_add_up() -> None:
     assert defs.cups["TACA_DA_LIGA"].sizes(sizes) == last
     assert defs.cups["SCOTTISH_CUP"].sizes(sizes) == [(12, 8), *last]
     assert defs.cups["SCOTTISH_LEAGUE_CUP"].sizes(sizes) == [(12, 8), *last]
-    for key in ("TACA_DE_PORTUGAL", "KNVB_BEKER", "TURKISH_CUP", "BELGIAN_CUP", "KINGS_CUP"):
+    for key in ("TACA_DE_PORTUGAL", "KNVB_BEKER", "TURKISH_CUP", "BELGIAN_CUP", "KINGS_CUP",
+                "PUCHAR_POLSKI"):
         assert defs.cups[key].sizes(sizes) == [(18, 16), (16, 8), *last], key
+    for key in ("CUPA_ROMANIEI", "SVENSKA_CUPEN", "NM_CUP"):  # 16 clubs: a round of 16
+        assert defs.cups[key].sizes(sizes) == [(16, 8), *last], key
+    for key in ("DBU_POKALEN", "SWISS_CUP", "OFB_CUP"):  # 12: four byes
+        assert defs.cups[key].sizes(sizes) == [(12, 8), *last], key
+    assert defs.cups["FAI_CUP"].sizes(sizes) == [(10, 8), *last]  # 10: six byes
     # Two-legged semi-finals where the real cup has them, and neutral finals everywhere.
     legs = {key: [r.legs for r in cup.rounds] for key, cup in defs.cups.items()}
-    two_legged = {"EFL_CUP", "COPA_DEL_REY", "COPPA_ITALIA", "TACA_DE_PORTUGAL", "BELGIAN_CUP"}
+    two_legged = {"EFL_CUP", "COPA_DEL_REY", "COPPA_ITALIA", "TACA_DE_PORTUGAL", "BELGIAN_CUP",
+                  "CUPA_ROMANIEI", "DBU_POKALEN"}
     assert {key for key, rounds in legs.items() if 2 in rounds} == two_legged
     assert all(cup.rounds[-1].neutral for cup in defs.cups.values())
 

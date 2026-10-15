@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
+import type { Nation } from '../api/types'
+
 // Money is kept in euros everywhere; the player picks the currency it's shown in (dollars until
 // they choose another), kept with the career. The rates are fixed (display only), so a figure
 // never changes with a market, and match data/config/finance/finance.yaml `currencies`: the
@@ -192,6 +194,8 @@ export function ordinal(n: number): string {
 }
 
 const NATION_NAMES: Record<string, string> = {
+  // The big five, the rest of UEFA's countries, then the likely ones from other continents. A code
+  // not here is shown as the server names it (GET /api/world/nations).
   ENG: 'England',
   ESP: 'Spain',
   ITA: 'Italy',
@@ -202,7 +206,6 @@ const NATION_NAMES: Record<string, string> = {
   SCO: 'Scotland',
   BEL: 'Belgium',
   TUR: 'Turkey',
-  KSA: 'Saudi Arabia',
   POL: 'Poland',
   ROU: 'Romania',
   SWE: 'Sweden',
@@ -211,12 +214,103 @@ const NATION_NAMES: Record<string, string> = {
   SUI: 'Switzerland',
   AUT: 'Austria',
   IRL: 'Ireland',
+  ISR: 'Israel',
+  MDA: 'Moldova',
+  ISL: 'Iceland',
+  BIH: 'Bosnia and Herzegovina',
+  ARM: 'Armenia',
+  LVA: 'Latvia',
+  KOS: 'Kosovo',
+  KAZ: 'Kazakhstan',
+  FRO: 'Faroe Islands',
+  MLT: 'Malta',
+  LTU: 'Lithuania',
+  LIE: 'Liechtenstein',
+  EST: 'Estonia',
+  ALB: 'Albania',
+  MNE: 'Montenegro',
+  LUX: 'Luxembourg',
+  GEO: 'Georgia',
+  MKD: 'North Macedonia',
+  BLR: 'Belarus',
+  AND: 'Andorra',
+  GIB: 'Gibraltar',
+  SMR: 'San Marino',
+  GRE: 'Greece',
+  CZE: 'Czechia',
+  UKR: 'Ukraine',
+  CRO: 'Croatia',
+  SRB: 'Serbia',
+  CYP: 'Cyprus',
+  HUN: 'Hungary',
+  BUL: 'Bulgaria',
+  AZE: 'Azerbaijan',
+  SVK: 'Slovakia',
+  SVN: 'Slovenia',
+  FIN: 'Finland',
+  WAL: 'Wales',
+  NIR: 'Northern Ireland',
+  RUS: 'Russia',
+  KSA: 'Saudi Arabia',
   USA: 'United States',
+  MEX: 'Mexico',
+  CAN: 'Canada',
+  BRA: 'Brazil',
+  ARG: 'Argentina',
+  JPN: 'Japan',
+  KOR: 'South Korea',
+  CHN: 'China',
+  AUS: 'Australia',
 }
 
-/** A nation code as its name (ENG is England). A code with no name stays as it is. */
-export function nationName(code: string): string {
-  return NATION_NAMES[code] ?? code
+// Other names a country goes by, for searching only ("holland" finds the Netherlands).
+const NATION_ALIASES: Record<string, string> = {
+  ENG: 'UK United Kingdom Britain',
+  SCO: 'UK United Kingdom Britain',
+  WAL: 'UK United Kingdom Britain',
+  NIR: 'UK United Kingdom Britain',
+  IRL: 'Republic of Ireland Eire',
+  GER: 'Deutschland',
+  ESP: 'Espana',
+  NED: 'Holland',
+  CZE: 'Czech Republic',
+  TUR: 'Turkiye',
+  MKD: 'Macedonia',
+  BIH: 'Bosnia',
+  FRO: 'Faroes',
+  KSA: 'Saudi',
+  KOR: 'Korea',
+  USA: 'America United States of America US',
+}
+
+/** A nation code as its name (ENG is England): ours if we have one, else `fallback` (the name the
+ * server sent), else the code itself. */
+export function nationName(code: string, fallback?: string): string {
+  return NATION_NAMES[code] ?? fallback ?? code
+}
+
+/** What a search for a country is matched against: its code, name and the other names it goes by. */
+export function nationSearchText(code: string, name: string): string {
+  return `${code} ${name} ${NATION_ALIASES[code] ?? ''}`
+}
+
+const UNACCENTED: Record<string, string> = { ø: 'o', æ: 'ae', œ: 'oe', ß: 'ss', ł: 'l', đ: 'd', ð: 'd', þ: 'th', ı: 'i' }
+
+/** Text in lower case with its accents taken off, for comparing what someone typed with a name:
+ * "Süper" and "super" are the same, and so are "Brøndby" and "brondby". */
+export function foldText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[øæœßłđðþı]/g, (c) => UNACCENTED[c] ?? c)
+}
+
+/** Whether every word typed is somewhere in the text, accents and capitals ignored. Typing nothing matches everything. */
+export function matchesSearch(text: string, typed: string): boolean {
+  const words = foldText(typed).split(/\s+/).filter(Boolean)
+  const folded = foldText(text)
+  return words.every((word) => folded.includes(word))
 }
 
 /** The nation a league belongs to: its `nation` code, or for a server that predates the field
@@ -225,11 +319,38 @@ export function competitionNation(c: { key: string; nation?: string }): string {
   return c.nation || c.key.slice(0, 3)
 }
 
-/** The countries listed first wherever one is picked, in this order. */
+/** The countries that are always one tap away wherever one is picked, in this order. */
 export const BIG_FIVE = ['ENG', 'ESP', 'ITA', 'GER', 'FRA']
 
-/** Leagues grouped by nation, the big five first (England, Spain, Italy, Germany, France) and then the rest by name, each nation's leagues in tier order. */
-export function groupByNation<T extends { key: string; tier: number; nation?: string }>(leagues: T[]): { code: string; name: string; leagues: T[] }[] {
+/** Where a code stands among the big five (England first); the others come after them. */
+export const bigFiveIndex = (code: string) => (BIG_FIVE.includes(code) ? BIG_FIVE.indexOf(code) : BIG_FIVE.length)
+
+/** A country as a picker offers it. `continent` and `rank` are the server's, once it has answered. */
+export interface NationChoice {
+  code: string
+  name: string
+  continent?: string
+  featured: boolean // one of the big five
+  rank?: number
+}
+
+/** Nation codes as picker choices, named and listed in the server's order (UEFA's ranking, then the
+ * other continents') or, before it has answered, with the big five first and then by name. */
+export function nationChoices(codes: Iterable<string>, nations?: Nation[]): NationChoice[] {
+  const known = new Map((nations ?? []).map((n) => [n.code, n]))
+  return [...new Set(codes)]
+    .map((code) => {
+      const n = known.get(code)
+      return { code, name: nationName(code, n?.name), continent: n?.continent, featured: n?.featured ?? BIG_FIVE.includes(code), rank: n?.rank }
+    })
+    .sort((a, b) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) || bigFiveIndex(a.code) - bigFiveIndex(b.code) || a.name.localeCompare(b.name))
+}
+
+/** Leagues grouped by nation in the order of `nationChoices` (pass the server's `nations` for its ranking), each nation's leagues in tier order. */
+export function groupByNation<T extends { key: string; tier: number; nation?: string; name?: string }>(
+  leagues: T[],
+  nations?: Nation[],
+): (NationChoice & { leagues: T[] })[] {
   const groups = new Map<string, T[]>()
   for (const league of leagues) {
     const code = competitionNation(league)
@@ -237,10 +358,10 @@ export function groupByNation<T extends { key: string; tier: number; nation?: st
     if (group) group.push(league)
     else groups.set(code, [league])
   }
-  const rank = (code: string) => (BIG_FIVE.includes(code) ? BIG_FIVE.indexOf(code) : BIG_FIVE.length)
-  return [...groups]
-    .map(([code, list]) => ({ code, name: nationName(code), leagues: list.sort((a, b) => a.tier - b.tier || a.key.localeCompare(b.key)) }))
-    .sort((a, b) => rank(a.code) - rank(b.code) || a.name.localeCompare(b.name))
+  return nationChoices(groups.keys(), nations).map((n) => ({
+    ...n,
+    leagues: (groups.get(n.code) ?? []).sort((a, b) => a.tier - b.tier || a.key.localeCompare(b.key)),
+  }))
 }
 
 /** The board's confidence colour: green when pleased, red when unhappy. */

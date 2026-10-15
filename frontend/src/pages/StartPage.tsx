@@ -134,16 +134,14 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
           {leagues.data && (
             <>
-              <Group>
-                <LeaguePicker
-                  leagues={leagues.data}
-                  value={league}
-                  onChange={(v) => {
-                    setLeague(v)
-                    setClubId(null)
-                  }}
-                />
-              </Group>
+              <LeaguePicker
+                leagues={leagues.data}
+                value={league}
+                onChange={(v) => {
+                  setLeague(v)
+                  setClubId(null)
+                }}
+              />
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
                 {selectedLeague?.clubs.map((c) => (
                   <UnstyledButton key={c.id} onClick={() => setClubId(c.id)}>

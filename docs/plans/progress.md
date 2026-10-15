@@ -35,7 +35,18 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): W7 A2, country coefficients** (the commit that adds this line; v1.63). The W7 plan is in `docs/plans/w7-all-of-uefa.md` (committed at fdb8401).
+- **Latest checkpoint (15 Oct): W7 A1, the country picker** (the commit that adds this line; v1.64). A Sonnet agent built it; reviewed here.
+  - **API:** `useNations()` reads `GET /api/world/nations` (from A2).
+  - **`NationPicker`** (used by LeaguePicker, CupsPage and SeasonSummary):
+    - chips for the user's country and the big five;
+    - a searchable "All countries" box, grouped by continent in UEFA ranking order. It matches country, league and cup names and aliases, ignoring accents (`format.ts` `matchesSearch`).
+    - a continent filter, shown only with more than one continent.
+  - **Elsewhere:** the Start page uses the same picker; the Transfers league filter is grouped and searchable.
+  - **Checks:**
+    - `npm run build` and lint;
+    - the agent's browser checks at 1440, 800 and 390 touch: big-five chips; searches for "Scot", "super lig" and "pokal"; the Asia filter; a Celtic career listing Scotland first; a faked 55-country, 6-continent list; the endpoint failing, which falls back to the old order.
+  - **Working tree, not in this commit:** A3/A4 in progress (places.py, qualifying.py, access_list.yaml, schema v20 and the API).
+- **Earlier checkpoint (15 Oct): W7 A2, country coefficients** (v1.63). The W7 plan is in `docs/plans/w7-all-of-uefa.md` (committed at fdb8401).
   - **Points:** UEFA's 2024-27 rules, for both club and country (europe/settings.yaml `coefficient`, defs `CoefficientDef` and `RankingBonusDef`):
     - matches: 2 for a win and 1 for a draw, halved in qualifying and play-off rounds;
     - the UCL league-phase bonus of 6;

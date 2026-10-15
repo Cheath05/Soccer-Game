@@ -3,8 +3,9 @@ import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 
-import type { ClubMove, Headline, Honour, SeasonFinal } from '../api/types'
-import { longDate, nationName, ordinal, positionColor, ratingColor } from '../lib/format'
+import { useNations } from '../api/hooks'
+import type { ClubMove, Headline, Honour, Nation, SeasonFinal } from '../api/types'
+import { type NationChoice, longDate, nationChoices, nationName, ordinal, positionColor, ratingColor } from '../lib/format'
 import ClubLink from './ClubLink'
 import NationPicker from './NationPicker'
 import Overall from './Overall'
@@ -184,14 +185,22 @@ function Headlines({ headlines }: { headlines: Headline[] }) {
   )
 }
 
-/** The nations the summary has something to say about: England first, then by name. */
-function nationsOf(final: SeasonFinal): { code: string; name: string }[] {
+/** The nations the summary has something to say about, in the order the pickers list them (the
+ * server's ranking when it has sent it, else the big five first and then by name). Each comes with
+ * the names of the leagues and cups the summary mentions for it, which the country search matches. */
+function nationsOf(final: SeasonFinal, ranked?: Nation[]): (NationChoice & { leagues: { name: string }[] })[] {
   const review = final.review
   if (!review) return []
-  const codes = new Set([...review.honours, ...review.promoted, ...review.relegated].map((x) => x.nation).filter(Boolean))
-  return [...codes]
-    .map((code) => ({ code, name: nationName(code) }))
-    .sort((a, b) => Number(a.code !== 'ENG') - Number(b.code !== 'ENG') || a.name.localeCompare(b.name))
+  const names = new Map<string, Set<string>>()
+  const add = (nation: string, name: string) => {
+    if (nation) names.set(nation, (names.get(nation) ?? new Set<string>()).add(name))
+  }
+  for (const h of review.honours) add(h.nation, h.name)
+  for (const m of [...review.promoted, ...review.relegated]) {
+    add(m.nation, m.from_league)
+    add(m.nation, m.to_league)
+  }
+  return nationChoices(names.keys(), ranked).map((n) => ({ ...n, leagues: [...(names.get(n.code) ?? [])].map((name) => ({ name })) }))
 }
 
 /** The season's end as sections: the user's finish, then (one country at a time, the user's to
@@ -211,9 +220,9 @@ export default function SeasonSummary({
 }) {
   const [picked, setPicked] = useState<string | null>(null)
   const review = final.review
-  const nations = nationsOf(final)
+  const nations = nationsOf(final, useNations().data)
   const nation = picked ?? (nations.some((n) => n.code === userNation) ? userNation : nations[0]?.code) ?? ''
-  const country = nationName(nation)
+  const country = nations.find((n) => n.code === nation)?.name ?? nationName(nation)
   const news = final.news ?? []
   const headlines = review?.headlines ?? []
 
@@ -227,19 +236,12 @@ export default function SeasonSummary({
       <Finish final={final} />
       {review && (
         <>
-          <Group justify="space-between" wrap="wrap">
+          <Stack gap="xs">
             <Text size="sm" c="dimmed">
               {review.next_season ? `The ${review.next_season} season begins.` : `The ${review.season} season is over.`}
             </Text>
-            {nations.length > 1 && (
-              <Group gap="xs">
-                <Text size="sm" c="dimmed">
-                  Country
-                </Text>
-                <NationPicker nations={nations} value={nation} onChange={setPicked} />
-              </Group>
-            )}
-          </Group>
+            <NationPicker nations={nations} value={nation} onChange={setPicked} home={userNation} />
+          </Stack>
           <Accordion multiple variant="separated" defaultValue={['champions', 'promoted', 'development']}>
             <Section value="champions" title={`Champions${country ? ` · ${country}` : ''}`}>
               <Champions honours={review.honours.filter((h) => h.nation === nation)} />

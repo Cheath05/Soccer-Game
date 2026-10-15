@@ -200,8 +200,9 @@ export const HELP_TOPICS: HelpTopic[] = [
     blocks: [
       [
         'League shows a table for any league in the game: pick a country, then a league. Zones are coloured for promotion, play-offs and relegation, and your club is in bold. In a top division the European places are in colour too: Champions League blue, Europa League orange, Conference League green (a stripe only for a place in a play-off round), with a key under the table. A finished season’s table shows where clubs actually went. A season picker shows past seasons.',
+        'Finding a country: your own country and England, Spain, Italy, Germany and France are buttons at the top; every other country is in the All countries box, listed by continent and strongest first, which finds a country by its name or by the name of one of its leagues or cups (accents don’t matter: try “Süper” or “Eliteserien”). Where the game has leagues on more than one continent, a continent filter beside the box narrows that list.',
         'Between seasons the League page keeps showing last season’s final table until the new season’s first league match.',
-        'Cups shows a country’s cups (yours to begin with), every round with its ties and results, what is still to come, and how your club is doing. Pick another country or cup, or a past season.',
+        'Cups shows a country’s cups (yours to begin with), every round with its ties and results, what is still to come, and how your club is doing. Pick another country (the same buttons and All countries box as on League) or cup, or a past season.',
       ],
     ],
   },

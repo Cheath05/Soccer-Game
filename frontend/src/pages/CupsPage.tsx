@@ -1,7 +1,7 @@
 import { Badge, Card, Group, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
-import { useCareer, useCup, useCups, useSeasons } from '../api/hooks'
+import { useCareer, useCup, useCups, useNations, useSeasons } from '../api/hooks'
 import type { CupRound, CupTie } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import NationPicker from '../components/NationPicker'
@@ -21,9 +21,9 @@ export default function CupsPage() {
   const [key, setKey] = useUrlState<string | null>('cup', null)
   const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
   const seasonId = seasonIdRaw === null ? null : String(seasonIdRaw)
-  // The countries with cups (England first, then by name), and the one shown: the one picked, or
-  // the user's club's if it has cups, or else the first.
-  const nations = groupByNation(allCups.map((c) => ({ key: c.key, tier: 1, nation: cupNation(c) })))
+  // The countries with cups (in the server's order: UEFA's ranking first), and the one shown: the
+  // one picked, or the user's club's if it has cups, or else the first.
+  const nations = groupByNation(allCups.map((c) => ({ key: c.key, name: c.name, tier: 1, nation: cupNation(c) })), useNations().data)
   const home = career?.competition ? competitionNation(career.competition) : undefined
   const nation = nationCode ?? (nations.some((n) => n.code === home) ? home : nations[0]?.code)
   const cups = allCups.filter((c) => cupNation(c) === nation)
@@ -51,26 +51,28 @@ export default function CupsPage() {
             </Text>
           )}
         </Title>
-        <Group>
-          {seasons.length > 1 && (
-            <Select
-              aria-label="Season"
-              w={130}
-              value={seasonId ?? String(seasons.find((s) => s.current)?.id ?? '')}
-              onChange={setSeasonId}
-              allowDeselect={false}
-              data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
-            />
-          )}
-          {nation && <NationPicker nations={nations} value={nation} onChange={pickNation} />}
-          {cups.length > 1 && (
-            <>
-              <SegmentedControl aria-label="Cup" visibleFrom="sm" value={active ?? ''} onChange={setKey} data={cupData} />
-              <Select aria-label="Cup" hiddenFrom="sm" w={190} value={active ?? ''} onChange={(value) => value && setKey(value)} allowDeselect={false} data={cupData} />
-            </>
-          )}
-        </Group>
+        {seasons.length > 1 && (
+          <Select
+            aria-label="Season"
+            w={130}
+            value={seasonId ?? String(seasons.find((s) => s.current)?.id ?? '')}
+            onChange={setSeasonId}
+            allowDeselect={false}
+            data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
+          />
+        )}
       </Group>
+      {(nations.length > 1 || cups.length > 1) && (
+        <Stack gap="xs">
+          {nation && <NationPicker nations={nations} value={nation} onChange={pickNation} home={home} />}
+          {cups.length > 1 && (
+            <Group>
+              <SegmentedControl aria-label="Cup" visibleFrom="sm" value={active ?? ''} onChange={setKey} data={cupData} />
+              <Select aria-label="Cup" hiddenFrom="sm" w="100%" value={active ?? ''} onChange={(value) => value && setKey(value)} allowDeselect={false} data={cupData} />
+            </Group>
+          )}
+        </Stack>
+      )}
 
       {cup && (
         <SimpleGrid cols={{ base: 1, sm: 3 }}>

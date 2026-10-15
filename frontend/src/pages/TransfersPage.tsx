@@ -1,8 +1,9 @@
 import { Alert, Anchor, Badge, Button, Card, Collapse, Group, Modal, NumberInput, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
+import type { ComboboxParsedItem, OptionsFilter } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useCareer, useSquad, useWorldLeagues } from '../api/hooks'
+import { useCareer, useNations, useSquad, useWorldLeagues } from '../api/hooks'
 import {
   type MarketPlayer,
   type OfferResult,
@@ -25,7 +26,7 @@ import OfferModal from '../components/OfferModal'
 import MarketOverview from '../components/MarketOverview'
 import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
-import { CURRENCIES, money, monthYear, shortDate, toEuros, useCurrency, wage } from '../lib/format'
+import { CURRENCIES, groupByNation, matchesSearch, money, monthYear, nationSearchText, shortDate, toEuros, useCurrency, wage } from '../lib/format'
 
 const POSITIONS = ['GK', 'CB', 'FB', 'DM', 'CM', 'AM', 'W', 'ST']
 
@@ -80,6 +81,20 @@ function SearchTab() {
   const currency = useCurrency()
   const { symbol } = CURRENCIES[currency]
   const leagues = useWorldLeagues().data ?? []
+  // The league box lists leagues under their country (the big five first, then the server's
+  // ranking) and finds one by its own name or its country's.
+  const countries = groupByNation(leagues, useNations().data)
+  const leagueData = countries.map((c) => ({ group: c.name, items: c.leagues.map((l) => ({ value: l.key, label: l.name })) }))
+  const countryText = new Map(countries.map((c) => [c.name, nationSearchText(c.code, c.name)]))
+  const leagueFilter: OptionsFilter = ({ options, search }) => {
+    const found: ComboboxParsedItem[] = []
+    for (const item of options) {
+      if (!('group' in item)) continue
+      const items = item.items.filter((l) => matchesSearch(`${countryText.get(String(item.group)) ?? ''} ${l.label}`, search))
+      if (items.length > 0) found.push({ group: item.group, items })
+    }
+    return found
+  }
   const navigate = useNavigate()
   // In the URL, so Back from a player's page brings the same form and the same results.
   const [form, setForm] = useUrlState<SearchFilters & { max_value_shown?: number }>('form', { min_overall: 60, max_overall: 99, max_age: 35 })
@@ -115,7 +130,9 @@ function SearchTab() {
           <NumberInput label={`Value up to (${symbol}M)`} value={form.max_value_shown ?? ''} onChange={(v) => set({ max_value_shown: v === '' ? undefined : Number(v) })} w={150} />
           <Select
             label="League"
-            data={leagues.map((l) => ({ value: l.key, label: l.name }))}
+            data={leagueData}
+            filter={leagueFilter}
+            nothingFoundMessage="No league found"
             value={form.league ?? null}
             onChange={(v) => set({ league: v ?? undefined })}
             clearable

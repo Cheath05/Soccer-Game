@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.64"
+  date: "2026-10-15"
+  title: "Finding a league, with many more countries coming"
+  changes:
+    - "Wherever you pick a country (League, Cups, the start page, the season summary): your own country and the big five are one tap away, and \"All countries\" finds the rest by country or league name (accents don't matter: \"super lig\" finds Turkey)."
+    - "Countries are listed by UEFA's ranking, grouped by continent, with a continent filter once the game has more than one."
+    - "The Transfers page's league filter is grouped by country and searchable too."
+
 - version: "1.63"
   date: "2026-10-15"
   title: "UEFA coefficients, the real way"

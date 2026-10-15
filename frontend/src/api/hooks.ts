@@ -20,6 +20,7 @@ import type {
   Health,
   LeagueOption,
   MatchReport,
+  Nation,
   PlayerDetail,
   PlayerSeason,
   SaveSlot,
@@ -59,6 +60,11 @@ export const useSaves = () => useQuery({ queryKey: ['saves'], queryFn: () => api
 
 export const useWorldLeagues = () =>
   useQuery({ queryKey: ['world-leagues'], queryFn: () => api.get<LeagueOption[]>('/world/leagues'), staleTime: Infinity })
+
+/** The countries with a league or a cup, with their continent and their place in the lists. The
+ * order follows the career's UEFA ranking, so it is fetched again whenever the game moves on. */
+export const useNations = () =>
+  useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })
 
 export const useCompetitions = () =>
   useQuery({ queryKey: ['competitions'], queryFn: () => api.get<Competition[]>('/competitions') })

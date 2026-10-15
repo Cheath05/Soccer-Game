@@ -5,7 +5,7 @@ import type { TableRow } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
 import { EUROPE_COLOR } from '../lib/competitionColors'
-import { OUTCOMES, longDate } from '../lib/format'
+import { OUTCOMES, competitionNation, longDate } from '../lib/format'
 import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
@@ -70,20 +70,25 @@ export default function LeaguePage() {
             </Text>
           )}
         </Title>
-        <Group>
-          {seasons.length > 1 && (
-            <Select
-              aria-label="Season"
-              w={130}
-              value={String(shownId ?? '')}
-              onChange={setSeasonId}
-              allowDeselect={false}
-              data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
-            />
-          )}
-          {competitions.data && <LeaguePicker leagues={competitions.data} value={active} onChange={setKey} />}
-        </Group>
+        {seasons.length > 1 && (
+          <Select
+            aria-label="Season"
+            w={130}
+            value={String(shownId ?? '')}
+            onChange={setSeasonId}
+            allowDeselect={false}
+            data={seasons.map((s) => ({ value: String(s.id), label: s.current ? `${s.label} (now)` : s.label }))}
+          />
+        )}
       </Group>
+      {competitions.data && (
+        <LeaguePicker
+          leagues={competitions.data}
+          value={active}
+          onChange={setKey}
+          home={career?.competition ? competitionNation(career.competition) : undefined}
+        />
+      )}
       {waiting && shownId === previous.id && (
         <Text size="sm" c="dimmed">
           Last season&apos;s final table

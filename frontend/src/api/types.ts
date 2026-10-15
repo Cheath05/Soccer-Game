@@ -31,6 +31,17 @@ export interface LeagueOption {
   clubs: ClubOption[]
 }
 
+// GET /api/world/nations (api/europe.py NationOut): a country with a league or a cup in the game, for the pickers.
+export interface Nation {
+  code: string // a nation code such as ENG
+  name: string // the game data's spelling ("Holland"); the app shows nationName(code) when it has a name of its own
+  confederation: string // UEFA, AFC, CONCACAF...
+  continent: string // Europe, Asia, North America, South America, Africa, Oceania
+  rank: number // 1 is listed first: UEFA's country ranking, then the other continents by their top league's money
+  uefa_rank: number | null
+  featured: boolean // the big five: always within one tap
+}
+
 export interface SaveSlot {
   slot: number
   has_save: boolean

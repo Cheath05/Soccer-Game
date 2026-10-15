@@ -13,6 +13,8 @@ from typing import Any
 import pytest
 from sqlalchemy import Engine, select
 
+from footsim.api.queries import _club_names, _competitions, cup_runs
+from footsim.api.season_review import _continental_titles, season_final
 from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
@@ -168,3 +170,27 @@ def test_european_matches_have_room_all_season(two_seasons: tuple[Engine, World]
     assert not [g for g in gaps if g[0] < 2], [g for g in gaps if g[0] < 2][:10]
     tight = [g for g in gaps if g[0] <= REST_DAYS]
     assert len(tight) <= 0.02 * len(gaps), (len(tight), len(gaps), tight[:10])
+
+
+def test_the_season_summary_leads_with_the_european_winners(
+        two_seasons: tuple[Engine, World]) -> None:
+    engine, world = two_seasons
+    with engine.connect() as conn:
+        heads = _continental_titles(conn, world, 1, _competitions(conn), _club_names(conn))
+    assert [h.competition for h in heads] == [
+        "UEFA Champions League", "UEFA Europa League", "UEFA Conference League"]
+    assert all(h.kind == "continental_title" and h.text.endswith(f"win the {h.competition}.")
+               and (h.detail or "").startswith("They beat ") for h in heads)
+
+
+def test_a_european_clubs_season_end_and_history(two_seasons: tuple[Engine, World]) -> None:
+    """The season summary and a club's cup runs read past European ties (they once broke)."""
+    engine, world = two_seasons
+    with engine.connect() as conn:
+        winner = conn.execute(select(cup_tie.c.winner_club_id).where(
+            cup_tie.c.season_id == 1, cup_tie.c.competition_id == _comp_id(engine, "UCL"),
+            cup_tie.c.round == KNOCKOUT + 4)).scalar_one()
+        runs = cup_runs(conn, world, winner)
+        final = season_final(conn, world, winner, [])
+    assert all(r.key in world.defs.cups for season_runs in runs.values() for r in season_runs)
+    assert final is not None

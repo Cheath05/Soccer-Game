@@ -33,11 +33,13 @@ from footsim.persistence.schema import (
     contract,
     cup_tie,
     league_final,
+    nation,
     player_season_overall,
     season,
 )
 from footsim.scouting.estimates import OWN_CLUB_KNOWLEDGE, potential_label, potential_range
 from footsim.world.context import World
+from footsim.world.europe.common import KNOCKOUT, competitions_by_rank
 from footsim.world.meta import read_meta
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import display_name
@@ -95,8 +97,8 @@ def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Ro
 # --- headlines ------------------------------------------------------------------------
 #
 # Notable results, found in the database rather than in the news text. Each kind is a builder
-# in ``_HEADLINE_BUILDERS``; a continental competition (the Champions League, once it exists)
-# is one more builder returning kind "continental_title" headlines.
+# in ``_HEADLINE_BUILDERS``; the European competitions' winners come first
+# (kind "continental_title").
 
 # A country's top flight makes the headlines when the country has at least this many
 # divisions in the game: the big leagues, not a one-division country's only league.
@@ -176,8 +178,36 @@ def _cup_upsets(conn: Connection, world: World, season_id: int, comps: dict[int,
     return sorted(headlines, key=lambda h: (h.nation != "ENG", h.nation, h.competition))
 
 
+def _continental_titles(conn: Connection, world: World, season_id: int,
+                        comps: dict[int, Row[Any]], names: dict[int, str]) -> list[HeadlineOut]:
+    """The European competitions' winners, the Champions League first, with the beaten
+    finalists."""
+    comp_ids = {c.key: cid for cid, c in comps.items()}
+    country = {r.id: r.code for r in conn.execute(
+        select(club.c.id, nation.c.code).join(nation, nation.c.id == club.c.nation_id))}
+    headlines = []
+    for comp in competitions_by_rank(world):
+        if comp.key not in comp_ids:
+            continue
+        final = conn.execute(select(cup_tie).where(
+            cup_tie.c.season_id == season_id, cup_tie.c.competition_id == comp_ids[comp.key],
+            cup_tie.c.round == KNOCKOUT + len(comp.knockout) - 1,
+            cup_tie.c.winner_club_id.is_not(None))).first()
+        if final is None:
+            continue
+        winner = final.winner_club_id
+        beaten = final.club_b_id if winner == final.club_a_id else final.club_a_id
+        headlines.append(HeadlineOut(
+            kind="continental_title", text=f"{names[winner]} win the {comp.name}.",
+            club=ClubRef(id=winner, name=names[winner]), competition=comp.name,
+            nation=country.get(winner, ""),
+            detail=f"They beat {names[beaten]} in the final." if beaten else None))
+    return headlines
+
+
 _HEADLINE_BUILDERS: list[Callable[[Connection, World, int, dict[int, Row[Any]], dict[int, str]],
-                                  list[HeadlineOut]]] = [_league_titles, _cup_upsets]
+                                  list[HeadlineOut]]] = [_continental_titles, _league_titles,
+                                                         _cup_upsets]
 
 
 def _headlines(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],

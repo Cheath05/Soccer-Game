@@ -118,6 +118,17 @@ def _market_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _europe_report(args: argparse.Namespace) -> int:
+    from footsim.calibration.europe_report import europe_report
+    from footsim.world.context import get_world
+
+    report = europe_report(args.world, get_world(), args.seed, args.seasons)
+    print(report)
+    if args.out:
+        args.out.write_text(report + "\n")
+    return 0
+
+
 def _cross_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.cross_engine import compare_engines
     from footsim.world.context import get_world
@@ -281,6 +292,14 @@ def main(argv: list[str] | None = None) -> int:
     market.add_argument("--until", default="2026-09-03", help="simulate up to this day")
     market.add_argument("--out", type=Path, help="also write the report here")
     market.set_defaults(func=_market_report)
+
+    europe = sub.add_parser("europe-report",
+                            help="run watch-only seasons with the European competitions on")
+    europe.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
+    europe.add_argument("--seed", type=int, default=5)
+    europe.add_argument("--seasons", type=int, default=2)
+    europe.add_argument("--out", type=Path, help="also write the report here")
+    europe.set_defaults(func=_europe_report)
 
     sim = sub.add_parser("sim-season", help="simulate whole seasons without a user club")
     sim.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))

@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { useAdvance, useCareer, useSaveGame } from '../api/hooks'
+import { useAdvance, useCareer, useEuropeList, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
 import { useDevice } from '../lib/device'
 import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
@@ -25,6 +25,7 @@ const NAV = [
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
   { to: '/cups', label: 'Cups' },
+  { to: '/europe', label: 'Europe' },
   { to: '/start', label: 'Save / Load' },
 ] as const
 
@@ -33,6 +34,8 @@ export default function Layout() {
   const { phone } = useDevice()
   const career = useCareer()
   const advance = useAdvance()
+  // Europe is in the menu only for a game that has the European competitions.
+  const hasEurope = useEuropeList(career.data !== undefined).data?.enabled === true
   const saveGame = useSaveGame()
   const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
@@ -153,7 +156,7 @@ export default function Layout() {
         <Box hiddenFrom="md" mb="xs">
           <ClubSearch onPick={close} />
         </Box>
-        {NAV.map((item) => (
+        {NAV.filter((item) => item.to !== '/europe' || hasEurope).map((item) => (
           <div key={item.to}>
             {item.to === '/start' && data && (
               <NavLink

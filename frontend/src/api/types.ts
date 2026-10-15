@@ -654,3 +654,62 @@ export interface Changelog {
   version: string // the version this server runs ("unknown" without git)
   entries: ChangelogEntry[] // newest first
 }
+
+// The European competitions (api/europe.py).
+export interface EuropeSummary {
+  key: string // UCL, UEL or UECL
+  name: string
+  short_name: string
+  stage: string | null // what is under way or next: "League phase, matchday 3 of 8", "Won by X"
+  user_status: string | null // your club: "In the league phase: 5th", "Out in the round of 16", "Winners"
+  winner: ClubRef | null
+}
+
+export interface EuropeList {
+  enabled: boolean // whether this game has the European competitions
+  competitions: EuropeSummary[] // in rank order: Champions, Europa, Conference
+}
+
+export type EuropeZone = 'round_of_16' | 'playoff' | 'out'
+
+export interface EuropeTableRow extends Omit<TableRow, 'zone' | 'outcome'> {
+  zone: EuropeZone
+  outcome?: Outcome | null
+}
+
+export interface EuropeMatchday {
+  round: number // 1..8 (or 1..6)
+  dates: string[]
+  fixtures: Fixture[]
+}
+
+export interface EuropeLeaguePhase {
+  drawn: boolean
+  final: boolean // every matchday played: the table is the final one
+  matches: number // each club's
+  to_round_of_16: number // the places going straight through
+  to_playoff: [number, number] // the places going into the knockout play-off
+  table: EuropeTableRow[]
+  matchdays: EuropeMatchday[]
+}
+
+export interface EuropeEntry {
+  club: ClubRef
+  nation: string // a nation code such as ENG
+  how: string // how it got its place: "4th in the Premier League", "FA Cup winners"
+  stage: 'league_phase' | 'qualifying'
+  pot: number | null // set at the draw
+  position: number | null
+}
+
+export interface Europe {
+  key: string
+  name: string
+  short_name: string
+  season: string
+  qualifying: CupRound
+  league_phase: EuropeLeaguePhase
+  knockout: CupRound[] // play-off, round of 16, quarter-finals, semi-finals, final
+  entries: EuropeEntry[]
+  winner: ClubRef | null
+}

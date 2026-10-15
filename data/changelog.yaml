@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.57"
+  date: "2026-10-15"
+  title: "The Europe page (arrives with the competitions)"
+  changes:
+    - "A Europe page for the Champions League, Europa League and Conference League: the league-phase table with its zones, every matchday, the knockout bracket to the final, the summer play-off round and who qualified how. It appears in the menu once the European competitions are switched on."
+    - "The season summary leads with the European winners."
+    - "Fix: the season summary no longer fails for a club with European ties on record."
+
 - version: "1.56"
   date: "2026-10-15"
   title: "Clubs' recent transfers"

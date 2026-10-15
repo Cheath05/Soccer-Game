@@ -206,6 +206,22 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'europe',
+    title: 'European competitions',
+    summary: 'The Champions League, Europa League and Conference League: who qualifies, the league phase, the knockouts and the prize money.',
+    blocks: [
+      'Europe in the menu (it only appears in a game that has the European competitions) shows the Champions League, the Europa League and the Conference League. It opens on the one your club is in this season, and has a season picker for past ones.',
+      [
+        'Qualifying: places go by league finish, to domestic cup winners (a Europa League place) and to the holders. A club is in the highest competition it earns, and its lower place passes to the next club. Countries without a league in the game send clubs by reputation. A short summer play-off round (two legs, in August) fills the last places: the winners go into the league phase, and the losers drop down a competition, from the Champions League to the Europa League and from the Europa League to the Conference League. The Conference League’s losers are out.',
+        'League phase: 36 clubs in one table. In the Champions League and Europa League each club plays 8 matches, against two clubs from each of four pots (one at home, one away); in the Conference League each plays 6, against one club from each of six pots. Pots follow the clubs’ European record over five seasons (the Champions League holders are always in pot 1), and nobody plays a club from their own country. The matchday picker shows each matchday’s fixtures and scores; click a played match for its report.',
+        'After the league phase: the top 8 go straight to the round of 16, and 9th to 24th meet in a two-legged knockout play-off for the other eight places. The rest are out. The round of 16, quarter-finals and semi-finals are two legs, and the final is a single match at a neutral ground. There is no away-goals rule: extra time and penalties decide a tie that is still level.',
+        'Prize money: a starting fee, a payment for each league-phase win and draw, a payment for each knockout round a club reaches, and a bonus for the winners. The Champions League pays most. It is a bonus on top of a club’s normal income.',
+        'Next season: the Champions League and Europa League winners go into the Champions League league phase, and the Conference League winner into the Europa League’s. Their own league places pass to the next clubs.',
+        'The page also lists the summer play-off round and everyone who entered, with how they qualified, grouped by pot once the draw is made.',
+      ],
+    ],
+  },
+  {
     id: 'clubs',
     title: 'Other clubs and club history',
     summary: 'Club search, club pages and your club’s history.',

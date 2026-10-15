@@ -144,7 +144,7 @@ function Moves({ moves, userClubId, none, promotion }: { moves: ClubMove[]; user
 const HEADLINE_STYLE: Record<string, { label: string; color: string }> = {
   league_title: { label: 'Champions', color: 'yellow' },
   cup_upset: { label: 'Cup upset', color: 'grape' },
-  continental_title: { label: 'Europe', color: 'blue' },
+  continental_title: { label: 'Europe', color: 'yellow' },
 }
 
 /** The season's notable results (the major leagues' champions, cup upsets), as highlights. */

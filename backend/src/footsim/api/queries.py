@@ -368,8 +368,8 @@ def cup_runs(conn: Connection, world: World, club_id: int) -> dict[int, list[Cup
         by_cup[(t.season_id, t.competition_id)].append(t)
     runs: dict[int, list[CupRunOut]] = defaultdict(list)
     for (season_id, comp_id), cup_ties in sorted(by_cup.items()):
-        comp = comps[comp_id]
-        if comp.key in world.defs.cups:
+        comp = comps.get(comp_id)  # the domestic cups' ties only, not the European ones
+        if comp is not None and comp.key in world.defs.cups:
             run = _cup_run(world, comp.key, comp.name, club_id, cup_ties)
             if run is not None:
                 runs[season_id].append(run)

@@ -29,7 +29,26 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 15 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): clubs' recent transfers, and the release dialog** (the commit that adds this line; v1.56). The two stale strings the What's new agent found.
+- **Latest checkpoint (15 Oct): W6 E7 and E8, the Europe page and the measurement** (the commit that adds this line; v1.57). Europe is still switched off here; the next commit switches it on.
+  - **API** (`api/europe.py`, now routed): `GET /api/europe` and `GET /api/europe/{key}?season=`.
+  - **Season summary:** `_continental_titles` headlines (the UCL first), and `cup_runs` skips European ties, which made `season_final` raise `KeyError` for any European club. The Europe page agent found it.
+  - **The Europe page** (a Sonnet agent, reviewed here: `pages/EuropePage.tsx`, `components/europe/`):
+    - a competition picker (defaulting to the user's), stage and status, and past seasons;
+    - the league-phase table with zones and the user highlighted, and matchdays defaulting to the next;
+    - the knockout bracket (stacked on a phone);
+    - qualifying and entrants (by pot, with how each qualified);
+    - a "Europe" menu item only when the game has them;
+    - a help topic.
+    - Checked through a whole season and into the next at 1440 and 390 touch, against a config copy with Europe on.
+  - **E8, `footsim europe-report`** (`calibration/europe_report.py`): watch-only seasons with Europe on. Seed 5, two seasons (`reports/europe/seed5-2seasons.md`, 212 s):
+    - **UCL league-phase goals** 3.28 and 2.94 a match (real: a little over 3); UEL and UECL 2.8–3.0. Home wins 45–50% in the league phases.
+    - **UCL winners:** Arsenal (#5 by reputation), then Real Madrid (#2). The 8 strongest made the last 16: 8 of 8, then 7.
+    - **UEL and UECL winners** from the strong middle (Rennes, Mainz, Brentford, Osasuna).
+    - **Prize money** about €1.35B a season in the UCL; ledger balances match.
+    - **Room:** never back to back; 2% of gaps beside European matches with one clear day.
+  - **Checks:** the full suite passes (871 s) with the season test's new headline and season-end checks; `npm run build`.
+  - **Next:** switch Europe on (`enabled: true`) with a full suite, then the user plays it.
+- **Earlier checkpoint (15 Oct): clubs' recent transfers, and the release dialog** (the commit that adds this line; v1.56). The two stale strings the What's new agent found.
   - **`queries._recent_transfers`:** a club page's "Recent transfers" (always empty since before W4) now lists its last 5 moves in and out from the `transfer` table, in words and in the user's currency: "Signed X from Y for $12M (Jul 2026)", "Sold…", "X on loan from…", "X loaned to…", "Released X". Loans' returns are left out.
   - **The player page's Release dialog** no longer says released players can't be signed: any club can sign a free agent; those nobody signs leave the game.
   - **Checks:** `test_clubs.py` (a new test: a sale, a loan and a loan's return seen from both clubs).

@@ -14,6 +14,8 @@ import type {
   Competition,
   Cup,
   CupSummary,
+  Europe,
+  EuropeList,
   Fixture,
   Health,
   LeagueOption,
@@ -74,6 +76,18 @@ export const useCup = (key: string | undefined, season?: number | null) =>
   useQuery({
     queryKey: ['cup', key, season ?? null],
     queryFn: () => api.get<Cup>(`/cups/${key}${season ? `?season=${season}` : ''}`),
+    enabled: !!key,
+  })
+
+/** Whether this game has the European competitions, and what is on this season. Only asked once
+ * there is a career; a server that predates them answers 404, which reads as "no Europe". */
+export const useEuropeList = (enabled = true) =>
+  useQuery({ queryKey: ['europe'], queryFn: () => api.get<EuropeList>('/europe'), enabled, retry: false })
+
+export const useEurope = (key: string | undefined, season?: number | null) =>
+  useQuery({
+    queryKey: ['europe', key, season ?? null],
+    queryFn: () => api.get<Europe>(`/europe/${key}${season ? `?season=${season}` : ''}`),
     enabled: !!key,
   })
 

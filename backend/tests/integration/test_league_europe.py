@@ -28,18 +28,17 @@ def test_a_top_league_shows_its_european_places(client: TestClient) -> None:
     table = client.get("/api/competitions/ENG1/table").json()
     assert [(p["competition"], p["stage"], p["how"]) for p in table["europe_places"]] == [
         ("UCL", "league_phase", "1st–4th"),
-        ("UEL", "league_phase", "5th"),
         ("UEL", "league_phase", "FA Cup winners"),
-        ("UECL", "league_phase", "6th"),
-        ("UECL", "qualifying", "7th"),
+        ("UEL", "league_phase", "5th"),
+        ("UECL", "qualifying", "Carabao Cup winners"),
     ]
     assert table["europe_places"][0]["name"] == "Champions League"
+    assert table["europe_places"][-1]["round_name"] == "Play-off round (Main Path)"
     assert not table["europe_actual"]
     marks = {r["position"]: (r["europe"], r["europe_stage"]) for r in table["rows"]}
     assert all(marks[p] == ("UCL", "league_phase") for p in range(1, 5))
-    assert marks[5] == ("UEL", "league_phase") and marks[6] == ("UECL", "league_phase")
-    assert marks[7] == ("UECL", "qualifying")
-    assert all(marks[p] == (None, None) for p in range(8, 21))
+    assert marks[5] == ("UEL", "league_phase")
+    assert all(marks[p] == (None, None) for p in range(6, 21))
 
 
 def test_a_smaller_country_and_a_lower_league(client: TestClient) -> None:

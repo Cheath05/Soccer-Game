@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 from sqlalchemy import Connection, Row, bindparam, func, or_, select, text
 
+from footsim.api.honours import european_runs, treble, trophy_cabinet
 from footsim.api.schemas import (
     AttributeOut,
     CareerOut,
@@ -94,8 +95,9 @@ from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
-from footsim.world.europe.access import Place, country_places
-from footsim.world.europe.common import stage_name
+from footsim.world.europe.common import competitions_by_rank, stage_name
+from footsim.world.europe.places import CountryPlace, country_places
+from footsim.world.europe.qualifying import Node, node_of, round_name
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
 from footsim.world.season import active_leagues, season_calendar, standings
@@ -325,9 +327,10 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
             r.position = position
     outcomes = {r.club_id: r.outcome for r in conn.execute(select(league_final).where(
         league_final.c.season_id == season_id, league_final.c.competition_id == comp.id))}
-    places = _europe_places(conn, world, league) if league.tier == 1 else []
-    by_rank = {rank: (p.competition, p.stage) for p in places if p.ranks
-               for rank in range(p.ranks[0], p.ranks[1] + 1)}
+    places = _europe_places(conn, world, league, season_id) if league.tier == 1 else []
+    by_rank = {rank: (p.competition, "league_phase" if p.round == "LP" else "qualifying")
+               for p in places if p.positions
+               for rank in range(p.positions[0], p.positions[1] + 1)}
     went = _went_to_europe(conn, world, season_id, [r.club_id for r in ordered]) if (
         places and outcomes) else {}
 
@@ -353,25 +356,38 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
                     first_match=first_match, rows=rows,
                     europe_places=[EuropePlaceOut(
                         competition=p.competition,
-                        name=world.defs.continental[p.competition].short_name, stage=p.stage,
-                        how=_place_how(world, p)) for p in places],
+                        name=world.defs.continental[p.competition].short_name,
+                        stage="league_phase" if p.round == "LP" else "qualifying",
+                        how=_place_how(world, p), round=p.round,
+                        round_name=_round_words(world, p)) for p in places],
                     europe_actual=bool(went))
 
 
-def _europe_places(conn: Connection, world: World, league: LeagueDef) -> list[Place]:
-    """A top league's European places, when the game has the European competitions."""
+def _europe_places(conn: Connection, world: World, league: LeagueDef, season_id: int
+                   ) -> list[CountryPlace]:
+    """A top league's European places for the season after ``season_id`` (what its table
+    earns), when the game has the European competitions."""
     on = world.defs.europe.enabled or conn.execute(
         select(continental_entry.c.id)).first() is not None
-    return country_places(world, league.nation) if on else []
+    return country_places(conn, world, league.nation, season_id + 1) if on else []
 
 
-def _place_how(world: World, place: Place) -> str:
+def _place_how(world: World, place: CountryPlace) -> str:
     if place.cup is not None:
         cup = world.defs.cups.get(place.cup)
         return f"{cup.name if cup else 'Cup'} winners"
-    assert place.ranks is not None
-    first, last = place.ranks
-    return ordinal(first) if first == last else f"{ordinal(first)}–{ordinal(last)}"
+    assert place.positions is not None
+    first, last = place.positions
+    how = ordinal(first) if first == last else f"{ordinal(first)}–{ordinal(last)}"
+    return f"{how} (European Performance Spot)" if place.performance_spot else how
+
+
+def _round_words(world: World, place: CountryPlace) -> str:
+    """Where a place enters, in words: "League phase", "Second qualifying round (Champions
+    Path)"."""
+    if place.round == "LP":
+        return "League phase"
+    return round_name(world, Node(place.competition, place.round, place.path))
 
 
 def _went_to_europe(conn: Connection, world: World, season_id: int, clubs: list[int]
@@ -385,7 +401,11 @@ def _went_to_europe(conn: Connection, world: World, season_id: int, clubs: list[
             continental_entry.c.season_id == season_id + 1,
             continental_entry.c.club_id.in_(clubs))):
         kind, _, origin = e.route.partition(":")
-        if kind == "dropped" and origin in world.defs.continental:
+        if e.entered:  # where it started (W7)
+            start = node_of(e.entered)
+            went[e.club_id] = (start.competition, "league_phase" if start.round == "LP"
+                               else "qualifying")
+        elif kind == "dropped" and origin in world.defs.continental:
             went[e.club_id] = (origin, "qualifying")
         else:
             went[e.club_id] = (keys[e.competition_id], e.stage)
@@ -521,11 +541,16 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
     comps = _competitions(conn)
     labels = {r.id: r.label for r in conn.execute(select(season))}
     managed = club_id == meta.user_club_id
+    top_europe = next((c.key for c in competitions_by_rank(world)), None)
 
     def competition_of(comp_id: int) -> CompetitionOut:
         return _competition_out(world, comps[comp_id])
 
     runs = cup_runs(conn, world, club_id)
+    europe = european_runs(conn, world, club_id)
+    trebles = {sid: found for sid, season_runs in europe.items()
+               if any(r.won and r.key == top_europe for r in season_runs)
+               and (found := treble(conn, world, sid)) is not None and found.club_id == club_id}
     rows: list[ClubSeasonOut] = []
     finals = conn.execute(select(league_final).where(league_final.c.club_id == club_id)
                           .order_by(league_final.c.season_id.desc())).all()
@@ -540,14 +565,18 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
             position=mine.position if any(r.played for r in table_rows) else None,
             played=mine.played, won=mine.won, drawn=mine.drawn, lost=mine.lost,
             goals_for=mine.goals_for, goals_against=mine.goals_against, points=mine.points,
-            outcome=None, final=False, managed=managed, cups=runs.get(meta.season_id, [])))
+            outcome=None, final=False, managed=managed, cups=runs.get(meta.season_id, []),
+            europe=europe.get(meta.season_id, [])))
     for f in finals:
         rows.append(ClubSeasonOut(
             season_id=f.season_id, season=labels[f.season_id],
             competition=competition_of(f.competition_id), position=f.position,
             played=f.played, won=f.won, drawn=f.drawn, lost=f.lost, goals_for=f.goals_for,
             goals_against=f.goals_against, points=f.points, outcome=f.outcome, final=True,
-            managed=managed, cups=runs.get(f.season_id, [])))
+            managed=managed, cups=runs.get(f.season_id, []), europe=europe.get(f.season_id, []),
+            treble=f.season_id in trebles,
+            treble_trophies=trebles[f.season_id].trophies if f.season_id in trebles else []))
+
     def promoted(f: Row[Any]) -> bool:  # a lower league's champions go up too
         return f.outcome in ("promoted", "playoff_winner") or (
             f.outcome == "champion" and (comps[f.competition_id].tier or 1) > 1)
@@ -557,6 +586,11 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
         titles=sum(f.outcome == "champion" for f in finals),
         promotions=sum(promoted(f) for f in finals),
         relegations=sum(f.outcome == "relegated" for f in finals),
+        trophies=trophy_cabinet(
+            world, labels, [(f.season_id, comps[f.competition_id].key, comps[f.competition_id].name)
+                            for f in finals if f.outcome == "champion"], runs, europe),
+        treble_seasons=[r.season for r in reversed(rows) if r.treble],
+        european_titles=sum(run.won for season_runs in europe.values() for run in season_runs),
     )
 
 

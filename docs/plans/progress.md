@@ -35,7 +35,38 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): W7 A1, the country picker** (the commit that adds this line; v1.64). A Sonnet agent built it; reviewed here.
+- **Latest checkpoint (15 Oct): W7 A3 and A4, UEFA's access list and the real qualifying rounds; plus European honours, the Treble and the knockout bracket** (the commit that adds this line; v1.66). It is one commit because the user's two requests during A4 (honours and the Treble; a bracket) were built by agents in the same files (`queries.py`, `schemas.py`, `EuropePage.tsx`).
+  - **A3 places** (`world/europe/places.py`; `europe/access_list.yaml` replaces `access.yaml`):
+    - UEFA's 2024-27 access list by ranking position, with Russia removed (54 associations).
+    - The ranking that applies to a season is the one from two seasons back. The two countries with the best last season get a European Performance Spot.
+    - Holders: a holder already in through its league leaves the holders' place to be filled from a named path (UEFA's 2024+ rule).
+    - Domestic places pass down the table; England's 6th place goes to the EFL Cup winners (`overrides`).
+  - **First season from the real 2025-26** (`europe/season_before.yaml`): final tables, cup winners and UEFA holders for 18 countries, from research by agents with sources, mapped to the game's club names by hand (aliases checked). Season 1's entries come out as UEFA's real 2026-27 ones:
+    - England's top 4, with Liverpool on the Performance Spot;
+    - PSG in through the French league, so Shakhtar takes the holders' place, as UEFA did;
+    - Crystal Palace in the Europa League as Conference League holders.
+  - **A4 qualifying** (`world/europe/qualifying.py`):
+    - Q1, Q2, Q3 and the play-off, in paths, numbered -3 to 0. Losers drop between competitions as in the access list's `nodes`.
+    - **Planning:** vacancies are filled by the best club by coefficient below in the same path. Then `balance`: an odd round sends its best club up a round (UEFA's way), or takes two from below, or gives a bye. Then each league phase is topped up to 36, and if one is still short, the next clubs of the best-ranked countries fill it (old saves and countries without clubs).
+    - **Draws:** a round is drawn once every round feeding it is decided. The draw keeps countries and prohibited pairs apart (Kuhn matching, relaxed in steps).
+    - **Money:** qualifying money is paid when a tie is settled.
+    - **Speed:** cached structure and a state snapshot each day.
+    - **Schema v20:** `continental_entry.entry_round`, `path`, `entered`, `came_from`, and stage `out`; `cup_tie.path`.
+    - Calendar: real 2026-27 qualifying dates.
+  - **API and UI:**
+    - `qualifying_rounds` and entry details on the Europe page;
+    - the Rankings view (Sonnet agent);
+    - league-table keys name the round (`country_places` by the coming season's ranking);
+    - a knockout bracket (Sonnet agent: `components/europe/Bracket.tsx` and `bracketModel.ts`).
+    - European honours and the Treble (Sonnet agent: `api/honours.py`, club history, a season summary headline, `components/EuropeHonours.tsx`). The Treble is the top league, the country's European cup place cup, and the UCL in one season.
+  - **Checks:**
+    - unit tests: `test_europe_qualifying_plan` (every round at UEFA's 2026-27 size with all 54 countries; the holders' cascade gives UCL Q1 28 and Q2 24, as UEFA's real 2026-27), `test_europe_defs`, `test_europe_ranking`;
+    - integration: `test_europe_qualifying` (rules on made-up tables, and August on the real world: three league phases of 36, every tie decided, drops between competitions), `test_europe_league_phase`, `test_europe_season`, `test_league_europe`, `test_honours`;
+    - the full suite; `npm run build` and lint; the agents' browser checks at 1440 and 390.
+  - **Until A6** (the 36 new leagues), qualifying is thin: 28 countries have no clubs, so their places pass to others and the league phases are topped up from the best-ranked countries.
+  - **A5 research is complete**, all 36 countries: `scratchpad/research/r1-r6.yaml`, to commit as config in A6. Andorra is only partly verified: one club is unidentified ("Andorra"), and the sources disagree on 2025-26 relegation.
+  - **Next:** A6, the world build: the new leagues, Transfermarkt squads, generated squads, rating models. Then A7 measurement and A8.
+- **Earlier checkpoint (15 Oct): W7 A1, the country picker** (v1.64). A Sonnet agent built it; reviewed here.
   - **API:** `useNations()` reads `GET /api/world/nations` (from A2).
   - **`NationPicker`** (used by LeaguePicker, CupsPage and SeasonSummary):
     - chips for the user's country and the big five;

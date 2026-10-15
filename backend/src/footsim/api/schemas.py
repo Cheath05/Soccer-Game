@@ -91,6 +91,8 @@ class CupRoundOut(BaseModel):
     legs: int
     drawn: bool  # False: not drawn yet
     ties: list[CupTieOut]
+    round: str | None = None  # a European qualifying round: Q1, Q2, Q3 or PO
+    path: str | None = None  # and its path: champions, league or main
 
 
 class CupOut(BaseModel):
@@ -121,6 +123,27 @@ class CupRunOut(BaseModel):
     out: bool  # knocked out (False while still in it)
 
 
+class EuropeRunOut(BaseModel):
+    """How far a club went in one European competition in one season."""
+
+    key: str  # UCL | UEL | UECL
+    name: str
+    short_name: str
+    reached: str  # "Second qualifying round", "League phase (14th)", "Semi-final", "Winners"
+    won: bool
+    out: bool  # knocked out, or finished outside the places that go on (False while still in it)
+    position: int | None = None  # where it finished the league phase
+
+
+class TrophyOut(BaseModel):
+    """One kind of trophy in a club's honours: how many times, and when."""
+
+    kind: str  # europe | league | cup
+    key: str
+    name: str
+    seasons: list[str]  # oldest first
+
+
 class TableRowOut(BaseModel):
     position: int
     club: ClubRef
@@ -146,6 +169,8 @@ class EuropePlaceOut(BaseModel):
     name: str  # "Champions League"
     stage: str  # league_phase | qualifying
     how: str  # "1st-4th", "5th", "FA Cup winners"
+    round: str = "LP"  # where it enters: LP (the league phase), PO, Q3, Q2 or Q1
+    round_name: str = "League phase"  # "Second qualifying round (Champions Path)"
 
 
 class TableOut(BaseModel):
@@ -188,6 +213,9 @@ class ClubSeasonOut(BaseModel):
     final: bool  # False for the season in progress
     managed: bool  # the user managed the club that season
     cups: list[CupRunOut] = []
+    europe: list[EuropeRunOut] = []  # its European competitions that season, top one first
+    treble: bool = False  # top league, main domestic cup and the Champions League, all won
+    treble_trophies: list[str] = []  # their names, when it did
 
 
 class ClubHistoryOut(BaseModel):
@@ -196,6 +224,9 @@ class ClubHistoryOut(BaseModel):
     titles: int  # league titles won in the career so far
     promotions: int
     relegations: int
+    trophies: list[TrophyOut] = []  # the honours by kind: European first, then league, then cups
+    treble_seasons: list[str] = []  # the seasons it won the Treble
+    european_titles: int = 0
 
 
 class CompetitionOut(BaseModel):
@@ -268,6 +299,7 @@ class SeasonFinalOut(BaseModel):
     points: int
     outcome: str | None  # champion | promoted | playoff_winner | relegated | playoffs | None
     cups: list["CupRunOut"] = []  # how far the club went in each cup
+    europe: list["EuropeRunOut"] = []  # and in each European competition
     review: "SeasonReviewOut | None" = None  # how it went everywhere else, and for the squad
     news: list[str] = []  # the other news from the sim: what the review doesn't cover
 
@@ -405,12 +437,13 @@ class HeadlineOut(BaseModel):
     """A notable result of the season, built from the database: the champions of a major
     league, a cup won by a far weaker club. Continental titles will be another kind."""
 
-    kind: str  # league_title | cup_upset (| continental_title, once those competitions exist)
+    kind: str  # treble | continental_title | league_title | cup_upset
     text: str
     club: ClubRef
     competition: str
     nation: str  # a nation code, or "" for a competition that has none
     detail: str | None = None
+    trophies: list[str] = []  # a Treble's three: the league, the cup, the Champions League
 
 
 class ClubMoveOut(BaseModel):

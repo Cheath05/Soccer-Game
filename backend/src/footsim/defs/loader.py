@@ -18,11 +18,12 @@ from footsim.defs.competitions import LeagueDef
 from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
 from footsim.defs.europe import (
-    AccessFile,
+    AccessListFile,
     AssociationCoefficientsFile,
     ContinentalDef,
     EuropeCalendarDef,
     EuropeSettingsDef,
+    SeasonBeforeFile,
     check_europe,
 )
 from footsim.defs.finance import FinanceDef, WageLevelsFile
@@ -92,10 +93,11 @@ class GameDefinitions:
     reputation_drift: ReputationDriftDef
     overall: OverallDef
     continental: dict[str, ContinentalDef]  # the European competitions, by key (UCL...)
-    europe_access: AccessFile
+    europe_access: AccessListFile  # UEFA's access list by ranking position
     europe: EuropeSettingsDef
     europe_calendars: dict[str, EuropeCalendarDef]
     association_coefficients: AssociationCoefficientsFile  # countries' real seasons, seeds
+    season_before: SeasonBeforeFile  # how the season before the career really finished
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -172,11 +174,12 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         reputation_drift=_parse(ReputationDriftDef, root / "rules" / "reputation.yaml"),
         overall=_parse(OverallDef, root / "overall.yaml"),
         continental=_load_dir(ContinentalDef, root / "europe" / "competitions"),
-        europe_access=_parse(AccessFile, root / "europe" / "access.yaml"),
+        europe_access=_parse(AccessListFile, root / "europe" / "access_list.yaml"),
         europe=_parse(EuropeSettingsDef, root / "europe" / "settings.yaml"),
         europe_calendars=_load_dir(EuropeCalendarDef, root / "europe" / "calendars"),
         association_coefficients=_parse(AssociationCoefficientsFile,
                                         root / "europe" / "association_coefficients.yaml"),
+        season_before=_parse(SeasonBeforeFile, root / "europe" / "season_before.yaml"),
     )
     _cross_validate(defs)
     return defs
@@ -211,7 +214,6 @@ def _cross_validate(defs: GameDefinitions) -> None:
     errors += check_europe(
         defs.continental, defs.europe_access, defs.europe_calendars, defs.europe,
         defs.finance.europe_prizes, set(defs.nations),
-        {league.nation for league in defs.leagues.values() if league.tier == 1},
         {cup.key: cup.nation for cup in defs.cups.values()})
 
     names = [n.name for n in defs.nations.values()]

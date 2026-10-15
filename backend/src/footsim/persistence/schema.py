@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 19  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 20  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -332,6 +332,7 @@ cup_tie = Table(
     Column("club_a_id", ForeignKey("club.id"), nullable=False),  # drawn first: at home first
     Column("club_b_id", ForeignKey("club.id")),  # None: a bye (club A is exempt)
     Column("winner_club_id", ForeignKey("club.id")),
+    Column("path", Text),  # a European qualifying round's path (v20): champions, league, main
     UniqueConstraint("season_id", "competition_id", "round", "tie"),
 )
 
@@ -471,7 +472,7 @@ continental_entry = Table(
     Column("season_id", ForeignKey("season.id"), nullable=False),
     Column("competition_id", ForeignKey("competition.id"), nullable=False),
     Column("club_id", ForeignKey("club.id"), nullable=False),
-    Column("stage", Text, nullable=False),  # league_phase | qualifying (until it's decided)
+    Column("stage", Text, nullable=False),  # qualifying | league_phase | out
     # How the place was earned: league:ENG:4, cup:FA_CUP, holder:UCL, fill:ENG,
     # qualifying (won the play-off round), dropped:UCL (lost the UCL's)
     Column("route", Text, nullable=False),
@@ -480,6 +481,13 @@ continental_entry = Table(
     # The country whose place it took (nation code; v19): its points count for that country's
     # coefficient. None in older saves: the club's league's country stands in.
     Column("association", Text),
+    # Where it is now (v20): the round (-3 Q1 ... 0 the play-off, 1 the league phase) and path
+    # (champions, league, main) of its competition; where it started (UCL:Q2:champions) and the
+    # round it dropped from into this competition, if it did (UCL:Q1:champions).
+    Column("entry_round", Integer),
+    Column("path", Text),
+    Column("entered", Text),
+    Column("came_from", Text),
     UniqueConstraint("season_id", "club_id", name="ux_continental_entry_club"),
 )
 

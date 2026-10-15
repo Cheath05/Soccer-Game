@@ -2,6 +2,7 @@ import { Badge, Card, Group, SimpleGrid, Text, Title } from '@mantine/core'
 
 import type { EuropeEntry } from '../../api/types'
 import ClubLink from '../ClubLink'
+import { PATH_ORDER, ROUND_ORDER, roundTitle } from './shared'
 
 interface Group_ {
   id: string
@@ -9,8 +10,9 @@ interface Group_ {
   entries: EuropeEntry[]
 }
 
-/** The entrants in groups: a pot at a time once the league phase is drawn, then those not in a pot
- * yet (waiting for the draw) and those still in the summer play-off round. */
+/** The entrants in groups: a pot at a time once the league phase is drawn, then those in the league
+ * phase without a pot yet (waiting for the draw), then those still in each qualifying round and
+ * path (first round first), and last those knocked out in qualifying. */
 function groups(entries: EuropeEntry[]): Group_[] {
   const out: Group_[] = []
   const pots = [...new Set(entries.filter((e) => e.stage === 'league_phase' && e.pot !== null).map((e) => e.pot as number))].sort((a, b) => a - b)
@@ -18,7 +20,18 @@ function groups(entries: EuropeEntry[]): Group_[] {
   const waiting = entries.filter((e) => e.stage === 'league_phase' && e.pot === null)
   if (waiting.length) out.push({ id: 'waiting', title: pots.length ? 'League phase, no pot' : 'In the league phase, awaiting the draw', entries: waiting })
   const qualifying = entries.filter((e) => e.stage === 'qualifying')
-  if (qualifying.length) out.push({ id: 'qualifying', title: 'In the play-off round', entries: qualifying })
+  for (const round of ROUND_ORDER) {
+    for (const path of [...PATH_ORDER, null]) {
+      const here = qualifying.filter((e) => e.round === round && (e.path ?? null) === path)
+      if (here.length) out.push({ id: `q-${round}-${path}`, title: `In the ${roundTitle(round, path).replace(/^./, (c) => c.toLowerCase())}`, entries: here })
+    }
+  }
+  // An entry from a server that sends no round still shows, in one group.
+  const placed = new Set(out.flatMap((g) => g.entries.map((e) => e.club.id)))
+  const rest = qualifying.filter((e) => !placed.has(e.club.id))
+  if (rest.length) out.push({ id: 'qualifying', title: 'In qualifying', entries: rest })
+  const gone = entries.filter((e) => e.stage === 'out')
+  if (gone.length) out.push({ id: 'out', title: 'Out in qualifying', entries: gone })
   return out
 }
 
@@ -54,6 +67,11 @@ export default function Entrants({ entries, userId }: { entries: EuropeEntry[]; 
                   <Text size="xs" c="dimmed" lh={1.3}>
                     {e.how}
                   </Text>
+                  {e.came_from && (
+                    <Text size="xs" c="dimmed" lh={1.3}>
+                      {e.came_from}
+                    </Text>
+                  )}
                 </div>
               </Group>
             ))}

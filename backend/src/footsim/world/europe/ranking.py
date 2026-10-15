@@ -106,13 +106,13 @@ def ranking(conn: Connection | None, world: World, through: int) -> list[RankRow
             for k, (code, values, total) in enumerate(rows, start=1)]
 
 
-def access_ranking(conn: Connection, world: World, season_id: int) -> list[RankRow]:
+def access_ranking(conn: Connection | None, world: World, season_id: int) -> list[RankRow]:
     """The ranking that sets season ``season_id``'s access list: the one at the end of the
     season two before it."""
     return ranking(conn, world, season_id - 2)
 
 
-def performance_spots(conn: Connection, world: World, season_id: int) -> list[str]:
+def performance_spots(conn: Connection | None, world: World, season_id: int) -> list[str]:
     """The countries with a European Performance Spot in season ``season_id``: the best two by
     their coefficient in the season before it (ties by five-season ranking)."""
     last = season_coefficients(conn, world).get(season_id - 1, {})

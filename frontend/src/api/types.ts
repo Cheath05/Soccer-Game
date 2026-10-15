@@ -139,6 +139,7 @@ export interface SeasonFinal {
   points: number
   outcome: string | null
   cups?: CupRun[] // how far the club went in each cup
+  europe?: EuropeRun[] // and in each European competition
   review?: SeasonReview | null // how the season went across the game, and for the squad
   news?: string[] // the sim's other news: what the review doesn't cover
 }
@@ -157,12 +158,13 @@ export interface Honour {
 /** A notable result of the season: a major league's champions, a cup upset. Continental titles
  * will be another kind. */
 export interface Headline {
-  kind: 'league_title' | 'cup_upset' | 'continental_title'
+  kind: 'treble' | 'league_title' | 'cup_upset' | 'continental_title'
   text: string
   club: ClubRef
   competition: string
   nation: string
   detail: string | null
+  trophies?: string[] // a Treble's three: the league, the cup, the Champions League
 }
 
 /** A club going up or down a league at the season's end. */
@@ -254,7 +256,7 @@ export interface TableRow {
   form: string[]
   outcome: Outcome | null // a finished season's
   europe?: EuropeKey | null // the European competition the club is marked for
-  europe_stage?: 'league_phase' | 'qualifying' | null // qualifying: the summer play-off round
+  europe_stage?: 'league_phase' | 'qualifying' | null // qualifying: one of the summer qualifying rounds
 }
 
 export type EuropeKey = 'UCL' | 'UEL' | 'UECL'
@@ -264,7 +266,12 @@ export interface EuropePlace {
   name: string // "Champions League"
   stage: 'league_phase' | 'qualifying'
   how: string // "1st–4th", "FA Cup winners"
+  round?: QualifyingRound | 'LP' // where the place starts (a server that predates qualifying rounds omits it)
+  round_name?: string // "League phase", "Play-off round (Main Path)", "Second qualifying round (Champions Path)"
 }
+
+export type QualifyingRound = 'Q1' | 'Q2' | 'Q3' | 'PO'
+export type QualifyingPath = 'champions' | 'league' | 'main'
 
 export interface Table {
   competition: string
@@ -304,6 +311,9 @@ export interface ClubSeason {
   final: boolean
   managed: boolean
   cups: CupRun[]
+  europe: EuropeRun[] // its European competitions that season, the top one first
+  treble: boolean // top league, main domestic cup and the Champions League, all won
+  treble_trophies: string[] // their names, when it did
 }
 
 export interface ClubHistory {
@@ -312,6 +322,9 @@ export interface ClubHistory {
   titles: number
   promotions: number
   relegations: number
+  trophies: Trophy[] // the honours by trophy: European first, then league titles, then cups
+  treble_seasons: string[]
+  european_titles: number
 }
 
 export interface SquadPlayer {
@@ -572,6 +585,8 @@ export interface CupRound {
   legs: number
   drawn: boolean
   ties: CupTie[]
+  round?: QualifyingRound | null // a European qualifying round
+  path?: QualifyingPath | null // and its path
 }
 
 export interface Cup {
@@ -590,6 +605,25 @@ export interface CupSummary {
   current_round: string | null
   user_status: string | null
   winner: ClubRef | null
+}
+
+/** How far a club went in one European competition in a season. */
+export interface EuropeRun {
+  key: string // UCL | UEL | UECL
+  name: string
+  short_name: string
+  reached: string // "Second qualifying round", "League phase (14th)", "Semi-final", "Winners"
+  won: boolean
+  out: boolean
+  position: number | null
+}
+
+/** A kind of trophy in a club's honours, and the seasons it was won. */
+export interface Trophy {
+  kind: 'europe' | 'league' | 'cup'
+  key: string
+  name: string
+  seasons: string[] // oldest first
 }
 
 export interface CupRun {
@@ -721,9 +755,13 @@ export interface EuropeEntry {
   club: ClubRef
   nation: string // a nation code such as ENG
   how: string // how it got its place: "4th in the Premier League", "FA Cup winners"
-  stage: 'league_phase' | 'qualifying'
+  stage: 'league_phase' | 'qualifying' | 'out' // out: knocked out in qualifying
   pot: number | null // set at the draw
   position: number | null
+  round?: QualifyingRound | 'LP' | null // where it is now
+  path?: QualifyingPath | null
+  entered?: string | null // where it started: "Champions League second qualifying round (Champions Path)"
+  came_from?: string | null // "From the Champions League third qualifying round (League Path)"
 }
 
 export interface Europe {
@@ -731,9 +769,33 @@ export interface Europe {
   name: string
   short_name: string
   season: string
-  qualifying: CupRound
+  qualifying: CupRound // the latest qualifying round drawn
+  qualifying_rounds?: CupRound[] // every qualifying round and path, first round first
   league_phase: EuropeLeaguePhase
   knockout: CupRound[] // play-off, round of 16, quarter-finals, semi-finals, final
   entries: EuropeEntry[]
   winner: ClubRef | null
+}
+
+// GET /api/europe/rankings
+export interface CountryCoefficient {
+  rank: number
+  nation: string
+  name: string
+  seasons: number[] // five seasons, oldest first
+  total: number
+}
+
+export interface ClubCoefficient {
+  rank: number
+  club: ClubRef
+  nation: string
+  coefficient: number
+}
+
+export interface EuropeRankings {
+  season_labels: string[]
+  in_progress: boolean // the last season is still being played
+  countries: CountryCoefficient[]
+  clubs: ClubCoefficient[]
 }

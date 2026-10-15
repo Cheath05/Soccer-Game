@@ -16,6 +16,7 @@ import type {
   CupSummary,
   Europe,
   EuropeList,
+  EuropeRankings,
   Fixture,
   Health,
   LeagueOption,
@@ -96,6 +97,10 @@ export const useEurope = (key: string | undefined, season?: number | null) =>
     queryFn: () => api.get<Europe>(`/europe/${key}${season ? `?season=${season}` : ''}`),
     enabled: !!key,
   })
+
+/** UEFA's country ranking (five seasons) and the club coefficient ranking. */
+export const useEuropeRankings = (enabled = true) =>
+  useQuery({ queryKey: ['europe', 'rankings'], queryFn: () => api.get<EuropeRankings>('/europe/rankings'), enabled })
 
 export const useSeasons = () => useQuery({ queryKey: ['seasons'], queryFn: () => api.get<Season[]>('/seasons') })
 

@@ -5,8 +5,10 @@ import type { MouseEvent, ReactNode } from 'react'
 
 import { useNations } from '../api/hooks'
 import type { ClubMove, Headline, Honour, Nation, SeasonFinal } from '../api/types'
+import { europeText } from '../lib/europeRuns'
 import { type NationChoice, longDate, nationChoices, nationName, ordinal, positionColor, ratingColor } from '../lib/format'
 import ClubLink from './ClubLink'
+import { TrebleBanner } from './EuropeHonours'
 import NationPicker from './NationPicker'
 import Overall from './Overall'
 
@@ -19,9 +21,17 @@ const OUTCOME_TEXT: Record<string, string> = {
 }
 
 /** How the user's club finished: its place, record and cup runs. */
-function Finish({ final }: { final: SeasonFinal }) {
+function Finish({ final, userClubId }: { final: SeasonFinal; userClubId: number }) {
+  const treble = final.review?.headlines?.find((h) => h.kind === 'treble' && h.club.id === userClubId)
   return (
     <Stack gap={2}>
+      {treble && (
+        <TrebleBanner
+          title={`${treble.club.name} win the Treble`}
+          season={final.review?.season}
+          trophies={treble.trophies ?? []}
+        />
+      )}
       <Text fw={700}>
         {ordinal(final.position)} in the {final.competition}
         {final.outcome && OUTCOME_TEXT[final.outcome] ? ` · ${OUTCOME_TEXT[final.outcome]}` : ''}
@@ -33,6 +43,11 @@ function Finish({ final }: { final: SeasonFinal }) {
       {(final.cups ?? []).map((run) => (
         <Text key={run.key} size="sm">
           {run.name}: {run.won ? 'Winners!' : run.reached === 'Final' ? 'Runners-up' : `out in the ${run.reached.toLowerCase()}`}
+        </Text>
+      ))}
+      {(final.europe ?? []).map((run) => (
+        <Text key={run.key} size="sm">
+          {run.name}: {europeText(run)}
         </Text>
       ))}
     </Stack>
@@ -143,6 +158,7 @@ function Moves({ moves, userClubId, none, promotion }: { moves: ClubMove[]; user
 }
 
 const HEADLINE_STYLE: Record<string, { label: string; color: string }> = {
+  treble: { label: 'Treble', color: 'yellow' },
   league_title: { label: 'Champions', color: 'yellow' },
   cup_upset: { label: 'Cup upset', color: 'grape' },
   continental_title: { label: 'Europe', color: 'yellow' },
@@ -233,7 +249,7 @@ export default function SeasonSummary({
 
   return (
     <Stack gap="sm" onClickCapture={closeOnLink}>
-      <Finish final={final} />
+      <Finish final={final} userClubId={userClubId} />
       {review && (
         <>
           <Stack gap="xs">

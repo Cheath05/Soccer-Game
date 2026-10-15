@@ -204,10 +204,19 @@ def _to_v19(conn: Connection) -> None:
     _add_column(conn, "continental_entry", "association", "TEXT")
 
 
+def _to_v20(conn: Connection) -> None:
+    """The real qualifying rounds (W7): where a European entry is (round, path), where it
+    started and dropped from, and a qualifying tie's path."""
+    for column, kind in (("entry_round", "INTEGER"), ("path", "TEXT"), ("entered", "TEXT"),
+                         ("came_from", "TEXT")):
+        _add_column(conn, "continental_entry", column, kind)
+    _add_column(conn, "cup_tie", "path", "TEXT")
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
-    16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19}
+    16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20}
 
 
 def migrate(engine: Engine) -> int:

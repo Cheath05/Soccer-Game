@@ -45,16 +45,19 @@ export default function LeaguePage() {
   const rows = table.data?.rows ?? []
   const zones = ['promotion', 'playoff', 'relegation'].filter((z) => rows.some((r) => r.zone === z))
   const places = table.data?.europe_places ?? []
-  // A European mark beats the zone colour. The play-off round gets the stripe only.
+  // A European mark beats the zone colour. A qualifying round gets the stripe only.
   const mark = (r: TableRow) => {
     const eu = r.europe && EUROPE_COLOR[r.europe] ? r.europe : null
     if (!eu) return { bg: r.zone ? ZONE_COLOR[r.zone] : undefined, stripe: undefined, title: undefined }
     const playoff = r.europe_stage === 'qualifying'
-    const name = places.find((p) => p.competition === eu)?.name ?? eu
+    // A row doesn't say which round it enters: name it when the competition has only one.
+    const same = places.filter((p) => p.competition === eu && p.stage === r.europe_stage)
+    const place = same.length === 1 ? same[0] : undefined
+    const name = (place ?? places.find((p) => p.competition === eu))?.name ?? eu
     return {
       bg: playoff ? undefined : europeLight(eu),
       stripe: europeStripe(eu),
-      title: playoff ? `${name} play-off round` : name,
+      title: playoff ? `${name} ${place?.round_name?.toLowerCase() ?? 'qualifying'}` : name,
     }
   }
 
@@ -181,7 +184,7 @@ export default function LeaguePage() {
                   />
                   <Text size="xs">
                     {p.how} · {p.name}
-                    {playoff ? ' play-off round' : ''}
+                    {playoff ? ` ${p.round_name?.toLowerCase() ?? 'qualifying'}` : ''}
                   </Text>
                 </Group>
               )

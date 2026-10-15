@@ -13,14 +13,19 @@ from footsim.world.cups import make_room
 
 def insert_ties(conn: Connection, world: World, season_id: int, comp_id: int, comp_key: str,
                 round_number: int, ties: list[tuple[int, int]], days: list[list[date]],
-                neutral: bool, today: date) -> list[int]:
+                neutral: bool, today: date, path: str | None = None,
+                prefix: str = "") -> list[int]:
     """The ties' rows and fixtures: club A at home in the first leg, B in the second. Each leg's
     matches are spread over its days in turn; a club's league matches and cup ties too close
-    are moved (the cup matches moved are returned, for the news)."""
+    are moved (the cup matches moved are returned, for the news). A qualifying round's ties
+    carry its ``path``, and ``prefix`` before their numbers (C1, L1, M1...)."""
     moved: list[int] = []
+    if not ties:
+        return moved
     conn.execute(cup_tie.insert(), [
         {"season_id": season_id, "competition_id": comp_id, "round": round_number,
-         "tie": str(n), "club_a_id": a, "club_b_id": b, "winner_club_id": None}
+         "tie": f"{prefix}{n}", "club_a_id": a, "club_b_id": b, "winner_club_id": None,
+         "path": path}
         for n, (a, b) in enumerate(ties, start=1)])
     for n, (a, b) in enumerate(ties, start=1):
         legs = [(a, b)] if len(days) == 1 else [(a, b), (b, a)]
@@ -28,7 +33,7 @@ def insert_ties(conn: Connection, world: World, season_id: int, comp_id: int, co
             day = leg_days[(n - 1) % len(leg_days)]
             conn.execute(fixture.insert().values(
                 season_id=season_id, competition_id=comp_id, stage=comp_key, round=round_number,
-                tie=str(n), leg=leg if len(days) == 2 else None, date=day.isoformat(),
+                tie=f"{prefix}{n}", leg=leg if len(days) == 2 else None, date=day.isoformat(),
                 home_club_id=home, away_club_id=away, neutral=int(neutral), status="scheduled"))
             for club_id in (home, away):
                 moved += make_room(conn, world, club_id, day, today)

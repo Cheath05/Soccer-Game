@@ -5,7 +5,7 @@ season's coefficient points are kept; and next season the winners take their hol
 Needs the built world (takes a few minutes: a whole season of every league)."""
 
 import shutil
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import replace
 from datetime import date
 from typing import Any
@@ -127,8 +127,11 @@ def test_the_money_and_the_coefficients(two_seasons: tuple[Engine, World]) -> No
             assert round(prize.rounds[-1] * 100) in entries  # reaching the final
         points = dict(conn.execute(select(club_coefficient.c.club_id, club_coefficient.c.points)
                                    .where(club_coefficient.c.season_id == 1)).all())
-    # Every club that played in Europe has its season's points (115 entered in all).
-    assert len(points) == 32 + 8 + 26 + 12 + 23 + 14
+    # Every club that played in Europe has its season's points: every club that entered.
+    with engine.connect() as conn:
+        entered = conn.execute(select(continental_entry.c.club_id).where(
+            continental_entry.c.season_id == 1)).scalars().all()
+    assert set(points) == set(entered)
     assert all(p >= 0 for p in points.values())
 
 
@@ -146,13 +149,17 @@ def test_next_season_the_winners_hold_their_places(two_seasons: tuple[Engine, Wo
             continental_entry.c.season_id == 2))}
         champions = {r.competition_id: r.club_id for r in conn.execute(select(league_final).where(
             league_final.c.season_id == 1, league_final.c.position == 1))}
-    assert entry[winners["UCL"]].key == "UCL" and entry[winners["UCL"]].route == "holder:UCL"
-    assert entry[winners["UEL"]].key == "UCL"
-    assert entry[winners["UECL"]].key in ("UCL", "UEL")
+    # The holders are in the league phases: the Champions League's and Europa League's in the
+    # Champions League's (through their league, or the holders' place), the Conference League's
+    # in the Europa League's at least.
+    for key in ("UCL", "UEL"):
+        assert (entry[winners[key]].key, entry[winners[key]].stage) == ("UCL", "league_phase")
+    uecl = entry[winners["UECL"]]
+    assert uecl.key == "UCL" or (uecl.key, uecl.stage) == ("UEL", "league_phase")
     # Last season's English champions are first among England's places.
     eng1 = _comp_id(engine, "ENG1")
-    assert entry[champions[eng1]].key == "UCL"
-    assert Counter(r.key for r in entry.values()) == {"UCL": 40, "UEL": 38, "UECL": 37}
+    assert entry[champions[eng1]].route == "league:ENG:1" and entry[champions[eng1]].key == "UCL"
+    assert sum(1 for r in entry.values() if r.key == "UCL" and r.stage == "league_phase") >= 27
 
 
 def test_european_matches_have_room_all_season(two_seasons: tuple[Engine, World]) -> None:

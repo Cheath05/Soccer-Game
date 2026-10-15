@@ -1,25 +1,14 @@
-"""Who plays in Europe each season (europe/access.yaml): places by league finish, cup and title,
-handed out from the top competition down, each club in the highest it earns.
-
-A country's order is last season's table of its top league. In the first season, or for a
-league new to the career, it's the league's clubs by reputation (as the domestic cups seed).
-A country with clubs in the world but no league in the game puts its clubs in order by a
-lottery each season, weighted by reputation (europe/settings.yaml lottery_power).
-
-A place whose club is already placed passes down the table: a league place to the next club
-of that country not yet in Europe, a cup winner's to the best-placed club of the cup country's
-top league not yet in. A place nobody can take (no holder yet, no such club) is filled once
-the stage's other places are: the first goes to the competition's first ``fill`` country's
-next club, the second to the second's, and so on in turn."""
-
-from collections.abc import Callable
-from dataclasses import dataclass
+"""The orders a European season's places go in (W6, W7): a country's clubs (its top league's last
+table; in the first season the real table of the season before, europe/season_before.yaml, then
+its clubs by reputation; by reputation for a league new to the career; a
+reputation-weighted lottery for a country with clubs in the world but no league in the game,
+europe/settings.yaml lottery_power), and who won last season's cups and European finals. The
+places themselves are handed out in places.py."""
 
 import numpy as np
 from sqlalchemy import Connection, select
 
 from footsim.core.rng import derive_rng
-from footsim.defs.europe import PlaceDef
 from footsim.persistence.schema import (
     club,
     club_league_membership,
@@ -29,16 +18,8 @@ from footsim.persistence.schema import (
     nation,
 )
 from footsim.world.context import World
-from footsim.world.europe.common import KNOCKOUT, competitions_by_rank
+from footsim.world.europe.common import KNOCKOUT
 from footsim.world.meta import CareerMeta
-
-
-@dataclass(frozen=True)
-class Entry:
-    competition: str  # UCL, UEL, UECL
-    club_id: int
-    stage: str  # league_phase | qualifying
-    route: str  # league:ENG:4, cup:FA_CUP, holder:UCL, fill:ENG
 
 
 def _top_league_key(world: World, nation_code: str) -> str | None:
@@ -60,13 +41,34 @@ def nation_order(conn: Connection, world: World, meta: CareerMeta, season_id: in
             league_final.c.competition_id == comp.id).order_by(league_final.c.position))]
         if table:
             return table
-        return [r.id for r in conn.execute(
+        clubs = [r.id for r in conn.execute(
             select(club.c.id).join(club_league_membership,
                                    club_league_membership.c.club_id == club.c.id)
             .where(club_league_membership.c.season_id == season_id,
                    club_league_membership.c.competition_id == comp.id)
             .order_by(club.c.reputation.desc(), club.c.id))]
-    return _lottery(conn, world, meta, season_id, nation_code)
+        before = _before_table(conn, world, season_id, nation_code)
+        return [c for c in before if c in clubs] + [c for c in clubs if c not in before]
+    before = _before_table(conn, world, season_id, nation_code)
+    return before + [c for c in _lottery(conn, world, meta, season_id, nation_code)
+                     if c not in before]
+
+
+def _club_id(conn: Connection, nation_code: str, name: str) -> int | None:
+    """A club of a country by its name in the game."""
+    row = conn.execute(select(club.c.id).join(nation, nation.c.id == club.c.nation_id).where(
+        nation.c.code == nation_code, club.c.name == name).order_by(club.c.id)).first()
+    return int(row.id) if row is not None else None
+
+
+def _before_table(conn: Connection, world: World, season_id: int, nation_code: str) -> list[int]:
+    """In a career's first season, its country's real final table of the season before
+    (europe/season_before.yaml), the clubs in the game; otherwise nothing."""
+    before = world.defs.season_before.countries.get(nation_code)
+    if season_id != 1 or before is None:
+        return []
+    found = [_club_id(conn, nation_code, name) for name in before.table]
+    return [c for c in dict.fromkeys(found) if c is not None]
 
 
 def _lottery(conn: Connection, world: World, meta: CareerMeta, season_id: int,
@@ -99,107 +101,26 @@ def _final_winner(conn: Connection, season_id: int, competition_key: str,
 
 
 def cup_winner(conn: Connection, world: World, season_id: int, cup_key: str) -> int | None:
-    """Who won a domestic cup's final in season ``season_id``."""
+    """Who won a domestic cup's final in season ``season_id`` (the season before the career:
+    as it really went)."""
     cup = world.defs.cups.get(cup_key)
     if cup is None:
         return None
+    if season_id == 0:
+        name = world.defs.season_before.countries.get(cup.nation, None)
+        winner = name.cups.get(cup_key) if name is not None else None
+        return _club_id(conn, cup.nation, winner) if winner else None
     return _final_winner(conn, season_id, cup_key, len(cup.rounds) - 1)
 
 
 def holder(conn: Connection, world: World, season_id: int, comp_key: str) -> int | None:
-    """Who won a European competition's final in season ``season_id``."""
+    """Who won a European competition's final in season ``season_id`` (the season before the
+    career: as it really went)."""
+    if season_id == 0:
+        before = world.defs.season_before.holders.get(comp_key)
+        return _club_id(conn, before.nation, before.club) if before is not None else None
     comp = world.defs.continental[comp_key]
     return _final_winner(conn, season_id, comp_key, KNOCKOUT + len(comp.knockout) - 1)
-
-
-def qualify(conn: Connection, world: World, meta: CareerMeta, season_id: int) -> list[Entry]:
-    """Every club's European place for season ``season_id``: the league phase or the summer
-    play-off round of one competition, from last season's tables, cups and finals."""
-    orders: dict[str, list[int]] = {}
-
-    def order(code: str) -> list[int]:
-        if code not in orders:
-            orders[code] = nation_order(conn, world, meta, season_id, code)
-        return orders[code]
-
-    placed: dict[int, Entry] = {}
-
-    def free(code: str, rank: int) -> tuple[int, int] | None:
-        """The first club of the country not yet placed, from ``rank`` down, and its rank."""
-        clubs = order(code)
-        for index in range(rank - 1, len(clubs)):
-            if clubs[index] not in placed:
-                return clubs[index], index + 1
-        return None
-
-    for comp in competitions_by_rank(world):
-        rules = world.defs.europe_access.competitions[comp.key]
-        first = [p for p in rules.league_phase if p.holder is not None]
-        rest = [p for p in rules.league_phase if p.holder is None]
-        turn = 0  # the next fill country, in turn across the competition's vacancies
-        for stage, places in (("league_phase", first + rest), ("qualifying", rules.qualifying)):
-            vacant = 0
-            for place in places:
-                for slot in range(place.count):
-                    found = _resolve(conn, world, season_id, place, slot, placed, free)
-                    if found is None:
-                        vacant += 1
-                    else:
-                        placed[found[0]] = Entry(comp.key, found[0], stage, found[1])
-            for _ in range(vacant):
-                for _ in range(len(rules.fill)):
-                    code = rules.fill[turn % len(rules.fill)]
-                    turn += 1
-                    found_fill = free(code, 1)
-                    if found_fill is not None:
-                        placed[found_fill[0]] = Entry(comp.key, found_fill[0], stage,
-                                                      f"fill:{code}")
-                        break
-    return list(placed.values())
-
-
-def _resolve(conn: Connection, world: World, season_id: int, place: PlaceDef, slot: int,
-             placed: dict[int, Entry],
-             free: Callable[[str, int], tuple[int, int] | None]) -> tuple[int, str] | None:
-    if place.holder is not None:
-        winner = holder(conn, world, season_id - 1, place.holder)
-        if winner is not None and winner not in placed:
-            return winner, f"holder:{place.holder}"
-        return None
-    if place.cup is not None:
-        winner = cup_winner(conn, world, season_id - 1, place.cup)
-        if winner is not None and winner not in placed:
-            return winner, f"cup:{place.cup}"
-        code = place.nation or world.defs.cups[place.cup].nation
-        found = free(code, 1)
-        return (found[0], f"league:{code}:{found[1]}") if found is not None else None
-    assert place.nation is not None and place.ranks is not None
-    found = free(place.nation, place.ranks[0] + slot)
-    return (found[0], f"league:{place.nation}:{found[1]}") if found is not None else None
-
-
-@dataclass(frozen=True)
-class Place:
-    """A European place one country's clubs can earn: a run of its top league's finishes, or
-    a domestic cup's win."""
-    competition: str  # UCL, UEL, UECL
-    stage: str  # league_phase | qualifying
-    ranks: tuple[int, int] | None
-    cup: str | None
-
-
-def country_places(world: World, nation_code: str) -> list[Place]:
-    """The places a country's clubs earn by the access list, from the top competition down:
-    as written, before any pass down the table (a club earning two takes the higher, and its
-    other goes to the next club not yet in Europe) or extra places fill vacancies."""
-    places = []
-    for comp in competitions_by_rank(world):
-        rules = world.defs.europe_access.competitions[comp.key]
-        for stage, listed in (("league_phase", rules.league_phase),
-                              ("qualifying", rules.qualifying)):
-            places += [Place(comp.key, stage, p.ranks, p.cup) for p in listed
-                       if p.nation == nation_code and (p.ranks or p.cup)]
-    return places
 
 
 def route_nation(world: World, route: str) -> str | None:

@@ -11,5 +11,8 @@ knockout:
   - {name: Quarter-final}
   - {name: Semi-final}
   - {name: Final, legs: 1, neutral: true}
-qualifying: {name: Play-off round, losers_to: UECL}
-winner_to: UCL
+qualifying:   # each two legs; who enters which round, and where losers go: europe/access_list.yaml
+  - {key: Q1, name: First qualifying round}
+  - {key: Q2, name: Second qualifying round}
+  - {key: Q3, name: Third qualifying round}
+  - {key: PO, name: Play-off round}

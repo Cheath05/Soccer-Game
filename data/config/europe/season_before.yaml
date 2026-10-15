@@ -1,0 +1,65 @@
+# The season before the career (2025-26; the 2025 season for spring-to-autumn leagues): how each
+# country's top league really finished, who won its cups, and who won the European finals
+# (English Wikipedia, read 15 Oct 2026; names are the game's). A career's first European places
+# come from these, as UEFA's 2026-27 places came from them: a club not in the game is left out
+# of its table (its places pass down), and a cup won by a club not in the game passes to the
+# league. Later seasons use the game's own tables.
+season: "2025-26"
+holders:
+  UCL: {nation: FRA, club: "Paris SG"}
+  UEL: {nation: ENG, club: "Aston Villa"}
+  UECL: {nation: ENG, club: "Crystal Palace"}
+countries:
+  ENG:
+    table: ["Arsenal", "Manchester City", "Man Utd", "Aston Villa", "Liverpool", "AFC Bournemouth", "Sunderland", "Brighton", "Brentford", "Chelsea", "Fulham", "Newcastle Utd", "Everton", "Leeds United", "Crystal Palace", "Nott'm Forest", "Spurs", "West Ham", "Burnley", "Wolves"]
+    cups: {FA_CUP: "Manchester City", EFL_CUP: "Manchester City"}
+  ESP:
+    table: ["FC Barcelona", "Real Madrid", "Villarreal CF", "Atlético de Madrid", "Real Betis", "Celta", "Getafe CF", "Rayo Vallecano", "Valencia CF", "Real Sociedad", "RCD Espanyol", "Athletic Club", "Sevilla FC", "D. Alavés", "Elche CF", "Levante UD", "CA Osasuna", "RCD Mallorca", "Girona FC", "R. Oviedo"]
+    cups: {COPA_DEL_REY: "Real Sociedad"}
+  ITA:
+    table: ["Inter", "SSC Napoli", "AS Roma", "Como", "AC Milan", "Juventus", "Atalanta", "Bologna", "Lazio", "Udinese", "Sassuolo", "Torino", "Parma", "Cagliari", "Fiorentina", "Genoa", "Lecce", "Cremonese", "Hellas Verona", "Pisa"]
+    cups: {COPPA_ITALIA: "Inter"}
+  GER:
+    table: ["FC Bayern München", "Borussia Dortmund", "RB Leipzig", "VfB Stuttgart", "TSG Hoffenheim", "Leverkusen", "SC Freiburg", "Frankfurt", "FC Augsburg", "1. FSV Mainz 05", "Union Berlin", "M'gladbach", "Hamburger SV", "1. FC Köln", "SV Werder Bremen", "VfL Wolfsburg", "Heidenheim", "FC St. Pauli"]
+    cups: {DFB_POKAL: "FC Bayern München"}
+  FRA:
+    table: ["Paris SG", "RC Lens", "LOSC Lille", "OL", "OM", "Stade Rennais FC", "AS Monaco", "Strasbourg", "Toulouse FC", "FC Lorient", "Paris FC", "Stade Brestois 29", "Angers SCO", "Havre AC", "AJ Auxerre", "OGC Nice", "FC Nantes", "FC Metz"]
+    cups: {COUPE_DE_FRANCE: "RC Lens"}
+  POR:
+    table: ["FC Porto", "Sporting CP", "SL Benfica", "SC Braga", "FC Famalicão", "Gil Vicente", "Moreirense FC", "Arouca", "Vitória SC", "Estoril Praia", "FC Alverca", "Rio Ave FC", "Santa Clara", "Nacional", "Estrela Amadora", "Casa Pia AC"]
+  NED:
+    table: ["PSV", "Feyenoord", "N.E.C. Nijmegen", "FC Twente", "Ajax", "FC Utrecht", "AZ", "sc Heerenveen", "FC Groningen", "Sparta Rotterdam", "Fortuna Sittard", "Go Ahead Eagles", "Excelsior", "SC Telstar", "PEC Zwolle"]
+    cups: {KNVB_BEKER: "AZ"}
+  BEL:
+    table: ["Club Brugge", "R. Union St.-G.", "STVV", "RSC Anderlecht", "KAA Gent", "KV Mechelen", "KRC Genk", "Standard Liège", "Sp. Charleroi", "KVC Westerlo", "Royal Antwerp FC", "OH Leuven", "Zulte Waregem", "Cercle Brugge", "RAAL La Louvière"]
+    cups: {BELGIAN_CUP: "R. Union St.-G."}
+  TUR:
+    table: ["Galatasaray", "Fenerbahçe", "Trabzonspor", "Beşiktaş", "Başakşehir", "Göztepe", "Samsunspor", "Çaykur Rizespor", "Konyaspor", "Kocaelispor", "Alanyaspor", "Gaziantep", "Kasımpaşa", "Gençlerbirliği", "Eyüpspor"]
+    cups: {TURKISH_CUP: "Trabzonspor"}
+  SCO:
+    table: ["Celtic", "Hearts", "Rangers", "Motherwell", "Hibernian", "Falkirk", "Dundee United", "Dundee FC", "Aberdeen", "Kilmarnock", "St. Mirren"]
+    cups: {SCOTTISH_CUP: "Celtic"}
+  POL:
+    table: ["Lech Poznań", "Górnik Zabrze", "Jagiellonia", "Raków", "GKS Katowice", "Legia Warszawa", "Zagłębie Lubin", "Wisła Płock", "Pogoń Szczecin", "Radomiak Radom", "Korona Kielce", "Motor Lublin", "Cracovia", "Widzew Łódź", "Piast Gliwice"]
+    cups: {PUCHAR_POLSKI: "Górnik Zabrze"}
+  ROU:
+    table: ["Univ. Craiova", "FC Univ. Cluj", "CFR 1907 Cluj", "FC Dinamo 1948", "FC Rapid 1923", "FC Argeș", "UTA Arad", "FCSB", "SC Oțelul Galați", "FC Botoșani", "FK Csíkszereda", "FC Petrolul", "Farul Constanța"]
+    cups: {CUPA_ROMANIEI: "Univ. Craiova"}
+  SWE:
+    table: ["Mjällby AIF", "Hammarby IF", "GAIS", "IFK Göteborg", "Djurgårdens IF", "Malmö FF", "AIK", "IF Elfsborg", "IK Sirius", "BK Häcken", "Halmstads BK", "Brommapojkarna", "Degerfors IF"]
+    cups: {SVENSKA_CUPEN: "BK Häcken"}
+  NOR:
+    table: ["Viking FK", "FK Bodø/Glimt", "Tromsø IL", "SK Brann", "Sandefjord", "Vålerenga Fotball", "Rosenborg BK", "Fredrikstad FK", "Sarpsborg 08", "Molde FK", "HamKam Fotball", "KFUM-Kameratene", "Kristiansund BK"]
+    cups: {NM_CUP: "Lillestrøm SK"}
+  DEN:
+    table: ["AGF", "FC Midtjylland", "FC Nordsjælland", "Brøndby IF", "Viborg FF", "Sønderjyske", "F.C. København", "Odense BK", "Silkeborg IF", "Randers FC"]
+    cups: {DBU_POKALEN: "FC Midtjylland"}
+  SUI:
+    table: ["FC Thun", "FC St. Gallen", "FC Lugano", "FC Sion", "FC Basel 1893", "BSC Young Boys", "FC Luzern", "Servette FC", "Lausanne-Sport", "FC Zürich", "GC Zürich"]
+    cups: {SWISS_CUP: "FC St. Gallen"}
+  AUT:
+    table: ["LASK", "SK Sturm Graz", "RB Salzburg", "FK Austria Wien", "SK Rapid", "TSV Hartberg", "SV Oberbank Ried", "Wolfsberger AC", "SCR Altach", "Grazer AK", "WSG Tirol"]
+    cups: {OFB_CUP: "LASK"}
+  IRL:
+    table: ["Shamrock Rovers", "Derry City", "Shelbourne", "Bohemians", "St. Pats", "Drogheda United", "Sligo Rovers", "Galway United", "Waterford"]
+    cups: {FAI_CUP: "Shamrock Rovers"}

@@ -1,78 +1,33 @@
-import { Box, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import { useMemo, useState } from 'react'
 
-import type { Career, CupRound } from '../../api/types'
+import type { Career, CupRound, EuropeLeaguePhase } from '../../api/types'
 import { useDevice } from '../../lib/device'
-import { dateList } from './shared'
-import TieCard from './TieCard'
+import { BracketDesktop, BracketPhone, PathLine } from './Bracket'
+import { buildBracket, userPath } from './bracketModel'
 
-function Dates({ round }: { round: CupRound }) {
-  return (
-    <Text size="xs" c="dimmed">
-      {dateList(round.dates)}
-      {round.legs === 2 ? ' · two legs' : ' · one match'}
-    </Text>
-  )
-}
-
-/** The knockout rounds: on a computer a bracket, a column per round, from the play-off to the
- * final; on a phone the rounds one under another, the latest first and those still to come
- * together at the end. */
-export default function Knockouts({ rounds, userId, career }: { rounds: CupRound[]; userId: number | undefined; career: Career | undefined }) {
+/** The knockout rounds as a bracket (Bracket.tsx): the play-off feeding the round of 16, then the
+ * two halves of the draw meeting in the final, with your club's path marked. Before a round is
+ * drawn its slots read "1st in the league phase", "Winner of 16th v 17th", "Winner of R16 tie 1". */
+export default function Knockouts({
+  rounds,
+  phase,
+  userId,
+  career,
+}: {
+  rounds: CupRound[]
+  phase: EuropeLeaguePhase
+  userId: number | undefined
+  career: Career | undefined
+}) {
   const { phone } = useDevice()
-  if (phone) {
-    const drawn = rounds.filter((r) => r.drawn).reverse()
-    const toCome = rounds.filter((r) => !r.drawn)
-    return (
-      <Stack gap="sm">
-        {drawn.map((round) => (
-          <Card key={round.index} withBorder padding="sm" aria-label={round.name}>
-            <Title order={5}>{round.name}</Title>
-            <Dates round={round} />
-            <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="xs" mt="xs">
-              {round.ties.map((t) => (
-                <TieCard key={t.tie} tie={t} legs={round.legs} userId={userId} career={career} />
-              ))}
-            </SimpleGrid>
-          </Card>
-        ))}
-        {toCome.length > 0 && (
-          <Card withBorder padding="sm">
-            <Text fw={600} mb={4}>
-              {drawn.length ? 'Still to come' : 'Not drawn yet'}
-            </Text>
-            {toCome.map((r) => (
-              <Text key={r.index} size="sm" c="dimmed">
-                {r.name} · {dateList(r.dates)}
-              </Text>
-            ))}
-          </Card>
-        )}
-      </Stack>
-    )
-  }
+  const [selected, setSelected] = useState<string | null>(null)
+  const model = useMemo(() => buildBracket(rounds, phase), [rounds, phase])
+  const toggle = (id: string) => setSelected((cur) => (cur === id ? null : id))
+  const props = { model, userId, career, selected, onSelect: toggle }
   return (
-    <Box style={{ overflowX: 'auto' }} pb="xs">
-      <Group align="stretch" wrap="nowrap" gap={12} style={{ minWidth: 'min-content' }}>
-        {rounds.map((round) => (
-          <Stack key={round.index} gap="xs" style={{ flex: '1 1 214px', minWidth: 214, maxWidth: 300 }} aria-label={round.name}>
-            <div>
-              <Text fw={600}>{round.name}</Text>
-              <Dates round={round} />
-            </div>
-            <Stack gap="xs" justify={round.drawn ? 'space-around' : 'flex-start'} style={{ flex: 1 }}>
-              {round.drawn ? (
-                round.ties.map((t) => <TieCard key={t.tie} tie={t} legs={round.legs} userId={userId} career={career} />)
-              ) : (
-                <Card withBorder padding="sm">
-                  <Text size="sm" c="dimmed" ta="center">
-                    Not drawn yet
-                  </Text>
-                </Card>
-              )}
-            </Stack>
-          </Stack>
-        ))}
-      </Group>
-    </Box>
+    <>
+      <PathLine path={userPath(model, userId)} />
+      {phone ? <BracketPhone {...props} /> : <BracketDesktop {...props} />}
+    </>
   )
 }

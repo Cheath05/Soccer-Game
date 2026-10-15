@@ -43,7 +43,7 @@ export default function LeaguePhase({
       <Card withBorder padding="sm">
         <Title order={4}>League phase</Title>
         <Text size="sm" c="dimmed" mt={4}>
-          {qualifyingDrawn ? 'Drawn once the play-off round is over.' : 'Drawn after the summer play-off round.'} {phase.matches} matches each
+          {qualifyingDrawn ? 'Drawn once the qualifying rounds are over.' : 'Drawn after the qualifying rounds.'} {phase.matches} matches each
           {first ? `, from ${dateList([first])}${last ? ` to ${dateList([last])}` : ''}` : ''}.
         </Text>
       </Card>

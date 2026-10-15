@@ -1,6 +1,7 @@
-"""The European club competitions (data/config/europe/, docs/plans/w6-european-competitions.md):
-each competition's format, who qualifies (the access list), the season's dates, prize money
-(finance.yaml) and the settings for coefficients and for countries without a league."""
+"""The European club competitions (data/config/europe/, docs/plans/w6-european-competitions.md
+and w7-all-of-uefa.md): each competition's format, who qualifies (UEFA's access list by ranking
+position), the season's dates, prize money (finance.yaml), coefficients, and the countries' real
+coefficients before the career."""
 
 from datetime import date
 from typing import Literal, Self
@@ -8,6 +9,9 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from footsim.defs.common import DefModel
+
+QUALIFYING_KEYS = ("Q1", "Q2", "Q3", "PO")
+PATHS = ("champions", "league", "main")
 
 
 class KnockoutRoundDef(DefModel):
@@ -53,12 +57,12 @@ class LeaguePhaseDef(DefModel):
         return self
 
 
-class QualifyingDef(DefModel):
-    """The summer play-off round before the league phase."""
+class QualifyingRoundDef(DefModel):
+    """One of the qualifying rounds before the league phase: Q1, Q2, Q3 or PO (the play-off)."""
 
+    key: Literal["Q1", "Q2", "Q3", "PO"]
     name: str
     legs: Literal[1, 2] = 2
-    losers_to: str | None = None  # the competition whose league phase takes the losers
 
 
 class ContinentalDef(DefModel):
@@ -68,58 +72,102 @@ class ContinentalDef(DefModel):
     rank: int = Field(ge=1)  # 1: the top competition; a club plays in the highest it earns
     league_phase: LeaguePhaseDef
     knockout: list[KnockoutRoundDef]  # the play-off first, the final last
-    qualifying: QualifyingDef
-    winner_to: str | None = None  # next season's competition its winner enters directly
+    qualifying: list[QualifyingRoundDef]  # Q1, Q2, Q3, PO, in order
 
     @model_validator(mode="after")
-    def _final(self) -> Self:
+    def _rounds(self) -> Self:
         if len(self.knockout) < 2 or self.knockout[-1].legs != 1:
             raise ValueError(f"{self.key}: the knockout ends in a one-match final")
+        if [r.key for r in self.qualifying] != list(QUALIFYING_KEYS):
+            raise ValueError(f"{self.key}: the qualifying rounds are Q1, Q2, Q3 and PO, in order")
         return self
 
 
-class PlaceDef(DefModel):
-    """One place, or a run of them: a league finish (``nation`` and ``ranks``: the nation's top
-    league, or for a country without a league in the game its clubs in a lottery order), a
-    domestic cup's winner (``cup``), or a competition's last winner (``holder``)."""
+# --- the access list (europe/access_list.yaml) ---------------------------------------------------
 
-    nation: str | None = None
+class NodeTargetDef(DefModel):
+    """Where a round's winners or losers go: a round (Q1..PO, or LP for the league phase) of a
+    competition (this one when left out) and its path."""
+
+    competition: str | None = None
+    round: Literal["Q1", "Q2", "Q3", "PO", "LP"]
+    path: Literal["champions", "league", "main"] | None = None
+
+
+class NodeDef(DefModel):
+    """One path of one qualifying round of a competition."""
+
+    round: Literal["Q1", "Q2", "Q3", "PO"]
+    path: Literal["champions", "league", "main"]
+    winners: NodeTargetDef | None = None  # default: the path's next round (PO: the league phase)
+    losers: NodeTargetDef | None = None  # default: out
+
+
+class AccessPlaceDef(DefModel):
+    """A run of places: for ranking positions ``ranks``, league finishes ``positions`` or the cup
+    winners (``cup``), entering ``round`` (and ``path`` before the league phase); or the holders
+    of a competition (``holder``, an empty place filled from ``fill_from``), or the two European
+    Performance Spots."""
+
+    round: Literal["Q1", "Q2", "Q3", "PO", "LP"]
+    path: Literal["champions", "league", "main"] | None = None
     ranks: tuple[int, int] | None = None
-    cup: str | None = None
+    positions: tuple[int, int] | None = None
+    cup: bool = False
     holder: str | None = None
+    fill_from: Literal["champions", "league", "main"] | None = None
+    performance_spot: bool = False
 
     @model_validator(mode="after")
     def _one_kind(self) -> Self:
-        kinds = [self.ranks is not None, self.cup is not None, self.holder is not None]
+        kinds = [self.holder is not None, self.performance_spot,
+                 self.ranks is not None]
         if sum(kinds) != 1:
-            raise ValueError("a place is a league finish (nation, ranks), a cup or a holder")
-        if self.ranks is not None and (self.nation is None
-                                       or not 1 <= self.ranks[0] <= self.ranks[1]):
-            raise ValueError(f"a league place needs a nation and ranks first <= last: {self}")
+            raise ValueError(f"a place is a holder's, a Performance Spot or a run of ranks: {self}")
+        if self.ranks is not None:
+            if not 1 <= self.ranks[0] <= self.ranks[1]:
+                raise ValueError(f"ranks first <= last: {self}")
+            if self.cup == (self.positions is not None):
+                raise ValueError(f"a run of ranks gives league positions or the cup: {self}")
+            if self.positions is not None and not 1 <= self.positions[0] <= self.positions[1]:
+                raise ValueError(f"positions first <= last: {self}")
+        if (self.round == "LP") != (self.path is None):
+            raise ValueError(f"a qualifying place has a path, a league-phase place none: {self}")
         return self
 
     @property
     def count(self) -> int:
-        return self.ranks[1] - self.ranks[0] + 1 if self.ranks is not None else 1
+        """Places per country in ``ranks`` (a holder's or Performance Spot: 1 and 2)."""
+        if self.holder is not None:
+            return 1
+        if self.performance_spot:
+            return 2
+        if self.cup or self.positions is None:
+            return 1
+        return self.positions[1] - self.positions[0] + 1
 
 
-class CompetitionAccessDef(DefModel):
-    league_phase: list[PlaceDef]  # straight into the league phase
-    qualifying: list[PlaceDef]  # into the summer play-off round
-    # Countries whose next club takes a place nobody else can (no holder yet, a league not in
-    # the career): the first of them with a club left, in this order.
-    fill: list[str]
-
-    def direct(self) -> int:
-        return sum(p.count for p in self.league_phase)
-
-    def qualifiers(self) -> int:
-        return sum(p.count for p in self.qualifying)
+class CompetitionAccessListDef(DefModel):
+    nodes: list[NodeDef]
+    places: list[AccessPlaceDef]
 
 
-class AccessFile(DefModel):
-    competitions: dict[str, CompetitionAccessDef]
+class OverrideDef(DefModel):
+    """A league place given to a cup's winners instead (England's sixth: the EFL Cup's)."""
 
+    nation: str
+    competition: str
+    position: int = Field(ge=1)
+    cup: str
+
+
+class AccessListFile(DefModel):
+    cups: dict[str, str] = {}  # a country's cup for its cup place, where it has several
+    overrides: list[OverrideDef] = []
+    competitions: dict[str, CompetitionAccessListDef]
+
+
+# --- coefficients -------------------------------------------------------------------------------
 
 class RankingBonusDef(DefModel):
     """A league-phase place bonus: ``step`` for each place climbed from 24th (24th earns one
@@ -175,6 +223,25 @@ class AssociationCoefficientsFile(DefModel):
         return self
 
 
+class HolderBeforeDef(DefModel):
+    nation: str
+    club: str  # the game's name for it
+
+
+class CountryBeforeDef(DefModel):
+    table: list[str] = []  # its top league's final table, best first (the game's club names)
+    cups: dict[str, str] = {}  # each cup's winners, by cup key
+
+
+class SeasonBeforeFile(DefModel):
+    """The season before the career, as it really finished (europe/season_before.yaml): a
+    first season's European places come from it."""
+
+    season: str
+    holders: dict[str, HolderBeforeDef] = {}
+    countries: dict[str, CountryBeforeDef] = {}
+
+
 class EuropeSettingsDef(DefModel):
     enabled: bool = True  # whether new seasons have European competitions
     calendar: str  # the key of the calendar in data/config/europe/calendars
@@ -182,24 +249,24 @@ class EuropeSettingsDef(DefModel):
     # each club's chance weighted by reputation ** lottery_power.
     lottery_power: float = Field(ge=0)
     coefficient: CoefficientDef
+    # Pairs of countries whose clubs aren't drawn together (UEFA's prohibited clashes).
+    prohibited: list[tuple[str, str]] = []
 
 
 class ContinentalDatesDef(DefModel):
     """One competition's dates in a season: each leg or matchday is a list of days its matches
     are spread over (Tuesday and Wednesday, say)."""
 
-    qualifying: list[list[date]]  # one per leg
+    qualifying: dict[str, list[list[date]]]  # each round's (Q1..PO), one per leg
     league_phase: list[list[date]]  # one per matchday
     knockout: list[list[list[date]]]  # one per round, one per leg
 
     @model_validator(mode="after")
     def _days(self) -> Self:
-        for days in [*self.qualifying, *self.league_phase,
-                     *(leg for rnd in self.knockout for leg in rnd)]:
-            if not days:
-                raise ValueError("every leg and matchday needs at least one day")
-        stages = [*self.qualifying, *self.league_phase,
-                  *(leg for rnd in self.knockout for leg in rnd)]
+        stages = [*(leg for key in QUALIFYING_KEYS for leg in self.qualifying.get(key, [])),
+                  *self.league_phase, *(leg for rnd in self.knockout for leg in rnd)]
+        if any(not days for days in stages):
+            raise ValueError("every leg and matchday needs at least one day")
         firsts = [min(days) for days in stages]
         if firsts != sorted(firsts):
             raise ValueError("the stages' dates must run in order")
@@ -214,10 +281,11 @@ class EuropeCalendarDef(DefModel):
 
 
 class EuropePrizeDef(DefModel):
-    """Prize money (EUR) for one competition: on entering the league phase, per league-phase
-    win and draw, for reaching each knockout round (as in its knockout list), and on top for
-    winning the final."""
+    """Prize money (EUR) for one competition: for playing in each qualifying round (Q1..PO), on
+    entering the league phase, per league-phase win and draw, for reaching each knockout round
+    (as in its knockout list), and on top for winning the final."""
 
+    qualifying: list[float] = Field(min_length=4, max_length=4)
     participation: float = Field(ge=0)
     win: float = Field(ge=0)
     draw: float = Field(ge=0)
@@ -226,63 +294,69 @@ class EuropePrizeDef(DefModel):
 
     @model_validator(mode="after")
     def _rising(self) -> Self:
-        if min(self.rounds, default=0) < 0 or any(
-                later < earlier for earlier, later in zip(self.rounds, self.rounds[1:],
-                                                          strict=False)):
-            raise ValueError("europe_prizes: a later round never pays less than an earlier one")
+        for amounts in (self.qualifying, self.rounds):
+            if min(amounts, default=0) < 0 or any(
+                    later < earlier for earlier, later in zip(amounts, amounts[1:],
+                                                              strict=False)):
+                raise ValueError("europe_prizes: a later round never pays less than an earlier "
+                                 "one")
         return self
 
 
-def check_europe(continental: dict[str, ContinentalDef], access: AccessFile,
+def check_europe(continental: dict[str, ContinentalDef], access: AccessListFile,
                  calendars: dict[str, EuropeCalendarDef], settings: EuropeSettingsDef,
                  prizes: dict[str, EuropePrizeDef], nations: set[str],
-                 top_league_nations: set[str], cups: dict[str, str]) -> list[str]:
-    """Errors in the European definitions, taken together: every competition has its access,
-    dates and prizes, the places come to exactly the league phase's size, and every country,
-    cup and competition named exists. ``cups``: each domestic cup's nation, by key."""
+                 cups: dict[str, str]) -> list[str]:
+    """Errors in the European definitions, taken together: every competition has its access
+    list, dates and prizes; each round its rules; where winners and losers go exists; every
+    country and cup named exists. ``cups``: each domestic cup's nation, by key."""
     errors: list[str] = []
     calendar = calendars.get(settings.calendar)
     if calendar is None:
         errors.append(f"europe settings: unknown calendar {settings.calendar}")
+    for code, cup in access.cups.items():
+        if code not in nations or cups.get(cup) != code:
+            errors.append(f"access list cups: {cup} isn't a cup of {code}")
+    for o in access.overrides:
+        if o.nation not in nations or cups.get(o.cup) != o.nation:
+            errors.append(f"access list override: {o.cup} isn't a cup of {o.nation}")
+        if o.competition not in continental:
+            errors.append(f"access list override: unknown competition {o.competition}")
+    for a, b in settings.prohibited:
+        if a not in nations or b not in nations:
+            errors.append(f"europe settings: prohibited pair {a}-{b} names an unknown country")
     for key, comp in continental.items():
         rules = access.competitions.get(key)
         if rules is None:
-            errors.append(f"{key}: no access list in europe/access.yaml")
+            errors.append(f"{key}: no access list in europe/access_list.yaml")
             continue
-        if comp.qualifying.losers_to and comp.qualifying.losers_to not in continental:
-            errors.append(f"{key}: qualifying losers to unknown {comp.qualifying.losers_to}")
-        if comp.winner_to and comp.winner_to not in continental:
-            errors.append(f"{key}: winner to unknown {comp.winner_to}")
-        if rules.qualifiers() % 2:
-            errors.append(f"{key}: an odd number of clubs in qualifying ({rules.qualifiers()})")
-        dropping = sum(access.competitions[other].qualifiers() // 2
-                       for other, c in continental.items()
-                       if c.qualifying.losers_to == key and other in access.competitions)
-        total = rules.direct() + rules.qualifiers() // 2 + dropping
-        if total != comp.league_phase.clubs:
-            errors.append(f"{key}: the access list makes {total} league-phase clubs "
-                          f"({rules.direct()} direct, {rules.qualifiers() // 2} through "
-                          f"qualifying, {dropping} dropping in), not {comp.league_phase.clubs}")
-        for place in [*rules.league_phase, *rules.qualifying]:
-            if place.nation is not None and place.nation not in nations:
-                errors.append(f"{key}: unknown nation {place.nation}")
-            if place.cup is not None and place.cup not in cups:
-                errors.append(f"{key}: unknown cup {place.cup}")
-            if place.cup is not None and place.nation not in (None, cups.get(place.cup)):
-                errors.append(f"{key}: cup {place.cup} isn't {place.nation}'s")
+        own = {(n.round, n.path) for n in rules.nodes}
+        for node in rules.nodes:
+            for target in (node.winners, node.losers):
+                if target is None:
+                    continue
+                other = target.competition or key
+                if other not in continental:
+                    errors.append(f"{key} {node.round}: unknown competition {other}")
+                    continue
+                if target.round != "LP" and (target.round, target.path) not in {
+                        (n.round, n.path) for n in access.competitions[other].nodes}:
+                    errors.append(f"{key} {node.round} {node.path}: no round {target.round} "
+                                  f"{target.path} in {other}")
+        for place in rules.places:
+            if place.round != "LP" and (place.round, place.path) not in own:
+                errors.append(f"{key}: a place in {place.round} {place.path}, which it hasn't")
             if place.holder is not None and place.holder not in continental:
                 errors.append(f"{key}: holder of unknown competition {place.holder}")
-        for nation in rules.fill:
-            if nation not in top_league_nations:
-                errors.append(f"{key}: fill from {nation}, which has no league in the game")
         if calendar is not None:
             dates = calendar.competitions.get(key)
             if dates is None:
                 errors.append(f"{key}: no dates in the {calendar.key} calendar")
             else:
-                if len(dates.qualifying) != comp.qualifying.legs:
-                    errors.append(f"{key}: qualifying has {comp.qualifying.legs} legs but "
-                                  f"{len(dates.qualifying)} dates")
+                for r in comp.qualifying:
+                    if len(dates.qualifying.get(r.key, [])) != r.legs:
+                        errors.append(f"{key}: {r.key} has {r.legs} legs but "
+                                      f"{len(dates.qualifying.get(r.key, []))} dates")
                 if len(dates.league_phase) != comp.league_phase.matches:
                     errors.append(f"{key}: {comp.league_phase.matches} matchdays but "
                                   f"{len(dates.league_phase)} dates")
@@ -297,5 +371,5 @@ def check_europe(continental: dict[str, ContinentalDef], access: AccessFile,
         if key not in points.ranking_bonus or key not in points.knockout_bonus:
             errors.append(f"{key}: coefficient needs a ranking_bonus and a knockout_bonus")
     for key in set(access.competitions) - set(continental):
-        errors.append(f"europe/access.yaml: unknown competition {key}")
+        errors.append(f"europe/access_list.yaml: unknown competition {key}")
     return errors

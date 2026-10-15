@@ -27,8 +27,19 @@ from footsim.persistence.schema import (
 )
 from footsim.world.context import World, get_world
 from footsim.world.europe.coefficients import club_nations, coefficients
-from footsim.world.europe.common import KNOCKOUT, QUALIFYING, competitions_by_rank, europe_calendar
+from footsim.world.europe.common import (
+    KNOCKOUT,
+    LEAGUE_PHASE,
+    QUALIFYING,
+    competitions_by_rank,
+    europe_calendar,
+    qualifying_round,
+    round_key,
+    round_number,
+)
 from footsim.world.europe.league_phase import table
+from footsim.world.europe.places import ROUND_ORDER
+from footsim.world.europe.qualifying import node_of, nodes, round_name
 from footsim.world.europe.ranking import (
     club_associations,
     club_season_points,
@@ -45,9 +56,13 @@ class EntryOut(BaseModel):
     club: ClubRef
     nation: str
     how: str  # how it got its place: "4th in the Premier League", "FA Cup winners"...
-    stage: str  # league_phase | qualifying
+    stage: str  # qualifying | league_phase | out
     pot: int | None
     position: int | None
+    round: str | None = None  # where it is: Q1, Q2, Q3, PO, or LP
+    path: str | None = None  # champions, league or main, before the league phase
+    entered: str | None = None  # where it started: "Second qualifying round (Champions Path)"
+    came_from: str | None = None  # "From the Champions League third qualifying round"
 
 
 class MatchdayOut(BaseModel):
@@ -71,7 +86,8 @@ class EuropeOut(BaseModel):
     name: str
     short_name: str
     season: str
-    qualifying: CupRoundOut
+    qualifying: CupRoundOut  # the latest qualifying round drawn (the first before any is)
+    qualifying_rounds: list[CupRoundOut]  # every qualifying round and path, first round first
     league_phase: LeaguePhaseOut
     knockout: list[CupRoundOut]
     entries: list[EntryOut]
@@ -147,6 +163,9 @@ def _how(world: World, route: str, nations: dict[str, str]) -> str:
     if kind == "holder":
         comp = world.defs.continental.get(rest)
         return f"{comp.name} holders" if comp else "Holders"
+    if kind == "eps":
+        code, _, rank = rest.partition(":")
+        return f"{_how(world, f'league:{code}:{rank}', nations)} (a European Performance Spot)"
     if kind == "fill":
         return f"An extra place for {nations.get(rest, rest)}"
     if kind == "dropped":
@@ -155,9 +174,23 @@ def _how(world: World, route: str, nations: dict[str, str]) -> str:
     return route
 
 
+def _node_words(world: World, text: str | None) -> str | None:
+    """A stored round (UCL:Q2:champions) in words: "Champions League second qualifying round
+    (Champions Path)"."""
+    if not text:
+        return None
+    node = node_of(text)
+    comp = world.defs.continental.get(node.competition)
+    if comp is None:
+        return None
+    if node.round == LEAGUE_PHASE:
+        return f"{comp.short_name} league phase"
+    return f"{comp.short_name} {round_name(world, node)[:1].lower()}{round_name(world, node)[1:]}"
+
+
 def _rounds(world: World, comp: ContinentalDef, comp_id: int | None, season_id: int,
             conn: Connection, names: dict[int, str], comps: dict[int, Row[Any]]
-            ) -> tuple[CupRoundOut, list[CupRoundOut], list[FixtureOut]]:
+            ) -> tuple[list[CupRoundOut], list[CupRoundOut], list[FixtureOut]]:
     ties = (conn.execute(select(cup_tie).where(
         cup_tie.c.season_id == season_id, cup_tie.c.competition_id == comp_id)
         .order_by(cup_tie.c.round, cup_tie.c.id)).all() if comp_id is not None else [])
@@ -177,18 +210,21 @@ def _rounds(world: World, comp: ContinentalDef, comp_id: int | None, season_id: 
     def ref(club_id: int | None) -> ClubRef | None:
         return ClubRef(id=club_id, name=names[club_id]) if club_id else None
 
-    def round_out(index: int, number: int, name: str, legs: int,
-                  days: list[list[date]]) -> CupRoundOut:
-        in_round = [t for t in ties if t.round == number]
+    def round_out(index: int, number: int, name: str, legs: int, days: list[list[date]],
+                  path: str | None = None) -> CupRoundOut:
+        in_round = [t for t in ties if t.round == number and (path is None or t.path == path)]
         return CupRoundOut(
             index=index, name=name, dates=[min(leg).isoformat() for leg in days], legs=legs,
-            drawn=bool(in_round),
+            drawn=bool(in_round), round=round_key(number) if number <= QUALIFYING else None,
+            path=path,
             ties=[CupTieOut(tie=t.tie, home=ClubRef(id=t.club_a_id, name=names[t.club_a_id]),
                             away=ref(t.club_b_id), fixtures=games.get((number, t.tie), []),
                             winner=ref(t.winner_club_id)) for t in in_round])
 
-    qualifying = round_out(0, QUALIFYING, comp.qualifying.name, comp.qualifying.legs,
-                           dates.qualifying)
+    qualifying = [round_out(k, round_number(node.round), round_name(world, node),
+                            qualifying_round(comp, round_number(node.round)).legs,
+                            dates.qualifying[node.round], node.path)
+                  for k, node in enumerate(n for n in nodes(world) if n.competition == comp.key)]
     knockout = [round_out(k, KNOCKOUT + k, rnd.name, rnd.legs, dates.knockout[k])
                 for k, rnd in enumerate(comp.knockout)]
     return qualifying, knockout, phase_games
@@ -201,8 +237,10 @@ def europe(conn: Connection, world: World, key: str, season_id: int | None = Non
     names = _club_names(conn)
     comps = _competitions(conn)
     comp_id = next((cid for cid, r in comps.items() if r.key == key), None)
-    qualifying, knockout, phase_games = _rounds(world, comp, comp_id, season_id, conn,
-                                                names, comps)
+    qualifying_rounds, knockout, phase_games = _rounds(world, comp, comp_id, season_id, conn,
+                                                       names, comps)
+    drawn = [r for r in qualifying_rounds if r.drawn]
+    qualifying = drawn[-1] if drawn else qualifying_rounds[0]
     nations = {r.code: r.name for r in conn.execute(select(nation.c.code, nation.c.name))}
     entries = (conn.execute(select(continental_entry, nation.c.code).join(
         club, club.c.id == continental_entry.c.club_id).join(
@@ -239,12 +277,19 @@ def europe(conn: Connection, world: World, key: str, season_id: int | None = Non
     return EuropeOut(
         key=key, name=comp.name, short_name=comp.short_name,
         season=_season_label(conn, season_id), qualifying=qualifying,
-        league_phase=league_phase, knockout=knockout, winner=winner,
+        qualifying_rounds=qualifying_rounds, league_phase=league_phase, knockout=knockout,
+        winner=winner,
         entries=sorted((EntryOut(club=ClubRef(id=e.club_id, name=names[e.club_id]),
                                  nation=e.code, how=_how(world, e.route, nations),
-                                 stage=e.stage, pot=e.pot, position=e.position)
+                                 stage=e.stage, pot=e.pot, position=e.position,
+                                 round=(round_key(e.entry_round) if e.entry_round is not None
+                                        else None),
+                                 path=e.path, entered=_node_words(world, e.entered),
+                                 came_from=(f"From the {_node_words(world, e.came_from)}"
+                                            if e.came_from else None))
                         for e in entries),
-                       key=lambda e: (e.position or 99, e.pot or 9, e.club.name)))
+                       key=lambda e: (e.stage == "out", e.position or 99, e.pot or 9,
+                                      ROUND_ORDER.get(e.round or "", 9), e.club.name)))
 
 
 def summaries(conn: Connection, world: World) -> EuropeListOut:
@@ -281,10 +326,17 @@ def _stage_now(detail: EuropeOut) -> str | None:
     return None
 
 
+def _round_words(detail: EuropeOut, mine: EntryOut) -> str:
+    """The qualifying round a club is in, in words."""
+    found = next((r for r in detail.qualifying_rounds
+                  if r.round == mine.round and r.path == mine.path), None)
+    return found.name.lower() if found else "qualifying"
+
+
 def _user_status(detail: EuropeOut, user: int | None, mine: EntryOut | None) -> str | None:
     if user is None:
         return None
-    rounds = [detail.qualifying, *detail.knockout]
+    rounds = [*detail.qualifying_rounds, *detail.knockout]
     in_ties = [(rnd, t) for rnd in rounds for t in rnd.ties
                if user in (t.home.id, t.away.id if t.away else None)]
     if detail.winner is not None and detail.winner.id == user:
@@ -302,7 +354,9 @@ def _user_status(detail: EuropeOut, user: int | None, mine: EntryOut | None) -> 
             return f"In the {in_ties[-1][0].name.lower()}"
         return f"{ordinal(mine.position)} in the league phase"
     if mine.stage == "qualifying":
-        return f"In the {detail.qualifying.name.lower()}"
+        return f"In the {_round_words(detail, mine)}"
+    if mine.stage == "out":
+        return "Out in qualifying"
     row = next((r for r in detail.league_phase.table if r.club.id == user), None)
     return f"In the league phase: {ordinal(row.position)}" if row else "In the league phase"
 

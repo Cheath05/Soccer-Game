@@ -4,6 +4,15 @@
 enabled: true
 calendar: UEFA-2026-27
 
+# Countries whose clubs are kept apart in every draw (UEFA's prohibited clashes, for political
+# reasons): a draw that can't keep them apart doesn't happen in UEFA's; here it relaxes them last.
+prohibited:
+  - [ARM, AZE]
+  - [ESP, GIB]
+  - [KOS, BIH]
+  - [KOS, SRB]
+  - [UKR, BLR]
+
 # A country with clubs in the world but no league in the game (Austria, Greece, Poland...):
 # each season its clubs are put in order by a lottery, each club's chance weighted by
 # reputation ** lottery_power, and that order stands in for its league table. 8 makes the

@@ -27,6 +27,20 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.66"
+  date: "2026-10-15"
+  title: "UEFA's real qualifying, and places by the country ranking"
+  changes:
+    - "Who plays in Europe now follows UEFA's 2024-27 access list: each country's places come from its position in the UEFA country ranking from two seasons earlier, so a country that does well in Europe earns more clubs and better rounds."
+    - "The two countries with the best European season get an extra Champions League place (a European Performance Spot)."
+    - "The real qualifying rounds: first, second and third qualifying rounds and a play-off round from early July, with the Champions League's champions and league paths, and the losers dropping into the Europa League or Conference League. Clubs from the same country, and UEFA's prohibited pairings, are kept apart in the draws."
+    - "Your first season's European places are the real 2026-27 ones, from how 2025-26 really finished (Liverpool's Performance Spot, PSG and Aston Villa in through their leagues, Crystal Palace into the Europa League as Conference League holders...)."
+    - "The Europe page shows every qualifying round, where each club came in or dropped from, and a Rankings view with the country and club coefficients."
+    - "League tables' European places name the round a place enters (\"Champions League second qualifying round\")."
+    - "Countries not yet in the game leave their places to the others for now: their leagues are coming next."
+    - "The knockouts are a bracket: the play-off feeding the round of 16, the two halves meeting in the final, your club's path picked out, and before the draws who meets whom (\"1st v the winner of 16th v 17th\")."
+    - "Club history shows European trophies in their competitions' colours (\"UEFA Champions League ×2\") and each season's European run; a club that wins its league, its cup and the Champions League in one season gets a gold Treble banner, and the season summary leads with it."
+
 - version: "1.64"
   date: "2026-10-15"
   title: "Finding a league, with many more countries coming"

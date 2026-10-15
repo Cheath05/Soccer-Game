@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import Connection, Row, bindparam, func, select, text
 
 from footsim.api import queries
+from footsim.api.honours import european_runs, treble
 from footsim.api.schemas import (
     ClubMoveOut,
     ClubRef,
@@ -97,8 +98,8 @@ def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Ro
 # --- headlines ------------------------------------------------------------------------
 #
 # Notable results, found in the database rather than in the news text. Each kind is a builder
-# in ``_HEADLINE_BUILDERS``; the European competitions' winners come first
-# (kind "continental_title").
+# in ``_HEADLINE_BUILDERS``; a Treble comes first (kind "treble"), then the European
+# competitions' winners (kind "continental_title").
 
 # A country's top flight makes the headlines when the country has at least this many
 # divisions in the game: the big leagues, not a one-division country's only league.
@@ -178,6 +179,21 @@ def _cup_upsets(conn: Connection, world: World, season_id: int, comps: dict[int,
     return sorted(headlines, key=lambda h: (h.nation != "ENG", h.nation, h.competition))
 
 
+def _trebles(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
+             names: dict[int, str]) -> list[HeadlineOut]:
+    """The Treble, if a club won it: its top league, its country's main cup and the Champions
+    League in one season."""
+    found = treble(conn, world, season_id)
+    if found is None:
+        return []
+    name = names[found.club_id]
+    return [HeadlineOut(
+        kind="treble", text=f"{name} win the Treble.", club=ClubRef(id=found.club_id, name=name),
+        competition="Treble", nation=found.nation,
+        detail=f"The {found.league}, the {found.cup} and the {found.europe}.",
+        trophies=found.trophies)]
+
+
 def _continental_titles(conn: Connection, world: World, season_id: int,
                         comps: dict[int, Row[Any]], names: dict[int, str]) -> list[HeadlineOut]:
     """The European competitions' winners, the Champions League first, with the beaten
@@ -206,8 +222,8 @@ def _continental_titles(conn: Connection, world: World, season_id: int,
 
 
 _HEADLINE_BUILDERS: list[Callable[[Connection, World, int, dict[int, Row[Any]], dict[int, str]],
-                                  list[HeadlineOut]]] = [_continental_titles, _league_titles,
-                                                         _cup_upsets]
+                                  list[HeadlineOut]]] = [
+    _trebles, _continental_titles, _league_titles, _cup_upsets]
 
 
 def _headlines(conn: Connection, world: World, season_id: int, comps: dict[int, Row[Any]],
@@ -375,4 +391,5 @@ def season_final(conn: Connection, world: World, user: int, messages: Iterable[s
         drawn=row.drawn, lost=row.lost, goals_for=row.goals_for, goals_against=row.goals_against,
         points=row.points, outcome=row.outcome,
         cups=queries.cup_runs(conn, world, user).get(ended, []),
+        europe=european_runs(conn, world, user).get(ended, []),
         review=season_review(conn, world, ended, user), news=other_news(messages))

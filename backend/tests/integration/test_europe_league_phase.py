@@ -17,7 +17,13 @@ from footsim.api.europe import europe, summaries
 from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
-from footsim.persistence.schema import competition, continental_entry, finance_ledger, fixture
+from footsim.persistence.schema import (
+    competition,
+    continental_entry,
+    cup_tie,
+    finance_ledger,
+    fixture,
+)
 from footsim.world import career
 from footsim.world.context import World, get_world
 from footsim.world.cups import REST_DAYS, moved_ties_news
@@ -51,8 +57,8 @@ def _phase(engine: Engine, key: str) -> tuple[list[Any], list[Any]]:
         comp_id = conn.execute(select(competition.c.id).where(competition.c.key == key)
                                ).scalar_one()
         entries = conn.execute(select(continental_entry).where(
-            continental_entry.c.season_id == 1,
-            continental_entry.c.competition_id == comp_id)).all()
+            continental_entry.c.season_id == 1, continental_entry.c.competition_id == comp_id,
+            continental_entry.c.stage == "league_phase")).all()
         games = conn.execute(select(fixture).where(
             fixture.c.season_id == 1, fixture.c.stage == key,
             fixture.c.round.between(1, 8))).all()
@@ -104,13 +110,21 @@ def test_the_table_is_final_and_the_money_paid(season: tuple[Engine, World], key
                                         text("sum(amount_cents)")).where(
             finance_ledger.c.ref_id == comp_id, finance_ledger.c.kind == "prize",
             finance_ledger.c.season_id == 1).group_by(finance_ledger.c.club_id)).all())
+        # A club that came through qualifying (in this competition) was paid for its rounds.
+        qualifying: dict[int, int] = defaultdict(int)
+        for t in conn.execute(select(cup_tie).where(
+                cup_tie.c.season_id == 1, cup_tie.c.competition_id == comp_id,
+                cup_tie.c.round <= 0, cup_tie.c.club_b_id.is_not(None))):
+            amount = round(prize.qualifying[t.round + 3] * 100)
+            qualifying[t.club_a_id] += amount
+            qualifying[t.club_b_id] += amount
     for e in entries:
         won = sum(1 for g in games if (g.home_club_id == e.club_id and g.home_goals > g.away_goals)
                   or (g.away_club_id == e.club_id and g.away_goals > g.home_goals))
         drawn = sum(1 for g in games if e.club_id in (g.home_club_id, g.away_club_id)
                     and g.home_goals == g.away_goals)
         expected = round(prize.participation * 100) + round(
-            (won * prize.win + drawn * prize.draw) * 100)
+            (won * prize.win + drawn * prize.draw) * 100) + qualifying.get(e.club_id, 0)
         first, last = world.defs.continental[key].league_phase.to_playoff
         if first <= e.position <= last:  # the knockout play-off is drawn by 1 February
             expected += round(prize.rounds[0] * 100)
@@ -148,8 +162,13 @@ def test_the_europe_pages(season: tuple[Engine, World]) -> None:
         listing = summaries(conn, world)
     assert listing.enabled and [c.key for c in listing.competitions] == ["UCL", "UEL", "UECL"]
     assert listing.competitions[0].stage == "Knockout play-off"
-    assert ucl.qualifying.drawn and len(ucl.qualifying.ties) == 4
-    assert all(len(t.fixtures) == 2 and t.winner for t in ucl.qualifying.ties)
+    rounds = ucl.qualifying_rounds
+    assert [(r.round, r.path) for r in rounds] == [
+        ("Q1", "champions"), ("Q2", "champions"), ("Q2", "league"), ("Q3", "champions"),
+        ("Q3", "league"), ("PO", "champions"), ("PO", "league")]
+    assert any(r.drawn for r in rounds)
+    assert all(t.winner for r in rounds for t in r.ties)
+    assert all(len(t.fixtures) == 2 for r in rounds for t in r.ties if t.away is not None)
     phase = ucl.league_phase
     assert phase.final and len(phase.table) == 36
     assert Counter(r.zone for r in phase.table) == {"round_of_16": 8, "playoff": 16, "out": 12}
@@ -158,7 +177,8 @@ def test_the_europe_pages(season: tuple[Engine, World]) -> None:
                for md in phase.matchdays for f in md.fixtures)
     assert ucl.knockout[0].drawn and len(ucl.knockout[0].ties) == 8
     assert not ucl.knockout[1].drawn and ucl.winner is None
-    assert len(ucl.entries) == 36 and all(e.how for e in ucl.entries)
+    assert sum(e.stage == "league_phase" for e in ucl.entries) == 36
+    assert all(e.how for e in ucl.entries)
     assert any(e.how.endswith("in the Premier League") for e in ucl.entries)
 
 

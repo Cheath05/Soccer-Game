@@ -15,7 +15,8 @@ export default function TieCard({ tie, legs, userId, career }: { tie: CupTie; le
   const mine = userId !== undefined && clubs.some((c) => c.id === userId)
   const played = tie.fixtures.filter((f) => f.status === 'played')
   const next = tie.fixtures.find((f) => f.status !== 'played')
-  const columns = `minmax(0, 1fr) repeat(${legs}, 22px)${legs > 1 ? ' 30px' : ''}`
+  const bye = tie.away === null
+  const columns = bye ? 'minmax(0, 1fr)' : `minmax(0, 1fr) repeat(${legs}, 22px)${legs > 1 ? ' 30px' : ''}`
   const decider = [...played].reverse().find((f) => f.home_pens !== null && f.away_pens !== null)
   let note: string | null = null
   if (decider && tie.winner && decider.home_pens !== null && decider.away_pens !== null) {
@@ -44,7 +45,7 @@ export default function TieCard({ tie, legs, userId, career }: { tie: CupTie; le
             <Text size="sm" truncate title={club.name} fw={won || club.id === userId ? 700 : undefined} c={lost ? 'dimmed' : undefined}>
               <ClubLink club={club} />
             </Text>
-            {Array.from({ length: legs }, (_, i) => {
+            {!bye && Array.from({ length: legs }, (_, i) => {
               const leg = tie.fixtures[i]
               const goals = leg && leg.status === 'played' ? goalsOf(leg, club.id) : null
               return (
@@ -59,7 +60,7 @@ export default function TieCard({ tie, legs, userId, career }: { tie: CupTie; le
                 </Text>
               )
             })}
-            {legs > 1 && (
+            {!bye && legs > 1 && (
               <Text size="sm" ta="center" fw={700} c={lost ? 'dimmed' : undefined} style={{ borderLeft: '1px solid var(--mantine-color-default-border)' }}>
                 {played.length ? total : ''}
               </Text>
@@ -67,6 +68,11 @@ export default function TieCard({ tie, legs, userId, career }: { tie: CupTie; le
           </div>
         )
       })}
+      {bye && (
+        <Text size="sm" c="dimmed" fs="italic" style={{ minHeight: 24 }}>
+          bye <Text span size="xs">(straight through)</Text>
+        </Text>
+      )}
       {(note || (next && !tie.winner)) && (
         <Text size="xs" c="dimmed" mt={2}>
           {note ?? (next ? <FixtureLink fixture={next} career={career}>{`Next: ${dayDate(next.date)}`}</FixtureLink> : null)}

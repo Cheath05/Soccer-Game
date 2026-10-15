@@ -1,0 +1,97 @@
+# Who plays in Europe (W7, docs/plans/w7-all-of-uefa.md): UEFA's access list for 2024-27, by a
+# country's position in the ranking that applies to the season (world/europe/ranking.py: the one
+# from two seasons before). Russia (suspended) is left out, so UEFA's positions 27-55 are 26-54
+# here. These are UEFA's 2026-27 numbers with Russia's suspension absorbed as UEFA absorbed it:
+# the champions of position 23 start in the Champions League's second qualifying round, and the
+# cup winners of 16 in the Europa League's.
+#
+# A place is a run of ranking positions (`ranks`) giving either a league finish (`positions`, 1 is
+# the champions) or the cup winners (`cup: true`), entering a competition at a round (`round`:
+# LP, the league phase, or a qualifying round Q1, Q2, Q3, PO) and, before the league phase, a
+# path: champions, league (the Champions League's League Path) or main (the other two's). The
+# holders' places and the two European Performance Spots are places too.
+#
+# A club earning two places takes the higher one, and its other place passes to the next club of
+# its country not yet in Europe (a cup's place to the best-placed such club of its league). A place
+# that is still empty (a holder already in through its league, a country without enough clubs) is
+# filled by the best club, by coefficient, entering lower down the same path, as UEFA's are since
+# 2024; a round left with an odd number of clubs takes two more from the round below, or gives its
+# best club a bye.
+#
+# `nodes` are each competition's qualifying rounds and paths: where their winners go (the next
+# round of the same path, the play-off's into the league phase, unless `winners` says otherwise)
+# and their losers (`losers`; none: out).
+
+# A country's cup whose winners take its cup place, where it has more than one cup.
+cups:
+  ENG: FA_CUP
+  SCO: SCOTTISH_CUP
+  POR: TACA_DE_PORTUGAL
+
+# A league place given to something else: England's sixth place goes to the EFL Cup winners
+# (passing down the table if they are already in).
+overrides:
+  - {nation: ENG, competition: UECL, position: 6, cup: EFL_CUP}
+
+competitions:
+  UCL:
+    nodes:
+      - {round: Q1, path: champions, losers: {competition: UECL, round: Q2, path: champions}}
+      - {round: Q2, path: champions, losers: {competition: UEL, round: Q3, path: champions}}
+      - {round: Q2, path: league, losers: {competition: UEL, round: Q3, path: main}}
+      - {round: Q3, path: champions, losers: {competition: UEL, round: PO, path: main}}
+      - {round: Q3, path: league, losers: {competition: UEL, round: LP}}
+      - {round: PO, path: champions, losers: {competition: UEL, round: LP}}
+      - {round: PO, path: league, losers: {competition: UEL, round: LP}}
+    places:
+      - {round: LP, holder: UCL, fill_from: champions}   # the holders; if they're in through their league, the best champion in qualifying
+      - {round: LP, holder: UEL, fill_from: league}      # the Europa League holders; else the best club in the League Path
+      - {round: LP, ranks: [1, 4], positions: [1, 4]}
+      - {round: LP, ranks: [5, 5], positions: [1, 3]}
+      - {round: LP, ranks: [6, 6], positions: [1, 2]}
+      - {round: LP, ranks: [7, 10], positions: [1, 1]}
+      - {round: LP, performance_spot: true}            # one each for the two EPS countries
+      - {round: PO, path: champions, ranks: [11, 14], positions: [1, 1]}
+      - {round: Q3, path: league, ranks: [5, 5], positions: [4, 4]}
+      - {round: Q3, path: league, ranks: [6, 6], positions: [3, 3]}
+      - {round: Q3, path: league, ranks: [7, 9], positions: [2, 2]}
+      - {round: Q2, path: champions, ranks: [15, 23], positions: [1, 1]}
+      - {round: Q2, path: league, ranks: [10, 15], positions: [2, 2]}
+      - {round: Q1, path: champions, ranks: [24, 54], positions: [1, 1]}
+  UEL:
+    nodes:
+      - {round: Q1, path: main, losers: {competition: UECL, round: Q2, path: main}}
+      - {round: Q2, path: main, losers: {competition: UECL, round: Q3, path: main}}
+      - {round: Q3, path: champions, winners: {round: PO, path: main},
+         losers: {competition: UECL, round: PO, path: champions}}
+      - {round: Q3, path: main, losers: {competition: UECL, round: PO, path: main}}
+      - {round: PO, path: main, losers: {competition: UECL, round: LP}}
+    places:
+      - {round: LP, holder: UECL, fill_from: main}  # the Conference League holders; else the best club in qualifying
+      - {round: LP, ranks: [1, 7], cup: true}
+      - {round: LP, ranks: [1, 5], positions: [5, 5]}
+      - {round: PO, path: main, ranks: [8, 12], cup: true}
+      - {round: Q3, path: main, ranks: [13, 15], cup: true}
+      - {round: Q2, path: main, ranks: [16, 16], cup: true}
+      - {round: Q2, path: main, ranks: [7, 12], positions: [3, 3]}
+      - {round: Q2, path: main, ranks: [6, 6], positions: [4, 4]}
+      - {round: Q1, path: main, ranks: [17, 32], cup: true}
+  UECL:
+    nodes:
+      - {round: Q1, path: main}
+      - {round: Q2, path: champions}
+      - {round: Q2, path: main}
+      - {round: Q3, path: champions}
+      - {round: Q3, path: main}
+      - {round: PO, path: champions}
+      - {round: PO, path: main}
+    places:
+      - {round: PO, path: main, ranks: [1, 5], positions: [6, 6]}
+      - {round: Q2, path: main, ranks: [33, 43], cup: true}
+      - {round: Q2, path: main, ranks: [16, 32], positions: [2, 2]}
+      - {round: Q2, path: main, ranks: [13, 28], positions: [3, 3]}
+      - {round: Q2, path: main, ranks: [7, 15], positions: [4, 4]}
+      - {round: Q2, path: main, ranks: [6, 6], positions: [5, 5]}
+      - {round: Q1, path: main, ranks: [44, 54], cup: true}
+      - {round: Q1, path: main, ranks: [33, 54], positions: [2, 2]}
+      - {round: Q1, path: main, ranks: [29, 49], positions: [3, 3]}

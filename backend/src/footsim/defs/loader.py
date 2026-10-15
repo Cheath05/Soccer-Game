@@ -19,6 +19,7 @@ from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
 from footsim.defs.europe import (
     AccessFile,
+    AssociationCoefficientsFile,
     ContinentalDef,
     EuropeCalendarDef,
     EuropeSettingsDef,
@@ -94,6 +95,7 @@ class GameDefinitions:
     europe_access: AccessFile
     europe: EuropeSettingsDef
     europe_calendars: dict[str, EuropeCalendarDef]
+    association_coefficients: AssociationCoefficientsFile  # countries' real seasons, seeds
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -173,6 +175,8 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         europe_access=_parse(AccessFile, root / "europe" / "access.yaml"),
         europe=_parse(EuropeSettingsDef, root / "europe" / "settings.yaml"),
         europe_calendars=_load_dir(EuropeCalendarDef, root / "europe" / "calendars"),
+        association_coefficients=_parse(AssociationCoefficientsFile,
+                                        root / "europe" / "association_coefficients.yaml"),
     )
     _cross_validate(defs)
     return defs

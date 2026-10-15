@@ -35,7 +35,35 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): eight more leagues, with their cups** (the commit that adds this line; v1.61). The user asked for the leagues that play in Europe and aren't in the game yet, from the FC 27 data, with their cups.
+- **Latest checkpoint (15 Oct): W7 A2, country coefficients** (the commit that adds this line; v1.63). The W7 plan is in `docs/plans/w7-all-of-uefa.md` (committed at fdb8401).
+  - **Points:** UEFA's 2024-27 rules, for both club and country (europe/settings.yaml `coefficient`, defs `CoefficientDef` and `RankingBonusDef`):
+    - matches: 2 for a win and 1 for a draw, halved in qualifying and play-off rounds;
+    - the UCL league-phase bonus of 6;
+    - league-phase place bonuses: 1st gets 6, 6 and 4 in the UCL, UEL and UECL;
+    - knockout bonuses from the round of 16 on: 1.5, 1 and 0.5.
+  - **Seeds:** `europe/association_coefficients.yaml` holds the real season coefficients for 2020-21 to 2025-26 (kassiesa.net, the 2025 and 2026 rankings cross-checked), for all 54 associations, Russia left out.
+  - **`world/europe/ranking.py`:**
+    - `season_coefficients` and `ranking(through)`: five seasons, ties to the later ones;
+    - `access_ranking(season)`: the ranking from two seasons back, as UEFA's;
+    - `performance_spots`: the best two in the season before;
+    - `club_season_points` and `record_season`: club and country rows when the last final is decided.
+    - New `nations` entries for the 22 missing UEFA countries.
+  - **Schema v19:** `association_coefficient(nation_id, season_id, points, clubs)`; `continental_entry.association` (the country whose place it took).
+  - **Club coefficients** now have UEFA's floor: at least 20% of their country's five-season total.
+  - **API:**
+    - `GET /api/world/nations`: every country with a league or cup, with its continent and rank (UEFA's ranking first), for the A1 picker. It works without a career.
+    - `GET /api/europe/rankings`: countries over five seasons, the current one live; clubs by the coefficient this season's draws use. Registered before `/europe/{key}`.
+  - **Checks:**
+    - `test_europe_ranking.py` (new): the 2025 and 2026 rankings reproduce UEFA's order and totals; Performance Spots for 2026-27 are England and Spain; the place bonuses follow UEFA's table.
+    - The v19 migration test.
+    - `test_europe_season` (country coefficients: every club counted once, UCL league-phase clubs earn at least 6, England's season between 5 and 45, the ranking through season 1 adds it to the real seasons).
+    - `test_league_europe` (the two endpoints).
+    - The full suite.
+  - **Running when this was written:**
+    - research agents for A5's 25 remaining countries (11 done: GRE, CZE, UKR, CRO, SRB, KAZ, MDA, EST, FIN, ISL, FRO; files in the session scratchpad, to be committed as config in A6);
+    - a Sonnet agent for the A1 picker.
+  - **Next:** A3, the access list by ranking.
+- **Earlier checkpoint (15 Oct): eight more leagues, with their cups** (v1.61). The user asked for the leagues that play in Europe and aren't in the game yet, from the FC 27 data, with their cups.
   - **Which leagues:** FC 27 has whole top divisions for 8 of the access list's countries without a league:
     - Poland's Ekstraklasa (18), Romania's SuperLiga (16), Sweden's Allsvenskan (16), Norway's Eliteserien (16);
     - Denmark's Superliga (12; FC 27's "Metropolitan Division"), the Swiss Super League (12), the Austrian Bundesliga (12), and Ireland's Premier Division (10).

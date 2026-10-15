@@ -1,5 +1,6 @@
 """The European knockouts (W6 E4): the play-off, the round of 16, the quarter- and semi-finals
-over two legs, and the final; their prize money; and the season's coefficient points.
+over two legs, and the final; their prize money; and, once the last final is decided, the
+season's coefficients (europe/ranking.py).
 
 Seeding comes from the league phase, with no draw: in the knockout play-off 9th meets 24th,
 10th 23rd, and so on; in the round of 16 1st meets the winner of 16th v 17th, 2nd of 15th v
@@ -13,10 +14,11 @@ from typing import Any
 from sqlalchemy import Connection, Row, select, update
 
 from footsim.defs.europe import ContinentalDef
-from footsim.persistence.schema import club_coefficient, continental_entry, cup_tie, fixture
+from footsim.persistence.schema import continental_entry, cup_tie
 from footsim.world.context import World
 from footsim.world.cups import moved_ties_news
 from footsim.world.europe.common import KNOCKOUT, competition_id, europe_calendar
+from footsim.world.europe.ranking import record_season
 from footsim.world.europe.ties import insert_ties, tie_winner
 from footsim.world.finance import Entry, post
 from footsim.world.meta import CareerMeta
@@ -110,7 +112,7 @@ def progress_knockout(conn: Connection, world: World, meta: CareerMeta, comp: Co
             messages.append(f"{club_name(conn, champion)} win the {comp.name}.")
             if all(_final_decided(conn, world, season_id, other)
                    for other in world.defs.continental.values()):
-                record_coefficients(conn, world, season_id)
+                record_season(conn, world, season_id)
     return messages
 
 
@@ -119,39 +121,6 @@ def _final_decided(conn: Connection, world: World, season_id: int,
     final = _ties(conn, season_id, competition_id(conn, comp),
                   KNOCKOUT + len(comp.knockout) - 1)
     return bool(final) and final[0].winner_club_id is not None
-
-
-def record_coefficients(conn: Connection, world: World, season_id: int) -> None:
-    """The season's coefficient points for every club that played in Europe: per win and
-    draw (the summer play-off round included), and a bonus for each knockout round reached
-    (europe/settings.yaml coefficient). Once, when the last final is decided."""
-    if conn.execute(select(club_coefficient.c.club_id).where(
-            club_coefficient.c.season_id == season_id)).first() is not None:
-        return
-    rules = world.defs.europe.coefficient
-    points: dict[int, float] = {}
-    for comp in world.defs.continental.values():
-        comp_id = competition_id(conn, comp)
-        for g in conn.execute(select(fixture).where(
-                fixture.c.season_id == season_id, fixture.c.stage == comp.key,
-                fixture.c.status == "played")):
-            for club_id, ours, theirs in ((g.home_club_id, g.home_goals, g.away_goals),
-                                          (g.away_club_id, g.away_goals, g.home_goals)):
-                earned = rules.win if ours > theirs else rules.draw if ours == theirs else 0.0
-                points[club_id] = points.get(club_id, 0.0) + earned
-        bonus = rules.round_bonus[comp.key]
-        for index in range(len(comp.knockout)):
-            for tie in _ties(conn, season_id, comp_id, KNOCKOUT + index):
-                for club_id in (tie.club_a_id, tie.club_b_id):
-                    if club_id is not None:
-                        points[club_id] = points.get(club_id, 0.0) + bonus[index]
-            if index == len(comp.knockout) - 1:
-                for tie in _ties(conn, season_id, comp_id, KNOCKOUT + index):
-                    if tie.winner_club_id is not None:
-                        points[tie.winner_club_id] += bonus[index]  # winning it, on top
-    if points:
-        conn.execute(club_coefficient.insert(), [
-            {"club_id": c, "season_id": season_id, "points": p} for c, p in sorted(points.items())])
 
 
 def _draw_news(conn: Connection, meta: CareerMeta, comp: ContinentalDef, index: int,

@@ -35,6 +35,28 @@ nations:
   - {code: UKR, name: Ukraine, confederation: UEFA}
   - {code: RUS, name: Russia, confederation: UEFA}
   - {code: AZE, name: Azerbaijan, confederation: UEFA}
+  - {code: ISR, name: Israel, confederation: UEFA}
+  - {code: MDA, name: Moldova, confederation: UEFA}
+  - {code: ISL, name: Iceland, confederation: UEFA}
+  - {code: BIH, name: Bosnia and Herzegovina, confederation: UEFA, aliases: [Bosnia-Herzegovina]}
+  - {code: ARM, name: Armenia, confederation: UEFA}
+  - {code: LVA, name: Latvia, confederation: UEFA, eu: true}
+  - {code: KOS, name: Kosovo, confederation: UEFA}
+  - {code: KAZ, name: Kazakhstan, confederation: UEFA}
+  - {code: FRO, name: Faroe Islands, confederation: UEFA}
+  - {code: MLT, name: Malta, confederation: UEFA, eu: true}
+  - {code: LTU, name: Lithuania, confederation: UEFA, eu: true}
+  - {code: LIE, name: Liechtenstein, confederation: UEFA}
+  - {code: EST, name: Estonia, confederation: UEFA, eu: true}
+  - {code: ALB, name: Albania, confederation: UEFA}
+  - {code: MNE, name: Montenegro, confederation: UEFA}
+  - {code: LUX, name: Luxembourg, confederation: UEFA, eu: true}
+  - {code: GEO, name: Georgia, confederation: UEFA}
+  - {code: MKD, name: North Macedonia, confederation: UEFA}
+  - {code: BLR, name: Belarus, confederation: UEFA}
+  - {code: AND, name: Andorra, confederation: UEFA}
+  - {code: GIB, name: Gibraltar, confederation: UEFA}
+  - {code: SMR, name: San Marino, confederation: UEFA}
   - {code: USA, name: United States, confederation: CONCACAF}
   - {code: CAN, name: Canada, confederation: CONCACAF}
   - {code: MEX, name: Mexico, confederation: CONCACAF}

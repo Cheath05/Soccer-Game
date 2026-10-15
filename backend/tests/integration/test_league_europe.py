@@ -48,3 +48,19 @@ def test_a_smaller_country_and_a_lower_league(client: TestClient) -> None:
         (p["competition"], p["stage"], p["how"]) for p in scotland["europe_places"]}
     lower = client.get("/api/competitions/ENG2/table").json()
     assert lower["europe_places"] == [] and all(r["europe"] is None for r in lower["rows"])
+
+
+def test_the_nations_for_the_pickers_and_the_rankings(client: TestClient) -> None:
+    nations = client.get("/api/world/nations").json()
+    assert nations[0]["code"] == "ENG" and nations[0]["featured"]
+    by_code = {n["code"]: n for n in nations}
+    assert {c for c, n in by_code.items() if n["featured"]} == {"ENG", "ESP", "ITA", "GER", "FRA"}
+    assert by_code["KSA"]["continent"] == "Asia" and by_code["KSA"]["uefa_rank"] is None
+    assert by_code["KSA"]["rank"] > max(n["rank"] for n in nations if n["uefa_rank"])
+    assert by_code["SCO"]["continent"] == "Europe" and by_code["SCO"]["uefa_rank"] > 5
+    rankings = client.get("/api/europe/rankings").json()
+    assert rankings["season_labels"] == ["2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+    assert rankings["in_progress"] and len(rankings["countries"]) == 54
+    assert rankings["countries"][0]["nation"] == "ENG"
+    assert rankings["countries"][0]["seasons"][:4] == [23.0, 17.375, 29.464, 28.68]
+    assert rankings["clubs"] and all(c["coefficient"] >= 0 for c in rankings["clubs"])

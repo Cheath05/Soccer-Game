@@ -20,6 +20,7 @@ from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
 from footsim.persistence.schema import (
+    association_coefficient,
     club_coefficient,
     competition,
     continental_entry,
@@ -27,11 +28,13 @@ from footsim.persistence.schema import (
     finance_ledger,
     fixture,
     league_final,
+    nation,
 )
 from footsim.world import career
 from footsim.world.context import World, get_world
 from footsim.world.cups import REST_DAYS
 from footsim.world.europe.common import KNOCKOUT
+from footsim.world.europe.ranking import performance_spots, ranking
 from footsim.world.meta import read_meta
 
 BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
@@ -213,3 +216,31 @@ def test_a_finished_tables_marks_are_where_clubs_went(two_seasons: tuple[Engine,
     marked = {r.club.id: r.europe for r in final.rows if r.europe}
     assert marked == {r.club.id: entries[r.club.id] for r in final.rows if r.club.id in entries}
     assert len(marked) >= 7  # England's seven places, and any holders' or fills'
+
+
+def test_the_country_coefficients(two_seasons: tuple[Engine, World]) -> None:
+    """The season's country coefficients (UEFA 2024-27 points): every club that played counted
+    once, for its country; the Champions League's league-phase clubs earn its bonus of 6; the
+    ranking through the season played adds it to the real seasons before."""
+    engine, world = two_seasons
+    with engine.connect() as conn:
+        rows = {r.code: r for r in conn.execute(
+            select(association_coefficient, nation.c.code).join(
+                nation, nation.c.id == association_coefficient.c.nation_id).where(
+                association_coefficient.c.season_id == 1))}
+        points = dict(conn.execute(select(club_coefficient.c.club_id, club_coefficient.c.points)
+                                   .where(club_coefficient.c.season_id == 1)).all())
+        league_phase = [e.club_id for e in _entries(engine, 1, "UCL") if e.position is not None]
+        through_1 = ranking(conn, world, 1)
+        spots = performance_spots(conn, world, 2)
+    assert sum(r.clubs for r in rows.values()) == len(points)
+    assert round(sum(r.points for r in rows.values()), 6) == round(sum(points.values()), 6)
+    assert len(league_phase) == 36 and all(points[c] >= 6 for c in league_phase)
+    england = rows["ENG"].points / rows["ENG"].clubs
+    assert 5 < england < 45, england  # real seasons: 17 to 29
+    real = world.defs.association_coefficients.seasons
+    eng = next(r for r in through_1 if r.nation == "ENG")
+    assert eng.seasons[:4] == [real[s]["ENG"] for s in ("2022-23", "2023-24", "2024-25",
+                                                        "2025-26")]
+    assert abs(eng.seasons[4] - england) < 1e-9
+    assert eng.rank <= 5 and len(spots) == 2

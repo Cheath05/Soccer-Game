@@ -17,14 +17,25 @@ from footsim.core.text import ordinal
 from footsim.defs.europe import ContinentalDef
 from footsim.persistence.schema import (
     club,
+    club_coefficient,
+    club_league_membership,
+    competition,
     continental_entry,
     cup_tie,
     fixture,
     nation,
 )
 from footsim.world.context import World, get_world
+from footsim.world.europe.coefficients import club_nations, coefficients
 from footsim.world.europe.common import KNOCKOUT, QUALIFYING, competitions_by_rank, europe_calendar
 from footsim.world.europe.league_phase import table
+from footsim.world.europe.ranking import (
+    club_associations,
+    club_season_points,
+    first_season_label,
+    ranking,
+    season_label_of,
+)
 from footsim.world.meta import read_meta
 
 router = APIRouter(prefix="/api")
@@ -79,6 +90,42 @@ class EuropeSummaryOut(BaseModel):
 class EuropeListOut(BaseModel):
     enabled: bool  # whether this game has the European competitions
     competitions: list[EuropeSummaryOut]
+
+
+class NationOut(BaseModel):
+    """A country with a league or a cup in the game, for the pickers: its continent and its
+    place in the order they're listed (UEFA's ranking first, then the other continents' by
+    their top league's money)."""
+
+    code: str
+    name: str
+    confederation: str  # UEFA, AFC, CONCACAF...
+    continent: str  # Europe, Asia, North America...
+    rank: int  # 1 is listed first
+    uefa_rank: int | None  # its place in UEFA's country ranking, for a UEFA country
+    featured: bool  # the big five: always within one tap
+
+
+class CountryCoefficientOut(BaseModel):
+    rank: int
+    nation: str
+    name: str
+    seasons: list[float]  # the five seasons, oldest first (the last may be in progress)
+    total: float
+
+
+class ClubCoefficientOut(BaseModel):
+    rank: int
+    club: ClubRef
+    nation: str
+    coefficient: float
+
+
+class RankingsOut(BaseModel):
+    season_labels: list[str]  # the five seasons' labels, oldest first
+    in_progress: bool  # the last season is still being played (its figures so far)
+    countries: list[CountryCoefficientOut]
+    clubs: list[ClubCoefficientOut]  # the best 100 by the coefficient this season's draws use
 
 
 def _how(world: World, route: str, nations: dict[str, str]) -> str:
@@ -266,6 +313,111 @@ def europe_list(session: Session) -> EuropeListOut:
         return summaries(conn, get_world())
 
 
+
+
+CONTINENTS = {"UEFA": "Europe", "AFC": "Asia", "CONCACAF": "North America",
+              "CONMEBOL": "South America", "CAF": "Africa", "OFC": "Oceania"}
+BIG_FIVE = ("ENG", "ESP", "ITA", "GER", "FRA")
+
+
+def nations_out(conn: Connection | None, world: World) -> list[NationOut]:
+    """Every country with a league or a cup, UEFA's in its ranking order (the career's, or the
+    real one before a career), then the rest by their top league's money."""
+    through = read_meta(conn).season_id - 1 if conn is not None else 0
+    uefa = {r.nation: r.rank for r in ranking(conn, world, through)}
+    codes = ({lg.nation for lg in world.defs.leagues.values()}
+             | {cup.nation for cup in world.defs.cups.values()})
+    income = {lg.nation: world.defs.finance.league_income.get(key) for key, lg in
+              world.defs.leagues.items() if lg.tier == 1}
+
+    def order(code: str) -> tuple[int, float, str]:
+        if code in uefa:
+            return (0, uefa[code], code)
+        money = income.get(code)
+        return (1, -(money.base if money else 0.0), code)
+
+    out = []
+    for k, code in enumerate(sorted(codes, key=order), start=1):
+        n = world.defs.nations.get(code)
+        confederation = n.confederation if n else ""
+        out.append(NationOut(code=code, name=n.name if n else code, confederation=confederation,
+                             continent=CONTINENTS.get(confederation, confederation), rank=k,
+                             uefa_rank=uefa.get(code), featured=code in BIG_FIVE))
+    return out
+
+
+def rankings(conn: Connection, world: World) -> RankingsOut:
+    """UEFA's country and club rankings as they stand: five seasons to this one, this one's
+    figures so far until its last final is decided."""
+    meta = read_meta(conn)
+    rules = world.defs.europe.coefficient
+    recorded = conn.execute(select(club_coefficient.c.club_id).where(
+        club_coefficient.c.season_id == meta.season_id)).first() is not None
+    live: dict[str, float] = {}
+    club_live: dict[int, float] = {}
+    if not recorded:
+        club_live = club_season_points(conn, world, meta.season_id)
+        countries = club_associations(conn, meta.season_id, sorted(club_live))
+        by_country: dict[str, list[float]] = defaultdict(list)
+        for club_id, p in club_live.items():
+            if club_id in countries:
+                by_country[countries[club_id]].append(p)
+        live = {code: sum(v) / len(v) for code, v in by_country.items()}
+    table: list[tuple[str, list[float]]] = [
+        (r.nation, r.seasons if recorded else [*r.seasons[:-1], live.get(r.nation, 0.0)])
+        for r in ranking(conn, world, meta.season_id)]
+    if not recorded:  # this season's figures so far, in place of the (empty) recorded ones
+        table.sort(key=lambda r: (-round(sum(r[1]), 3),
+                                  *(-round(v, 3) for v in reversed(r[1])), r[0]))
+    countries_out = [(k, code, values) for k, (code, values) in enumerate(table, start=1)]
+    first = first_season_label(conn, world)
+    labels = [season_label_of(s, first)
+              for s in range(meta.season_id - rules.seasons + 1, meta.season_id + 1)]
+    names: dict[str, str] = {code: n.name for code, n in world.defs.nations.items()}
+    # Clubs: the coefficients this season's draws use (the five seasons before it, reputation
+    # standing in for those before the career, UEFA's floor), for every club in a UEFA
+    # country's league this season or in Europe.
+    uefa = {code for code, n in world.defs.nations.items() if n.confederation == "UEFA"}
+    in_leagues = {r.club_id for r in conn.execute(
+        select(club_league_membership.c.club_id).join(
+            competition, competition.c.id == club_league_membership.c.competition_id).join(
+            nation, nation.c.id == competition.c.nation_id).where(
+            club_league_membership.c.season_id == meta.season_id, nation.c.code.in_(uefa)))}
+    in_europe = {r.club_id for r in conn.execute(select(continental_entry.c.club_id).where(
+        continental_entry.c.season_id == meta.season_id))}
+    ids = sorted(in_leagues | in_europe)
+    coefficient = coefficients(conn, world, ids, meta.season_id)
+    club_codes = club_nations(conn, ids, meta.season_id)
+    best = sorted(ids, key=lambda c: (-coefficient[c], c))[:100]
+    club_names = _club_names(conn)
+    return RankingsOut(
+        season_labels=labels, in_progress=not recorded,
+        countries=[CountryCoefficientOut(rank=k, nation=code, name=names.get(code, code),
+                                         seasons=[round(v, 3) for v in values],
+                                         total=round(sum(values), 3))
+                   for k, code, values in countries_out],
+        clubs=[ClubCoefficientOut(rank=k, club=ClubRef(id=c, name=club_names[c]),
+                                  nation=club_codes.get(c, ""),
+                                  coefficient=round(coefficient[c], 3))
+               for k, c in enumerate(best, start=1)])
+
+
+@router.get("/world/nations")
+def world_nations(session: Session) -> list[NationOut]:
+    world = get_world()
+    if not session.active:
+        return nations_out(None, world)
+    with session.read() as conn:
+        return nations_out(conn, world)
+
+
+@router.get("/europe/rankings")
+def europe_rankings(session: Session) -> RankingsOut:
+    with session.read() as conn:
+        return rankings(conn, get_world())
+
+
+# Last: "/europe/{key}" would otherwise catch "/europe/rankings".
 @router.get("/europe/{key}")
 def europe_detail(key: str, session: Session, season: int | None = None) -> EuropeOut:
     world = get_world()

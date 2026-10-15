@@ -418,3 +418,22 @@ def test_version_17_gains_the_european_tables(tmp_path: Path) -> None:
             assert {"continental_entry", "club_coefficient"} <= tables
             STEPS[18](conn)
     session.close()
+
+
+@pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+def test_version_18_gains_the_country_coefficients(tmp_path: Path) -> None:
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    session.new_career(1, 218, "Upgrade")
+    engine = session.engine
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE association_coefficient"))
+        conn.execute(text("ALTER TABLE continental_entry DROP COLUMN association"))
+    write_meta(engine, {"schema_version": 18})
+    assert migrate(engine) == 18
+    for _ in range(2):
+        with engine.begin() as conn:
+            assert "association_coefficient" in inspect(conn).get_table_names()
+            columns = {c["name"] for c in inspect(conn).get_columns("continental_entry")}
+            assert "association" in columns
+            STEPS[19](conn)
+    session.close()

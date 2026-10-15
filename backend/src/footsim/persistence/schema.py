@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 18  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 19  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -477,6 +477,9 @@ continental_entry = Table(
     Column("route", Text, nullable=False),
     Column("pot", Integer),  # the league-phase pot, once drawn
     Column("position", Integer),  # where it finished in the league phase, once it's over
+    # The country whose place it took (nation code; v19): its points count for that country's
+    # coefficient. None in older saves: the club's league's country stands in.
+    Column("association", Text),
     UniqueConstraint("season_id", "club_id", name="ux_continental_entry_club"),
 )
 
@@ -488,6 +491,18 @@ club_coefficient = Table(
     Column("season_id", ForeignKey("season.id"), nullable=False),
     Column("points", Float, nullable=False),
     PrimaryKeyConstraint("club_id", "season_id"),
+)
+
+# A country's coefficient for a season played in the game (world/europe/ranking.py): its clubs'
+# points and how many clubs it entered. Seasons before the career are in the definitions.
+association_coefficient = Table(
+    "association_coefficient",
+    metadata,
+    Column("nation_id", ForeignKey("nation.id"), nullable=False),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("points", Float, nullable=False),
+    Column("clubs", Integer, nullable=False),
+    PrimaryKeyConstraint("nation_id", "season_id"),
 )
 
 tactic = Table(

@@ -121,20 +121,58 @@ class AccessFile(DefModel):
     competitions: dict[str, CompetitionAccessDef]
 
 
+class RankingBonusDef(DefModel):
+    """A league-phase place bonus: ``step`` for each place climbed from 24th (24th earns one
+    step, 9th sixteen), and ``top8_step`` for each place above 9th (1st earns eight more)."""
+
+    step: float = Field(ge=0)
+    top8_step: float = Field(ge=0)
+
+    def points(self, position: int) -> float:
+        if position > 24:
+            return 0.0
+        if position >= 9:
+            return (25 - position) * self.step
+        return 16 * self.step + (9 - position) * self.top8_step
+
+
 class CoefficientDef(DefModel):
-    """Club coefficients (simplified UEFA): points for each European match and for reaching
-    each knockout round, summed over the last ``seasons`` seasons."""
+    """UEFA's coefficient points (2024-27): per match (halved in qualifying and play-off
+    rounds), a league-phase bonus, a league-phase place bonus, and a bonus for each knockout
+    round reached from the round of 16. A club's season points are these; a country's season
+    coefficient is its clubs' points divided by how many it entered. Rankings sum ``seasons``."""
 
     win: float = Field(ge=0)
     draw: float = Field(ge=0)
-    # Bonus points for reaching each knockout round (the play-off, the round of 16, ...), by
-    # competition, one per round as in its knockout list (the last for winning the final).
-    round_bonus: dict[str, list[float]]
+    qualifying_factor: float = Field(gt=0, le=1)  # qualifying and play-off rounds
+    league_phase_bonus: dict[str, float]  # for taking part, by competition (UCL only, in fact)
+    ranking_bonus: dict[str, RankingBonusDef]
+    knockout_bonus: dict[str, float]  # each round reached from the round of 16 on
     seasons: int = Field(ge=1)
+    # A club's coefficient is at least this share of its country's (UEFA's floor: 20%).
+    association_share: float = Field(ge=0, le=1)
     # Before a club has European results: a coefficient from its reputation,
     # ``(reputation - floor) * per_point``, never below 0.
     reputation_floor: float
     reputation_per_point: float = Field(ge=0)
+
+
+class AssociationCoefficientsFile(DefModel):
+    """Countries' real season coefficients before the career (europe/association_coefficients.yaml):
+    by season label ("2024-25"), each country's coefficient by nation code."""
+
+    seasons: dict[str, dict[str, float]]
+
+    @model_validator(mode="after")
+    def _labels(self) -> Self:
+        for label, values in self.seasons.items():
+            start, _, end = label.partition("-")
+            if not (start.isdigit() and end.isdigit() and len(start) == 4 and len(end) == 2
+                    and int(end) == (int(start) + 1) % 100):
+                raise ValueError(f"association coefficients: bad season label {label!r}")
+            if any(v < 0 for v in values.values()):
+                raise ValueError(f"association coefficients {label}: a negative coefficient")
+        return self
 
 
 class EuropeSettingsDef(DefModel):
@@ -255,9 +293,9 @@ def check_europe(continental: dict[str, ContinentalDef], access: AccessFile,
             errors.append(f"{key}: no europe_prizes in finance.yaml")
         elif len(prize.rounds) != len(comp.knockout):
             errors.append(f"{key}: europe_prizes needs one amount per knockout round")
-        bonus = settings.coefficient.round_bonus.get(key)
-        if bonus is None or len(bonus) != len(comp.knockout):
-            errors.append(f"{key}: coefficient round_bonus needs one per knockout round")
+        points = settings.coefficient
+        if key not in points.ranking_bonus or key not in points.knockout_bonus:
+            errors.append(f"{key}: coefficient needs a ranking_bonus and a knockout_bonus")
     for key in set(access.competitions) - set(continental):
         errors.append(f"europe/access.yaml: unknown competition {key}")
     return errors

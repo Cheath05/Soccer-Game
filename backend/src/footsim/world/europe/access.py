@@ -200,3 +200,15 @@ def country_places(world: World, nation_code: str) -> list[Place]:
             places += [Place(comp.key, stage, p.ranks, p.cup) for p in listed
                        if p.nation == nation_code and (p.ranks or p.cup)]
     return places
+
+
+def route_nation(world: World, route: str) -> str | None:
+    """The country whose place a route is: league:ENG:4 and fill:ENG are England's, cup:FA_CUP
+    the cup's country's; a holder's is its league's (None here)."""
+    kind, _, rest = route.partition(":")
+    if kind in ("league", "fill"):
+        return rest.partition(":")[0] or None
+    if kind == "cup":
+        cup = world.defs.cups.get(rest)
+        return cup.nation if cup else None
+    return None

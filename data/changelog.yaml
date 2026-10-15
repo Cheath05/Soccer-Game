@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.63"
+  date: "2026-10-15"
+  title: "UEFA coefficients, the real way"
+  changes:
+    - "European coefficients follow UEFA's 2024-27 rules: 2 points a win and 1 a draw (half in qualifying), a league-phase bonus and a place bonus, and points for each knockout round reached."
+    - "Every UEFA country now has a coefficient, starting from the real 2020-21 to 2025-26 seasons and adding each season you play. It will decide how many clubs each country sends to Europe (coming next)."
+    - "A club's coefficient is never less than a fifth of its country's, as in UEFA's rules, which changes some draws' seeding."
+
 - version: "1.61"
   date: "2026-10-15"
   title: "Eight more leagues, with their cups"

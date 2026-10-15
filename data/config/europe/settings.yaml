@@ -10,17 +10,26 @@ calendar: UEFA-2026-27
 # strongest club usually, not always, first (Salzburg over Rapid, say).
 lottery_power: 8.0
 
-# Club coefficients, a simplified version of UEFA's: points per European match, and a bonus
-# for reaching each knockout round (as listed in the competition: play-off, round of 16,
-# quarter-final, semi-final, final), summed over the last five seasons. Until a club has played
-# in Europe in the game, its reputation stands in: (reputation - floor) * per_point.
+# Coefficient points, UEFA's for 2024-27 (defs/europe.py CoefficientDef): 2 for a win and 1 for a
+# draw (halved in the qualifying and play-off rounds); for the league phase, 6 for taking part in
+# the Champions League, and a place bonus: a step per place climbed from 24th, bigger steps in the
+# top eight, so 1st earns 6 in the Champions and Europa Leagues and 4 in the Conference League; and
+# for each knockout round reached from the round of 16 on, 1.5, 1 and 0.5. A club's season points
+# are these; a country's season coefficient is its clubs' points divided by how many it entered,
+# and its ranking sums five seasons. A club's coefficient is at least 20% of its country's (UEFA's
+# floor). Until a club has played in Europe in the game, its reputation stands in for the seasons
+# before the career: (reputation - floor) * per_point, a fifth for each such season.
 coefficient:
   win: 2.0
   draw: 1.0
-  round_bonus:
-    UCL: [0.0, 5.0, 1.0, 1.0, 1.0]
-    UEL: [0.0, 1.0, 1.0, 1.0, 1.0]
-    UECL: [0.0, 1.0, 1.0, 1.0, 1.0]
+  qualifying_factor: 0.5
+  league_phase_bonus: {UCL: 6.0}
+  ranking_bonus:
+    UCL: {step: 0.25, top8_step: 0.25}
+    UEL: {step: 0.25, top8_step: 0.25}
+    UECL: {step: 0.125, top8_step: 0.25}
+  knockout_bonus: {UCL: 1.5, UEL: 1.0, UECL: 0.5}
   seasons: 5
+  association_share: 0.2
   reputation_floor: 40
   reputation_per_point: 2.5

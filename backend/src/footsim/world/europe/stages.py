@@ -15,7 +15,7 @@ from footsim.match.report import Decider
 from footsim.persistence.schema import club, continental_entry, cup_tie, fixture, nation
 from footsim.world.context import World
 from footsim.world.cups import moved_ties_news
-from footsim.world.europe.access import qualify
+from footsim.world.europe.access import qualify, route_nation
 from footsim.world.europe.coefficients import coefficients
 from footsim.world.europe.common import (
     KNOCKOUT,
@@ -50,7 +50,8 @@ def start_europe(conn: Connection, world: World, meta: CareerMeta, season_id: in
     if entries:
         conn.execute(continental_entry.insert(), [
             {"season_id": season_id, "competition_id": ids[e.competition], "club_id": e.club_id,
-             "stage": e.stage, "route": e.route, "pot": None, "position": None}
+             "stage": e.stage, "route": e.route, "pot": None, "position": None,
+             "association": route_nation(world, e.route)}
             for e in entries])
     messages = _entry_news(conn, world, meta, entries)
     calendar = europe_calendar(world, season_id)

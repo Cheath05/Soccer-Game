@@ -1,0 +1,68 @@
+# UEFA association (country) coefficients by season, as UEFA published them (kassiesa.net's 2025
+# and 2026 country rankings, which agree on the seasons they share; fetched 15 Oct 2026). Each
+# figure is that season's coefficient: the points the country's clubs earned in Europe divided by
+# how many clubs it entered. A country's ranking is the sum of its last five seasons.
+# Russia (suspended, and not in the game) is left out: 54 associations. The game adds its own
+# seasons from 2026-27 on (world/europe/ranking.py). A season's access list uses the ranking at the
+# end of the season two before it, as UEFA's does: 2026-27 uses 2020-21..2024-25.
+seasons:
+  "2020-21": {
+    ENG: 24.357, ESP: 19.500, ITA: 16.285, GER: 15.214, POR: 9.600, NED: 9.200,
+    SCO: 8.500, FRA: 7.916, ISR: 7.000, UKR: 6.800, AUT: 6.700, CZE: 6.600,
+    NOR: 6.500, BEL: 6.000, CRO: 5.900, SRB: 5.500, SUI: 5.125, GRE: 5.100,
+    HUN: 4.250, DEN: 4.125, POL: 4.000, CYP: 4.000, BUL: 4.000, ROU: 3.750,
+    TUR: 3.100, NIR: 2.833, FRO: 2.750, BIH: 2.625, SWE: 2.500, AZE: 2.500,
+    SVN: 2.250, ALB: 2.000, IRL: 1.875, KOS: 1.833, GEO: 1.750, MKD: 1.750,
+    GIB: 1.666, LTU: 1.625, MNE: 1.625, SVK: 1.500, MLT: 1.500, WAL: 1.500,
+    BLR: 1.500, MDA: 1.375, ARM: 1.375, LVA: 1.375, FIN: 1.375, EST: 1.375,
+    KAZ: 1.000, LUX: 1.000, AND: 0.666, ISL: 0.625, LIE: 0.500, SMR: 0.500}
+  "2021-22": {
+    ENG: 21.000, NED: 19.200, ESP: 18.428, FRA: 18.416, GER: 16.214, ITA: 15.714,
+    POR: 12.916, AUT: 10.400, SRB: 9.500, GRE: 8.000, SCO: 7.900, DEN: 7.800,
+    SUI: 7.750, NOR: 7.625, ISR: 6.750, CZE: 6.700, TUR: 6.700, BEL: 6.600,
+    CRO: 6.000, MDA: 5.250, SWE: 5.125, POL: 4.625, AZE: 4.375, UKR: 4.200,
+    CYP: 4.125, SVK: 4.125, FIN: 3.750, EST: 3.666, BUL: 3.375, SVN: 3.000,
+    IRL: 2.875, KAZ: 2.875, HUN: 2.750, LVA: 2.625, KOS: 2.333, ROU: 2.250,
+    ARM: 1.875, MLT: 1.875, LTU: 1.750, BIH: 1.625, NIR: 1.625, ALB: 1.625,
+    ISL: 1.500, FRO: 1.500, WAL: 1.500, AND: 1.500, LUX: 1.250, GEO: 1.250,
+    GIB: 1.250, MNE: 0.750, MKD: 0.625, BLR: 0.250, SMR: 0.166, LIE: 0.000}
+  "2022-23": {
+    ENG: 23.000, ITA: 22.357, GER: 17.125, ESP: 16.571, BEL: 14.200, NED: 13.500,
+    FRA: 12.583, POR: 12.500, TUR: 11.800, SUI: 8.500, POL: 7.750, CZE: 6.750,
+    LIE: 6.500, ISR: 6.250, SWE: 6.250, ROU: 6.250, SVK: 6.000, DEN: 5.900,
+    HUN: 5.875, NOR: 5.750, UKR: 5.700, SRB: 5.375, CYP: 5.100, AUT: 4.900,
+    BUL: 4.500, AZE: 4.000, MDA: 3.750, SCO: 3.500, CRO: 3.375, IRL: 3.375,
+    ISL: 3.000, KOS: 2.875, LVA: 2.750, FIN: 2.625, MLT: 2.625, ARM: 2.375,
+    LTU: 2.375, FRO: 2.250, GRE: 2.125, SVN: 2.125, BIH: 2.000, MKD: 1.625,
+    NIR: 1.250, EST: 1.166, WAL: 1.166, KAZ: 1.125, LUX: 1.125, GEO: 1.125,
+    MNE: 1.000, ALB: 0.875, GIB: 0.875, SMR: 0.833, AND: 0.666, BLR: 0.625}
+  "2023-24": {
+    ITA: 21.000, GER: 19.357, ENG: 17.375, FRA: 16.250, ESP: 16.062, BEL: 14.400,
+    CZE: 13.500, TUR: 12.000, GRE: 11.400, POR: 11.000, NED: 10.000, ISR: 8.750,
+    DEN: 8.500, NOR: 8.000, POL: 6.875, SCO: 6.400, CRO: 5.875, AZE: 5.875,
+    SUI: 5.200, SVK: 5.000, AUT: 4.800, HUN: 4.500, BUL: 4.375, UKR: 4.100,
+    SVN: 3.875, ISL: 3.833, CYP: 3.750, ROU: 3.250, KAZ: 3.125, KOS: 3.000,
+    FRO: 2.750, BIH: 2.250, ARM: 2.250, LUX: 2.250, ALB: 2.125, MDA: 2.000,
+    SWE: 1.875, FIN: 1.750, BLR: 1.750, AND: 1.666, LVA: 1.625, IRL: 1.500,
+    MLT: 1.500, MKD: 1.500, SRB: 1.400, MNE: 1.333, GEO: 1.250, NIR: 1.125,
+    LTU: 1.125, WAL: 0.625, LIE: 0.500, SMR: 0.333, GIB: 0.166, EST: 0.125}
+  "2024-25": {
+    ENG: 29.464, ESP: 23.892, ITA: 21.875, GER: 18.421, FRA: 17.928, POR: 16.250,
+    BEL: 15.650, NED: 15.250, GRE: 12.687, NOR: 11.812, POL: 11.750, SWE: 11.375,
+    CYP: 10.562, CZE: 10.550, TUR: 10.300, AUT: 9.650, SCO: 9.250, SVN: 9.093,
+    ROU: 7.750, DEN: 7.656, SUI: 7.050, HUN: 6.625, CRO: 5.875, IRL: 5.343,
+    SVK: 4.625, ISL: 4.562, BIH: 4.531, ARM: 4.375, LVA: 3.875, SRB: 3.725,
+    BUL: 3.625, UKR: 3.600, KAZ: 3.000, ISR: 2.875, AZE: 2.875, MNE: 2.500,
+    FIN: 2.250, MDA: 2.125, KOS: 2.000, WAL: 2.000, BLR: 1.875, EST: 1.625,
+    FRO: 1.500, NIR: 1.500, GIB: 1.500, LTU: 1.375, ALB: 1.250, LUX: 1.250,
+    GEO: 1.250, MLT: 1.000, AND: 1.000, MKD: 0.666, SMR: 0.666, LIE: 0.500}
+  "2025-26": {
+    ENG: 28.680, ESP: 22.093, GER: 21.785, POR: 20.500, ITA: 19.000, FRA: 18.321,
+    POL: 15.750, GRE: 14.200, DEN: 12.250, CYP: 12.156, BEL: 11.400, TUR: 11.075,
+    CZE: 11.025, NED: 9.979, UKR: 8.312, NOR: 8.050, HUN: 7.437, CRO: 7.031,
+    SVN: 6.375, SUI: 6.200, AZE: 5.812, SRB: 5.750, ROU: 5.750, BUL: 5.187,
+    SCO: 5.000, SWE: 5.000, IRL: 4.250, ARM: 4.187, AUT: 4.100, KOS: 3.781,
+    ISL: 3.625, FIN: 3.625, KAZ: 3.625, MKD: 3.343, GIB: 3.333, BIH: 3.312,
+    ISR: 2.875, SVK: 2.625, ALB: 2.250, BLR: 2.125, LVA: 2.000, MLT: 2.000,
+    AND: 2.000, FRO: 1.750, NIR: 1.750, EST: 1.625, MDA: 1.500, LTU: 1.125,
+    GEO: 1.125, LIE: 1.000, MNE: 1.000, SMR: 0.833, LUX: 0.750, WAL: 0.333}

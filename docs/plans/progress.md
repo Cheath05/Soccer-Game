@@ -16,6 +16,12 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **Order of work from 15 Oct (the user): W7, all of UEFA, comes first** (`docs/plans/w7-all-of-uefa.md`, checkpoints A1–A8):
+  - every league that can qualify for Europe, with its cup (36 more associations: Transfermarkt squads where they exist, generated ones rated to measured strength elsewhere);
+  - country coefficients that set each country's places every season, with the European Performance Spots;
+  - the real qualifying rounds (Q1–Q3 and the play-off, champions and league paths, drop-downs);
+  - a league picker that keeps the big leagues easiest to find, with search and a continent filter.
+  - Then the order below resumes.
 - **Order of work from 14 Oct (the user):**
   1. **W6, the European competitions,** is next: `docs/plans/w6-european-competitions.md`, checkpoints E1–E8. Scope: the UCL, UEL and UECL together, with "realistic-lite" qualifying. The draw and qualification design is worth Opus 5.5 Max.
   2. Then step 2.1 (home advantage, 400 per league, several seeds), the multi-season market report, and the play-test gate.

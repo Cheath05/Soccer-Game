@@ -29,7 +29,12 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (14 Oct): European places in the league tables** (the commit that adds this line; v1.59). The user asked to see each league's European places in colour (UCL blue, UEL orange, UECL green) and what each needs.
+- **Latest checkpoint (15 Oct): European matches in their colours on the calendar** (the commit that adds this line; v1.60). The user asked for European matches in their competition's colour.
+  - **`lib/competitionColors.ts`** (a Sonnet agent): `EUROPE_COLOR` (UCL blue, UEL orange, UECL green) is fixed. Other competitions hash into a palette without those colours. The League page imports it too.
+  - **Calendar:** the international-break shading is now grey, not blue.
+  - **Checks:** `npm run build` and lint; the agent's browser check (Arsenal to 1 Sep: the Premier League grape, the Carabao Cup red, the UCL blue) at 1440 and 390.
+  - **In progress (the user, 15 Oct): eight more leagues from FC 27,** each with its cup: POL1, ROU1, SWE1, NOR1, DEN1, SUI1, AUT1, IRL1. Their config is written but not committed yet; the next commit.
+- **Earlier checkpoint (14–15 Oct): European places in the league tables** (v1.59). The user asked to see each league's European places in colour (UCL blue, UEL orange, UECL green) and what each needs.
   - **API:** `TableOut` has `europe_places` (the key) and `europe_actual`; each row has `europe` and `europe_stage`. They come from `world/europe/access.country_places`, which reads the access list as written, from the top competition down. `queries.table` fills them:
     - for top divisions only, and only when the game has Europe;
     - **during a season,** the marks go by position;

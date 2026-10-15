@@ -27,8 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.60"
+  date: "2026-10-15"
+  title: "European matches in their colours on the calendar"
+  changes:
+    - "Calendar: Champions League matches are blue, Europa League orange and Conference League green, as in the league tables. Domestic competitions keep colours of their own that aren't those."
+    - "International breaks are shaded grey, so they can't be mistaken for Champions League days."
+
 - version: "1.59"
-  date: "2026-10-14"
+  date: "2026-10-15"
   title: "European places in the league tables"
   changes:
     - "Top-division tables show the European places in colour: Champions League blue, Europa League orange, Conference League green, and a stripe only for a place in a summer play-off round."

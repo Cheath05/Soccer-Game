@@ -4,6 +4,7 @@ import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from
 import type { TableRow } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
+import { EUROPE_COLOR } from '../lib/competitionColors'
 import { OUTCOMES, longDate } from '../lib/format'
 import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
@@ -16,8 +17,6 @@ const ZONE_COLOR: Record<string, string> = {
 }
 const ZONE_LABEL: Record<string, string> = { promotion: 'Promotion', playoff: 'Play-offs', relegation: 'Relegation' }
 
-// Champions League blue, Europa League orange, Conference League green
-const EUROPE_COLOR: Record<string, string> = { UCL: 'blue', UEL: 'orange', UECL: 'green' }
 const europeStripe = (competition: string) => `inset 4px 0 0 var(--mantine-color-${EUROPE_COLOR[competition]}-6)`
 const europeLight = (competition: string) => `var(--mantine-color-${EUROPE_COLOR[competition]}-light)`
 

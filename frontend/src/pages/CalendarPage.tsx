@@ -5,20 +5,12 @@ import { useState } from 'react'
 
 import { useCalendar, useCareer, useStartSim } from '../api/hooks'
 import type { Fixture } from '../api/types'
+import { competitionColor } from '../lib/competitionColors'
 import { addDays, longDate, score, shortDate } from '../lib/format'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const RESULT_COLOR = { W: 'green', D: 'gray', L: 'red' } as const
-const PALETTE = ['blue', 'grape', 'teal', 'orange', 'pink', 'cyan', 'indigo', 'lime', 'violet', 'red']
-
-function hash(text: string): number {
-  let h = 0
-  for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return h
-}
-
-/** A competition keeps one colour wherever it shows. */
-const competitionColor = (key: string) => PALETTE[hash(key) % PALETTE.length]
+const CREST_PALETTE = ['blue', 'grape', 'teal', 'orange', 'pink', 'cyan', 'indigo', 'lime', 'violet', 'red']
 
 /** A crest-style badge: the club's initials on a colour of its own. */
 function Crest({ name, id, size = 20 }: { name: string; id: number; size?: number }) {
@@ -37,7 +29,7 @@ function Crest({ name, id, size = 20 }: { name: string; id: number; size?: numbe
         fontSize: size * 0.42,
         fontWeight: 700,
         color: 'white',
-        background: `var(--mantine-color-${PALETTE[(id * 7) % PALETTE.length]}-filled)`,
+        background: `var(--mantine-color-${CREST_PALETTE[(id * 7) % CREST_PALETTE.length]}-filled)`,
       }}
     >
       {letters}
@@ -214,7 +206,7 @@ export default function CalendarPage() {
                       overflow: 'hidden',
                       cursor: future ? 'pointer' : 'default',
                       opacity: otherMonth ? 0.45 : 1,
-                      background: inBreak(d) ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-body)',
+                      background: inBreak(d) ? 'var(--mantine-color-gray-light)' : 'var(--mantine-color-body)',
                       border: isToday ? '2px solid var(--mantine-color-blue-filled)' : '1px solid var(--mantine-color-default-border)',
                       borderTop: window && !isToday ? '3px solid var(--mantine-color-yellow-5)' : undefined,
                       borderRadius: 8,
@@ -258,7 +250,7 @@ export default function CalendarPage() {
               Transfer window
             </Group>
             <Group gap={5}>
-              <Box w={12} h={12} style={{ borderRadius: 3, background: 'var(--mantine-color-blue-light)' }} />
+              <Box w={12} h={12} style={{ borderRadius: 3, background: 'var(--mantine-color-gray-light)' }} />
               International break
             </Group>
             <Group gap={4}>

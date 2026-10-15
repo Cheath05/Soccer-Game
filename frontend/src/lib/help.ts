@@ -186,7 +186,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: 'The month view, transfer windows, simming to a day, and the season’s matches.',
     blocks: [
       [
-        'Calendar shows a month at a time (Monday first), with arrows and a Today button. Each of your matches shows home or away, the opponent, the competition (a coloured stripe) and then the result; click a played match for its report.',
+        'Calendar shows a month at a time (Monday first), with arrows and a Today button. Each of your matches shows home or away, the opponent, the competition (a coloured stripe: Champions League blue, Europa League orange, Conference League green) and then the result; click a played match for its report.',
         'A yellow line marks the days a transfer window is open, and a blue tint marks an international break. Up next lists your coming matches.',
         'Click a coming day to sim to it. Your matches on the way are played instantly, and that day’s matches are left for you. It stops early for a bid on one of your players or at the end of the season.',
       ],

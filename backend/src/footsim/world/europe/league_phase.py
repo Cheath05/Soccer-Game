@@ -32,7 +32,7 @@ from footsim.defs.competitions import PointsRule, Tiebreaker
 from footsim.defs.europe import ContinentalDef
 from footsim.persistence.schema import club, competition, continental_entry, fixture, nation
 from footsim.world.context import World
-from footsim.world.cups import make_room
+from footsim.world.cups import make_room, moved_ties_news
 from footsim.world.europe.coefficients import coefficients
 from footsim.world.europe.common import competition_id, europe_calendar
 from footsim.world.finance import Entry, post
@@ -350,6 +350,7 @@ def draw_league_phase(conn: Connection, world: World, meta: CareerMeta, comp: Co
             continental_entry.c.season_id == season_id,
             continental_entry.c.club_id.in_(pot)).values(pot=p + 1))
     dates = europe_calendar(world, season_id).competitions[comp.key].league_phase
+    moved: list[int] = []
     for matchday, (day, matchday_dates) in enumerate(zip(days, dates, strict=True), start=1):
         for k, (home, away) in enumerate(day):
             when = matchday_dates[k % len(matchday_dates)]
@@ -359,11 +360,12 @@ def draw_league_phase(conn: Connection, world: World, meta: CareerMeta, comp: Co
                 tie=None, leg=None, date=when.isoformat(), home_club_id=home_club,
                 away_club_id=away_club, neutral=0, status="scheduled"))
             for club_id in (home_club, away_club):
-                make_room(conn, world, club_id, when, today)
+                moved += make_room(conn, world, club_id, when, today)
     prize = world.defs.finance.europe_prizes[comp.key]
     post(conn, today, season_id, [Entry(c, "prize", round(prize.participation * 100), comp_id)
                                   for c in clubs])
-    return _draw_news(conn, meta, comp, layout, days, dates)
+    return (_draw_news(conn, meta, comp, layout, days, dates)
+            + moved_ties_news(conn, world, meta, moved))
 
 
 def league_phase_done(conn: Connection, season_id: int, comp: ContinentalDef) -> bool:

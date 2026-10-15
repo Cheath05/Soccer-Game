@@ -28,8 +28,29 @@
     - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
-- **Standing rule from 15 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): W6 E7 and E8, the Europe page and the measurement** (the commit that adds this line; v1.57). Europe is still switched off here; the next commit switches it on.
+- **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
+- **Latest checkpoint (14 Oct): the European competitions switched on** (the commit that adds this line; v1.58). W6 is complete.
+  - **`data/config/europe/settings.yaml` `enabled: true`.** New careers have the UCL, UEL and UECL from season one; careers under way from their next season start (`start_europe` runs with the season's fixtures).
+  - **Fixes the full suite found with Europe on:**
+    - **Back to back:** an EFL Cup semi-final moved off a European date to 8 Jan, and the FA Cup third round, drawn later, then landed on its calendar date of 9 Jan. Two changes in `world/cups.py`:
+      - a newly drawn tie moves if it is within REST_DAYS of any of its clubs' non-league matches (`_near_fixed`, which was `_near_europe`);
+      - a moved tie prefers days away from its country's other cup round dates.
+      - Europe off is unchanged: domestic cup dates are at least 3 days apart, so neither ever triggers.
+    - **News:** a cup draw's news gives the tie's actual dates. When a European draw moves one of the user's cup ties, there's a news line: "Carabao Cup third round: Arsenal v Ipswich moves to Wed 9 Sep, to make room for a European match." (`make_room` and `insert_ties` return the cup matches moved; `moved_ties_news`.) Found in the e2e smoke news: 15 Sep in the news, 9 Sep in fact.
+  - **Tests adjusted to Europe being on:**
+    - `test_cups_season`: never back to back; at most 60 gaps with one clear day, at most 15 of them between domestic matches (seed 5 had about 38 and 7: the rest tiers' fallback in a crowded season);
+    - the old-save test deletes and counts only domestic cups' ties;
+    - `test_finance`'s balance bound leaves out European prize money for clubs from countries without a league in the game. **Flagged, a gap in the finance model:** those clubs' revenue is a small estimate (one had €10.6M revenue against a UCL season's €20M+).
+    - `test_clubs` plays the user's matches until the other club has played;
+    - a new moved-tie news test in `test_europe_league_phase`.
+  - **Checks:**
+    - the full suite;
+    - e2e smoke, live and phone on :8765 with a temporary saves folder;
+    - an Arsenal career to February: no tight gaps, and the moved-tie news is right.
+  - **Next:** the user plays a new career with Europe. Then step 2.1 (home advantage: 400 matches per league, several seeds; worth Opus 5.5 Max), the multi-season market report, and the play-test gate.
+  - **Possible later:** the UEFA Super Cup; European finishes in club history; better revenue estimates for clubs from countries without a league.
+  - **Play-test:** :8000 after the user's updater pulls (a new career, or the next season of an existing one).
+- **Earlier checkpoint (14 Oct): W6 E7 and E8, the Europe page and the measurement** (v1.57).
   - **API** (`api/europe.py`, now routed): `GET /api/europe` and `GET /api/europe/{key}?season=`.
   - **Season summary:** `_continental_titles` headlines (the UCL first), and `cup_runs` skips European ties, which made `season_final` raise `KeyError` for any European club. The Europe page agent found it.
   - **The Europe page** (a Sonnet agent, reviewed here: `pages/EuropePage.tsx`, `components/europe/`):
@@ -48,11 +69,11 @@
     - **Room:** never back to back; 2% of gaps beside European matches with one clear day.
   - **Checks:** the full suite passes (871 s) with the season test's new headline and season-end checks; `npm run build`.
   - **Next:** switch Europe on (`enabled: true`) with a full suite, then the user plays it.
-- **Earlier checkpoint (15 Oct): clubs' recent transfers, and the release dialog** (the commit that adds this line; v1.56). The two stale strings the What's new agent found.
+- **Earlier checkpoint (14 Oct): clubs' recent transfers, and the release dialog** (the commit that adds this line; v1.56). The two stale strings the What's new agent found.
   - **`queries._recent_transfers`:** a club page's "Recent transfers" (always empty since before W4) now lists its last 5 moves in and out from the `transfer` table, in words and in the user's currency: "Signed X from Y for $12M (Jul 2026)", "Sold…", "X on loan from…", "X loaned to…", "Released X". Loans' returns are left out.
   - **The player page's Release dialog** no longer says released players can't be signed: any club can sign a free agent; those nobody signs leave the game.
   - **Checks:** `test_clubs.py` (a new test: a sale, a loan and a loan's return seen from both clubs).
-- **Earlier checkpoint (15 Oct): W6 E3–E5, the league phase, the knockouts and room around European matches** (the commit that adds this line). One checkpoint, as the three share their files. Still switched off (`enabled: false`) until the Europe page (E7).
+- **Earlier checkpoint (14 Oct): W6 E3–E5, the league phase, the knockouts and room around European matches** (the commit that adds this line). One checkpoint, as the three share their files. Still switched off (`enabled: false`) until the Europe page (E7).
   - **E3, the league phase** (`world/europe/league_phase.py`):
     - **Pots** by coefficient, the UCL holders in pot 1.
     - **Who plays whom** comes from a pattern over pot places. The pots are paired (A–B, C–D). Within a pair: each pot's own-pot cycle (step s) and two A–B matchings, split into 4 perfect-matching matchdays, found by search once per variant and cached. The other pot pairs make two matchings each, the other 4 matchdays. Every club plays once a matchday, two from each pot, one home and one away against each.
@@ -89,7 +110,7 @@
     - A unit and an integration test shared a module name.
     - Cup ties couldn't move when both clubs' diaries were full: league matches now make way for them.
   - **Next:** E7, the Europe page (a Sonnet agent, after the "What's new and Help" agent finishes with the frontend's shared files). Then switch Europe on, then E8 (measure winners by strength, goals, congestion, money).
-- **Earlier checkpoint (15 Oct): What's new and Help, under the version tag** (the commit that adds this line; v1.54). The user asked for the versions with a summary of what changed, and a help section on what the game can do. Built by a Sonnet agent, reviewed here.
+- **Earlier checkpoint (14 Oct): What's new and Help, under the version tag** (the commit that adds this line; v1.54). The user asked for the versions with a summary of what changed, and a help section on what the game can do. Built by a Sonnet agent, reviewed here.
   - **`data/changelog.yaml`:** player-facing notes for every version from 1.0 to 1.53 (46 entries; docs- or test-only versions have none) plus this one. The header explains the format and the rule above.
   - **`GET /api/changelog`** (`api/changelog.py`): the entries newest first and the running version; a malformed file is a 500 and a failing test, never an empty list. Behind the sign-in with the rest of /api.
   - **The window** (`components/WhatsNew.tsx`, from `VersionTag.tsx`): tapping the version tag (menu footer, under the club name on a phone, the start page) opens "What's new" (the running version marked, newer entries "not on this server yet") and "Help" (17 topics from `lib/help.ts`, with search). "Copy version" and the build details moved into it. Full screen on phones.
@@ -1399,7 +1420,7 @@ The order, each its own checkpoint (or several):
 5. - [ ] **W3, finances:** TV money, wages, budgets and the board, by league. Most of the gap between leagues that a manager feels is here.
 6. - [ ] **W4, transfers:** valuations, AI buying and selling, bids and negotiation (fee, wage, length), loans, free agents and expiring contracts, and the windows (already in the calendar). Most big transfers cross borders, so this comes after W2.
 7. - [ ] **W5, academies in full:** facilities, youth squads, loaning young players out.
-8. - [ ] **W6, European competitions:** the Champions League (league phase), the Europa League and the Conference League, where the leagues meet on the pitch.
+8. - [x] **W6, European competitions** (done 14 Oct, v1.58: switched on): the Champions League (league phase), the Europa League and the Conference League, where the leagues meet on the pitch.
 
 **Added by the user on 6 Oct:**
 - **The play-test gate** comes after the engine's defending (D6, E as needed), W3 and W4: believable matches, more leagues, finances and a working transfer market. Stop there for a substantial play-test by the user before investing in W5–W8.

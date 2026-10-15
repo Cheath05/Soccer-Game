@@ -68,13 +68,17 @@ def test_another_clubs_profile_and_squad(client: TestClient) -> None:
     assert ours["own_player"] and ours["condition"] is not None
     assert ours["wage_weekly_eur"] is not None
 
-    # Match day one: play the user's game too, so every club has played once.
-    stop = advance_to_match(client)
-    assert stop["stop"] == "match"
-    client.post(f"/api/fixtures/{stop['fixture_id']}/play")
-    played = client.get(f"/api/clubs/{other['id']}").json()
-    assert played["played"] == 1 and played["position"] is not None
-    assert len(played["recent"]) == 1 and played["recent"][0]["status"] == "played"
+    # Play the user's matches until the other club has played (its first league match can
+    # move, or the user's first match be a European one, around the European play-offs).
+    for _ in range(4):
+        stop = advance_to_match(client)
+        assert stop["stop"] == "match"
+        client.post(f"/api/fixtures/{stop['fixture_id']}/play")
+        played = client.get(f"/api/clubs/{other['id']}").json()
+        if played["played"]:
+            break
+    assert played["played"] >= 1 and played["position"] is not None
+    assert played["recent"] and all(f["status"] == "played" for f in played["recent"])
 
     assert client.get("/api/clubs/999999").status_code == 404
     assert client.get("/api/clubs/999999/players").status_code == 404

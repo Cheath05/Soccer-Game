@@ -14,6 +14,7 @@ from footsim.core.rng import derive_rng
 from footsim.match.report import Decider
 from footsim.persistence.schema import club, continental_entry, cup_tie, fixture, nation
 from footsim.world.context import World
+from footsim.world.cups import moved_ties_news
 from footsim.world.europe.access import qualify
 from footsim.world.europe.coefficients import coefficients
 from footsim.world.europe.common import (
@@ -60,9 +61,10 @@ def start_europe(conn: Connection, world: World, meta: CareerMeta, season_id: in
             continue
         ties = _seeded_draw(conn, world, meta, season_id, comp.key, clubs)
         days = calendar.competitions[comp.key].qualifying
-        insert_ties(conn, world, season_id, ids[comp.key], comp.key, QUALIFYING, ties, days,
-                     neutral=False, today=today)
+        moved = insert_ties(conn, world, season_id, ids[comp.key], comp.key, QUALIFYING, ties,
+                            days, neutral=False, today=today)
         messages += _draw_news(conn, meta, comp.name, comp.qualifying.name, ties, days)
+        messages += moved_ties_news(conn, world, meta, moved)
     return messages
 
 

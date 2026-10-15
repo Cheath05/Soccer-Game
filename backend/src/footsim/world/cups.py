@@ -259,34 +259,62 @@ def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCale
         for club_id in (a, b):
             for day in days:
                 clear_way(conn, world, club_id, day, today)
-    # A tie too close to one of its clubs' European matches moves (European dates never do).
+    # A tie too close to one of its clubs' European matches, or to another cup tie already
+    # moved for one, moves (European dates never do).
     for fx in conn.execute(select(fixture).where(
             fixture.c.season_id == season_id, fixture.c.stage == cup.key,
             fixture.c.round == round_index).order_by(fixture.c.id)).all():
-        if _near_europe(conn, world, fx):
+        if _near_fixed(conn, fx):
             _move_cup_tie(conn, world, fx, today)
     return _draw_news(conn, meta, cup, round_index, ties, exempt, days)
 
 
-def make_room(conn: Connection, world: World, club_id: int, day: date, today: date) -> None:
+def make_room(conn: Connection, world: World, club_id: int, day: date, today: date
+              ) -> list[int]:
     """A European match for ``club_id`` on ``day``: move its league matches (``clear_way``)
-    and its domestic cup ties too close to it to free days nearby."""
+    and its domestic cup ties too close to it to free days nearby. The cup matches moved."""
     clear_way(conn, world, club_id, day, today)
+    moved: list[int] = []
     window = ((day - timedelta(days=REST_DAYS)).isoformat(),
               (day + timedelta(days=REST_DAYS)).isoformat())
     for fx in conn.execute(select(fixture).where(
             fixture.c.status == "scheduled", fixture.c.stage.in_(list(world.defs.cups)),
             or_(fixture.c.home_club_id == club_id, fixture.c.away_club_id == club_id),
             fixture.c.date.between(*window))).all():
-        _move_cup_tie(conn, world, fx, today)
+        if _move_cup_tie(conn, world, fx, today):
+            moved.append(fx.id)
+    return moved
 
 
-def _near_europe(conn: Connection, world: World, fx: Row[Any]) -> bool:
+def moved_ties_news(conn: Connection, world: World, meta: CareerMeta,
+                    fixture_ids: list[int]) -> list[str]:
+    """News of the user's cup matches that ``make_room`` moved (their draw gave the old date)."""
+    user = meta.user_club_id
+    lines = []
+    for fx in conn.execute(select(fixture).where(fixture.c.id.in_(sorted(set(fixture_ids))))
+                           .order_by(fixture.c.date)).all():
+        if user not in (fx.home_club_id, fx.away_club_id):
+            continue
+        cup = world.defs.cups[fx.stage]
+        day = date.fromisoformat(fx.date)
+        lines.append(f"{cup.name} {cup.rounds[fx.round].name.lower()}: "
+                     f"{club_name(conn, fx.home_club_id)} v {club_name(conn, fx.away_club_id)} "
+                     f"moves to {day:%a} {day.day} {day:%b}, to make room for a European "
+                     f"match.")
+    return lines
+
+
+def _near_fixed(conn: Connection, fx: Row[Any]) -> bool:
+    """Whether a cup tie's match is within REST_DAYS of another of its clubs' matches that
+    isn't a league match (those move out of a cup tie's way): a European match, or another
+    cup's tie (moved for a European one)."""
     day = date.fromisoformat(fx.date)
     window = ((day - timedelta(days=REST_DAYS)).isoformat(),
               (day + timedelta(days=REST_DAYS)).isoformat())
     return conn.execute(select(fixture.c.id).where(
-        fixture.c.stage.in_(list(world.defs.continental)),
+        fixture.c.id != fx.id, fixture.c.stage != "league",
+        or_(fixture.c.stage != fx.stage, fixture.c.round != fx.round,
+            fixture.c.tie != fx.tie),
         or_(fixture.c.home_club_id.in_((fx.home_club_id, fx.away_club_id)),
             fixture.c.away_club_id.in_((fx.home_club_id, fx.away_club_id))),
         fixture.c.date.between(*window))).first() is not None
@@ -296,7 +324,8 @@ def _free_cup_day(conn: Connection, world: World, fx: Row[Any], today: date) -> 
     """The nearest day both clubs of a domestic cup tie are free (REST_DAYS clear of their
     other matches): after today and at most CUP_SHIFT earlier, or later but before the cup's
     next round (so the tie is decided in time for its draw; a final at most CUP_SHIFT later),
-    and on the right side of its other leg."""
+    and on the right side of its other leg. Away from its country's other cup dates too if it
+    can be (their ties may not be drawn yet)."""
     original = date.fromisoformat(fx.date)
     low = max(today + timedelta(days=1), original - timedelta(days=CUP_SHIFT))
     high = original + timedelta(days=CUP_SHIFT)
@@ -318,6 +347,11 @@ def _free_cup_day(conn: Connection, world: World, fx: Row[Any], today: date) -> 
     rows = conn.execute(select(fixture.c.date, fixture.c.stage, fixture.c.status).where(
         fixture.c.id != fx.id,
         or_(fixture.c.home_club_id.in_(clubs), fixture.c.away_club_id.in_(clubs)))).all()
+    cup_days = ({day + timedelta(days=k)
+                 for key, rounds in calendar.cups.items() for n, legs in enumerate(rounds)
+                 if (key, n) != (fx.stage, fx.round)
+                 for day in legs for k in range(-REST_DAYS, REST_DAYS + 1)}
+                if calendar is not None else set())
     for rest in TIERS:  # full rest if any day has it, else the crowded season's one day
         fixed: set[date] = set()  # near either club's cup, European or played matches: never
         league: Counter[date] = Counter()  # near its league matches: they can move instead
@@ -331,20 +365,21 @@ def _free_cup_day(conn: Connection, world: World, fx: Row[Any], today: date) -> 
         free = [low + timedelta(days=k) for k in range((high - low).days + 1)
                 if low + timedelta(days=k) not in fixed]
         if free:
-            return min(free, key=lambda d: (league[d], abs((d - original).days),
+            return min(free, key=lambda d: (d in cup_days, league[d], abs((d - original).days),
                                             d.weekday() not in MIDWEEK, d < original))
     return None
 
 
-def _move_cup_tie(conn: Connection, world: World, fx: Row[Any], today: date) -> None:
+def _move_cup_tie(conn: Connection, world: World, fx: Row[Any], today: date) -> bool:
     """Move a domestic cup tie to ``_free_cup_day``, and the league matches then too close to
-    it out of its way (``clear_way``)."""
+    it out of its way (``clear_way``). Whether its date changed."""
     moved = _free_cup_day(conn, world, fx, today)
     if moved is None:
-        return
+        return False
     conn.execute(update(fixture).where(fixture.c.id == fx.id).values(date=moved.isoformat()))
     for club_id in (fx.home_club_id, fx.away_club_id):
         clear_way(conn, world, club_id, moved, today)
+    return bool(moved.isoformat() != fx.date)
 
 
 def _cup_calendar(world: World, cup_key: str, season_id: int) -> SeasonCalendarDef | None:
@@ -415,7 +450,13 @@ def _draw_news(conn: Connection, meta: CareerMeta, cup: CupDef, round_index: int
         return [f"{club_name(conn, user)} are exempt from the {cup.name} {name.lower()}."]
     for a, b in ties:
         if user in (a, b):
-            when = " and ".join(f"{d:%a} {d.day} {d:%b}" for d in days)
+            moved: list[str] = list(conn.execute(select(fixture.c.date).where(  # for Europe?
+                fixture.c.season_id == meta.season_id, fixture.c.stage == cup.key,
+                fixture.c.round == round_index,
+                or_(fixture.c.home_club_id == user, fixture.c.away_club_id == user))
+                .order_by(fixture.c.date)).scalars())
+            when = " and ".join(f"{d:%a} {d.day} {d:%b}" for d in (
+                [date.fromisoformat(m) for m in moved] or days))
             return [f"{cup.name} {name.lower()} draw: {club_name(conn, a)} v "
                     f"{club_name(conn, b)} ({when})."]
     return []

@@ -27,8 +27,18 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.58"
+  date: "2026-10-14"
+  title: "The Champions League, Europa League and Conference League"
+  changes:
+    - "The European competitions are on: the Champions League, Europa League and Conference League, each with a summer play-off round, a 36-club league phase (eight matches each; six in the Conference League), a knockout play-off, and two-legged ties to a one-match final."
+    - "Places come from last season's league finish and cup wins (in a new career's first season, from the clubs' standing), with the holders in the Champions League."
+    - "A new career has them from its first season; a career already under way gets them when its next season starts."
+    - "League and cup matches move to leave room around European nights; the European dates never move. When one of your cup ties moves, the news says when it's now played."
+    - "Prize money for taking part, every win and draw, and each round reached; clubs' European points are kept from season to season."
+
 - version: "1.57"
-  date: "2026-10-15"
+  date: "2026-10-14"
   title: "The Europe page (arrives with the competitions)"
   changes:
     - "A Europe page for the Champions League, Europa League and Conference League: the league-phase table with its zones, every matchday, the knockout bracket to the final, the summer play-off round and who qualified how. It appears in the menu once the European competitions are switched on."
@@ -36,20 +46,20 @@
     - "Fix: the season summary no longer fails for a club with European ties on record."
 
 - version: "1.56"
-  date: "2026-10-15"
+  date: "2026-10-14"
   title: "Clubs' recent transfers"
   changes:
     - "A club's page lists its latest signings, sales, loans and releases (\"Sold … to … for $12M (Jul 2026)\") instead of \"None yet\"."
     - "Fix: the Release dialog no longer says released players can't be signed: any club can sign a free agent from the transfer market."
 
 - version: "1.55"
-  date: "2026-10-15"
+  date: "2026-10-14"
   title: "European competitions take shape (not playable yet)"
   changes:
     - "Groundwork for the Champions League, Europa League and Conference League: the league-phase draw with pots (no club meets its own country), the 8 (or 6) matchdays and the table, the knockouts from the play-off to a one-match final, prize money, and the winners' places next season. Built and tested over whole seasons, but still switched off, so careers play exactly as before."
 
 - version: "1.54"
-  date: "2026-10-15"
+  date: "2026-10-14"
   title: "What's new and help"
   changes:
     - "Tap the version tag (at the bottom of the menu, under the club name on a phone, or on the start page) to see what changed in each version, and a help guide to everything you can do in the game, with a search box."

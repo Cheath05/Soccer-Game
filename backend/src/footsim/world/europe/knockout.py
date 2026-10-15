@@ -15,6 +15,7 @@ from sqlalchemy import Connection, Row, select, update
 from footsim.defs.europe import ContinentalDef
 from footsim.persistence.schema import club_coefficient, continental_entry, cup_tie, fixture
 from footsim.world.context import World
+from footsim.world.cups import moved_ties_news
 from footsim.world.europe.common import KNOCKOUT, competition_id, europe_calendar
 from footsim.world.europe.ties import insert_ties, tie_winner
 from footsim.world.finance import Entry, post
@@ -60,10 +61,10 @@ def _pairs(comp: ContinentalDef, index: int, position: dict[int, int],
 
 
 def _insert(conn: Connection, world: World, season_id: int, comp: ContinentalDef, comp_id: int,
-            index: int, ties: list[tuple[int, int]], today: date) -> None:
+            index: int, ties: list[tuple[int, int]], today: date) -> list[int]:
     days = europe_calendar(world, season_id).competitions[comp.key].knockout[index]
-    insert_ties(conn, world, season_id, comp_id, comp.key, KNOCKOUT + index, ties, days,
-                neutral=comp.knockout[index].neutral, today=today)
+    return insert_ties(conn, world, season_id, comp_id, comp.key, KNOCKOUT + index, ties, days,
+                       neutral=comp.knockout[index].neutral, today=today)
 
 
 def progress_knockout(conn: Connection, world: World, meta: CareerMeta, comp: ContinentalDef,
@@ -84,10 +85,11 @@ def progress_knockout(conn: Connection, world: World, meta: CareerMeta, comp: Co
             if index and (not previous or any(t.winner_club_id is None for t in previous)):
                 return messages
             pairs = _pairs(comp, index, position, previous)
-            _insert(conn, world, season_id, comp, comp_id, index, pairs, today)
+            moved = _insert(conn, world, season_id, comp, comp_id, index, pairs, today)
             post(conn, today, season_id, [Entry(c, "prize", round(prize.rounds[index] * 100),
                                                 comp_id) for pair in pairs for c in pair])
             messages += _draw_news(conn, meta, comp, index, pairs)
+            messages += moved_ties_news(conn, world, meta, moved)
             return messages
         decided = []
         for tie in ties:

@@ -1,6 +1,7 @@
 # The European competitions' settings (defs/europe.py EuropeSettingsDef).
-# Off until the European dates are kept clear of every domestic match (W6 E5): then on.
-enabled: false
+# Whether new seasons have the European competitions (on since W6: a career gets them from
+# its next season start; a new career from its first).
+enabled: true
 calendar: UEFA-2026-27
 
 # A country with clubs in the world but no league in the game (Austria, Greece, Poland...):

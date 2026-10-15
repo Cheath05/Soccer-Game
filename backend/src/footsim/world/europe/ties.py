@@ -13,9 +13,11 @@ from footsim.world.cups import make_room
 
 def insert_ties(conn: Connection, world: World, season_id: int, comp_id: int, comp_key: str,
                 round_number: int, ties: list[tuple[int, int]], days: list[list[date]],
-                neutral: bool, today: date) -> None:
+                neutral: bool, today: date) -> list[int]:
     """The ties' rows and fixtures: club A at home in the first leg, B in the second. Each leg's
-    matches are spread over its days in turn; a club's league matches too close are moved."""
+    matches are spread over its days in turn; a club's league matches and cup ties too close
+    are moved (the cup matches moved are returned, for the news)."""
+    moved: list[int] = []
     conn.execute(cup_tie.insert(), [
         {"season_id": season_id, "competition_id": comp_id, "round": round_number,
          "tie": str(n), "club_a_id": a, "club_b_id": b, "winner_club_id": None}
@@ -29,7 +31,8 @@ def insert_ties(conn: Connection, world: World, season_id: int, comp_id: int, co
                 tie=str(n), leg=leg if len(days) == 2 else None, date=day.isoformat(),
                 home_club_id=home, away_club_id=away, neutral=int(neutral), status="scheduled"))
             for club_id in (home, away):
-                make_room(conn, world, club_id, day, today)
+                moved += make_room(conn, world, club_id, day, today)
+    return moved
 
 
 def tie_winner(conn: Connection, season_id: int, comp_key: str, tie: Row[Any]) -> int | None:

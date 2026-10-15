@@ -20,7 +20,7 @@ from footsim.persistence.migrations import migrate
 from footsim.persistence.schema import competition, continental_entry, finance_ledger, fixture
 from footsim.world import career
 from footsim.world.context import World, get_world
-from footsim.world.cups import REST_DAYS
+from footsim.world.cups import REST_DAYS, moved_ties_news
 from footsim.world.europe.common import europe_calendar
 from footsim.world.meta import read_meta
 
@@ -160,3 +160,21 @@ def test_the_europe_pages(season: tuple[Engine, World]) -> None:
     assert not ucl.knockout[1].drawn and ucl.winner is None
     assert len(ucl.entries) == 36 and all(e.how for e in ucl.entries)
     assert any(e.how.endswith("in the Premier League") for e in ucl.entries)
+
+
+def test_the_user_hears_when_a_cup_tie_moves(season: tuple[Engine, World]) -> None:
+    """A European draw that moves a domestic cup tie (its date given in the cup draw's news)
+    tells the user, if the tie is theirs, and nobody else."""
+    engine, world = season
+    with engine.connect() as conn:
+        fx = conn.execute(select(fixture).where(fixture.c.stage == "EFL_CUP")
+                          .order_by(fixture.c.id)).first()
+        assert fx is not None
+        meta = read_meta(conn)
+        theirs = moved_ties_news(conn, world, replace(meta, user_club_id=fx.away_club_id),
+                                 [fx.id])
+        nobody = moved_ties_news(conn, world, meta, [fx.id])
+    day = date.fromisoformat(fx.date)
+    assert len(theirs) == 1 and theirs[0].startswith("Carabao Cup ")
+    assert f"moves to {day:%a} {day.day} {day:%b}, to make room" in theirs[0]
+    assert nobody == []

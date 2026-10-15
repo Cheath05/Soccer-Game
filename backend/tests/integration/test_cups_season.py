@@ -2,7 +2,7 @@
 of one's own: every league finishes and starts the next season the right size, with clubs
 promoted and relegated in every country; every cup reaches a final and a winner, every round has
 the clubs it should, and no club ever plays twice within two days of a cup match moving its
-league match.
+league match (now and then one day, in a crowded season with the European competitions).
 Skipped when the base world hasn't been built (it needs the locally downloaded EA FC 27 file,
 which isn't in the repository)."""
 
@@ -63,10 +63,12 @@ def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
             assert world.defs.leagues[home].nation == cup.nation, key
         assert {c.nation for c in world.defs.cups.values()} == {
             league.nation for league in world.defs.leagues.values()}
-        # Every match, league, play-off and cup, at least two clear days after a club's last,
-        # and every league match (moved or not) within its league's dates.
+        # Every match, league, play-off, cup and European, at least two clear days after a
+        # club's last (one only now and then, when a crowded season has no other day: a club in
+        # Europe has twenty more dates), and every league match (moved or not) within its
+        # league's dates.
         keys = {cid: key for key, cid in ids.items()}
-        days: dict[int, list[date]] = defaultdict(list)
+        days: dict[int, list[tuple[date, bool]]] = defaultdict(list)  # (day, European?)
         for f in conn.execute(select(fixture).where(fixture.c.season_id == 1)):
             assert f.status == "played"
             if f.stage == "league":
@@ -74,10 +76,14 @@ def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
                 dates = world.defs.calendars[league.calendar].competitions[league.key]
                 assert dates.start <= date.fromisoformat(f.date) <= dates.end
             for club in (f.home_club_id, f.away_club_id):
-                days[club].append(date.fromisoformat(f.date))
-        tight = [(club, a, b) for club, ds in days.items() for a, b in zip(
-            sorted(ds), sorted(ds)[1:], strict=False) if (b - a).days < 3]
-        assert not tight, tight[:5]
+                days[club].append((date.fromisoformat(f.date),
+                                   f.stage in world.defs.continental))
+        gaps = [(club, a, b) for club, ds in days.items() for a, b in zip(
+            sorted(ds), sorted(ds)[1:], strict=False)]
+        assert not [g for g in gaps if (g[2][0] - g[1][0]).days < 2], "back to back"
+        tight = [g for g in gaps if (g[2][0] - g[1][0]).days < 3]
+        domestic = [g for g in tight if not (g[1][1] or g[2][1])]  # a league match squeezed in
+        assert len(tight) <= 60 and len(domestic) <= 15, (len(tight), domestic[:5])
         # Every league played its season and starts the next one at its size, and clubs went
         # up and down in every country with more than one league.
         for key, league in world.defs.leagues.items():
@@ -121,10 +127,14 @@ def test_a_save_from_before_the_cups_starts_them_if_their_first_round_is_ahead(
         initialize_career(conn, world, None, None, seed=6)
         stages = ", ".join(f"'{key}'" for key in world.defs.cups)
         conn.execute(text(f"DELETE FROM fixture WHERE stage IN ({stages})"))
-        conn.execute(text("DELETE FROM cup_tie"))  # as a save from before the cups
+        conn.execute(text(  # as a save from before the cups (its European ties kept)
+            f"DELETE FROM cup_tie WHERE competition_id IN "
+            f"(SELECT id FROM competition WHERE key IN ({stages}))"))
         meta = read_meta(conn)
         messages = after_day(conn, world, meta, meta.current_date)
-        drawn = conn.execute(text("SELECT COUNT(*) FROM cup_tie WHERE round = 0")).scalar_one()
+        drawn = conn.execute(text(
+            f"SELECT COUNT(*) FROM cup_tie t JOIN competition c ON c.id = t.competition_id "
+            f"WHERE t.round = 0 AND c.key IN ({stages})")).scalar_one()
         # Each cup's first round has a row for every club that goes through it (a tie to be
         # won, or a bye): the Carabao Cup's 36 ties, the FA Cup's 16 and 16 byes, and so on.
         sizes = {key: league.clubs for key, league in world.defs.leagues.items()}

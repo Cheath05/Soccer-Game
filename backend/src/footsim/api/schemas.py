@@ -136,6 +136,16 @@ class TableRowOut(BaseModel):
     form: list[str]
     outcome: str | None = None  # a finished season's: champion | promoted | playoff_winner |
     #                             playoffs | relegated
+    europe: str | None = None  # the European competition its place earns (UCL, UEL, UECL)
+    europe_stage: str | None = None  # league_phase | qualifying (the summer play-off round)
+
+
+class EuropePlaceOut(BaseModel):
+    """One of a top league's European places, for the table's key."""
+    competition: str  # UCL | UEL | UECL
+    name: str  # "Champions League"
+    stage: str  # league_phase | qualifying
+    how: str  # "1st-4th", "5th", "FA Cup winners"
 
 
 class TableOut(BaseModel):
@@ -146,6 +156,11 @@ class TableOut(BaseModel):
     started: bool = True  # at least one match has been played
     first_match: str | None = None  # the date of its first league match
     rows: list[TableRowOut]
+    # A top league's European places (empty for other leagues, or a game without Europe), and
+    # whether the rows' marks are where its clubs actually went (a finished season, next
+    # season's entries made) rather than the places by position.
+    europe_places: list[EuropePlaceOut] = []
+    europe_actual: bool = False
 
 
 class SeasonOut(BaseModel):

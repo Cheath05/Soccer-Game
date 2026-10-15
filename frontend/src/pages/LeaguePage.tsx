@@ -1,6 +1,7 @@
 import { Badge, Group, Select, Stack, Table, Text, Title } from '@mantine/core'
 
 import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from '../api/hooks'
+import type { TableRow } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
 import { OUTCOMES, longDate } from '../lib/format'
@@ -10,9 +11,15 @@ import { useUrlState } from '../lib/urlState'
 const ZONE_COLOR: Record<string, string> = {
   champion: 'var(--mantine-color-yellow-light)',
   promotion: 'var(--mantine-color-teal-light)',
-  playoff: 'var(--mantine-color-blue-light)',
+  playoff: 'var(--mantine-color-grape-light)',
   relegation: 'var(--mantine-color-red-light)',
 }
+const ZONE_LABEL: Record<string, string> = { promotion: 'Promotion', playoff: 'Play-offs', relegation: 'Relegation' }
+
+// Champions League blue, Europa League orange, Conference League green
+const EUROPE_COLOR: Record<string, string> = { UCL: 'blue', UEL: 'orange', UECL: 'green' }
+const europeStripe = (competition: string) => `inset 4px 0 0 var(--mantine-color-${EUROPE_COLOR[competition]}-6)`
+const europeLight = (competition: string) => `var(--mantine-color-${EUROPE_COLOR[competition]}-light)`
 
 export default function LeaguePage() {
   const { phone } = useDevice()
@@ -35,6 +42,22 @@ export default function LeaguePage() {
   const active = key ?? (waiting && !seasonId && lastLeague ? lastLeague : homeKey)
   const shownId = seasonId ? Number(seasonId) : waiting ? previous.id : current?.id
   const table = useTable(active, shownId === undefined || shownId === current?.id ? null : shownId)
+
+  const rows = table.data?.rows ?? []
+  const zones = ['promotion', 'playoff', 'relegation'].filter((z) => rows.some((r) => r.zone === z))
+  const places = table.data?.europe_places ?? []
+  // A European mark beats the zone colour. The play-off round gets the stripe only.
+  const mark = (r: TableRow) => {
+    const eu = r.europe && EUROPE_COLOR[r.europe] ? r.europe : null
+    if (!eu) return { bg: r.zone ? ZONE_COLOR[r.zone] : undefined, stripe: undefined, title: undefined }
+    const playoff = r.europe_stage === 'qualifying'
+    const name = places.find((p) => p.competition === eu)?.name ?? eu
+    return {
+      bg: playoff ? undefined : europeLight(eu),
+      stripe: europeStripe(eu),
+      title: playoff ? `${name} play-off round` : name,
+    }
+  }
 
   return (
     <Stack>
@@ -86,9 +109,11 @@ export default function LeaguePage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {(table.data?.rows ?? []).map((r) => (
-              <Table.Tr key={r.club.id} bg={r.zone ? ZONE_COLOR[r.zone] : undefined} fw={r.club.id === career?.club.id ? 700 : undefined}>
-                <Table.Td>{r.position}</Table.Td>
+            {rows.map((r) => (
+              <Table.Tr key={r.club.id} bg={mark(r).bg} fw={r.club.id === career?.club.id ? 700 : undefined}>
+                <Table.Td style={{ boxShadow: mark(r).stripe }} title={mark(r).title}>
+                  {r.position}
+                </Table.Td>
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
                     <ClubLink club={r.club} />
@@ -123,11 +148,48 @@ export default function LeaguePage() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
-      <Group gap="md">
-        <Legend color={ZONE_COLOR.promotion} label="Promotion" />
-        <Legend color={ZONE_COLOR.playoff} label="Play-offs" />
-        <Legend color={ZONE_COLOR.relegation} label="Relegation" />
-      </Group>
+      {zones.length > 0 && (
+        <Group gap="md">
+          {zones.map((z) => (
+            <Legend key={z} color={ZONE_COLOR[z]!} label={ZONE_LABEL[z]!} />
+          ))}
+        </Group>
+      )}
+      {places.length > 0 && (
+        <Stack gap={6}>
+          <Text size="sm" fw={600}>
+            European places
+          </Text>
+          <Group gap="xs" style={{ columnGap: 'var(--mantine-spacing-md)' }}>
+            {places.map((p) => {
+              const playoff = p.stage === 'qualifying'
+              return (
+                <Group key={`${p.competition}-${p.stage}-${p.how}`} gap={6} wrap="nowrap">
+                  <div
+                    style={{
+                      width: 18,
+                      height: 14,
+                      flexShrink: 0,
+                      borderRadius: 3,
+                      background: playoff ? undefined : europeLight(p.competition),
+                      boxShadow: europeStripe(p.competition),
+                    }}
+                  />
+                  <Text size="xs">
+                    {p.how} · {p.name}
+                    {playoff ? ' play-off round' : ''}
+                  </Text>
+                </Group>
+              )
+            })}
+          </Group>
+          <Text size="xs" c="dimmed">
+            {table.data?.europe_actual
+              ? 'Marked: where each club went in Europe the next season.'
+              : 'By finishing position. A club that earns two places takes the higher one, and its other place passes to the next club in the table not already in Europe (for example when the cup winners also finish high). The holders’ places and unused places can give a country more.'}
+          </Text>
+        </Stack>
+      )}
     </Stack>
   )
 }

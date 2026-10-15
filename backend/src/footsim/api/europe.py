@@ -13,6 +13,7 @@ from sqlalchemy import Connection, Row, select
 from footsim.api.queries import _club_names, _competitions, _season_label, fixture_out
 from footsim.api.routes import Session
 from footsim.api.schemas import ClubRef, CupRoundOut, CupTieOut, FixtureOut, TableRowOut
+from footsim.core.text import ordinal
 from footsim.defs.europe import ContinentalDef
 from footsim.persistence.schema import (
     club,
@@ -80,11 +81,6 @@ class EuropeListOut(BaseModel):
     competitions: list[EuropeSummaryOut]
 
 
-def _ordinal(n: int) -> str:
-    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return f"{n}{suffix}"
-
-
 def _how(world: World, route: str, nations: dict[str, str]) -> str:
     """A place's route in words: league:ENG:4 is "4th in the Premier League"."""
     kind, _, rest = route.partition(":")
@@ -96,8 +92,8 @@ def _how(world: World, route: str, nations: dict[str, str]) -> str:
         if top is None:  # a country without a league in the game
             if rank == "1":
                 return f"{country}'s champions"
-            return f"{_ordinal(int(rank))} in {country}"
-        return f"{_ordinal(int(rank))} in the {top.name}"
+            return f"{ordinal(int(rank))} in {country}"
+        return f"{ordinal(int(rank))} in the {top.name}"
     if kind == "cup":
         cup = world.defs.cups.get(rest)
         return f"{cup.name} winners" if cup else "Cup winners"
@@ -254,14 +250,14 @@ def _user_status(detail: EuropeOut, user: int | None, mine: EntryOut | None) -> 
         return None
     if mine.position is not None:
         if mine.position > detail.league_phase.to_playoff[1]:
-            return f"Out: {_ordinal(mine.position)} in the league phase"
+            return f"Out: {ordinal(mine.position)} in the league phase"
         if in_ties:
             return f"In the {in_ties[-1][0].name.lower()}"
-        return f"{_ordinal(mine.position)} in the league phase"
+        return f"{ordinal(mine.position)} in the league phase"
     if mine.stage == "qualifying":
         return f"In the {detail.qualifying.name.lower()}"
     row = next((r for r in detail.league_phase.table if r.club.id == user), None)
-    return f"In the league phase: {_ordinal(row.position)}" if row else "In the league phase"
+    return f"In the league phase: {ordinal(row.position)}" if row else "In the league phase"
 
 
 @router.get("/europe")

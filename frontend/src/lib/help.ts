@@ -199,7 +199,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: 'Tables, promotion and relegation zones, past seasons, cups.',
     blocks: [
       [
-        'League shows a table for any league in the game: pick a country, then a league. Zones are coloured for promotion, play-offs and relegation, and your club is in bold. A season picker shows past seasons.',
+        'League shows a table for any league in the game: pick a country, then a league. Zones are coloured for promotion, play-offs and relegation, and your club is in bold. In a top division the European places are in colour too: Champions League blue, Europa League orange, Conference League green (a stripe only for a place in a play-off round), with a key under the table. A finished season’s table shows where clubs actually went. A season picker shows past seasons.',
         'Between seasons the League page keeps showing last season’s final table until the new season’s first league match.',
         'Cups shows a country’s cups (yours to begin with), every round with its ties and results, what is still to come, and how your club is doing. Pick another country or cup, or a past season.',
       ],

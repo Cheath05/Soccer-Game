@@ -27,6 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.59"
+  date: "2026-10-14"
+  title: "European places in the league tables"
+  changes:
+    - "Top-division tables show the European places in colour: Champions League blue, Europa League orange, Conference League green, and a stripe only for a place in a summer play-off round."
+    - "A key under the table says what each place needs (\"1st–4th · Champions League\", \"FA Cup winners · Europa League\") and how places pass down the table when a club earns two."
+    - "A finished season's table shows where each club actually went in Europe."
+    - "Promotion and relegation play-off places are now violet, and the key lists only the zones the league has."
+
 - version: "1.58"
   date: "2026-10-14"
   title: "The Champions League, Europa League and Conference League"

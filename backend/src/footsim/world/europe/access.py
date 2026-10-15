@@ -176,3 +176,27 @@ def _resolve(conn: Connection, world: World, season_id: int, place: PlaceDef, sl
     assert place.nation is not None and place.ranks is not None
     found = free(place.nation, place.ranks[0] + slot)
     return (found[0], f"league:{place.nation}:{found[1]}") if found is not None else None
+
+
+@dataclass(frozen=True)
+class Place:
+    """A European place one country's clubs can earn: a run of its top league's finishes, or
+    a domestic cup's win."""
+    competition: str  # UCL, UEL, UECL
+    stage: str  # league_phase | qualifying
+    ranks: tuple[int, int] | None
+    cup: str | None
+
+
+def country_places(world: World, nation_code: str) -> list[Place]:
+    """The places a country's clubs earn by the access list, from the top competition down:
+    as written, before any pass down the table (a club earning two takes the higher, and its
+    other goes to the next club not yet in Europe) or extra places fill vacancies."""
+    places = []
+    for comp in competitions_by_rank(world):
+        rules = world.defs.europe_access.competitions[comp.key]
+        for stage, listed in (("league_phase", rules.league_phase),
+                              ("qualifying", rules.qualifying)):
+            places += [Place(comp.key, stage, p.ranks, p.cup) for p in listed
+                       if p.nation == nation_code and (p.ranks or p.cup)]
+    return places

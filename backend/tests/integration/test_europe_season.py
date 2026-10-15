@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from sqlalchemy import Engine, select
 
+from footsim.api import queries
 from footsim.api.queries import _club_names, _competitions, cup_runs
 from footsim.api.season_review import _continental_titles, season_final
 from footsim.core.paths import data_dir
@@ -194,3 +195,21 @@ def test_a_european_clubs_season_end_and_history(two_seasons: tuple[Engine, Worl
         final = season_final(conn, world, winner, [])
     assert all(r.key in world.defs.cups for season_runs in runs.values() for r in season_runs)
     assert final is not None
+
+
+def test_a_finished_tables_marks_are_where_clubs_went(two_seasons: tuple[Engine, World]) -> None:
+    """Last season's final table marks each club with the European place it took this season
+    (a cup winner's place passed down the table, a holder's...), not the places by position."""
+    engine, world = two_seasons
+    with engine.connect() as conn:
+        final = queries.table(conn, world, "ENG1", 1)
+        now = queries.table(conn, world, "ENG1", 2)
+        entries = {r.club_id: r.route.removeprefix("dropped:") if r.route.startswith(
+            "dropped:") else r.key for r in conn.execute(select(  # a play-off's losers: its own
+            continental_entry.c.club_id, continental_entry.c.route, competition.c.key).join(
+            competition, competition.c.id == continental_entry.c.competition_id).where(
+            continental_entry.c.season_id == 2))}
+    assert final.europe_actual and not now.europe_actual
+    marked = {r.club.id: r.europe for r in final.rows if r.europe}
+    assert marked == {r.club.id: entries[r.club.id] for r in final.rows if r.club.id in entries}
+    assert len(marked) >= 7  # England's seven places, and any holders' or fills'

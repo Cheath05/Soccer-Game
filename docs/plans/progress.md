@@ -29,7 +29,23 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (14 Oct): the European competitions switched on** (the commit that adds this line; v1.58). W6 is complete.
+- **Latest checkpoint (14 Oct): European places in the league tables** (the commit that adds this line; v1.59). The user asked to see each league's European places in colour (UCL blue, UEL orange, UECL green) and what each needs.
+  - **API:** `TableOut` has `europe_places` (the key) and `europe_actual`; each row has `europe` and `europe_stage`. They come from `world/europe/access.country_places`, which reads the access list as written, from the top competition down. `queries.table` fills them:
+    - for top divisions only, and only when the game has Europe;
+    - **during a season,** the marks go by position;
+    - **for a finished season** whose next season's entries exist, they show where each club actually went (`_went_to_europe`). A play-off round's losers show that round, not the competition they dropped into.
+    - `core/text.ordinal` is shared with `api/europe.py`.
+  - **UI** (a Sonnet agent; LeaguePage, types, help):
+    - a European competition place has a coloured background and stripe; a play-off round place has the stripe only;
+    - a key under the table, plus a note on places passing down the table;
+    - the promotion and relegation play-off zones are now grape, so they don't clash with UCL blue;
+    - the legend lists only the zones the league has.
+  - **Checks:**
+    - `test_league_europe.py` (new: ENG1's places and marks, Scotland's champions in the UCL play-off round, none for ENG2);
+    - `test_europe_season` (a finished table's marks are next season's entries);
+    - the full suite; `npm run build`; the agent's browser check at 1440 and 390.
+  - **Next:** unchanged. The user plays a new career with Europe; then step 2.1 (worth Opus 5.5 Max).
+- **Earlier checkpoint (14 Oct): the European competitions switched on** (v1.58). W6 is complete.
   - **`data/config/europe/settings.yaml` `enabled: true`.** New careers have the UCL, UEL and UECL from season one; careers under way from their next season start (`start_europe` runs with the season's fixtures).
   - **Fixes the full suite found with Europe on:**
     - **Back to back:** an EFL Cup semi-final moved off a European date to 8 Jan, and the FA Cup third round, drawn later, then landed on its calendar date of 9 Jan. Two changes in `world/cups.py`:

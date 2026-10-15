@@ -26,6 +26,7 @@ from footsim.api.schemas import (
     CupRunOut,
     CupSummaryOut,
     CupTieOut,
+    EuropePlaceOut,
     FixtureOut,
     FormationOut,
     InstructionOut,
@@ -49,7 +50,8 @@ from footsim.api.schemas import (
     TableRowOut,
     TacticsOut,
 )
-from footsim.defs.competitions import MovementKind
+from footsim.core.text import ordinal
+from footsim.defs.competitions import LeagueDef, MovementKind
 from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES
 from footsim.importers.generate import age_on
 from footsim.match.engine.clock import event_label
@@ -67,6 +69,7 @@ from footsim.persistence.schema import (
     club_finance,
     club_league_membership,
     competition,
+    continental_entry,
     cup_tie,
     fixture,
     league_final,
@@ -91,6 +94,7 @@ from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
+from footsim.world.europe.access import Place, country_places
 from footsim.world.europe.common import stage_name
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
@@ -321,19 +325,71 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
             r.position = position
     outcomes = {r.club_id: r.outcome for r in conn.execute(select(league_final).where(
         league_final.c.season_id == season_id, league_final.c.competition_id == comp.id))}
+    places = _europe_places(conn, world, league) if league.tier == 1 else []
+    by_rank = {rank: (p.competition, p.stage) for p in places if p.ranks
+               for rank in range(p.ranks[0], p.ranks[1] + 1)}
+    went = _went_to_europe(conn, world, season_id, [r.club_id for r in ordered]) if (
+        places and outcomes) else {}
+
+    def europe_mark(club_id: int, position: int) -> tuple[str | None, str | None]:
+        if went:
+            return went.get(club_id, (None, None))
+        return by_rank.get(position, (None, None))
+
     rows = [TableRowOut(
         position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
         played=r.played, won=r.won, drawn=r.drawn, lost=r.lost, goals_for=r.goals_for,
         goals_against=r.goals_against, goal_difference=r.goal_difference, points=r.points,
         zone=zones.get(r.position), form=form.get(r.club_id, []),
         outcome=outcomes.get(r.club_id),
+        europe=europe_mark(r.club_id, r.position)[0],
+        europe_stage=europe_mark(r.club_id, r.position)[1],
     ) for r in ordered]
     first_match = conn.execute(select(func.min(fixture.c.date)).where(
         fixture.c.competition_id == comp.id, fixture.c.season_id == season_id,
         fixture.c.stage == "league")).scalar()
     return TableOut(competition=key, name=comp.name, season=_season_label(conn, season_id),
                     final=bool(outcomes), started=any(r.played for r in ordered),
-                    first_match=first_match, rows=rows)
+                    first_match=first_match, rows=rows,
+                    europe_places=[EuropePlaceOut(
+                        competition=p.competition,
+                        name=world.defs.continental[p.competition].short_name, stage=p.stage,
+                        how=_place_how(world, p)) for p in places],
+                    europe_actual=bool(went))
+
+
+def _europe_places(conn: Connection, world: World, league: LeagueDef) -> list[Place]:
+    """A top league's European places, when the game has the European competitions."""
+    on = world.defs.europe.enabled or conn.execute(
+        select(continental_entry.c.id)).first() is not None
+    return country_places(world, league.nation) if on else []
+
+
+def _place_how(world: World, place: Place) -> str:
+    if place.cup is not None:
+        cup = world.defs.cups.get(place.cup)
+        return f"{cup.name if cup else 'Cup'} winners"
+    assert place.ranks is not None
+    first, last = place.ranks
+    return ordinal(first) if first == last else f"{ordinal(first)}–{ordinal(last)}"
+
+
+def _went_to_europe(conn: Connection, world: World, season_id: int, clubs: list[int]
+                    ) -> dict[int, tuple[str, str]]:
+    """Where a finished season's clubs went in Europe the season after (once its entries are
+    made): the competition and stage they qualified for. A club that lost its play-off round
+    shows that round, not the competition it dropped into."""
+    keys = {r.id: r.key for r in conn.execute(select(competition.c.id, competition.c.key))}
+    went: dict[int, tuple[str, str]] = {}
+    for e in conn.execute(select(continental_entry).where(
+            continental_entry.c.season_id == season_id + 1,
+            continental_entry.c.club_id.in_(clubs))):
+        kind, _, origin = e.route.partition(":")
+        if kind == "dropped" and origin in world.defs.continental:
+            went[e.club_id] = (origin, "qualifying")
+        else:
+            went[e.club_id] = (keys[e.competition_id], e.stage)
+    return went
 
 
 def seasons(conn: Connection) -> list[SeasonOut]:

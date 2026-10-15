@@ -242,6 +242,17 @@ export interface TableRow {
   zone: 'champion' | 'promotion' | 'playoff' | 'relegation' | null
   form: string[]
   outcome: Outcome | null // a finished season's
+  europe?: EuropeKey | null // the European competition the club is marked for
+  europe_stage?: 'league_phase' | 'qualifying' | null // qualifying: the summer play-off round
+}
+
+export type EuropeKey = 'UCL' | 'UEL' | 'UECL'
+
+export interface EuropePlace {
+  competition: EuropeKey
+  name: string // "Champions League"
+  stage: 'league_phase' | 'qualifying'
+  how: string // "1st–4th", "FA Cup winners"
 }
 
 export interface Table {
@@ -252,6 +263,8 @@ export interface Table {
   started?: boolean // a match has been played (a server that predates it omits it)
   first_match?: string | null // the date of its first league match
   rows: TableRow[]
+  europe_places?: EuropePlace[] // empty below the top tier and without Europe
+  europe_actual?: boolean // the marks show where clubs actually went the next season
 }
 
 export type Outcome = 'champion' | 'promoted' | 'playoff_winner' | 'playoffs' | 'relegated'
@@ -672,7 +685,7 @@ export interface EuropeList {
 
 export type EuropeZone = 'round_of_16' | 'playoff' | 'out'
 
-export interface EuropeTableRow extends Omit<TableRow, 'zone' | 'outcome'> {
+export interface EuropeTableRow extends Omit<TableRow, 'zone' | 'outcome' | 'europe' | 'europe_stage'> {
   zone: EuropeZone
   outcome?: Outcome | null
 }

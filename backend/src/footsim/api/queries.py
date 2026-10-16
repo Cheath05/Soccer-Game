@@ -3,6 +3,7 @@
 import json
 import unicodedata
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -115,13 +116,55 @@ def _competitions(conn: Connection) -> dict[int, Row[Any]]:
     return {r.id: r for r in conn.execute(select(competition))}
 
 
-def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]) -> FixtureOut:
+# A two-legged tie's first legs, by (season, competition, round, tie).
+FirstLegs = dict[tuple[int, int, int, str], Row[Any]]
+
+
+def first_legs(conn: Connection, rows: Sequence[Row[Any]]) -> FirstLegs:
+    """The played first legs of the ties the second-leg ``rows`` belong to. The rows' own first
+    legs are used as they stand; at most one query fetches the rest."""
+    found: FirstLegs = {}
+    for r in rows:
+        if r.leg == 1 and r.tie is not None and r.status == "played":
+            found[(r.season_id, r.competition_id, r.round, r.tie)] = r
+    missing = [r for r in rows if r.leg == 2 and r.tie is not None
+               and (r.season_id, r.competition_id, r.round, r.tie) not in found]
+    if missing:
+        wanted = {(r.season_id, r.competition_id, r.round, r.tie) for r in missing}
+        for first in conn.execute(select(fixture).where(
+                fixture.c.leg == 1, fixture.c.status == "played",
+                fixture.c.season_id.in_({k[0] for k in wanted}),
+                fixture.c.competition_id.in_({k[1] for k in wanted}),
+                fixture.c.round.in_({k[2] for k in wanted}),
+                fixture.c.tie.in_({k[3] for k in wanted}))):
+            found[(first.season_id, first.competition_id, first.round, first.tie)] = first
+    return found
+
+
+def _first_leg_goals(row: Row[Any], firsts: FirstLegs) -> tuple[int, int] | None:
+    """A second leg's first-leg goals, for the second leg's home and away clubs (the first leg
+    was played the other way round); None on anything else, or while the first leg is unplayed."""
+    if row.leg != 2 or row.tie is None:
+        return None
+    first = firsts.get((row.season_id, row.competition_id, row.round, row.tie))
+    if (first is None or first.home_goals is None or first.away_goals is None
+            or first.home_club_id != row.away_club_id or first.away_club_id != row.home_club_id):
+        return None
+    return first.away_goals, first.home_goals
+
+
+def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]],
+                firsts: FirstLegs | None = None) -> FixtureOut:
     comp = comps[row.competition_id]
     defs = get_world().defs
     cup = defs.cups.get(comp.key)
     continental = defs.continental.get(comp.key)
     named = (cup.rounds[row.round].name if cup
              else stage_name(continental, row.round) if continental else None)
+    prior = _first_leg_goals(row, firsts or {})
+    played = row.status == "played" and row.home_goals is not None and row.away_goals is not None
+    agg = ((prior[0] + row.home_goals, prior[1] + row.away_goals)
+           if prior and played else (None, None))
     return FixtureOut(
         id=row.id, date=row.date, competition=comp.key, competition_name=comp.name,
         stage=row.stage, round=row.round, tie=row.tie, leg=row.leg,
@@ -129,8 +172,16 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
         away=ClubRef(id=row.away_club_id, name=names[row.away_club_id]),
         neutral=bool(row.neutral), status=row.status, home_goals=row.home_goals,
         away_goals=row.away_goals, extra_time=bool(row.extra_time), home_pens=row.home_pens,
-        away_pens=row.away_pens, stage_name=named,
+        away_pens=row.away_pens, stage_name=named, agg_home=agg[0], agg_away=agg[1],
+        leg1_home=prior[0] if prior else None, leg1_away=prior[1] if prior else None,
     )
+
+
+def fixtures_out(conn: Connection, rows: Sequence[Row[Any]], names: dict[int, str],
+                 comps: dict[int, Row[Any]]) -> list[FixtureOut]:
+    """``rows`` as FixtureOut, second legs carrying the aggregate."""
+    firsts = first_legs(conn, rows)
+    return [fixture_out(r, names, comps, firsts) for r in rows]
 
 
 def _club_competition(conn: Connection, club_id: int, season_id: int) -> Row[Any] | None:
@@ -291,8 +342,8 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         manager=meta.manager_name, club=ClubRef(id=user, name=names[user]),
         competition=_competition_out(world, comp) if comp else None,
         position=position,
-        next_fixture=fixture_out(upcoming, names, comps) if upcoming else None,
-        recent=[fixture_out(r, names, comps) for r in recent],
+        next_fixture=fixtures_out(conn, [upcoming], names, comps)[0] if upcoming else None,
+        recent=fixtures_out(conn, recent, names, comps),
         currency=meta.currency,
     )
 
@@ -508,10 +559,11 @@ def cup(conn: Connection, world: World, key: str, season_id: int | None = None) 
     ).order_by(cup_tie.c.round, cup_tie.c.id)).all() if comp_id is not None else []
     games: dict[tuple[int, str], list[FixtureOut]] = defaultdict(list)
     if comp_id is not None:
-        for row in conn.execute(select(fixture).where(
-                fixture.c.season_id == season_id, fixture.c.competition_id == comp_id,
-        ).order_by(fixture.c.leg)):
-            games[(row.round, row.tie)].append(fixture_out(row, names, comps))
+        rows = conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.competition_id == comp_id,
+        ).order_by(fixture.c.leg)).all()
+        for row, out in zip(rows, fixtures_out(conn, rows, names, comps), strict=True):
+            games[(row.round, row.tie)].append(out)
 
     def ref(club_id: int | None) -> ClubRef | None:
         return ClubRef(id=club_id, name=names[club_id]) if club_id else None
@@ -621,7 +673,7 @@ def fixtures(conn: Connection, *, club_id: int | None = None, competition_key: s
     names = _club_names(conn)
     comps = _competitions(conn)
     rows = conn.execute(query.order_by(fixture.c.date, fixture.c.id)).all()
-    return [fixture_out(r, names, comps) for r in rows]
+    return fixtures_out(conn, rows, names, comps)
 
 
 # --- players --------------------------------------------------------------------------
@@ -819,8 +871,8 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         average_age=round(float(np.mean([p.age for p in players])), 1) if players else 0.0,
         average_overall=round(float(np.mean([p.overall for p in players])), 1) if players else 0.0,
         top_players=[_outside_view(p) for p in sorted(players, key=lambda p: -p.overall)[:5]],
-        recent=[fixture_out(r, names, comps) for r in recent],
-        upcoming=[fixture_out(r, names, comps) for r in upcoming],
+        recent=fixtures_out(conn, recent, names, comps),
+        upcoming=fixtures_out(conn, upcoming, names, comps),
         recent_transfers=_recent_transfers(conn, world, club_id, names, meta.currency),
     )
 
@@ -1039,7 +1091,7 @@ def match_detail(conn: Connection, fixture_id: int) -> MatchOut:
             interceptions=ln.interceptions, saves=ln.saves, yellow=ln.yellow, red=ln.red,
             rating=ln.rating))
     stats = json.loads(row.stats) if row.stats else None
-    return MatchOut(fixture=fixture_out(row, names, comps), events=events,
+    return MatchOut(fixture=fixtures_out(conn, [row], names, comps)[0], events=events,
                     home_lines=lines[row.home_club_id], away_lines=lines[row.away_club_id],
                     stats=stats)
 

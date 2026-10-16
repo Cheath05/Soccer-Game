@@ -74,6 +74,14 @@ class FixtureOut(BaseModel):
     home_pens: int | None
     away_pens: int | None
     stage_name: str | None = None  # a cup round's name ("Third round"); None otherwise
+    # A played second leg's aggregate over both legs (extra time in, penalties out), for its
+    # home and away clubs; None on anything else, or while the first leg is unplayed.
+    agg_home: int | None = None
+    agg_away: int | None = None
+    # A second leg's first-leg goals for its home and away clubs, once that leg is played (also
+    # while this one is still to come, so a live match can add its score to them).
+    leg1_home: int | None = None
+    leg1_away: int | None = None
 
 
 class CupTieOut(BaseModel):

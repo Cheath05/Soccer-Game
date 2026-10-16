@@ -29,6 +29,11 @@ export default function MatchdayPage() {
           <Title order={2}>
             <ClubLink club={fixture.home} /> v <ClubLink club={fixture.away} />
           </Title>
+          {fixture.leg1_home !== null && fixture.leg1_away !== null && (
+            <Text size="sm" c="dimmed">
+              First leg: {fixture.away.name} {fixture.leg1_away} – {fixture.leg1_home} {fixture.home.name}
+            </Text>
+          )}
           <Text size="sm">{fixture.neutral ? 'Neutral venue' : home ? 'Home' : `Away at ${opponent.name}`}</Text>
           <Group mt="md">
             <Button size="md" color="teal" onClick={() => void navigate({ to: '/live/$fixtureId', params: { fixtureId: String(fixture.id) } })}>

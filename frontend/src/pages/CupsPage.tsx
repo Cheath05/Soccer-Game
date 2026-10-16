@@ -2,7 +2,7 @@ import { Badge, Card, Group, SegmentedControl, Select, SimpleGrid, Stack, Table,
 import { useNavigate } from '@tanstack/react-router'
 
 import { useCareer, useCup, useCups, useNations, useSeasons } from '../api/hooks'
-import type { CupRound, CupTie } from '../api/types'
+import type { CupRound, CupTie, Fixture } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import NationPicker from '../components/NationPicker'
 import { competitionNation, groupByNation, longDate, score } from '../lib/format'
@@ -108,6 +108,12 @@ export default function CupsPage() {
   )
 }
 
+/** A leg seen from the other side: a second leg is played at the tie's away club's ground, so
+ * its score and aggregate are turned to read in the tie's order, home club first. */
+function turned(f: Fixture): Fixture {
+  return { ...f, home_goals: f.away_goals, away_goals: f.home_goals, home_pens: f.away_pens, away_pens: f.home_pens, agg_home: f.agg_away, agg_away: f.agg_home }
+}
+
 function RoundCard({ round, userId }: { round: CupRound; userId: number | undefined }) {
   const navigate = useNavigate()
   const ties = round.ties.filter((t) => t.away)
@@ -139,7 +145,7 @@ function RoundCard({ round, userId }: { round: CupRound; userId: number | undefi
                     <Side tie={t} side="home" />
                   </Table.Td>
                   <Table.Td ta="center" style={{ whiteSpace: 'nowrap' }}>
-                    {played.length === 0 ? 'v' : t.fixtures.map((f) => (f.status === 'played' ? score(f) : 'v')).join(' · ')}
+                    {played.length === 0 ? 'v' : t.fixtures.map((f) => (f.status === 'played' ? score(f.home.id === t.home.id ? f : turned(f)) : 'v')).join(' · ')}
                   </Table.Td>
                   <Table.Td w="40%">
                     <Side tie={t} side="away" />

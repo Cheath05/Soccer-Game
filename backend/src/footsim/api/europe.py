@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import Connection, Row, select
 
-from footsim.api.queries import _club_names, _competitions, _season_label, fixture_out
+from footsim.api.queries import _club_names, _competitions, _season_label, fixtures_out
 from footsim.api.routes import Session
 from footsim.api.schemas import ClubRef, CupRoundOut, CupTieOut, FixtureOut, TableRowOut
 from footsim.core.text import ordinal
@@ -197,10 +197,10 @@ def _rounds(world: World, comp: ContinentalDef, comp_id: int | None, season_id: 
     games: dict[tuple[int, str | None], list[FixtureOut]] = defaultdict(list)
     phase_games: list[FixtureOut] = []
     if comp_id is not None:
-        for row in conn.execute(select(fixture).where(
-                fixture.c.season_id == season_id, fixture.c.competition_id == comp_id)
-                .order_by(fixture.c.round, fixture.c.leg, fixture.c.date, fixture.c.id)):
-            out = fixture_out(row, names, comps)
+        rows = conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.competition_id == comp_id)
+            .order_by(fixture.c.round, fixture.c.leg, fixture.c.date, fixture.c.id)).all()
+        for row, out in zip(rows, fixtures_out(conn, rows, names, comps), strict=True):
             if QUALIFYING < row.round < KNOCKOUT:
                 phase_games.append(out)
             else:

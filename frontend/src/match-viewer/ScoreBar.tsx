@@ -1,5 +1,6 @@
 import { Box, Text } from '@mantine/core'
 
+import { aggText } from '../lib/format'
 import { formatClock, periodName } from './clock'
 import { TEAM_COLORS } from './draw'
 import type { LiveMatch } from './useLiveMatch'
@@ -21,6 +22,7 @@ const RESTART_NAMES: Record<string, string> = {
 interface Props {
   match: LiveMatch
   competition?: string | null // e.g. "Premier League", shown above the score
+  firstLeg?: [number, number] | null // a second leg: the first leg's goals for the home and away side
   unseenGoalT?: number | null // a goal the picture has not shown in the net yet: not counted
   compact?: boolean // phones: tighter padding, no competition line
 }
@@ -40,7 +42,7 @@ function Team({ name, color, side }: { name: string; color: string; side: 'home'
 
 // Score and football clock. The clock follows the pitch picture (which runs a moment behind
 // the engine) so a goal and its minute appear together.
-export default function ScoreBar({ match, competition, unseenGoalT = null, compact = false }: Props) {
+export default function ScoreBar({ match, competition, firstLeg = null, unseenGoalT = null, compact = false }: Props) {
   const live = match.live
   if (!live) return null
   const playhead = match.playhead.current
@@ -86,6 +88,11 @@ export default function ScoreBar({ match, competition, unseenGoalT = null, compa
           >
             {score[0]} – {score[1]}
           </Text>
+          {firstLeg && (
+            <Text aria-label="Aggregate" fw={600} style={{ color: 'rgba(255,255,255,0.7)', fontSize: compact ? 12 : 14, fontVariantNumeric: 'tabular-nums' }}>
+              {aggText(firstLeg[0] + score[0], firstLeg[1] + score[1])}
+            </Text>
+          )}
           <Box style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <Box
               aria-label="Match clock"

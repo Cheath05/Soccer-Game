@@ -40,6 +40,8 @@ export default function LivePage() {
   const career = useCareer()
   const fixture = career.data?.next_fixture
   const competition = fixture && String(fixture.id) === fixtureId ? (fixture.stage_name ? `${fixture.competition_name} · ${fixture.stage_name}` : fixture.competition_name) : null
+  const firstLeg: [number, number] | null =
+    fixture && String(fixture.id) === fixtureId && fixture.leg1_home !== null && fixture.leg1_away !== null ? [fixture.leg1_home, fixture.leg1_away] : null
 
   if (error) {
     return (
@@ -64,7 +66,7 @@ export default function LivePage() {
 
   return (
     <Stack gap={compact ? 'xs' : 'sm'}>
-      <ScoreBar match={match} competition={competition} unseenGoalT={goalView.unseenT} compact={compact} />
+      <ScoreBar match={match} competition={competition} firstLeg={firstLeg} unseenGoalT={goalView.unseenT} compact={compact} />
       <Group align="start" gap={compact ? 'xs' : 'sm'} wrap="wrap">
         <Stack gap="xs" style={{ flex: compact ? '1 1 100%' : '3 1 560px', minWidth: 'min(320px, 100%)', maxWidth: '100%' }}>
           <Box pos="relative">

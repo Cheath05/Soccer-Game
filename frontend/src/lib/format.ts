@@ -156,9 +156,18 @@ export function matchRatingColor(value: number): string {
   return 'red.6'
 }
 
-export function score(f: { home_goals: number | null; away_goals: number | null; home_pens: number | null; away_pens: number | null; extra_time: boolean }): string {
+/** The aggregate of a two-legged tie in brackets: "(3 – 3 agg.)" when level, "(4 – 2 on agg.)"
+ * when not. Home and away are the second leg's, like its score. */
+export function aggText(home: number, away: number): string {
+  return `(${home} – ${away}${home === away ? ' agg.' : ' on agg.'})`
+}
+
+/** A fixture's score: 2 – 1; a second leg adds the aggregate, extra time and penalties follow:
+ * 2 – 1 (4 – 3 on agg.) (aet) (4–2 pens). */
+export function score(f: { home_goals: number | null; away_goals: number | null; home_pens: number | null; away_pens: number | null; extra_time: boolean; agg_home?: number | null; agg_away?: number | null }): string {
   if (f.home_goals === null || f.away_goals === null) return 'v'
   let text = `${f.home_goals} – ${f.away_goals}`
+  if (f.agg_home != null && f.agg_away != null) text += ` ${aggText(f.agg_home, f.agg_away)}`
   if (f.extra_time) text += ' (aet)'
   if (f.home_pens !== null && f.away_pens !== null) text += ` (${f.home_pens}–${f.away_pens} pens)`
   return text

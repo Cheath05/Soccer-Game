@@ -72,6 +72,12 @@ export interface Fixture {
   home_pens: number | null
   away_pens: number | null
   stage_name: string | null // a cup round's name
+  // A played second leg's aggregate for its home and away clubs (penalties out), else null.
+  agg_home: number | null
+  agg_away: number | null
+  // A second leg's first-leg goals for its home and away clubs, once that leg is played.
+  leg1_home: number | null
+  leg1_away: number | null
 }
 
 export interface Competition {

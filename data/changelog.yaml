@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.68"
+  date: "2026-10-15"
+  title: "Aggregate scores on second legs"
+  changes:
+    - "A second leg shows the score over both legs in brackets, as in 2 – 1 (4 – 3 on agg.): on fixtures, results, match reports, the calendar's tooltips and cup rounds, for every two-legged tie (European rounds, domestic cup semi-finals, league play-offs)."
+    - "Match day shows the first leg's score before a second leg, and the live score bar shows the running aggregate under the score while it's played."
+    - "Cup rounds now read each leg in the tie's order, home club first, so a second leg's score no longer reads the wrong way round."
+
 - version: "1.67"
   date: "2026-10-15"
   title: "Every UEFA country has its league"

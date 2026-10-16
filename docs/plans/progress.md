@@ -22,6 +22,7 @@
   - the real qualifying rounds (Q1–Q3 and the play-off, champions and league paths, drop-downs);
   - a league picker that keeps the big leagues easiest to find, with search and a continent filter.
   - Then the order below resumes.
+  - **Later, from the user (15 Oct):** international football with the World Cup (W8), and **the Club World Cup once the other regions and their leagues are in** (W9, then W10; see the roadmap at the end). Not started: W7's A7 and A8 come first.
 - **Order of work from 14 Oct (the user):**
   1. **W6, the European competitions,** is next: `docs/plans/w6-european-competitions.md`, checkpoints E1–E8. Scope: the UCL, UEL and UECL together, with "realistic-lite" qualifying. The draw and qualification design is worth Opus 5.5 Max.
   2. Then step 2.1 (home advantage, 400 per league, several seeds), the multi-season market report, and the play-test gate.
@@ -35,7 +36,8 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (15 Oct): aggregate scores on second legs** (the commit that adds this line; v1.68), the user's request during A6, built by a Sonnet agent and reviewed here.
+- **Latest checkpoint (15 Oct): the new leagues' squad rules into YAML** (the commit that adds this line; v1.69, nothing a player sees). The A6 reviewer's follow-up: `synthetic.py`'s squad size and shape, spread, noise, ages, template pool, foreign shares and countries, the Elo constants and thresholds, and the unrated and real-player rules are now `world_build.yaml` `new_leagues` (`defs/world_build.py` `NewLeagueRules`). A rebuild gives a world identical to the installed one, table by table. The full suite and lint pass. Also: the roadmap's W8 (World Cup), W9 (the other regions) and W10 (the Club World Cup, after W9), from the user. **Next:** A7, the Europe report over three seasons (being extended in `calibration/europe_report.py`: qualifying ties by path, drop-downs, clubs per country, the country ranking as played, small countries' champions, time per season).
+- **Earlier checkpoint (15 Oct): aggregate scores on second legs** (142bf4f; v1.68), the user's request during A6, built by a Sonnet agent and reviewed here.
   - **API:** `FixtureOut` gains `agg_home`/`agg_away` (a played second leg: both legs' goals, extra time in, penalties out, from the second leg's home and away clubs) and `leg1_home`/`leg1_away` (the first leg's goals, once played, also before and during the second leg). `queries.fixtures_out` finds the first legs with at most one extra query per list; every FixtureOut builder uses it (fixtures, career, club overview, cup, match detail, Europe rounds).
   - **UI:** `format.score()` appends "(4 – 3 on agg.)" or "(3 – 3 agg.)"; so fixtures, dashboard, club, match report, calendar tooltip and cup rounds show it. Cup rounds turn each leg into the tie's order. Match day shows the first leg; the live score bar adds the first leg to the live score (no protocol change). The Europe tie cards and bracket already showed aggregates and are unchanged.
   - **Checks:** `test_fixture_aggregate` (a played second leg with extra time and penalties, a first leg fetched by the extra query, a second leg to come, single matches); the full suite (with A6); lint; `npm run build`. On a season played on seed 5, every second leg (UCL, UEL, UECL, five cups, the play-offs) has its first leg with the clubs reversed, as the lookup assumes. Not checked in a browser: reaching a second leg takes a simulated half-season.
@@ -1570,8 +1572,10 @@ The order, each its own checkpoint (or several):
 
 **Added by the user on 6 Oct:**
 - **The play-test gate** comes after the engine's defending (D6, E as needed), W3 and W4: believable matches, more leagues, finances and a working transfer market. Stop there for a substantial play-test by the user before investing in W5–W8.
-- [ ] **W7, other continental competitions:** the Libertadores, the AFC Champions League and the rest, reusing W6's machinery.
-- [ ] **W8, international football:** national teams, call-ups, qualifiers and the World Cup.
+- [x] **W7, all of UEFA** (15 Oct, the user; `docs/plans/w7-all-of-uefa.md`): every league that can qualify for Europe, coefficients, the real qualifying rounds. (It took the W7 name; the other regions are W9 below.)
+- [ ] **W8, international football:** national teams, call-ups, qualifiers and the World Cup (the user, again on 15 Oct).
+- [ ] **W9, the other regions** (renamed from the old "W7, other continental competitions"): their leagues and cups (the MLS, South America, Asia, Africa...: the picker's continent filter is ready for them) and their continental competitions (the Libertadores, the AFC Champions League and the rest), reusing W6/W7's machinery.
+- [ ] **W10, the Club World Cup** (the user, 15 Oct): **once W9 has added the other regions and their leagues**, since its entrants are the continental champions and the best-ranked clubs of every confederation. FIFA's 32-club format every four years (2029 next, as FIFA plans it), in the summer, against the season's dates and players' rest.
 - [ ] **Integration and polish** of those systems.
 - [ ] **Phase P, simulation performance:** a late phase, planned in `docs/plans/performance.md` and not to be implemented before its turn.
   - P1 profiles first (`footsim bench`, on the M3 and the VM);

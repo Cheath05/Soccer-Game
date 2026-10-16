@@ -23,7 +23,7 @@ are. Everything is deterministic for the world seed."""
 import re
 import unicodedata
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -33,38 +33,19 @@ import yaml
 
 from footsim.core.paths import config_dir
 from footsim.defs.loader import GameDefinitions
+from footsim.defs.world_build import EloRules, GeneratedAgeRules, NewLeagueRules
 from footsim.importers.records import SourcePlayer, TmPlayer
 from footsim.importers.resolve import MatchResult
 from footsim.importers.rng import entity_rng
 
 SOURCE = "footsim"  # generated players
 TM_SQUAD = "transfermarkt-squad"  # players taken from Transfermarkt's squads
-SQUAD_SIZE = 24
-TOP = 16  # a club's level is the mean overall of its best sixteen
-MIN_GAMES = 12  # an Elo from fewer games stands for nothing
-# A generated squad's positions by depth: a first eleven, then the cover (the third keeper last).
-SQUAD_SHAPE = ["GK", "CB", "CB", "LB", "RB", "DM", "CM", "CM", "AM", "LW", "ST",
-               "RW", "ST", "GK", "CB", "LB", "RB", "DM", "CM", "AM", "LM", "ST", "CB", "GK"]
-# Each player's overall about his club's level: the first eleven above, the rest below (the best
-# sixteen average 0).
-SPREAD = [5.0, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5, -3.0,
-          -4.0, -4.5, -5.0, -6.0, -6.5, -7.5, -9.0, -11.0]
 TM_POSITIONS = {
     "Goalkeeper": "GK", "Centre-Back": "CB", "Left-Back": "LB", "Right-Back": "RB",
     "Defensive Midfield": "DM", "Central Midfield": "CM", "Attacking Midfield": "AM",
     "Left Midfield": "LM", "Right Midfield": "RM", "Left Winger": "LW", "Right Winger": "RW",
     "Centre-Forward": "ST", "Second Striker": "ST"}
 TM_BROAD = {"Goalkeeper": "GK", "Defender": "CB", "Midfield": "CM", "Attack": "ST"}
-# Where a small country's foreign players come from, besides the usual travellers.
-NEIGHBOURS = {"AND": ["Spain", "Portugal"], "GIB": ["Spain"], "SMR": ["Italy"],
-              "LUX": ["France", "Portugal", "Belgium"], "WAL": ["England"],
-              "NIR": ["Republic of Ireland", "Scotland", "England"], "MLT": ["Brazil", "Serbia"],
-              "FRO": ["Denmark", "Iceland"], "LIE": ["Switzerland", "Austria"]}
-FOREIGN_SHARE = {"AND": 0.55, "GIB": 0.5, "LUX": 0.45, "MLT": 0.4, "CYP": 0.55, "AZE": 0.35,
-                 "KAZ": 0.3, "ISR": 0.25, "SMR": 0.2, "WAL": 0.15, "NIR": 0.15}
-TRAVELLERS = ["Brazil", "Serbia", "Nigeria", "Croatia", "Ghana", "Portugal", "Spain", "France",
-              "Bosnia and Herzegovina", "North Macedonia", "Montenegro", "Senegal", "Georgia",
-              "Ukraine", "Slovenia", "Albania", "Cameroon", "Côte d'Ivoire"]
 
 
 @dataclass(frozen=True)
@@ -185,9 +166,9 @@ class EloTable:
         return hits[0] if len(hits) == 1 else None
 
 
-def club_elo(tm_db: Path) -> EloTable:
-    """An Elo rating for every club in Transfermarkt's games since July 2012, in date order:
-    K 20, home advantage 65, a bigger step for a bigger win."""
+def club_elo(tm_db: Path, rules: EloRules) -> EloTable:
+    """An Elo rating for every club in Transfermarkt's games since ``rules.since``, in date
+    order, World Football Elo's way: a bigger step for a bigger win."""
     import duckdb
 
     con = duckdb.connect(str(tm_db), read_only=True)
@@ -195,7 +176,7 @@ def club_elo(tm_db: Path) -> EloTable:
         games = con.execute(
             "SELECT home_club_id, away_club_id, home_club_name, away_club_name, "
             "home_club_goals, away_club_goals FROM games WHERE home_club_goals IS NOT NULL "
-            "AND date >= '2012-07-01' ORDER BY date, game_id").fetchall()
+            "AND date >= ? ORDER BY date, game_id", [rules.since]).fetchall()
         domestic = con.execute(
             "SELECT DISTINCT club_id, country_name FROM (SELECT g.home_club_id AS club_id, "
             "c.country_name FROM games g JOIN competitions c ON c.competition_id = "
@@ -209,18 +190,18 @@ def club_elo(tm_db: Path) -> EloTable:
     countries: dict[int, set[str]] = defaultdict(set)
     for club_id, country in domestic:
         countries[int(club_id)].add(str(country))
-    rating: dict[int, float] = defaultdict(lambda: 1500.0)
+    rating: dict[int, float] = defaultdict(lambda: rules.start)
     count: dict[int, int] = defaultdict(int)
     names: dict[int, str] = {}
     for h, a, hn, an, hg, ag in games:
         if h is None or a is None:
             continue
         names[h], names[a] = hn or names.get(h, ""), an or names.get(a, "")
-        expected = 1 / (1 + 10 ** ((rating[a] - rating[h] - 65.0) / 400))
+        expected = 1 / (1 + 10 ** ((rating[a] - rating[h] - rules.home) / rules.scale))
         score = 1.0 if hg > ag else 0.5 if hg == ag else 0.0
         margin = abs(hg - ag)
         step = 1.0 if margin <= 1 else 1.5 if margin == 2 else (11 + margin) / 8
-        delta = 20.0 * step * (score - expected)
+        delta = rules.k * step * (score - expected)
         rating[h] += delta
         rating[a] -= delta
         count[h] += 1
@@ -228,10 +209,11 @@ def club_elo(tm_db: Path) -> EloTable:
     return EloTable(dict(rating), dict(count), names, dict(countries))
 
 
-def _club_tm_ids(players: list[SourcePlayer], match: MatchResult, elo: EloTable
-                 ) -> dict[tuple[str, str], tuple[int, float]]:
+def _club_tm_ids(players: list[SourcePlayer], match: MatchResult, elo: EloTable,
+                 rules: NewLeagueRules) -> dict[tuple[str, str], tuple[int, float]]:
     """Each FC 27 club's Transfermarkt club (through its players' current club, with enough
-    games for an Elo) and its level (the mean of its best sixteen)."""
+    games for an Elo) and its level (the mean of its best ``level_players``)."""
+    top = rules.level_players
     by_club: dict[tuple[str, str], list[SourcePlayer]] = defaultdict(list)
     for p in players:
         by_club[(p.league, p.club)].append(p)
@@ -239,11 +221,11 @@ def _club_tm_ids(players: list[SourcePlayer], match: MatchResult, elo: EloTable
     for key, squad in by_club.items():
         clubs = Counter(match.matches[p.source_id].club_name for p in squad
                         if p.source_id in match.matches and match.matches[p.source_id].club_name)
-        overalls = sorted((p.source_overall or 0 for p in squad), reverse=True)[:TOP]
-        if not clubs or len(overalls) < TOP:
+        overalls = sorted((p.source_overall or 0 for p in squad), reverse=True)[:top]
+        if not clubs or len(overalls) < top:
             continue
         tm_id = elo.find(str(clubs.most_common(1)[0][0]))
-        if tm_id is not None and elo.games.get(tm_id, 0) >= 60:
+        if tm_id is not None and elo.games.get(tm_id, 0) >= rules.elo.fc27_min_games:
             out[key] = (tm_id, float(np.mean(overalls)))
     return out
 
@@ -262,8 +244,9 @@ def fit_league_model(players: list[SourcePlayer], defs: GameDefinitions) -> np.n
         if p.league in nation_of and p.source_overall:
             by_club[(p.league, p.club)].append(p.source_overall)
     for (league, _), overalls in by_club.items():
-        if len(overalls) >= TOP:
-            levels[league].append(float(np.mean(sorted(overalls, reverse=True)[:TOP])))
+        top = defs.world_build.new_leagues.level_players
+        if len(overalls) >= top:
+            levels[league].append(float(np.mean(sorted(overalls, reverse=True)[:top])))
     xs, ys = [], []
     for league, values in levels.items():
         code = nation_of[league]
@@ -274,11 +257,12 @@ def fit_league_model(players: list[SourcePlayer], defs: GameDefinitions) -> np.n
     return np.array([a, b])
 
 
-def fit_elo_slope(players: list[SourcePlayer], match: MatchResult, elo: EloTable) -> float:
+def fit_elo_slope(players: list[SourcePlayer], match: MatchResult, elo: EloTable,
+                  rules: NewLeagueRules) -> float:
     """Level per Elo point within a league, fitted on FC 27's clubs (each league's clubs taken
     from their league's mean)."""
     rows: dict[str, list[tuple[float, float]]] = defaultdict(list)
-    for (league, _), (tm_id, level) in _club_tm_ids(players, match, elo).items():
+    for (league, _), (tm_id, level) in _club_tm_ids(players, match, elo, rules).items():
         rows[league].append((elo.rating[tm_id], level))
     xs, ys = [], []
     for values in rows.values():
@@ -296,7 +280,8 @@ def fit_elo_slope(players: list[SourcePlayer], match: MatchResult, elo: EloTable
 class Templates:
     """FC 27 players by position, to copy attributes from."""
 
-    def __init__(self, players: list[SourcePlayer]) -> None:
+    def __init__(self, players: list[SourcePlayer], pool: int) -> None:
+        self.pool = pool  # a player's template: one of the this many nearest his overall
         self.by_position: dict[str, list[SourcePlayer]] = defaultdict(list)
         for p in players:
             if p.source_overall:
@@ -307,7 +292,7 @@ class Templates:
     def pick(self, position: str, overall: float, rng: np.random.Generator) -> SourcePlayer:
         group = self.by_position.get(position) or self.by_position["CM"]
         keys = np.array([p.source_overall or 0 for p in group], dtype=float)
-        nearest = np.argsort(np.abs(keys - overall), kind="stable")[:12]
+        nearest = np.argsort(np.abs(keys - overall), kind="stable")[:self.pool]
         return group[int(nearest[rng.integers(len(nearest))])]
 
 
@@ -341,10 +326,11 @@ def _shifted(template: SourcePlayer, overall: float) -> dict[str, int]:
 
 def _generated_player(source_id: str, league: str, club: str, position: str, overall: float,
                       nation: str, templates: Templates, names: Names,
-                      season: date, rng: np.random.Generator) -> SourcePlayer:
+                      season: date, age_rules: GeneratedAgeRules,
+                      rng: np.random.Generator) -> SourcePlayer:
     template = templates.pick(position, overall, rng)
     first, last = names.draw(nation, rng)
-    age = float(np.clip(rng.normal(25.5, 4.3), 17, 36))
+    age = float(np.clip(rng.normal(age_rules.mean, age_rules.sd), age_rules.min, age_rules.max))
     birth = season - timedelta(days=int(age * 365.25) + int(rng.integers(0, 365)))
     return SourcePlayer(
         source=SOURCE, source_id=source_id, first_name=first, last_name=last, known_as=None,
@@ -411,14 +397,16 @@ def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list
     ones (by source id, for heights, values and contracts), each new source league's country
     (for the import profile), and a report."""
     leagues = leagues if leagues is not None else load_new_leagues()
+    rules = defs.world_build.new_leagues
+    top = rules.level_players
     report = SyntheticReport()
     aliases = {alias: n.name for n in defs.nations.values() for alias in n.aliases}
     names = Names(players, tm_players, aliases)
-    templates = Templates(players)
+    templates = Templates(players, rules.template_pool)
     value_coef = fit_value_model(players, match, season)
-    elo = club_elo(tm_db)
+    elo = club_elo(tm_db, rules.elo)
     league_coef = fit_league_model(players, defs)
-    slope = fit_elo_slope(players, match, elo)
+    slope = fit_elo_slope(players, match, elo, rules)
     report.value_model = [round(float(c), 3) for c in value_coef]
     report.elo_model = [round(float(c), 3) for c in league_coef] + [round(slope, 4)]
     seasons = sorted(defs.association_coefficients.seasons)[-defs.europe.coefficient.seasons:]
@@ -461,11 +449,12 @@ def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list
             if tm_ids[club] is not None:
                 claimed.add(tm_ids[club])  # type: ignore[arg-type]
         rated = {c: elo.rating[i] for c, i in tm_ids.items()
-                 if i is not None and elo.games.get(i, 0) >= MIN_GAMES}
-        floor = min(rated.values()) - 20.0 if rated else 1500.0
+                 if i is not None and elo.games.get(i, 0) >= rules.elo.min_games}
+        floor = min(rated.values()) - rules.unrated_gap if rated else rules.elo.start
         club_elos = {}
         for k, club in enumerate(lg.clubs):
-            club_elos[club] = rated.get(club, floor - 60.0 * k / max(1, len(lg.clubs) - 1))
+            club_elos[club] = rated.get(
+                club, floor - rules.unrated_span * k / max(1, len(lg.clubs) - 1))
         mean_elo = float(np.mean(list(club_elos.values())))
         levels = {c: league_level + slope * (e - mean_elo) for c, e in club_elos.items()}
         for k, club in enumerate(lg.clubs):
@@ -486,50 +475,53 @@ def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list
                                        (t.position or "") == "Goalkeeper", season)
                 real.append((t, rating))
             real.sort(key=lambda r: -(r[1] or 0))
-            real = real[:28]
+            real = real[:rules.max_real_players]
             # Real players keep the order their values give them; the club's level sets how
             # high (their values' own level is shifted onto it).
             known = sorted((r for _, r in real if r is not None), reverse=True)
-            shift = level - float(np.mean(known[:TOP])) if len(known) >= 8 else 0.0
+            shift = (level - float(np.mean(known[:top])) if len(known) >= rules.min_valued
+                     else 0.0)
             for t, rating in real:
-                overall = rating + shift if rating is not None else level - 3.0
+                overall = (rating + shift if rating is not None
+                           else level - rules.unvalued_below)
                 nation = aliases.get(t.citizenship or "", t.citizenship or nation_name)
                 squad.append(_tm_player(t, source_league, club, overall, nation, templates,
                                         rng))
                 extra[f"tm:{t.tm_id}"] = t
             report.tm_players += len(real)
-            kind = "tm" if len(real) >= 18 else "mixed" if real else "generated"
+            kind = "tm" if len(real) >= rules.min_real_for_tm else "mixed" if real else "generated"
             report.clubs_by_source[kind] += 1
             # Fill the squad to its size, by the positions it lacks.
             have = Counter(p.position for p in squad)
             wanted = []
-            for pos in SQUAD_SHAPE:  # by depth: the positions the real players leave open first
+            # by depth: the positions the real players leave open first
+            for pos in rules.squad_shape:
                 if have[pos] > 0:
                     have[pos] -= 1
                 else:
                     wanted.append(pos)
-            wanted = wanted[:max(0, SQUAD_SIZE - len(squad))]
-            centre = float(np.mean(SPREAD[:TOP]))
-            offsets = [x - centre for x in SPREAD]
+            wanted = wanted[:max(0, rules.squad_size - len(squad))]
+            centre = float(np.mean(rules.spread[:top]))
+            offsets = [x - centre for x in rules.spread]
             spread = offsets[-len(wanted):] if squad else offsets[:len(wanted)]
-            foreign = FOREIGN_SHARE.get(lg.nation, 0.12)
-            pool = NEIGHBOURS.get(lg.nation, []) + TRAVELLERS
+            foreign = rules.foreign.share.get(lg.nation, rules.foreign.default_share)
+            pool = rules.foreign.neighbours.get(lg.nation, []) + rules.foreign.travellers
             for j, (pos, offset) in enumerate(zip(wanted, spread, strict=False)):
                 nation = (nation_name if rng.random() >= foreign
                           else pool[int(rng.integers(len(pool)))])
                 if nation == nation_name or nation not in names.first:
                     nation = nation if nation in names.first else nation_name
-                overall = level + offset + float(rng.normal(0.0, 1.5))
+                overall = level + offset + float(rng.normal(0.0, rules.noise_sd))
                 squad.append(_generated_player(f"gen:{lg.key}:{k}:{j}", source_league, club,
                                                pos, overall, nation, templates, names, season,
-                                               rng))
+                                               rules.age, rng))
                 report.generated += 1
             out += squad
         built: dict[str, list[int]] = defaultdict(list)
         for p in out:
             if p.league == source_league:
                 built[p.club].append(p.source_overall or 0)
-        club_levels = [float(np.mean(sorted(v, reverse=True)[:TOP])) for v in built.values()]
+        club_levels = [float(np.mean(sorted(v, reverse=True)[:top])) for v in built.values()]
         report.league_levels[lg.key] = (round(float(np.mean(club_levels)), 1)
                                         if club_levels else 0.0)
     return out, extra, league_nations, report
@@ -547,6 +539,3 @@ def with_new_leagues(profile: Any, league_nations: dict[str, str],
     return profile.model_copy(update={
         "league_nations": {**profile.league_nations, **league_nations},
         "leagues": {**profile.leagues, **mapped}})
-
-
-__all__ = ["synthesize", "with_new_leagues", "load_new_leagues", "replace"]

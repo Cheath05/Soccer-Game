@@ -59,3 +59,53 @@ reputation:
   player_reference_overall: 45
   player_per_point: 1.6
   player_club_weight: 0.15
+
+new_leagues:
+  # The squads of the leagues FC 27 doesn't cover (importers/synthetic.py, W7 A6;
+  # world/new_clubs.yaml): real players from Transfermarkt where it has them, generated ones for
+  # the rest, rated to the level the country's UEFA coefficient and the club's Elo give it.
+  squad_size: 24
+  level_players: 16  # a club's level is the mean overall of its best sixteen
+  # A generated squad's positions by depth: a first eleven, then the cover (the third keeper last).
+  squad_shape: [GK, CB, CB, LB, RB, DM, CM, CM, AM, LW, ST,
+                RW, ST, GK, CB, LB, RB, DM, CM, AM, LM, ST, CB, GK]
+  # Each player's overall about his club's level: the first eleven above, the rest below (it is
+  # centred so the best sixteen average the level).
+  spread: [5.0, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5, -3.0,
+           -4.0, -4.5, -5.0, -6.0, -6.5, -7.5, -9.0, -11.0]
+  noise_sd: 1.5
+  template_pool: 12  # attributes copied from one of the 12 FC 27 players nearest in overall
+  age: {mean: 25.5, sd: 4.3, min: 17, max: 36}
+  foreign:
+    default_share: 0.12
+    share: {AND: 0.55, GIB: 0.5, LUX: 0.45, MLT: 0.4, CYP: 0.55, AZE: 0.35, KAZ: 0.3, ISR: 0.25,
+            SMR: 0.2, WAL: 0.15, NIR: 0.15}
+    # Where a small country's foreign players come from, besides the usual travellers.
+    neighbours:
+      AND: [Spain, Portugal]
+      GIB: [Spain]
+      SMR: [Italy]
+      LUX: [France, Portugal, Belgium]
+      WAL: [England]
+      NIR: [Republic of Ireland, Scotland, England]
+      MLT: [Brazil, Serbia]
+      FRO: [Denmark, Iceland]
+      LIE: [Switzerland, Austria]
+    travellers: [Brazil, Serbia, Nigeria, Croatia, Ghana, Portugal, Spain, France,
+                 Bosnia and Herzegovina, North Macedonia, Montenegro, Senegal, Georgia, Ukraine,
+                 Slovenia, Albania, Cameroon, "Côte d'Ivoire"]
+  elo:
+    since: "2012-07-01"
+    k: 20
+    home: 65
+    scale: 400
+    start: 1500
+    min_games: 12
+    fc27_min_games: 60
+  unrated_gap: 20      # Elo points below the league's lowest rated club
+  unrated_span: 60     # from the first unrated club in last season's table to the last
+  max_real_players: 28
+  min_valued: 8
+  unvalued_below: 3.0
+  min_real_for_tm: 18
+

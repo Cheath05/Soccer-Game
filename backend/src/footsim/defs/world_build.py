@@ -69,9 +69,61 @@ class ReputationRules(DefModel):
     player_club_weight: float
 
 
+class EloRules(DefModel):
+    """Club Elo from Transfermarkt's games (World Football Elo's way; the step for a bigger win
+    is its formula, in code)."""
+
+    since: str  # the first day of games counted (ISO)
+    k: float = Field(gt=0)
+    home: float  # home advantage, in rating points
+    scale: float = Field(gt=0)  # the rating gap that makes a side ten times as likely to win
+    start: float  # a new club's rating
+    min_games: int = Field(ge=1)  # an Elo from fewer games stands for nothing
+    fc27_min_games: int = Field(ge=1)  # for FC 27's clubs, which the slope is fitted on
+
+
+class GeneratedAgeRules(DefModel):
+    mean: float
+    sd: float = Field(gt=0)
+    min: float
+    max: float
+
+
+class ForeignRules(DefModel):
+    """How many of a generated squad's players are foreign, and from where."""
+
+    default_share: float = Field(ge=0, le=1)
+    share: dict[str, float] = {}  # by nation code
+    neighbours: dict[str, list[str]] = {}  # by nation code: where its foreigners come from first
+    travellers: list[str]  # everyone's: the countries whose players move most
+
+
+class NewLeagueRules(DefModel):
+    """The squads of the leagues FC 27 doesn't cover (importers/synthetic.py, W7 A6)."""
+
+    squad_size: int = Field(ge=11)
+    level_players: int = Field(ge=1)  # a club's level is the mean overall of its best this many
+    # a generated squad's positions by depth: a first eleven, then the cover
+    squad_shape: list[str]
+    # each player's overall about the club's level, in squad_shape's order
+    spread: list[float]
+    noise_sd: float = Field(ge=0)  # a generated player's overall about his place in the spread
+    template_pool: int = Field(ge=1)  # his attributes: one of the FC 27 players this near him
+    age: GeneratedAgeRules
+    foreign: ForeignRules
+    elo: EloRules
+    unrated_gap: float  # a club without a rated Elo starts this far below its league's lowest
+    unrated_span: float  # ... and the unrated spread this far over last season's table
+    max_real_players: int = Field(ge=1)  # the most of a club's real players taken
+    min_valued: int = Field(ge=1)  # real players with values needed to shift them onto a level
+    unvalued_below: float  # a real player with no value sits this far below his club's level
+    min_real_for_tm: int = Field(ge=1)  # a squad with this many real players counts as "tm"
+
+
 class WorldBuildRules(DefModel):
     potential: PotentialRules
     physique: PhysiqueRules
     personality: PersonalityRules
     contracts: ContractRules
     reputation: ReputationRules
+    new_leagues: NewLeagueRules

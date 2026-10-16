@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 20  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 21  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -225,6 +225,8 @@ fixture = Table(
     Index("ix_fixture_comp", "competition_id", "season_id", "stage"),
     Index("ix_fixture_home", "home_club_id"),
     Index("ix_fixture_away", "away_club_id"),
+    # a tie's legs (europe/ties.py tie_winner, cups): found without scanning every season's
+    Index("ix_fixture_tie", "season_id", "stage", "round", "tie"),
 )
 
 playoff_tie = Table(
@@ -386,6 +388,7 @@ transfer = Table(
     Column("by_user", Integer, nullable=False),  # 1 when the user's club made the move
     Index("ix_transfer_player", "player_id"),
     Index("ix_transfer_season", "season_id"),
+    Index("ix_transfer_date", "date"),  # the market's recent moves (market.py counts)
 )
 
 transfer_offer = Table(

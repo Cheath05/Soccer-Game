@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.70"
+  date: "2026-10-16"
+  title: "Later seasons simulate faster"
+  changes:
+    - "Seasons no longer slow down as much as a career goes on: by the third season, simulating a season takes about a fifth less time than before. Results are exactly the same."
+
 - version: "1.68"
   date: "2026-10-15"
   title: "Aggregate scores on second legs"

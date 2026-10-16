@@ -213,10 +213,19 @@ def _to_v20(conn: Connection) -> None:
     _add_column(conn, "cup_tie", "path", "TEXT")
 
 
+def _to_v21(conn: Connection) -> None:
+    """Indexes for lookups that scanned every season's rows (W7 A7: a season got slower each
+    season): a tie's legs, and the market's recent transfers."""
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_fixture_tie ON fixture "
+                      "(season_id, stage, round, tie)"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_transfer_date ON transfer (date)"))
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
-    16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20}
+    16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20,
+    21: _to_v21}
 
 
 def migrate(engine: Engine) -> int:

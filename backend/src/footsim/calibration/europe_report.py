@@ -7,7 +7,11 @@ through whole seasons, and reports for each competition and season:
 - how often the strongest clubs went deep;
 - the prize money paid;
 - the room around European matches (gaps of one clear day, never fewer);
-- the top club coefficients at the end.
+- the top club coefficients at the end;
+- qualifying (W7 A7): each round's ties by path, the clubs who dropped from one competition's
+  qualifying into another's, each country's clubs in Europe, the country ranking as the game
+  plays it, and how far the champions of the countries outside the top ten went;
+- the time each season took.
 
 Read against real football approximately (these are context, not targets: one engine for every
 competition): Champions League league-phase matches have had a little over 3 goals a game, and
@@ -30,7 +34,8 @@ from footsim.persistence.migrations import migrate
 from footsim.world.career import advance, initialize_career
 from footsim.world.context import World
 from footsim.world.cups import REST_DAYS
-from footsim.world.europe.common import KNOCKOUT, competitions_by_rank
+from footsim.world.europe.common import KNOCKOUT, competitions_by_rank, round_key
+from footsim.world.europe.ranking import access_ranking, ranking, season_coefficients
 from footsim.world.finance import ledger_mismatches
 from footsim.world.meta import read_meta
 
@@ -103,6 +108,75 @@ def _season_report(conn: Connection, world: World, season_id: int) -> list[str]:
     return lines
 
 
+def _qualifying(conn: Connection, world: World, season_id: int) -> list[str]:
+    lines = [f"\n## Qualifying, season {season_id}"]
+    for comp in competitions_by_rank(world):
+        rows = conn.execute(text(
+            "SELECT t.round, t.path, COUNT(*) AS n FROM cup_tie t JOIN competition c ON c.id = "
+            "t.competition_id WHERE c.key = :k AND t.season_id = :s AND t.round <= 0 "
+            "GROUP BY t.round, t.path ORDER BY t.round, t.path"),
+            {"k": comp.key, "s": season_id}).all()
+        if rows:
+            lines.append(f"- {comp.key} ties: " + ", ".join(
+                f"{round_key(r.round)} {r.path or ''} {r.n}".replace("  ", " ") for r in rows))
+    flows: Counter[str] = Counter(conn.execute(text(
+        "SELECT e.came_from || ' -> ' || c.key FROM continental_entry e JOIN competition c ON "
+        "c.id = e.competition_id WHERE e.season_id = :s AND e.came_from IS NOT NULL"),
+        {"s": season_id}).scalars().all())
+    if flows:
+        lines.append("- dropped down: " + ", ".join(f"{k} {n}" for k, n in sorted(flows.items())))
+    stages: Counter[str] = Counter(conn.execute(text(
+        "SELECT c.key || ' ' || e.stage FROM continental_entry e JOIN competition c ON c.id = "
+        "e.competition_id WHERE e.season_id = :s"), {"s": season_id}).scalars().all())
+    lines.append("- where the clubs ended: " + ", ".join(
+        f"{k} {n}" for k, n in sorted(stages.items())))
+    order = access_ranking(conn, world, season_id)
+    rank = {r.nation: r.rank for r in order}
+    per_country: Counter[str] = Counter(conn.execute(text(
+        "SELECT association FROM continental_entry WHERE season_id = :s AND association IS NOT "
+        "NULL"), {"s": season_id}).scalars().all())
+    rest = sum(n for c, n in per_country.items() if rank.get(c, 99) > 12)
+    lines.append(f"- clubs per country ({len(per_country)} countries; by the ranking that "
+                 "applied): " + ", ".join(f"{r.nation} {per_country[r.nation]}"
+                                          for r in order[:12]) + f"; ranks 13-55: {rest}")
+    # The champions of the countries outside the top ten: how far each went.
+    knockout = {r.club_id: r.best for r in conn.execute(text(
+        "SELECT club_id, MAX(round) AS best FROM (SELECT club_a_id AS club_id, round FROM cup_tie "
+        "WHERE season_id = :s AND round >= :k UNION ALL SELECT club_b_id, round FROM cup_tie "
+        "WHERE season_id = :s AND round >= :k) GROUP BY club_id"),
+        {"s": season_id, "k": KNOCKOUT})}
+    champions = conn.execute(text(
+        "SELECT e.club_id, e.association, e.stage, c.key FROM continental_entry e JOIN "
+        "competition c ON c.id = e.competition_id WHERE e.season_id = :s AND e.route LIKE "
+        ":champion"), {"s": season_id, "champion": "league:%:1"}).all()
+    small = [r for r in champions if rank.get(r.association or "", 99) > 10]
+    if small:
+        reached = Counter(f"{r.key} league phase" for r in small if r.stage == "league_phase")
+        deep = [f"{r.association} ({r.key}, knockout round {knockout[r.club_id] - KNOCKOUT + 1})"
+                for r in small if r.club_id in knockout]
+        lines.append(f"- champions of the countries ranked 11th and below: {len(small)}; "
+                     + (", ".join(f"{n} to the {k}" for k, n in sorted(reached.items()))
+                        or "none to a league phase")
+                     + ("; in the knockouts: " + ", ".join(deep) if deep else ""))
+    return lines
+
+
+def _countries(conn: Connection, world: World, season_id: int, start: dict[str, int]
+               ) -> list[str]:
+    """The country ranking at the end of ``season_id``, against where it began."""
+    order = ranking(conn, world, season_id)
+    played = season_coefficients(conn, world).get(season_id, {})
+    lines = [f"\n## Country ranking after season {season_id} (five seasons; this season's "
+             "points; places moved since the start)"]
+    lines += [f"{r.rank}. {r.nation} {r.total:.3f} ({played.get(r.nation, 0.0):.3f}; "
+              f"{start.get(r.nation, r.rank) - r.rank:+d})" for r in order[:15]]
+    movers = [f"{r.nation} {start.get(r.nation, r.rank)}->{r.rank}" for r in order
+              if abs(start.get(r.nation, r.rank) - r.rank) >= 4]
+    if movers:
+        lines.append("- moved four places or more: " + ", ".join(movers))
+    return lines
+
+
 def _room(conn: Connection, world: World, season_id: int) -> str:
     rows = conn.execute(text(
         "SELECT date, stage, home_club_id, away_club_id FROM fixture WHERE season_id = :s"),
@@ -135,7 +209,11 @@ def europe_report(world_path: Path, world: World, seed: int, seasons: int) -> st
         with engine.begin() as conn:
             initialize_career(conn, world, None, None, seed=seed)
         lines = [f"# European competitions: {seasons} season(s), seed {seed}"]
+        with engine.connect() as conn:
+            first = read_meta(conn).season_id
+            start = {r.nation: r.rank for r in ranking(conn, world, first - 1)}
         for _ in range(seasons):
+            season_started = time.perf_counter()
             with engine.connect() as conn:
                 season_id = read_meta(conn).season_id
             while True:
@@ -144,8 +222,11 @@ def europe_report(world_path: Path, world: World, seed: int, seasons: int) -> st
                     if read_meta(conn).season_id != season_id:
                         break
             with engine.connect() as conn:
+                lines += _qualifying(conn, world, season_id)
                 lines += _season_report(conn, world, season_id)
                 lines.append(_room(conn, world, season_id))
+                lines += _countries(conn, world, season_id, start)
+            lines.append(f"\n(season {season_id}: {time.perf_counter() - season_started:.0f} s)")
         with engine.connect() as conn:
             top = conn.execute(text(
                 "SELECT c.name, SUM(k.points) AS p FROM club_coefficient k JOIN club c "

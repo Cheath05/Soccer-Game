@@ -1,0 +1,140 @@
+# The clubs of the top divisions FC 27 doesn't cover (W7 A6, docs/plans/w7-all-of-uefa.md), from
+# English Wikipedia (read 15 Oct 2026): each league's clubs in last season's finishing order, the
+# promoted last. Their squads are built by importers/synthetic.py: FC 27's own players where it has
+# the club (`ea_league`), Transfermarkt's whole squads (`tm_league`), real players from the 2025-26
+# UEFA qualifying lineups, and generated players for the rest. `ea_names`: a club's name in FC 27
+# where it isn't plain from its name here. `tm_names`: its name on Transfermarkt where the name
+# match would miss it (Greece's formal names) or find the wrong club (null: none is it; checked
+# by hand against Transfermarkt's names, 15 Oct 2026).
+leagues:
+  ALB1:
+    nation: ALB
+    clubs: ["Egnatia", "Elbasani", "Vllaznia", "Dinamo City", "Partizani", "Tirana", "Vora", "Teuta", "Laçi", "Skënderbeu"]
+  AND1:
+    nation: AND
+    clubs: ["Inter Club d'Escaldes", "Rànger's", "FC Santa Coloma", "Atlètic Club d'Escaldes", "Penya Encarnada", "Ordino", "Carroi", "Casa de Portugal", "Sporting Escaldes"]
+  ARM1:
+    nation: ARM
+    clubs: ["Ararat-Armenia", "Noah", "Pyunik", "Alashkert", "Urartu", "Van", "BKMA", "Gandzasar Kapan", "Ararat Yerevan", "Shirak", "Sardarapat", "Syunik"]
+  AZE1:
+    nation: AZE
+    ea_league: "Liga Azerbaijan"
+    clubs: ["Sabah", "Qarabağ", "Turan Tovuz", "Neftçi", "Zira", "Araz-Naxçıvan", "Sumgayit", "Shamakhi", "Imishli", "Kapaz", "Qabala", "Shafa"]
+  BIH1:
+    nation: BIH
+    clubs: ["Borac Banja Luka", "Zrinjski Mostar", "Sarajevo", "Velež Mostar", "Široki Brijeg", "Željezničar", "Radnik Bijeljina", "Sloga Doboj", "BSK Banja Luka", "Čelik Zenica"]
+  BLR1:
+    nation: BLR
+    clubs: ["Maxline Vitebsk", "Dinamo Minsk", "Slavia Mozyr", "Dynamo Brest", "Minsk", "Torpedo-BelAZ Zhodino", "Isloch Minsk Raion", "Neman Grodno", "Gomel", "BATE Borisov", "Arsenal Dzerzhinsk", "Vitebsk", "Naftan Novopolotsk", "Baranovichi", "Belshina Bobruisk", "Dnepr Mogilev"]
+  BUL1:
+    nation: BUL
+    ea_league: "Liga Bulgaria"
+    clubs: ["Levski", "CSKA 1948", "Ludogorets", "CSKA Sofia", "Lokomotiv Plovdiv", "Arda", "Cherno More", "Botev Plovdiv", "Botev Vratsa", "Lokomotiv Sofia", "Slavia", "Spartak Varna", "Septemvri", "Dunav"]
+  CRO1:
+    nation: CRO
+    ea_league: "Liga Hrvatska"
+    tm_league: KR1
+    clubs: ["Dinamo Zagreb", "Hajduk Split", "Varaždin", "Rijeka", "Lokomotiva", "Istra 1961", "Gorica", "Slaven Belupo", "Osijek", "Rudeš"]
+  CYP1:
+    nation: CYP
+    ea_league: "Liga Cyprus"
+    clubs: ["Omonia", "AEK Larnaca", "Apollon Limassol", "Pafos", "APOEL", "Aris Limassol", "Anorthosis Famagusta", "AEL Limassol", "Omonia Aradippou", "Krasava E.N.Y.", "Olympiakos Nicosia", "Karmiotissa", "Nea Salamina", "Omonia 29M"]
+  CZE1:
+    nation: CZE
+    ea_league: "Česká Liga"
+    ea_names: {"Slavia Prague": "Slavia Praha", "Sparta Prague": "Sparta Praha"}
+    tm_league: TS1
+    clubs: ["Slavia Prague", "Sparta Prague", "Viktoria Plzeň", "Hradec Králové", "Jablonec", "Slovan Liberec", "Sigma Olomouc", "Pardubice", "Bohemians 1905", "Teplice", "Zlín", "Mladá Boleslav", "Slovácko", "Baník Ostrava", "Artis Brno", "Zbrojovka Brno"]
+    tm_names: {"Bohemians 1905": "Bohemians Praha 1905, a.s.", "Slovácko": "1.FC Slovacko"}
+  EST1:
+    nation: EST
+    clubs: ["Flora", "FCI Levadia", "Nõmme Kalju", "Paide Linnameeskond", "Narva Trans", "Vaprus", "Harju", "Tammeka", "Kuressaare", "Nõmme United"]
+  FIN1:
+    nation: FIN
+    ea_league: "Finnliiga"
+    clubs: ["KuPS", "Inter Turku", "Ilves", "SJK", "HJK", "IF Gnistan", "FF Jaro", "IFK Mariehamn", "VPS", "AC Oulu", "FC Lahti", "TPS"]
+  FRO1:
+    nation: FRO
+    clubs: ["KÍ Klaksvík", "HB Tórshavn", "NSÍ Runavík", "Víkingur Gøta", "B36 Tórshavn", "B68 Toftir", "EB/Streymur", "07 Vestur", "AB", "Skála"]
+    tm_names: {"AB": null}
+  GEO1:
+    nation: GEO
+    clubs: ["Iberia 1999", "Dila Gori", "Torpedo Kutaisi", "Dinamo Tbilisi", "Gagra", "Dinamo Batumi", "Samgurali Tsqaltubo", "Meshakhte", "Rustavi", "Spaeri"]
+  GIB1:
+    nation: GIB
+    clubs: ["Lincoln Red Imps", "St Joseph's", "Europa", "Mons Calpe", "Lions Gibraltar", "Lynx", "FC Magpies", "Europa Point", "College 1975", "Glacis United", "Hound Dogs"]
+  GRE1:
+    nation: GRE
+    ea_league: "Hellas Liga"
+    tm_league: GR1
+    clubs: ["AEK Athens", "Olympiacos", "PAOK", "Panathinaikos", "Aris", "Levadiakos", "OFI", "Volos", "Atromitos", "A.E. Kifisia", "Asteras Tripolis", "Panetolikos", "Iraklis", "Kalamata"]
+    tm_names: {"AEK Athens": "Athlitiki Enosi Konstantinoupoleos", "Olympiacos": "Olympiakos Syndesmos Filathlon Peiraios", "PAOK": "Panthessalonikios Athlitikos Omilos Konstantinoupoliton", "Levadiakos": "APO Levadiakos Football Club", "OFI": "Omilos Filathlon Irakliou FC", "Volos": "Volou Neos Podosferikos Syllogos", "Atromitos": "APS Atromitos Athinon", "A.E. Kifisia": "Athlitiki Enosi Kifisias", "Asteras Tripolis": "A.G.S Asteras Tripolis", "Kalamata": null}
+  HUN1:
+    nation: HUN
+    ea_league: "Magyar Liga"
+    ea_names: {"Ferencváros": "Ferencvárosi TC"}
+    clubs: ["Győr", "Ferencváros", "Paks", "Debrecen", "Zalaegerszeg", "Puskás Akadémia", "Újpest", "Kisvárda", "Nyíregyháza", "MTK", "Kispest-Honvéd", "Vasas"]
+  ISL1:
+    nation: ISL
+    clubs: ["Víkingur Reykjavík", "Valur", "Stjarnan", "Breiðablik", "Fram", "FH", "KA", "ÍA", "ÍBV", "KR", "Keflavík", "Þór Akureyri"]
+  ISR1:
+    nation: ISR
+    clubs: ["Hapoel Be'er Sheva", "Beitar Jerusalem", "Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Hapoel Petah Tikva", "Maccabi Netanya", "Ironi Kiryat Shmona", "Ironi Tiberias", "Hapoel Haifa", "Bnei Sakhnin", "Hapoel Jerusalem", "Hapoel Ramat Gan", "Maccabi Petah Tikva"]
+  KAZ1:
+    nation: KAZ
+    clubs: ["Kairat", "Astana", "Tobol", "Yelimay", "Aktobe", "Zhenis", "Ordabasy", "Okzhetpes", "Kyzylzhar", "Ulytau", "Kaisar", "Zhetysu", "Atyrau", "Altai", "Caspiy", "Irtysh Pavlodar"]
+    tm_names: {"Irtysh Pavlodar": null}
+  KOS1:
+    nation: KOS
+    clubs: ["Drita", "Malisheva", "Ballkani", "Dukagjini", "Gjilani", "Drenica", "Prishtina", "Llapi", "Feronikeli", "Vushtrria"]
+  LTU1:
+    nation: LTU
+    clubs: ["Kauno Žalgiris", "Hegelmann", "Žalgiris", "Sūduva", "Šiauliai", "Panevėžys", "Džiugas", "Banga", "TransINVEST"]
+    tm_names: {"Šiauliai": null}
+  LUX1:
+    nation: LUX
+    clubs: ["Atert Bissen", "Differdange 03", "Mondorf-les-Bains", "UNA Strassen", "F91 Dudelange", "Jeunesse Esch", "Racing Union", "Käerjeng 97", "Hostert", "Victoria Rosport", "Progrès Niederkorn", "Swift Hesperange", "Etzella Ettelbruck", "Résidence Walferdange", "Rumelange", "Wiltz 71"]
+    tm_names: {"Victoria Rosport": null}
+  LVA1:
+    nation: LVA
+    clubs: ["Riga FC", "RFS", "Liepāja", "BFC Daugavpils", "Auda", "Jelgava", "Tukums 2000", "Super Nova", "Grobiņa", "Ogre United"]
+  MDA1:
+    nation: MDA
+    clubs: ["Petrocub Hîncești", "Sheriff Tiraspol", "Zimbru Chișinău", "Milsami Orhei", "Bălți", "Dacia Buiucani", "Politehnica UTM", "Real Sireți"]
+    tm_names: {"Real Sireți": null}
+  MKD1:
+    nation: MKD
+    clubs: ["Vardar", "Shkëndija", "Struga", "Sileks", "Tikvesh", "Arsimi", "Bashkimi", "Bregalnica", "Shkëndija 77", "Skopje"]
+  MLT1:
+    nation: MLT
+    clubs: ["Floriana", "Marsaxlokk", "Ħamrun Spartans", "Valletta", "Sliema Wanderers", "Gżira United", "Hibernians", "Birkirkara", "Żabbar St. Patrick", "Mosta", "Balzan", "Birżebbuġa St. Peter's"]
+  MNE1:
+    nation: MNE
+    clubs: ["Sutjeska", "Mornar", "Petrovac", "Dečić", "Budućnost Podgorica", "Mladost Donja Gorica", "Arsenal Tivat", "Jezero", "Bokelj", "Otrant-Olympic"]
+  NIR1:
+    nation: NIR
+    clubs: ["Larne", "Coleraine", "Glentoran", "Linfield", "Cliftonville", "Dungannon Swifts", "Carrick Rangers", "Portadown", "Ballymena United", "Bangor", "Crusaders", "Limavady United"]
+    tm_names: {"Bangor": null}
+  SMR1:
+    nation: SMR
+    clubs: ["Tre Fiori", "Virtus", "Tre Penne", "La Fiorita", "Folgore", "Domagnano", "Fiorentino", "Cosmos", "Juvenes/Dogana", "Libertas", "Pennarossa", "San Giovanni", "Faetano", "San Marino Academy U22", "Cailungo", "Murata"]
+    tm_names: {"San Marino Academy U22": null}
+  SRB1:
+    nation: SRB
+    tm_league: SER1
+    clubs: ["Red Star Belgrade", "Vojvodina", "Partizan", "Železničar Pančevo", "Novi Pazar", "OFK Beograd", "Radnik Surdulica", "Čukarički", "IMT", "Radnički Niš", "Mladost Lučani", "Radnički 1923", "Mačva Šabac", "Zemun"]
+  SVK1:
+    nation: SVK
+    clubs: ["Slovan Bratislava", "DAC Dunajská Streda", "Spartak Trnava", "Žilina", "Zemplín Michalovce", "Podbrezová", "Košice", "Trenčín", "Skalica", "Ružomberok", "Komárno", "Dukla Banská Bystrica"]
+  SVN1:
+    nation: SVN
+    clubs: ["Celje", "Koper", "Bravo", "Olimpija Ljubljana", "Maribor", "Radomlje", "Aluminij", "Mura", "Brinje Grosuplje", "Nafta 1903"]
+  UKR1:
+    nation: UKR
+    ea_league: "Ukrayina Liha"
+    tm_league: UKR1
+    clubs: ["Shakhtar Donetsk", "LNZ Cherkasy", "Polissya Zhytomyr", "Dynamo Kyiv", "FC Kharkiv", "Kolos Kovalivka", "Kryvbas Kryvyi Rih", "Zorya Luhansk", "Karpaty Lviv", "Epitsentr Kamianets-Podilskyi", "Veres Rivne", "Obolon Kyiv", "Kudrivka", "Bukovyna Chernivtsi", "Chornomorets Odesa", "Livyi Bereh Kyiv"]
+    tm_names: {"Kryvbas Kryvyi Rih": "Kryvbas Kryvyi Rig", "Zorya Luhansk": "Zorya Lugansk", "Karpaty Lviv": "Karpaty Lviv", "Epitsentr Kamianets-Podilskyi": "Epicentr Kamyanets-Podilskyi", "Livyi Bereh Kyiv": "Livyi Bereg Kyiv"}
+  WAL1:
+    nation: WAL
+    clubs: ["The New Saints", "Connah's Quay Nomads", "Barry Town United", "Caernarfon Town", "Colwyn Bay", "Penybont", "Haverfordwest County", "Briton Ferry Llansawel", "Cardiff Met", "Flint Town United", "Airbus UK Broughton", "Ammanford", "Cambrian United", "Holywell Town", "Llandudno", "Trefelin BGC"]

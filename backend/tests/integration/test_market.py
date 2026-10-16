@@ -19,6 +19,7 @@ from footsim.world.context import get_world
 from footsim.world.finance import ledger_mismatches
 from footsim.world.meta import read_meta
 from footsim.world.season import after_day
+from footsim.world.transfers import senior_squad
 
 BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
 pytestmark = pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
@@ -75,14 +76,17 @@ def test_every_move_keeps_the_invariants(traded: Engine) -> None:
         assert conn.execute(text(
             "SELECT COUNT(*) FROM (SELECT player_id FROM transfer GROUP BY player_id "
             "HAVING COUNT(*) > 1)")).scalar_one() == 0
-        # A club that sold kept enough players and keepers to play.
-        floor = get_world().defs.lifecycle.squads.user_min_players
-        thin = conn.execute(text(
-            "SELECT COUNT(*) FROM (SELECT k.club_id, COUNT(*) AS n FROM contract k "
-            "WHERE k.is_active = 1 AND k.kind = 'player' AND k.club_id IN "
-            "(SELECT from_club_id FROM transfer WHERE from_club_id IS NOT NULL) "
-            "GROUP BY k.club_id HAVING n < :floor)"), {"floor": floor}).scalar_one()
-        assert thin == 0
+        # A club that sold kept enough senior players to play, as the guard counts them (a
+        # youngster on a youth contract doesn't count: the dormant pool's small FC 27 squads sell
+        # them).
+        world = get_world()
+        floor = world.defs.lifecycle.squads.user_min_players
+        day = read_meta(conn).current_date
+        sellers = conn.execute(text(
+            "SELECT DISTINCT from_club_id FROM transfer WHERE from_club_id IS NOT NULL "
+            "ORDER BY from_club_id")).scalars().all()
+        thin = [c for c in sellers if len(senior_squad(conn, world, c, day)) < floor]
+        assert thin == []
 
 
 def test_the_market_runs_once_a_day(traded: Engine) -> None:

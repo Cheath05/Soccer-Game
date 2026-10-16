@@ -1,0 +1,16 @@
+key: FRO1
+name: "Faroe Islands Premier League"
+short_name: "Premier League"
+nation: FRO
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: FRO-2026-27
+source_leagues: ["footsim:FRO1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: Ten clubs play each other three times (either twice at home and once away or once at home and twice away), 27 matches each, with no split. A draw decides which clubs get the extra home game. The 2025 season ran 7 March to 25 October; the 2026 season is also spring to autumn (RSSSF shows round 21 pla

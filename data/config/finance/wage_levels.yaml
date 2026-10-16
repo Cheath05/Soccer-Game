@@ -26,3 +26,41 @@ leagues:
   Trendyol Süper Lig:    {reference_overall: 67.5, reference_wage: 12000, per_point: 1.12}
   1A Pro League:         {reference_overall: 65.5, reference_wage: 7000, per_point: 1.11}
   Scottish Premiership:  {reference_overall: 65, reference_wage: 5000, per_point: 1.12}
+  # W7: the leagues FC 27 doesn't cover (importers/synthetic.py), each at its built level,
+  # with a rough typical weekly wage for the country (public reports; tune freely). The
+  # smallest are part-time: the minimum wage above is their floor.
+  "footsim:ALB1": {reference_overall: 54.5, reference_wage: 500, per_point: 1.10}
+  "footsim:AND1": {reference_overall: 52.9, reference_wage: 400, per_point: 1.10}
+  "footsim:ARM1": {reference_overall: 59.6, reference_wage: 800, per_point: 1.10}
+  "footsim:AZE1": {reference_overall: 63.1, reference_wage: 3000, per_point: 1.10}
+  "footsim:BIH1": {reference_overall: 58.9, reference_wage: 700, per_point: 1.10}
+  "footsim:BLR1": {reference_overall: 52.6, reference_wage: 800, per_point: 1.10}
+  "footsim:BUL1": {reference_overall: 62.6, reference_wage: 2000, per_point: 1.10}
+  "footsim:CRO1": {reference_overall: 64.5, reference_wage: 3000, per_point: 1.10}
+  "footsim:CYP1": {reference_overall: 66.4, reference_wage: 4000, per_point: 1.10}
+  "footsim:CZE1": {reference_overall: 69.1, reference_wage: 5000, per_point: 1.10}
+  "footsim:EST1": {reference_overall: 54.8, reference_wage: 600, per_point: 1.10}
+  "footsim:FIN1": {reference_overall: 58.7, reference_wage: 1200, per_point: 1.10}
+  "footsim:FRO1": {reference_overall: 56.2, reference_wage: 400, per_point: 1.10}
+  "footsim:GEO1": {reference_overall: 52.0, reference_wage: 700, per_point: 1.10}
+  "footsim:GIB1": {reference_overall: 53.4, reference_wage: 400, per_point: 1.10}
+  "footsim:GRE1": {reference_overall: 69.6, reference_wage: 6000, per_point: 1.10}
+  "footsim:HUN1": {reference_overall: 64.5, reference_wage: 3500, per_point: 1.10}
+  "footsim:ISL1": {reference_overall: 60.5, reference_wage: 900, per_point: 1.10}
+  "footsim:ISR1": {reference_overall: 64.7, reference_wage: 4000, per_point: 1.10}
+  "footsim:KAZ1": {reference_overall: 58.8, reference_wage: 2000, per_point: 1.10}
+  "footsim:KOS1": {reference_overall: 59.0, reference_wage: 500, per_point: 1.10}
+  "footsim:LTU1": {reference_overall: 54.6, reference_wage: 600, per_point: 1.10}
+  "footsim:LUX1": {reference_overall: 52.7, reference_wage: 400, per_point: 1.10}
+  "footsim:LVA1": {reference_overall: 58.7, reference_wage: 600, per_point: 1.10}
+  "footsim:MDA1": {reference_overall: 59.5, reference_wage: 500, per_point: 1.10}
+  "footsim:MKD1": {reference_overall: 54.1, reference_wage: 500, per_point: 1.10}
+  "footsim:MLT1": {reference_overall: 55.9, reference_wage: 700, per_point: 1.10}
+  "footsim:MNE1": {reference_overall: 52.4, reference_wage: 400, per_point: 1.10}
+  "footsim:NIR1": {reference_overall: 53.5, reference_wage: 500, per_point: 1.10}
+  "footsim:SMR1": {reference_overall: 45.4, reference_wage: 400, per_point: 1.10}
+  "footsim:SRB1": {reference_overall: 64.2, reference_wage: 2000, per_point: 1.10}
+  "footsim:SVK1": {reference_overall: 63.2, reference_wage: 1500, per_point: 1.10}
+  "footsim:SVN1": {reference_overall: 63.4, reference_wage: 1500, per_point: 1.10}
+  "footsim:UKR1": {reference_overall: 63.9, reference_wage: 3000, per_point: 1.10}
+  "footsim:WAL1": {reference_overall: 51.3, reference_wage: 400, per_point: 1.10}

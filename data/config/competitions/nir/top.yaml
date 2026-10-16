@@ -1,0 +1,16 @@
+key: NIR1
+name: "NIFL Premiership"
+short_name: "Premiership"
+nation: NIR
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: NIR-2026-27
+source_leagues: ["footsim:NIR1"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 3 times (33 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 12 clubs. Matches 1-22: each club plays every other club twice (home and away). Matches 23-33: each plays every other club a third time (home or away). After 33 matches the table splits: the top six form Section A and the bottom six Section B, and each club plays the others in its section once (matc

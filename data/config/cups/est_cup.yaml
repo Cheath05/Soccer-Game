@@ -1,0 +1,15 @@
+# Estonian Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-match knockout ties throughout (no two-legged rounds listed on the 2025-26 page). 2025-26 edition (the 36th) had 71 teams: First round (22 clubs), Round of 64 (Meistriliiga clubs enter here; the top four Meistriliiga clubs of the previous season received byes past it), Round of 32, Round of 1
+key: EST_CUP
+name: "Estonian Cup"
+short_name: "Estonian Cup"
+nation: EST
+entrants:
+  - {league: EST1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [EST1]}
+  - {name: Quarter-final, blocks: [EST1]}
+  - {name: Semi-final, blocks: [EST1]}
+  - {name: Final, neutral: true}

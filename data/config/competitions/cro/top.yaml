@@ -1,0 +1,16 @@
+key: CRO1
+name: "Croatian Football League"
+short_name: "HNL"
+nation: CRO
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: CRO-2026-27
+source_leagues: ["footsim:CRO1", "Liga Hrvatska"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 10 clubs play each other home and away twice (36 matches each, 31 July 2026 to 22 May 2027), no split. Classification tie-breaks: points, head-to-head points, head-to-head goal difference, head-to-head goals scored, goal difference, goals scored, play-off.

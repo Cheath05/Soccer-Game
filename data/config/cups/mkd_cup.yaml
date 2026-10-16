@@ -1,0 +1,15 @@
+# Macedonian Football Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout. 2026-27 (34th edition, from 2 Sept 2026): 31 teams; first round 15 fixtures (31 to 16 teams, one-legged, Sileks got a bye); second round 8 fixtures (16 to 8) with 4 new entries; then quarter-finals, semi-finals and final (dates TBD, the page does not say which later rounds are two-legged).
+key: MKD_CUP
+name: "Macedonian Football Cup"
+short_name: "Macedonian Football Cup"
+nation: MKD
+entrants:
+  - {league: MKD1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [MKD1]}
+  - {name: Quarter-final, blocks: [MKD1]}
+  - {name: Semi-final, blocks: [MKD1]}
+  - {name: Final, neutral: true}

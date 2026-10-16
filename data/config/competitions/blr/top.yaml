@@ -1,0 +1,16 @@
+key: BLR1
+name: "Belarusian Premier League"
+short_name: "Premier League"
+nation: BLR
+tier: 1
+clubs: 16
+sim_level: simulated
+calendar: BLR-2026-27
+source_leagues: ["footsim:BLR1"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (30 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: 16 clubs; each club plays every other club home and away once (30 matches each, 240 in total). Season runs 20 March to 29 November 2026. No split or championship group mentioned. Table last updated 14 Oct 2026 (clubs had played 22-24 of 30 matches).

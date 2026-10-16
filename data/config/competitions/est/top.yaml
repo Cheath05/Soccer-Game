@@ -1,0 +1,16 @@
+key: EST1
+name: "Meistriliiga"
+short_name: "Meistriliiga"
+nation: EST
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: EST-2026-27
+source_leagues: ["footsim:EST1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: Ten clubs play each other four times (twice at home, twice away), 36 rounds and 180 matches in total, no split into groups. Season began 7 March 2026 and concludes in November. The ninth-placed club plays a two-legged play-off against the second-placed club of the 2026 Esiliiga for the final place i

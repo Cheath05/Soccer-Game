@@ -1,0 +1,16 @@
+key: MLT1
+name: "Maltese Premier League"
+short_name: "Premier League"
+nation: MLT
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: MLT-2026-27
+source_leagues: ["footsim:MLT1"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 3 times (33 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 12 clubs, season began 17 Aug 2026 (end date not on the page). Two rounds. Opening Round: each club plays every other club once (11 matches), then the league splits into a Top 6 and a Bottom 6 and each club plays the others in its group once more (5 matches). Points then reset to zero for the Closin

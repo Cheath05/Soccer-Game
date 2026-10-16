@@ -42,6 +42,43 @@ league_income:
   NOR1: {base: 3_200_000, merit: 2_100_000}     # €5.1m
   SWE1: {base: 3_000_000, merit: 2_000_000}     # €4.8m
   IRL1: {base: 2_100_000, merit: 1_400_000}     # €3.3m
+  # W7: the rest of UEFA, from the built squads' mean wage bill (importers/synthetic.py), as
+  # above: half the league's typical revenue (the bill / 0.6), merit half of that.
+  ALB1: {base: 410_000, merit: 270_000}   # mean wage bill €0.7m
+  AND1: {base: 360_000, merit: 240_000}   # mean wage bill €0.6m
+  ARM1: {base: 550_000, merit: 370_000}   # mean wage bill €0.9m
+  AZE1: {base: 2_020_000, merit: 1_350_000}   # mean wage bill €3.2m
+  BIH1: {base: 510_000, merit: 340_000}   # mean wage bill €0.8m
+  BLR1: {base: 620_000, merit: 410_000}   # mean wage bill €1.0m
+  BUL1: {base: 1_360_000, merit: 910_000}   # mean wage bill €2.2m
+  CRO1: {base: 2_320_000, merit: 1_550_000}   # mean wage bill €3.7m
+  CYP1: {base: 2_800_000, merit: 1_870_000}   # mean wage bill €4.5m
+  CZE1: {base: 3_870_000, merit: 2_580_000}   # mean wage bill €6.2m
+  EST1: {base: 470_000, merit: 320_000}   # mean wage bill €0.8m
+  FIN1: {base: 840_000, merit: 560_000}   # mean wage bill €1.3m
+  FRO1: {base: 360_000, merit: 240_000}   # mean wage bill €0.6m
+  GEO1: {base: 520_000, merit: 350_000}   # mean wage bill €0.8m
+  GIB1: {base: 360_000, merit: 240_000}   # mean wage bill €0.6m
+  GRE1: {base: 4_120_000, merit: 2_750_000}   # mean wage bill €6.6m
+  HUN1: {base: 2_340_000, merit: 1_560_000}   # mean wage bill €3.7m
+  ISL1: {base: 630_000, merit: 420_000}   # mean wage bill €1.0m
+  ISR1: {base: 2_660_000, merit: 1_770_000}   # mean wage bill €4.3m
+  KAZ1: {base: 1_360_000, merit: 910_000}   # mean wage bill €2.2m
+  KOS1: {base: 400_000, merit: 270_000}   # mean wage bill €0.6m
+  LTU1: {base: 500_000, merit: 330_000}   # mean wage bill €0.8m
+  LUX1: {base: 350_000, merit: 230_000}   # mean wage bill €0.6m
+  LVA1: {base: 450_000, merit: 300_000}   # mean wage bill €0.7m
+  MDA1: {base: 400_000, merit: 260_000}   # mean wage bill €0.6m
+  MKD1: {base: 400_000, merit: 270_000}   # mean wage bill €0.6m
+  MLT1: {base: 520_000, merit: 350_000}   # mean wage bill €0.8m
+  MNE1: {base: 360_000, merit: 240_000}   # mean wage bill €0.6m
+  NIR1: {base: 400_000, merit: 270_000}   # mean wage bill €0.6m
+  SMR1: {base: 360_000, merit: 240_000}   # mean wage bill €0.6m
+  SRB1: {base: 1_560_000, merit: 1_040_000}   # mean wage bill €2.5m
+  SVK1: {base: 1_000_000, merit: 670_000}   # mean wage bill €1.6m
+  SVN1: {base: 1_050_000, merit: 700_000}   # mean wage bill €1.7m
+  UKR1: {base: 2_200_000, merit: 1_470_000}   # mean wage bill €3.5m
+  WAL1: {base: 350_000, merit: 240_000}   # mean wage bill €0.6m
 
 # Prize money for winning a cup tie (EUR), paid once to the winner of each tie as the tie is
 # decided (a bye wins nothing): one amount per round in the cup's order, so the last is the
@@ -113,6 +150,42 @@ cup_prizes:
   #         R16    QF      SF      Final
   FAI_CUP: [5_000, 10_000, 25_000, 60_000]
   #         1st    QF      SF      Final
+  # W7: the rest of UEFA's cups (provisional, scaled like their leagues' money)
+  ALB_CUP: [2_000, 2_000, 3_000, 8_000]
+  AND_CUP: [2_000, 2_000, 2_000, 5_000]
+  ARM_CUP: [2_000, 3_000, 8_000, 19_000]
+  AZE_CUP: [2_000, 5_000, 12_000, 29_000]
+  BIH_CUP: [2_000, 2_000, 5_000, 13_000]
+  BLR_CUP: [2_000, 2_000, 2_000, 5_000]
+  BUL_CUP: [2_000, 4_000, 10_000, 25_000]
+  CRO_CUP: [4_000, 9_000, 21_000, 51_000]
+  CYP_CUP: [6_000, 13_000, 32_000, 76_000]
+  CZE_CUP: [10_000, 19_000, 48_000, 114_000]
+  EST_CUP: [2_000, 2_000, 4_000, 9_000]
+  FIN_CUP: [2_000, 3_000, 7_000, 16_000]
+  FRO_CUP: [2_000, 2_000, 5_000, 11_000]
+  GEO_CUP: [2_000, 2_000, 2_000, 4_000]
+  GIB_CUP: [2_000, 2_000, 2_000, 6_000]
+  GRE_CUP: [9_000, 18_000, 44_000, 106_000]
+  HUN_CUP: [4_000, 7_000, 18_000, 43_000]
+  ISL_CUP: [2_000, 3_000, 9_000, 21_000]
+  ISR_CUP: [4_000, 8_000, 20_000, 47_000]
+  KAZ_CUP: [2_000, 2_000, 6_000, 14_000]
+  KOS_CUP: [2_000, 3_000, 6_000, 15_000]
+  LTU_CUP: [2_000, 2_000, 3_000, 7_000]
+  LUX_CUP: [2_000, 2_000, 2_000, 5_000]
+  LVA_CUP: [2_000, 2_000, 5_000, 12_000]
+  MDA_CUP: [2_000, 3_000, 7_000]
+  MKD_CUP: [2_000, 2_000, 3_000, 7_000]
+  MLT_CUP: [2_000, 2_000, 4_000, 10_000]
+  MNE_CUP: [2_000, 2_000, 2_000, 4_000]
+  NIR_CUP: [2_000, 2_000, 3_000, 6_000]
+  SMR_CUP: [2_000, 2_000, 2_000, 3_000]
+  SRB_CUP: [3_000, 6_000, 15_000, 37_000]
+  SVK_CUP: [2_000, 4_000, 11_000, 27_000]
+  SVN_CUP: [3_000, 5_000, 13_000, 31_000]
+  UKR_CUP: [3_000, 7_000, 17_000, 40_000]
+  WAL_CUP: [2_000, 2_000, 2_000, 4_000]
 
 wage_ratio_start: 0.6     # a club's wage bill was this share of its revenue when its finances
                           # began (its own income is derived from it)...

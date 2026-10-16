@@ -55,7 +55,7 @@ def test_reputation_drifts_towards_what_the_squad_is_worth(conn: Connection) -> 
     after = _reputations(conn)
     for club_id, target in targets.items():
         old, new = before[club_id], after[club_id]
-        expected = old + drift * (target - old)
+        expected = min(99.0, max(1.0, old + drift * (target - old)))  # the scale's ends hold
         assert abs(new - expected) <= 0.5 + 1e-9, club_id  # rounded to a whole number
         assert abs(new - target) <= abs(old - target) + 0.5, club_id  # never overshoots
 

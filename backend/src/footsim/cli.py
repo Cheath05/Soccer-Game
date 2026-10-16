@@ -52,7 +52,9 @@ def _build_world(args: argparse.Namespace) -> int:
     if not args.no_tm and args.tm_db.exists():
         tm_players = load_players(args.tm_db)
     elif not args.no_tm:
-        print(f"note: {args.tm_db} not found, building without Transfermarkt data")
+        print(f"note: {args.tm_db} not found, building without Transfermarkt data: the leagues "
+              "FC 27 doesn't cover (world/new_clubs.yaml) need it, so their clubs will be "
+              "missing and the full profile's club counts will fail")
     report = build_world(
         ea_csv=args.ea_csv,
         profile=load_profile(args.profile),
@@ -62,6 +64,7 @@ def _build_world(args: argparse.Namespace) -> int:
         seed=args.seed,
         tm_players=tm_players,
         scaling=load_overall_scaling(config_dir() / "calibration" / "overall_scaling.yaml"),
+        tm_db=args.tm_db if tm_players else None,
     )
     report_path = _default("reports") / f"world-build-{report.season}.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)

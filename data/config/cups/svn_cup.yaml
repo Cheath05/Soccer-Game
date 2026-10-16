@@ -1,0 +1,15 @@
+# Slovenian Football Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout, every round a single match (extra time then penalties; unseeded draw; up to the round of 32 a lower-league club drawn against a higher-league club hosts unless it declines). Since 2022-23 any registered team can enter the preliminary rounds and the first round was expanded from 24 to 120 t
+key: SVN_CUP
+name: "Slovenian Football Cup"
+short_name: "Slovenian Football Cup"
+nation: SVN
+entrants:
+  - {league: SVN1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [SVN1]}
+  - {name: Quarter-final, blocks: [SVN1]}
+  - {name: Semi-final, blocks: [SVN1]}
+  - {name: Final, neutral: true}

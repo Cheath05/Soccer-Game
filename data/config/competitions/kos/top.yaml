@@ -1,0 +1,16 @@
+key: KOS1
+name: "Football Superleague of Kosovo"
+short_name: "Superleague"
+nation: KOS
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: KOS-2026-27
+source_leagues: ["footsim:KOS1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 10 clubs, one table, no split. The 2026-27 page (28th season under the Superleague name, 15 August 2026 to May 2027; Drita defending champions) gives no prose on the format and its results grid is set to two legs; the 2025-26 page (also 10 clubs) says each team plays each other four times (36 matche

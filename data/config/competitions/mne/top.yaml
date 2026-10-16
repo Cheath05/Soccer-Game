@@ -1,0 +1,16 @@
+key: MNE1
+name: "Montenegrin First League"
+short_name: "First League"
+nation: MNE
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: MNE-2026-27
+source_leagues: ["footsim:MNE1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 10 clubs, one table, no split. The 2025-26 page says clubs were scheduled to play each other four times, 36 matches each (180 matches in total); 2026-27 is assumed to be the same because the league has had 10 clubs since 2017-18, but no 2026-27 Wikipedia page exists (404), so its dates and format ar

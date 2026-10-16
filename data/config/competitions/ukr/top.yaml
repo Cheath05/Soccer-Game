@@ -1,0 +1,16 @@
+key: UKR1
+name: "Ukrainian Premier League"
+short_name: "Premier League"
+nation: UKR
+tier: 1
+clubs: 16
+sim_level: simulated
+calendar: UKR-2026-27
+source_leagues: ["footsim:UKR1", "Ukrayina Liha"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (30 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 16 clubs play each other twice, home and away (30 rounds), with no split, from 31 July 2026 to 4 June 2027 and a winter break from December 2026 to February 2027. Clubs must play at their primary or reserve stadiums (other venues only for force majeure or, for clubs in international competitions, wi

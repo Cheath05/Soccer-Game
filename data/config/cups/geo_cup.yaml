@@ -1,0 +1,15 @@
+# Georgian Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single knockout, every round one-legged (organised by the Georgian Football Federation; also called the Davit Kipiani Cup). 2026 edition: 80 teams, 11 April to December 2026. Preliminary round (Regionuli Liga and Liga 4 clubs plus the 2025 Amateur League winner), first round (remaining Liga 4 clubs 
+key: GEO_CUP
+name: "Georgian Cup"
+short_name: "Georgian Cup"
+nation: GEO
+entrants:
+  - {league: GEO1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [GEO1]}
+  - {name: Quarter-final, blocks: [GEO1]}
+  - {name: Semi-final, blocks: [GEO1]}
+  - {name: Final, neutral: true}

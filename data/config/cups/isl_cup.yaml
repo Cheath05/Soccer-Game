@@ -1,0 +1,15 @@
+# Icelandic Men's Football Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 12 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-match knockout throughout (no two-legged ties; extra time and penalties when needed). Rounds on the 2025 page (66th edition): First Round, Second Round, Round of 32, Round of 16, quarter-finals, semi-finals, final. Besta deild karla clubs enter in the Round of 32. The final is played at Lauga
+key: ISL_CUP
+name: "Icelandic Men's Football Cup"
+short_name: "Icelandic Men's Football Cup"
+nation: ISL
+entrants:
+  - {league: ISL1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [ISL1]}
+  - {name: Quarter-final, blocks: [ISL1]}
+  - {name: Semi-final, blocks: [ISL1]}
+  - {name: Final, neutral: true}

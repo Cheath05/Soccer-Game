@@ -1,0 +1,16 @@
+key: GIB1
+name: "Gibraltar Football League"
+short_name: "Football League"
+nation: GIB
+tier: 1
+clubs: 11
+sim_level: simulated
+calendar: GIB-2026-27
+source_leagues: ["footsim:GIB1"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 3 times (33 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 11 clubs (12 in 2025-26; Manchester 62 folded in May 2026 after not submitting complete licence documents). Regular season: each club plays every other club twice (20 matches). The top six then form the GFL Championship Group, where each club plays the others once to decide the champion, with regula

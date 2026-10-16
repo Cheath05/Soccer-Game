@@ -1,0 +1,15 @@
+# Montenegrin Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout, 16 teams in 2025-26 (20th edition, 22 Oct 2025 to 28 May 2026): round of 16 and quarter-finals are single matches, the semi-finals are two-legged, and the final is a single match between the two semi-final winners. The page does not say when First League clubs enter. Winner enters the Conf
+key: MNE_CUP
+name: "Montenegrin Cup"
+short_name: "Montenegrin Cup"
+nation: MNE
+entrants:
+  - {league: MNE1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [MNE1]}
+  - {name: Quarter-final, blocks: [MNE1]}
+  - {name: Semi-final, blocks: [MNE1]}
+  - {name: Final, neutral: true}

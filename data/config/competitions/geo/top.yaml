@@ -1,0 +1,16 @@
+key: GEO1
+name: "Erovnuli Liga"
+short_name: "Erovnuli Liga"
+nation: GEO
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: GEO-2026-27
+source_leagues: ["footsim:GEO1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: 10 clubs, one table, no split. Each team plays the other nine teams home and away twice, for 36 matches each (results are laid out as rounds 1-18 and 19-36). Season 28 February to 5 December 2026 (38th top-tier season in Georgia); in progress, 140 matches played by 11 Oct 2026. Tiebreakers: points, 

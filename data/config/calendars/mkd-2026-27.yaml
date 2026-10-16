@@ -1,0 +1,25 @@
+# Macedonian First Football League 2026-27 (approximate, W7). Seasons share England's boundaries (1 July to 30
+# June), so every league turns over together.
+key: MKD-2026-27
+season: "2026-27"
+nation: MKD
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  MKD1: {start: 2026-07-18, end: 2027-05-23}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate
+  - {start: 2027-01-01, end: 2027-02-01}   # approximate
+blackout:
+  - {start: 2026-12-21, end: 2027-01-24}   # winter break
+cups:
+  MKD_CUP:
+    - [2026-10-27]
+    - [2027-03-02]
+    - [2027-04-13]
+    - [2027-05-26]

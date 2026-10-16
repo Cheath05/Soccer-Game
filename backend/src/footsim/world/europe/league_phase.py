@@ -300,6 +300,45 @@ def _place(pots: list[list[int]], days: list[list[Match]], country: dict[int, st
     return layout, _broken(layout, opponents, country, cap)
 
 
+def spread_pots(ranked: list[int], size: int, count: int, country: dict[int, str]
+                ) -> list[list[int]]:
+    """Pots in coefficient order, but no more than half a pot from one country where it can be
+    helped: a club one too many swaps with the nearest club in the next pot (or, from the last
+    pot, the one before) that keeps both pots within the limit. Every club stays in exactly one
+    pot of ``size``. (Clubs new to Europe can share a coefficient, their country's floor, and
+    land together; a pot that is more than half one country leaves its clubs meeting each
+    other.)"""
+    limit = size // 2
+    rank = {club_id: k for k, club_id in enumerate(ranked)}
+    pots = [ranked[k * size:(k + 1) * size] for k in range(count)]
+
+    def same(pot: list[int], code: str | None) -> int:
+        return sum(1 for c in pot if code is not None and country.get(c) == code)
+
+    def swap_one() -> bool:
+        for p, pot in enumerate(pots):
+            over = [code for code in {country.get(c) for c in pot} if same(pot, code) > limit]
+            if not over:
+                continue
+            code = sorted(over, key=str)[0]
+            leaving = max((c for c in pot if country.get(c) == code), key=rank.__getitem__)
+            for q in sorted(range(count), key=lambda q: (abs(q - p), q < p)):
+                if q == p or same(pots[q], code) >= limit:
+                    continue
+                # the next pot's best club, or the pot before's last
+                for joining in sorted(pots[q], key=rank.__getitem__, reverse=q < p):
+                    other = country.get(joining)
+                    if other != code and same(pot, other) < limit:
+                        pot[pot.index(leaving)] = joining
+                        pots[q][pots[q].index(joining)] = leaving
+                        return True
+        return False
+
+    while swap_one():  # each swap takes one club off a country's excess, and adds none
+        pass
+    return [sorted(pot, key=rank.__getitem__) for pot in pots]
+
+
 def _draw(comp: ContinentalDef, pots: list[list[int]], country: dict[int, str],
           rng: np.random.Generator) -> tuple[list[list[Match]], list[list[int]]]:
     """A pattern and the clubs' places in it, drawing new patterns until the clubs fit one
@@ -339,10 +378,10 @@ def draw_league_phase(conn: Connection, world: World, meta: CareerMeta, comp: Co
     coeff = coefficients(conn, world, clubs, season_id)
     holders = {e.club_id for e in entries if e.route == f"holder:{comp.key}"}
     ranked = sorted(clubs, key=lambda c: (c not in holders, -coeff[c], c))
-    pots = [ranked[k * phase.pot_size:(k + 1) * phase.pot_size] for k in range(phase.pots)]
     country = {r.id: r.code for r in conn.execute(
         select(club.c.id, nation.c.code).join(nation, nation.c.id == club.c.nation_id)
         .where(club.c.id.in_(clubs)))}
+    pots = spread_pots(ranked, phase.pot_size, phase.pots, country)
     rng = derive_rng(meta.seed, "europe-league-phase", season_id, comp.key)
     days, layout = _draw(comp, pots, country, rng)
     for p, pot in enumerate(layout):

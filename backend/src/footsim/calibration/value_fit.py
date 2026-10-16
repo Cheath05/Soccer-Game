@@ -53,7 +53,11 @@ def _sample(conn: Connection, world: World, day: date) -> tuple[np.ndarray, ...]
         "FROM player p JOIN person pe ON pe.id = p.person_id "
         "JOIN contract k ON k.person_id = p.person_id AND k.is_active = 1 "
         "JOIN club c ON c.id = k.club_id "
-        "WHERE p.retired_on IS NULL AND p.value_eur_cents > 0 ORDER BY p.person_id")).all()
+        "WHERE p.retired_on IS NULL AND p.value_eur_cents > 0 AND p.person_id IN "
+        # FC 27's values only: the players the world build adds (importers/synthetic.py) are
+        # valued by this model, so fitting on them would fit the model to itself.
+        "  (SELECT entity_id FROM external_id WHERE entity_type = 'player' "
+        "   AND source = 'ea_fc27') ORDER BY p.person_id")).all()
     rows = [r for r in rows if r.id in overall]
     return (np.array([overall[r.id] for r in rows], dtype=float),
             np.array([years_old(r.birth, day) for r in rows], dtype=float),

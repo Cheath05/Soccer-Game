@@ -63,3 +63,106 @@ countries:
   IRL:
     table: ["Shamrock Rovers", "Derry City", "Shelbourne", "Bohemians", "St. Pats", "Drogheda United", "Sligo Rovers", "Galway United", "Waterford"]
     cups: {FAI_CUP: "Shamrock Rovers"}
+  ALB:
+    table: ["Egnatia", "Elbasani", "Vllaznia", "Dinamo City", "Partizani", "Tirana", "Vora", "Teuta"]
+    cups: {ALB_CUP: "Dinamo City"}
+  AND:
+    table: ["Inter Club d'Escaldes", "Rànger's", "FC Santa Coloma", "Atlètic Club d'Escaldes", "Penya Encarnada", "Ordino", "Carroi"]
+    cups: {AND_CUP: "Atlètic Club d'Escaldes"}
+  ARM:
+    table: ["Ararat-Armenia", "Noah", "Pyunik", "Alashkert", "Urartu", "Van", "BKMA", "Gandzasar Kapan", "Ararat Yerevan", "Shirak"]
+    cups: {ARM_CUP: "Noah"}
+  AZE:
+    table: ["Sabah", "Qarabağ FK", "Turan Tovuz", "Neftçi", "Zira", "Araz-Naxçıvan", "Sumgayit", "Shamakhi", "Imishli", "Kapaz", "Qabala"]
+    cups: {AZE_CUP: "Sabah"}
+  BIH:
+    table: ["Borac Banja Luka", "Zrinjski Mostar", "Sarajevo", "Velež Mostar", "Široki Brijeg", "Željezničar", "Radnik Bijeljina", "Sloga Doboj"]
+    cups: {BIH_CUP: "Zrinjski Mostar"}
+  BLR:
+    table: ["Maxline Vitebsk", "Dinamo Minsk", "Slavia Mozyr", "Dynamo Brest", "Minsk", "Torpedo-BelAZ Zhodino", "Isloch Minsk Raion", "Neman Grodno", "Gomel", "BATE Borisov", "Arsenal Dzerzhinsk", "Vitebsk", "Naftan Novopolotsk"]
+    cups: {BLR_CUP: "BATE Borisov"}
+  BUL:
+    table: ["Levski", "CSKA 1948", "PFC Ludogorets", "CSKA Sofia", "Lokomotiv Plovdiv", "Arda", "Cherno More", "Botev Plovdiv", "Botev Vratsa", "Lokomotiv Sofia", "Slavia", "Spartak Varna", "Septemvri"]
+    cups: {BUL_CUP: "CSKA Sofia"}
+  CRO:
+    table: ["Dinamo Zagreb", "Hajduk Split", "Varaždin", "Rijeka", "Lokomotiva", "Istra 1961", "Gorica", "Slaven Belupo", "Osijek"]
+    cups: {CRO_CUP: "Dinamo Zagreb"}
+  CYP:
+    table: ["Omonia FC", "AEK Larnaca", "Apollon Limassol", "Pafos", "APOEL FC", "Aris Limassol", "Anorthosis Famagusta", "AEL Limassol", "Omonia Aradippou", "Krasava E.N.Y.", "Olympiakos Nicosia"]
+    cups: {CYP_CUP: "Pafos"}
+  CZE:
+    table: ["Slavia Praha", "Sparta Praha", "Viktoria Plzeň", "Hradec Králové", "Jablonec", "Slovan Liberec", "Sigma Olomouc", "Pardubice", "Bohemians 1905", "Teplice", "Zlín", "Mladá Boleslav", "Slovácko", "Baník Ostrava"]
+  EST:
+    table: ["Flora", "FCI Levadia", "Nõmme Kalju", "Paide Linnameeskond", "Narva Trans", "Vaprus", "Harju", "Tammeka", "Kuressaare"]
+    cups: {EST_CUP: "Flora"}
+  FIN:
+    table: ["KuPS", "Inter Turku", "Ilves", "SJK", "HJK Helsinki", "IF Gnistan", "FF Jaro", "IFK Mariehamn", "VPS", "AC Oulu"]
+    cups: {FIN_CUP: "HJK Helsinki"}
+  FRO:
+    table: ["KÍ Klaksvík", "HB Tórshavn", "NSÍ Runavík", "Víkingur Gøta", "B36 Tórshavn", "B68 Toftir", "EB/Streymur", "07 Vestur"]
+    cups: {FRO_CUP: "KÍ Klaksvík"}
+  GEO:
+    table: ["Iberia 1999", "Dila Gori", "Torpedo Kutaisi", "Dinamo Tbilisi", "Gagra", "Dinamo Batumi", "Samgurali Tsqaltubo"]
+    cups: {GEO_CUP: "Dila Gori"}
+  GIB:
+    table: ["Lincoln Red Imps", "St Joseph's", "Europa", "Mons Calpe", "Lions Gibraltar", "Lynx", "FC Magpies", "Europa Point", "College 1975", "Glacis United", "Hound Dogs"]
+    cups: {GIB_CUP: "Lincoln Red Imps"}
+  GRE:
+    table: ["AEK Athens", "Olympiacos FC", "PAOK FC", "Panathinaikos", "Aris", "Levadiakos", "OFI", "Volos", "Atromitos", "A.E. Kifisia", "Asteras Tripolis", "Panetolikos"]
+    cups: {GRE_CUP: "OFI"}
+  HUN:
+    table: ["Győr", "Ferencvárosi TC", "Paks", "Debrecen", "Zalaegerszeg", "Puskás Akadémia", "Újpest", "Kisvárda", "Nyíregyháza", "MTK"]
+    cups: {HUN_CUP: "Ferencvárosi TC"}
+  ISL:
+    table: ["Víkingur Reykjavík", "Valur", "Stjarnan", "Breiðablik", "Fram", "FH", "KA", "ÍA", "ÍBV", "KR"]
+  ISR:
+    table: ["Hapoel Be'er Sheva", "Beitar Jerusalem", "Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Hapoel Petah Tikva", "Maccabi Netanya", "Ironi Kiryat Shmona", "Ironi Tiberias", "Hapoel Haifa", "Bnei Sakhnin", "Hapoel Jerusalem"]
+    cups: {ISR_CUP: "Maccabi Tel Aviv"}
+  KAZ:
+    table: ["Kairat", "Astana", "Tobol", "Yelimay", "Aktobe", "Zhenis", "Ordabasy", "Okzhetpes", "Kyzylzhar", "Ulytau", "Kaisar", "Zhetysu", "Atyrau"]
+    cups: {KAZ_CUP: "Tobol"}
+  KOS:
+    table: ["Drita", "Malisheva", "Ballkani", "Dukagjini", "Gjilani", "Drenica", "Prishtina", "Llapi"]
+    cups: {KOS_CUP: "Dukagjini"}
+  LTU:
+    table: ["Kauno Žalgiris", "Hegelmann", "Žalgiris", "Sūduva", "Šiauliai", "Panevėžys", "Džiugas", "Banga"]
+    cups: {LTU_CUP: "Panevėžys"}
+  LUX:
+    table: ["Atert Bissen", "Differdange 03", "Mondorf-les-Bains", "UNA Strassen", "F91 Dudelange", "Jeunesse Esch", "Racing Union", "Käerjeng 97", "Hostert", "Victoria Rosport", "Progrès Niederkorn", "Swift Hesperange"]
+    cups: {LUX_CUP: "Differdange 03"}
+  LVA:
+    table: ["Riga FC", "RFS", "Liepāja", "BFC Daugavpils", "Auda", "Jelgava", "Tukums 2000", "Super Nova", "Grobiņa"]
+    cups: {LVA_CUP: "Auda"}
+  MDA:
+    table: ["Petrocub Hîncești", "Sheriff Tiraspol", "Zimbru Chișinău", "Milsami Orhei", "Bălți", "Dacia Buiucani", "Politehnica UTM"]
+    cups: {MDA_CUP: "Sheriff Tiraspol"}
+  MKD:
+    table: ["Vardar", "Shkëndija", "Struga", "Sileks", "Tikvesh", "Arsimi", "Bashkimi"]
+    cups: {MKD_CUP: "Sileks"}
+  MLT:
+    table: ["Floriana", "Marsaxlokk", "Ħamrun Spartans", "Valletta", "Sliema Wanderers", "Gżira United", "Hibernians", "Birkirkara", "Żabbar St. Patrick", "Mosta"]
+    cups: {MLT_CUP: "Valletta"}
+  MNE:
+    table: ["Sutjeska", "Mornar", "Petrovac", "Dečić", "Budućnost Podgorica", "Mladost Donja Gorica", "Arsenal Tivat", "Jezero", "Bokelj"]
+    cups: {MNE_CUP: "Mornar"}
+  NIR:
+    table: ["Larne", "Coleraine", "Glentoran", "Linfield", "Cliftonville", "Dungannon Swifts", "Carrick Rangers", "Portadown", "Ballymena United", "Bangor", "Crusaders"]
+    cups: {NIR_CUP: "Coleraine"}
+  SMR:
+    table: ["Tre Fiori", "Virtus", "Tre Penne", "La Fiorita", "Folgore", "Domagnano", "Fiorentino", "Cosmos", "Juvenes/Dogana", "Libertas", "Pennarossa", "San Giovanni", "Faetano", "San Marino Academy U22", "Cailungo", "Murata"]
+    cups: {SMR_CUP: "La Fiorita"}
+  SRB:
+    table: ["Red Star Belgrade", "Vojvodina", "Partizan", "Železničar Pančevo", "Novi Pazar", "OFK Beograd", "Radnik Surdulica", "Čukarički", "IMT", "Radnički Niš", "Mladost Lučani", "Radnički 1923"]
+    cups: {SRB_CUP: "Red Star Belgrade"}
+  SVK:
+    table: ["Slovan Bratislava", "DAC Dunajská Streda", "Spartak Trnava", "Žilina", "Zemplín Michalovce", "Podbrezová", "Košice", "Trenčín", "Skalica", "Ružomberok", "Komárno"]
+    cups: {SVK_CUP: "Žilina"}
+  SVN:
+    table: ["Celje", "Koper", "Bravo", "Olimpija Ljubljana", "Maribor", "Radomlje", "Aluminij", "Mura"]
+    cups: {SVN_CUP: "Aluminij"}
+  UKR:
+    table: ["Shakhtar Donetsk", "LNZ Cherkasy", "Polissya Zhytomyr", "Dynamo Kyiv", "FC Kharkiv", "Kolos Kovalivka", "Kryvbas Kryvyi Rih", "Zorya Luhansk", "Karpaty Lviv", "Epitsentr Kamianets-Podilskyi", "Veres Rivne", "Obolon Kyiv", "Kudrivka"]
+    cups: {UKR_CUP: "Dynamo Kyiv"}
+  WAL:
+    table: ["The New Saints", "Connah's Quay Nomads", "Barry Town United", "Caernarfon Town", "Colwyn Bay", "Penybont", "Haverfordwest County", "Briton Ferry Llansawel", "Cardiff Met", "Flint Town United"]
+    cups: {WAL_CUP: "Caernarfon Town"}

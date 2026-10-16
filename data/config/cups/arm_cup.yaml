@@ -1,0 +1,15 @@
+# Armenian Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 12 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: 2025-26 edition (5 stages): preliminary round (single match; 12 clubs: 2 Amateur A-League, 8 First League, 2 Premier League), round of 16 (single match; six more Premier League clubs enter), quarter-finals (two legs; Noah and Ararat-Armenia, the 2024-25 league champion/runner-up and cup holder/final
+key: ARM_CUP
+name: "Armenian Cup"
+short_name: "Armenian Cup"
+nation: ARM
+entrants:
+  - {league: ARM1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [ARM1]}
+  - {name: Quarter-final, blocks: [ARM1]}
+  - {name: Semi-final, blocks: [ARM1]}
+  - {name: Final, neutral: true}

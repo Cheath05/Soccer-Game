@@ -1,0 +1,15 @@
+# Azerbaijan Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 12 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout, 34 teams, 35th edition in 2026-27. First round: the 12 Azerbaijan Second League teams (7-8 Oct 2026). Second round: 24 teams = 6 first-round winners + 10 First League teams + 8 Premier League teams (27-29 Oct 2026). Last 16: 16 teams = 12 second-round winners + the other 4 Premier League t
+key: AZE_CUP
+name: "Azerbaijan Cup"
+short_name: "Azerbaijan Cup"
+nation: AZE
+entrants:
+  - {league: AZE1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [AZE1]}
+  - {name: Quarter-final, blocks: [AZE1]}
+  - {name: Semi-final, blocks: [AZE1]}
+  - {name: Final, neutral: true}

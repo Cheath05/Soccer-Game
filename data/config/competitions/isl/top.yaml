@@ -1,0 +1,16 @@
+key: ISL1
+name: "Besta deild karla"
+short_name: "Besta deild"
+nation: ISL
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: ISL-2026-27
+source_leagues: ["footsim:ISL1"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 3 times (33 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: Twelve clubs play each other twice (home and away), 22 games each, then the table splits: the top six form a Championship Round and the bottom six a Relegation Round (each group plays the others in its group once more, 5 games each, 27 in total per club per the 2025 and 2026 tables). Season runs 10 

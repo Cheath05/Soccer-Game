@@ -1,0 +1,15 @@
+# Cypriot Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 14 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout, contested by First and Second Division clubs (28 teams in the 2025-26 infobox; the page's format text says 22 enter the first round and four get a bye to the second round, which does not add up). 2025-26 rounds: first round (one leg, First Division clubs are drawn against Second Division c
+key: CYP_CUP
+name: "Cypriot Cup"
+short_name: "Cypriot Cup"
+nation: CYP
+entrants:
+  - {league: CYP1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [CYP1]}
+  - {name: Quarter-final, blocks: [CYP1]}
+  - {name: Semi-final, blocks: [CYP1]}
+  - {name: Final, neutral: true}

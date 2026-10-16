@@ -1,0 +1,15 @@
+# Czech Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 16 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-match knockout rounds from preliminary rounds through to the final (no two-legged ties are listed). 2026-27: second preliminary round, first round (58 winners joined by 26 clubs), second round (42 winners joined by the 10 First League clubs not playing in European competitions), then the thir
+key: CZE_CUP
+name: "Czech Cup"
+short_name: "Czech Cup"
+nation: CZE
+entrants:
+  - {league: CZE1, round: 1}
+rounds:
+  - {name: Round of 16, blocks: [CZE1]}
+  - {name: Quarter-final, blocks: [CZE1]}
+  - {name: Semi-final, blocks: [CZE1]}
+  - {name: Final, neutral: true}

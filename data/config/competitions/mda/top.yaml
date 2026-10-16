@@ -1,0 +1,16 @@
+key: MDA1
+name: "Moldovan Liga"
+short_name: "Liga"
+nation: MDA
+tier: 1
+clubs: 8
+sim_level: simulated
+calendar: MDA-2026-27
+source_leagues: ["footsim:MDA1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (28 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 8 clubs. Phase I (from 27 June 2026): matches 1-14 are home and away against every other club, matches 15-21 are a third meeting with each club (21 matches each; 14 played by 11 Oct 2026). After Phase I the top six qualify for Phase II (in 2025-26 this was 10 more matches each among the six, Phase I

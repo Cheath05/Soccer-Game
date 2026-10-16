@@ -1,0 +1,15 @@
+# Luxembourg Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 16 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-match knockout (results show single legs; extra time and penalties decide drawn ties; no two-legged ties mentioned). 2025-26 edition: 100 teams; preliminary round, first round, second round (National Division and Division of Honour clubs join in the second round, drawn away against lower-tier
+key: LUX_CUP
+name: "Luxembourg Cup"
+short_name: "Luxembourg Cup"
+nation: LUX
+entrants:
+  - {league: LUX1, round: 1}
+rounds:
+  - {name: Round of 16, blocks: [LUX1]}
+  - {name: Quarter-final, blocks: [LUX1]}
+  - {name: Semi-final, blocks: [LUX1]}
+  - {name: Final, neutral: true}

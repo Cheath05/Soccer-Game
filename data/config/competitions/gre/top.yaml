@@ -1,0 +1,16 @@
+key: GRE1
+name: "Super League Greece"
+short_name: "Super League"
+nation: GRE
+tier: 1
+clubs: 14
+sim_level: simulated
+calendar: GRE-2026-27
+source_leagues: ["footsim:GRE1", "Hellas Liga"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (26 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: Two phases. Phase 1, regular season: 14 clubs, each plays the others twice (26 matches, two rounds of 13 match days; 22 Aug 2026 to 21 Mar 2027, winter break from 21 Dec 2026). Phase 2 (from 3 Apr 2027, last match day 23 May 2027): Championship play-offs for the top 4, Europe play-offs for places 5 

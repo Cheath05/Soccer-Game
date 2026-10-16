@@ -1,0 +1,15 @@
+# Kazakhstan Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 16 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: 2026 edition: 32 clubs (all 16 Premier League clubs, 8 First League and 8 Second League clubs) all start in a single-match Round of 32 (from 8 April 2026; each Premier League club drew a lower-league opponent), then a single-match Round of 16 (from 29 April), single-match quarter-finals, two-legged 
+key: KAZ_CUP
+name: "Kazakhstan Cup"
+short_name: "Kazakhstan Cup"
+nation: KAZ
+entrants:
+  - {league: KAZ1, round: 1}
+rounds:
+  - {name: Round of 16, blocks: [KAZ1]}
+  - {name: Quarter-final, blocks: [KAZ1]}
+  - {name: Semi-final, blocks: [KAZ1]}
+  - {name: Final, neutral: true}

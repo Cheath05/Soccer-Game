@@ -1,0 +1,16 @@
+key: LUX1
+name: "Luxembourg National Division"
+short_name: "National Division"
+nation: LUX
+tier: 1
+clubs: 16
+sim_level: simulated
+calendar: LUX-2026-27
+source_leagues: ["footsim:LUX1"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (30 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 16 clubs, 1 Aug 2026 to 23 May 2027. The 2026-27 page does not state the number of rounds, but its results grid shows every pair meeting home and away; the 2025-26 page shows 30 matches per club (240 in total), i.e. a double round-robin. No split mentioned. As of 11 Oct 2026 each club had played 9 m

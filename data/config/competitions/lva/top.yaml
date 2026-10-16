@@ -1,0 +1,16 @@
+key: LVA1
+name: "Latvian Higher League"
+short_name: "Higher League"
+nation: LVA
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: LVA-2026-27
+source_leagues: ["footsim:LVA1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: 10 clubs, four rounds (each pair meets four times, twice at home and twice away; 36 matches each). Season 6 March to 8 November 2026. No split mentioned. As of 12 Oct 2026 clubs had played 31-32 matches.

@@ -1,0 +1,16 @@
+key: ISR1
+name: "Israeli Premier League"
+short_name: "Premier League"
+nation: ISR
+tier: 1
+clubs: 14
+sim_level: simulated
+calendar: ISR-2026-27
+source_leagues: ["footsim:ISR1"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (26 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 14 clubs. Regular season of 26 matches per club (each plays the others twice), then a split: positions 1-6 enter the Championship round (top six play 10 more matches each) and positions 7-14 enter the Relegation round (the eight play 7 more matches each, so 33 matches in total for those clubs). The 

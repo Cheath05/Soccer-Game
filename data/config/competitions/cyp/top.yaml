@@ -1,0 +1,16 @@
+key: CYP1
+name: "Cypriot First Division"
+short_name: "First Division"
+nation: CYP
+tier: 1
+clubs: 14
+sim_level: simulated
+calendar: CYP-2026-27
+source_leagues: ["footsim:CYP1", "Liga Cyprus"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (26 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 14 clubs; regular season where each club plays the others home and away (26 rounds), then a split: positions 1-6 enter a Championship round (top six play each other home and away, 10 more matches each) and positions 7-14 enter a Relegation round (each plays the others once, 7 more matches each). Reg

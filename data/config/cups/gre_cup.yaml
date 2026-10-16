@@ -1,0 +1,15 @@
+# Greek Football Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 14 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Reformed from 2025-26 into a UEFA-style format; only Super League 1 and Super League 2 clubs take part (B teams excluded). 2026-27 (28 teams): first qualifying round (11 Aug 2026; the 13 Super League 2 non-B clubs plus the 2025-26 Greek Amateur Cup winner, only one match played), second qualifying r
+key: GRE_CUP
+name: "Greek Football Cup"
+short_name: "Greek Football Cup"
+nation: GRE
+entrants:
+  - {league: GRE1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [GRE1]}
+  - {name: Quarter-final, blocks: [GRE1]}
+  - {name: Semi-final, blocks: [GRE1]}
+  - {name: Final, neutral: true}

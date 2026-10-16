@@ -1,0 +1,16 @@
+key: FIN1
+name: "Veikkausliiga"
+short_name: "Veikkausliiga"
+nation: FIN
+tier: 1
+clubs: 12
+sim_level: simulated
+calendar: FIN-2026-27
+source_leagues: ["footsim:FIN1", "Finnliiga"]
+format: {type: round_robin, legs: 3}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 3 times (33 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: Twelve clubs play each other twice in a 22-round regular season (4 April 2026 start). The table then splits and regular-season points carry over: the top six play a Championship Round, the bottom six a Relegation Round. The Wikipedia pages show the Championship Round as a double round-robin (10 more

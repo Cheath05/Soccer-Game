@@ -1,0 +1,14 @@
+# Moldovan Cup (Cupa Moldovei) (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 8 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: 2026-27: 34 clubs. Three single-match preliminary rounds (5 Aug, 19 Aug and 1-2 Sep 2026; 34 to 29 to 24 to 16 clubs), then the 8 Liga clubs enter at the single-match Round of 16 (27-28 Oct 2026); quarter-finals (18-19 Mar and 13-14 Apr 2027) and semi-finals (28 Apr and 12 May 2027) are two-legged; 
+key: MDA_CUP
+name: "Moldovan Cup (Cupa Moldovei)"
+short_name: "Moldovan Cup (Cupa Moldovei)"
+nation: MDA
+entrants:
+  - {league: MDA1, round: 1}
+rounds:
+  - {name: Quarter-final, blocks: [MDA1]}
+  - {name: Semi-final, blocks: [MDA1]}
+  - {name: Final, neutral: true}

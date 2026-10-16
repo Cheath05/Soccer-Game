@@ -1,0 +1,16 @@
+key: LTU1
+name: "Toplyga"
+short_name: "A Lyga"
+nation: LTU
+tier: 1
+clubs: 9
+sim_level: simulated
+calendar: LTU-2026-27
+source_leagues: ["footsim:LTU1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game). Real life: a spring-to-autumn season; here August to May like the rest.
+# Real format: Ten clubs were registered but Riteriai's first team was removed from the 2026 league by a disciplinary decision (reported by 4 Aug 2026), so 9 clubs actually play. The A Lyga page says 'the teams play 4 rounds in regular season' (each pair meets four times), so I infer 32 matches per club for 9 club

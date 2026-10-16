@@ -35,6 +35,7 @@ from footsim.importers.profile import ImportProfile
 from footsim.importers.records import SourcePlayer, TmPlayer
 from footsim.importers.resolve import MatchResult, match_players
 from footsim.importers.rng import entity_rng
+from footsim.importers.synthetic import synthesize, with_new_leagues
 from footsim.persistence import schema as t
 from footsim.persistence.database import create_database, write_meta
 from footsim.ratings.overall import OverallScaling, RatingModel
@@ -70,6 +71,7 @@ class BuildReport:
     tm_unmatched: int = 0
     leagues: dict[str, LeagueStats] = field(default_factory=dict)
     unmatched_examples: dict[str, list[str]] = field(default_factory=dict)
+    synthetic: dict[str, Any] = field(default_factory=dict)  # the leagues FC 27 lacks (W7)
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -89,6 +91,7 @@ def build_world(
     tm_players: list[TmPlayer] | None = None,
     scaling: OverallScaling | None = None,
     strict: bool = True,
+    tm_db: Path | None = None,
 ) -> BuildReport:
     calendar = defs.calendars[calendar_key]
     season_start = calendar.season_start
@@ -97,6 +100,24 @@ def build_world(
     players = read_players(ea_csv, profile)
     if not players:
         raise BuildError(f"{ea_csv} produced no players")
+    aliases = {n.name: set(n.aliases) for n in defs.nations.values()}
+    match = match_players(players, tm_players or [], aliases) if tm_players else MatchResult()
+    report.tm_matched = len(match.matches)
+    report.tm_ambiguous = len(match.ambiguous)
+    report.tm_unmatched = len(match.unmatched)
+    # The leagues FC 27 doesn't cover (W7): Transfermarkt's squads and generated ones.
+    if tm_db is not None and tm_players:
+        extra, extra_tm, league_nations, synthetic = synthesize(
+            players, match, tm_players, tm_db, defs, season_start, seed)
+        players += extra
+        match.matches.update(extra_tm)
+        profile = with_new_leagues(profile, league_nations)
+        report.synthetic = {
+            "clubs": synthetic.clubs, "from_ea": synthetic.from_ea,
+            "tm_players": synthetic.tm_players, "generated": synthetic.generated,
+            "clubs_by_source": dict(synthetic.clubs_by_source),
+            "value_model": synthetic.value_model, "level_model": synthetic.elo_model,
+            "league_levels": synthetic.league_levels, "unmatched_ea": synthetic.unmatched_ea}
     for p in players:
         p.attrs = complete_attributes(p, profile, seed)
 
@@ -107,12 +128,6 @@ def build_world(
         p.source_id: float(group_overalls[defs.positions[p.position].group][i])
         for i, p in enumerate(players)
     }
-
-    aliases = {n.name: set(n.aliases) for n in defs.nations.values()}
-    match = match_players(players, tm_players or [], aliases) if tm_players else MatchResult()
-    report.tm_matched = len(match.matches)
-    report.tm_ambiguous = len(match.ambiguous)
-    report.tm_unmatched = len(match.unmatched)
 
     engine = create_database(out_path)
     try:
@@ -217,8 +232,11 @@ def _write_world(
     }
     membership_rows = []
     league_clubs: dict[str, int] = defaultdict(int)
+    # A source league's competition: the competitions' own source_leagues, then the profile's.
+    league_of = {**profile.leagues, **{source: key for key, lg in defs.leagues.items()
+                                       for source in lg.source_leagues}}
     for league, club in club_keys:
-        comp = profile.leagues.get(league)
+        comp = league_of.get(league)
         if comp in competition_id:
             membership_rows.append(
                 {"club_id": club_id[(league, club)], "season_id": 1,

@@ -1,0 +1,16 @@
+key: AND1
+name: "Primera Divisió"
+short_name: "Primera Divisió"
+nation: AND
+tier: 1
+clubs: 9
+sim_level: simulated
+calendar: AND-2026-27
+source_leagues: ["footsim:AND1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia and other sources: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 2026-27 format not confirmed. 2025-26 (9 clubs after Pas de la Casa was expelled): each club plays the others three times (24 matches), ranked by points, then head-to-head, goal difference, goals scored; season ran 11 Oct 2025 to 17 May 2026. English Wikipedia's league page also describes a split: a

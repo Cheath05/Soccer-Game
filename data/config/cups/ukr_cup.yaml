@@ -1,0 +1,15 @@
+# Ukrainian Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 16 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-match knockout throughout (69 teams in 2026-27). Qualification round: 18 regional-association teams, 9 winners advance. Round of 64: the 9 qualifiers plus 6 amateur (AAFU) teams, 15 Second League clubs, 14 First League clubs and 12 Premier League clubs. Round of 32: the 4 Premier League clubs
+key: UKR_CUP
+name: "Ukrainian Cup"
+short_name: "Ukrainian Cup"
+nation: UKR
+entrants:
+  - {league: UKR1, round: 1}
+rounds:
+  - {name: Round of 16, blocks: [UKR1]}
+  - {name: Quarter-final, blocks: [UKR1]}
+  - {name: Semi-final, blocks: [UKR1]}
+  - {name: Final, neutral: true}

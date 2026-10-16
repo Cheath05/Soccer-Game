@@ -1,0 +1,15 @@
+# Slovak Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 12 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout. The 2025-26 edition (57th) had 292 teams and nine stages: preliminary round (26-27 July 2025), first round, second round, third round, fourth round, round of 16, quarter-finals, semi-finals and final. Every round is a single match except the semi-finals, which are two-legged (18 March and 
+key: SVK_CUP
+name: "Slovak Cup"
+short_name: "Slovak Cup"
+nation: SVK
+entrants:
+  - {league: SVK1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [SVK1]}
+  - {name: Quarter-final, blocks: [SVK1]}
+  - {name: Semi-final, blocks: [SVK1]}
+  - {name: Final, neutral: true}

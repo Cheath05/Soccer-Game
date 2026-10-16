@@ -1,0 +1,15 @@
+# Belarusian Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 16 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Single-elimination, played on an autumn-spring schedule (the cup page says it still uses a fall/spring schedule). 2025-26: a first and second round among lower-league and amateur clubs (first round drawn by region); the 16 second-round winners and the 16 Premier League clubs enter at the round of 32
+key: BLR_CUP
+name: "Belarusian Cup"
+short_name: "Belarusian Cup"
+nation: BLR
+entrants:
+  - {league: BLR1, round: 1}
+rounds:
+  - {name: Round of 16, blocks: [BLR1]}
+  - {name: Quarter-final, blocks: [BLR1]}
+  - {name: Semi-final, blocks: [BLR1]}
+  - {name: Final, neutral: true}

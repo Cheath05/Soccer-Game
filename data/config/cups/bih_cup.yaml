@@ -1,0 +1,15 @@
+# Bosnia and Herzegovina Football Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Knockout, 32 teams in 2025-26 (30th edition; clubs from tiers I to IV appear in the first round; the page does not state when top-flight clubs enter). 2025-26 rounds: first round (single match, 28-29 Oct and 12 Nov 2025), second round (single match, Feb 2026), quarter-finals (two legs), semi-finals 
+key: BIH_CUP
+name: "Bosnia and Herzegovina Football Cup"
+short_name: "Bosnia and Herzegovina Football Cup"
+nation: BIH
+entrants:
+  - {league: BIH1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [BIH1]}
+  - {name: Quarter-final, blocks: [BIH1]}
+  - {name: Semi-final, blocks: [BIH1]}
+  - {name: Final, neutral: true}

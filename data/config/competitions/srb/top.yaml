@@ -1,0 +1,16 @@
+key: SRB1
+name: "Serbian SuperLiga"
+short_name: "SuperLiga"
+nation: SRB
+tier: 1
+clubs: 14
+sim_level: simulated
+calendar: SRB-2026-27
+source_leagues: ["footsim:SRB1"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 2 times (26 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 14 clubs in 2026-27 (down from 16; the league shrinks again to 12 clubs from 2027-28). Regular season: each club plays the others home and away (26 matches, per the results grid), starting 17 July 2026. The table then splits: places 1-6 qualify for the Championship round and places 7-14 for the Rele

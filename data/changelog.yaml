@@ -27,6 +27,16 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.67"
+  date: "2026-10-15"
+  title: "Every UEFA country has its league"
+  changes:
+    - "35 more leagues, each with its cup: Greece, Ukraine, Czechia, Croatia, Serbia, Hungary, Cyprus, Israel, and every smaller UEFA country down to San Marino and Gibraltar. 62 leagues in 54 countries."
+    - "Their clubs are real, in last season's order. Squads use the players who really played for them where known, filled out with made-up players, at the strength the country's UEFA coefficient and each club's real results give it."
+    - "European qualifying now starts from how 2025-26 really finished in every country (its table, and its cup winners where known): the first rounds have the full field, and every league phase has its 36 clubs."
+    - "European league phase draws now keep a country's clubs spread across the pots, so clubs from one country don't share a pot when their coefficients tie."
+    - "Start a new career to get the new leagues: careers already saved keep the world they began with."
+
 - version: "1.66"
   date: "2026-10-15"
   title: "UEFA's real qualifying, and places by the country ranking"

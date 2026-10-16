@@ -1,0 +1,16 @@
+key: BIH1
+name: "Premier League of Bosnia and Herzegovina"
+short_name: "Premier League"
+nation: BIH
+tier: 1
+clubs: 10
+sim_level: simulated
+calendar: BIH-2026-27
+source_leagues: ["footsim:BIH1"]
+format: {type: round_robin, legs: 4}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+# W7 (15 Oct 2026), from English Wikipedia: each club plays the
+# others 4 times (36 rounds), a plain round robin; nobody moves (no lower division in
+# the game).
+# Real format: 10 clubs (cut from 12 in 2025-26), one table, no split. The 2025-26 page says each club plays every other club four times, twice at home and twice away, 36 matches per club, with a winter break from mid-December to early February; the 2026-27 page (27th season, 7 Aug 2026 to 30 May 2027, winter brea

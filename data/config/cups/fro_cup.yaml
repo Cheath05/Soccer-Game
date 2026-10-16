@@ -1,0 +1,15 @@
+# Faroe Islands Cup (W7). Single matches with extra time and penalties, on Tuesdays the league keeps
+# free (its midweek rounds are Tuesdays); the final at a neutral ground after the league season. The game has only the top division's 10 clubs, who start
+# in the first round shown (the best-ranked exempt where the numbers need byes).
+# Real format: Faroese name Løgmanssteypið ('Prime Minister Cup'); open to teams from every division. The 2025 edition (71st; 7 April to 31 October 2025, 15 clubs) had a first round, quarter-finals, semi-finals and final. Nine Premier League clubs entered in the first round and EB/Streymur had a bye into the quart
+key: FRO_CUP
+name: "Faroe Islands Cup"
+short_name: "Faroe Islands Cup"
+nation: FRO
+entrants:
+  - {league: FRO1, round: 1}
+rounds:
+  - {name: First round, qualifiers: 8, blocks: [FRO1]}
+  - {name: Quarter-final, blocks: [FRO1]}
+  - {name: Semi-final, blocks: [FRO1]}
+  - {name: Final, neutral: true}

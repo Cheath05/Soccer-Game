@@ -16,6 +16,7 @@ import shutil
 import sqlite3
 import tempfile
 import time
+from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
@@ -193,18 +194,27 @@ def division_clubs(world: Path, division: str) -> list[int]:
 def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | None,
                focus_club: int | None = None,
                quality: tuple[float, float] = (62.0, 86.0),
-               ai_manager: bool = True, equal: bool = False) -> list[MatchTask]:
+               ai_manager: bool = True, equal: bool = False,
+               mirror: bool = False) -> list[MatchTask]:
     """``n`` fixtures, each played once per arm with the same seed. With ``clubs`` the teams
     are real; otherwise synthetic with qualities drawn from ``quality``, the same for both
     sides of a fixture when ``equal`` (section S judges tactics between equal teams).
+
+    ``mirror``: each pair drawn plays twice, home and away (fixtures 2j and 2j + 1), as every
+    pair does in a league season. Which side happens to be at home then can't tilt the home
+    and away figures (Step 2.1); a focus club's fixtures already alternate like this.
 
     In-match AI managers (``ai_manager``) run for every side, except that in an A/B run the
     focus side keeps the arm's instructions all match, as the user's side does."""
     rng = np.random.default_rng(seed)
     tasks = []
+    pair: tuple[int, int] = (0, 0)
+    qualities: tuple[float | None, float | None] = (None, None)
     for k in range(n):
         focus = k % 2
-        if clubs is not None:
+        if mirror and focus_club is None and k % 2 == 1:
+            pair, qualities = (pair[1], pair[0]), (qualities[1], qualities[0])
+        elif clubs is not None:
             if focus_club is not None:
                 others = [c for c in clubs if c != focus_club]
                 opponent = int(others[k // 2 % len(others)])
@@ -212,7 +222,7 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
             else:
                 picked = rng.choice(len(clubs), 2, replace=False)
                 pair = (int(clubs[picked[0]]), int(clubs[picked[1]]))
-            qualities: tuple[float | None, float | None] = (None, None)
+            qualities = (None, None)
         else:
             pair = (1000 + 2 * k, 1001 + 2 * k)
             low, high = quality
@@ -370,17 +380,23 @@ def paired_deltas(results: Sequence[dict[str, Any]], base_arm: str,
 
 
 def bootstrap_ci(matches: Sequence[dict[str, Any]], reps: int = BOOTSTRAP_REPS,
-                 seed: int = 0) -> dict[str, float]:
+                 seed: int = 0, mirrored: bool = False) -> dict[str, float]:
     """Half-width of the 95% interval of every aggregate metric, from resampling matches
-    (which handles pooled rates such as pass accuracy and conversion correctly)."""
-    n = len(matches)
+    (which handles pooled rates such as pass accuracy and conversion correctly). A mirrored
+    batch resamples its pairs whole: a pair's two legs aren't independent (the same two sides
+    meet twice), and the home edge is what's left between them."""
+    groups: dict[int, list[int]] = defaultdict(list)
+    for k, m in enumerate(matches):
+        groups[int(m["index"]) // 2 if mirrored else k].append(k)
+    units = list(groups.values())
+    n = len(units)
     if n < 2:
         return {}
     rng = np.random.default_rng(seed)
     samples: dict[str, list[float]] = {}
     for _ in range(reps):
         picked = rng.integers(0, n, n)
-        for key, value in aggregate([matches[i] for i in picked]).items():
+        for key, value in aggregate([matches[i] for u in picked for i in units[u]]).items():
             if not math.isnan(value):
                 samples.setdefault(key, []).append(value)
     return {key: float(np.percentile(v, 97.5) - np.percentile(v, 2.5)) / 2
@@ -390,7 +406,7 @@ def bootstrap_ci(matches: Sequence[dict[str, Any]], reps: int = BOOTSTRAP_REPS,
 
 def write_report(out: Path, label: str, division: str, synthetic: bool,
                  results: Sequence[dict[str, Any]], arms: Sequence[Arm],
-                 elapsed: float, teams: str | None = None) -> Path:
+                 elapsed: float, teams: str | None = None, mirrored: bool = False) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     targets = load_targets(division)
@@ -399,13 +415,14 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
              f"{len(results)} matches ({teams}) in {elapsed:.0f} s, {stamp} UTC.", ""]
     baseline = [r for r in results if r["arm"] == arms[0].name]
     agg = aggregate(baseline)
-    ci = bootstrap_ci(baseline)
+    ci = bootstrap_ci(baseline, mirrored=mirrored)
     sections = compare(agg, targets, ci)
     rel = reliability(baseline)
     ratings = by_rating(baseline)
     lines += ["## Baseline vs real football", "",
               f"±: half-width of the 95% interval ({BOOTSTRAP_REPS} bootstrap resamples of the "
-              "matches). Kinds of target are explained in match_targets.yaml.", "",
+              + ("pairs, each played home and away" if mirrored else "matches")
+              + "). Kinds of target are explained in match_targets.yaml.", "",
               "### Rates", "",
               "| Metric | Engine | ±95% | Target | | Reference |", "|---|---|---|---|---|---|"]
     lines += [f"| {' | '.join(row)} |" for row in sections["rate"]]
@@ -459,6 +476,7 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
     path.write_text("\n".join(lines) + "\n", "utf-8")
     (out / f"{stamp}-{label}.json").write_text(json.dumps(
         {"label": label, "division": division, "synthetic": synthetic, "teams": teams,
+         "mirrored": mirrored,
          "aggregate": agg,
          "ci95": ci,
          "reliability": rel,
@@ -483,12 +501,15 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
 def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path | None,
               synthetic: bool, workers: int | None = None, focus_club: int | None = None,
               out: Path | None = None, ai_manager: bool = True,
-              quality: tuple[float, float] = (62.0, 86.0), equal: bool = False) -> Path:
+              quality: tuple[float, float] = (62.0, 86.0), equal: bool = False,
+              mirror: bool = False) -> Path:
     if len({arm.name for arm in arms}) < len(arms):
         raise ValueError("A/B arm names must be unique")
     workers = workers or max(1, (os.cpu_count() or 2) - 1)
     clubs = None if synthetic or world is None else division_clubs(world, division)
-    tasks = make_tasks(n, seed, arms, clubs, focus_club, quality, ai_manager, equal)
+    if mirror and n % 2:
+        raise ValueError("a mirrored batch plays each pair twice: --n must be even")
+    tasks = make_tasks(n, seed, arms, clubs, focus_club, quality, ai_manager, equal, mirror)
     started = time.perf_counter()
     results = run_tasks(tasks, None if synthetic else world, workers)
     elapsed = time.perf_counter() - started
@@ -503,5 +524,9 @@ def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path
         label += "-ab"
     if not ai_manager:
         label += "-nomanager"
+    mirrored = mirror and focus_club is None
+    if mirrored:
+        label += "-mirror"
+        teams = (teams or division) + ", each pair played home and away"
     return write_report(out or REPO_ROOT / "reports" / "engine", label, division, synthetic,
-                        results, arms, elapsed, teams)
+                        results, arms, elapsed, teams, mirrored)

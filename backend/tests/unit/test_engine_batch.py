@@ -78,6 +78,36 @@ def test_bootstrap_intervals_cover_every_metric(world: World) -> None:
     assert bootstrap_ci(summaries[:1]) == {}
 
 
+def test_a_mirrored_batch_plays_each_pair_both_ways() -> None:
+    clubs = list(range(100, 120))
+    mirrored = make_tasks(40, 3, [BASELINE], clubs, mirror=True)
+    plain = make_tasks(40, 3, [BASELINE], clubs)
+    for j in range(20):
+        first, second = mirrored[2 * j], mirrored[2 * j + 1]
+        assert (second.home, second.away) == (first.away, first.home)
+        assert first.home != first.away
+    # the pairs are the plain batch's first draws, so --mirror only adds the return legs
+    assert [(t.home, t.away) for t in mirrored[::2]] == [(t.home, t.away) for t in plain[:20]]
+    synthetic = make_tasks(10, 3, [BASELINE], None, quality=(60.0, 80.0), mirror=True)
+    for first, second in zip(synthetic[::2], synthetic[1::2], strict=True):
+        assert (second.home, second.away) == (first.away, first.home)
+        assert (second.home_quality, second.away_quality) == (first.away_quality,
+                                                              first.home_quality)
+
+
+def test_a_mirrored_batch_resamples_whole_pairs(world: World) -> None:
+    home = synthetic_sheet(world.defs, world.picker, 1, 74)
+    away = synthetic_sheet(world.defs, world.picker, 2, 71)
+    engine = MatchEngine(world.defs, home, away, derive_rng(1, "ci"), record=False)
+    engine.run(max_ticks=600)
+    summary = summarize(engine)
+    # Each pair's legs cancel: one side wins 1-0 at home, then 1-0 away (no home edge at all).
+    matches = [{**summary, "index": k, "score": [1, 0] if k % 2 == 0 else [0, 1]}
+               for k in range(8)]
+    assert bootstrap_ci(matches, reps=50, mirrored=True)["home_goal_diff"] == 0.0
+    assert bootstrap_ci(matches, reps=50)["home_goal_diff"] > 0.0
+
+
 def test_equal_synthetic_sides_share_a_quality() -> None:
     arms = [BASELINE, Arm("press", {"pressing": "high"})]
     equal = make_tasks(20, 5, arms, None, quality=(58.0, 66.0), equal=True)

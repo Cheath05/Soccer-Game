@@ -233,7 +233,8 @@ def _calibrate_engine(args: argparse.Namespace) -> int:
         path = calibrate(args.division, args.n, args.seed, arms, current, args.synthetic,
                          args.workers, args.focus_club, args.out,
                          ai_manager=args.ai_manager == "on",
-                         quality=(float(low), float(high or low)), equal=args.equal)
+                         quality=(float(low), float(high or low)), equal=args.equal,
+                         mirror=args.mirror)
     print(path.read_text(encoding="utf-8"))
     print(f"Report written to {path}")
     return 0
@@ -334,6 +335,8 @@ def main(argv: list[str] | None = None) -> int:
     eng.add_argument("--focus-club", type=int, default=None,
                      help="club that A/B arms apply to (default: random clubs)")
     eng.add_argument("--out", type=Path, default=None)
+    eng.add_argument("--mirror", action="store_true",
+                     help="each pair drawn plays twice, home and away, as in a league season")
     eng.add_argument("--ai-manager", choices=("on", "off"), default="on",
                      help="in-match AI managers (never for the focus side of an A/B run)")
     eng.set_defaults(func=_calibrate_engine)

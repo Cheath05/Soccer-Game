@@ -25,11 +25,15 @@
 ENG1:
   _exposure:          {ball_in_play_min: 56.7, ref: "opta 58:11 / 56:59 / 55:00 (23/24-25/26), mean"}
   goals:              {range: [2.65, 3.05], kind: volume, ref: "fd E0 3.28 / 2.93 / 2.75"}
-  home_win:           {range: [0.41, 0.47], ref: "fd E0 46.1% / 40.8% / 42.6%"}
-  draw:               {range: [0.22, 0.29], ref: "fd E0 21.6% / 24.5% / 27.4%"}
-  away_win:           {range: [0.28, 0.35], ref: "fd E0 32.4% / 34.7% / 30.0%"}
-  home_goal_diff:     {range: [0.20, 0.45], ref: "approx: about +0.3 a match in the recent PL"}
-  away_card_gap:      {range: [0.10, 0.40], ref: "approx: away sides get about 0.2-0.3 more yellows"}
+  home_win:           {range: [0.41, 0.47], ref: "fd E0 46.1% / 40.8% / 42.6%; pooled 43.2%"}
+  draw:               {range: [0.22, 0.29], ref: "fd E0 21.6% / 24.5% / 27.4%; pooled 24.5%"}
+  away_win:           {range: [0.28, 0.35], ref: "fd E0 32.4% / 34.7% / 30.0%; pooled 32.4%"}
+  # Home advantage's traces (Step 2.1): fd E0 23/24-25/26 pooled (1,140 matches, ± its 95% CI).
+  home_goal_diff:     {range: [0.15, 0.40], ref: "fd E0 +0.32 / +0.09 / +0.30; pooled +0.24 ±0.11"}
+  away_card_gap:      {range: [0.20, 0.45], ref: "fd E0 +0.35 / +0.24 / +0.42 yellows; pooled +0.34 ±0.10"}
+  away_foul_gap:      {range: [0.20, 0.90], ref: "fd E0 +0.60 / +0.49 / +0.34 fouls; pooled +0.48 ±0.28"}
+  home_shot_gap:      {range: [1.5, 3.5], ref: "fd E0 pooled +2.50 ±0.53 shots"}
+  home_sot_gap:       {range: [0.40, 1.10], ref: "fd E0 pooled +0.74 ±0.22 shots on target"}
   nil_nil:            {range: [0.04, 0.09], ref: "fd E0 2.9% / 4.2% / 7.1%"}
   six_plus_goals:     {range: [0.03, 0.07], ref: "fd E0 9.5% / 6.3% / 4.2%"}
   margin_4_plus:      {range: [0.02, 0.06], ref: "fd E0 8.7% / 6.3% / 2.1%"}
@@ -69,11 +73,15 @@ ENG1:
 EFL:  # Championship, League One, League Two
   _exposure:          {ball_in_play_min: 54.0, ref: "approx: between the PL (56.7) and League Two (about 6 min less, The Analyst)"}
   goals:              {range: [2.45, 2.85], kind: volume, ref: "fd E1-E3: 2.45-2.98 by season"}
-  home_win:           {range: [0.41, 0.47], ref: "fd E1-E3 41.7-46.0%"}
-  draw:               {range: [0.23, 0.29], ref: "fd E1-E3 23.4-28.6%"}
-  away_win:           {range: [0.26, 0.34], ref: "fd E1-E3 25.9-33.2%"}
-  home_goal_diff:     {range: [0.15, 0.45], ref: "approx: about +0.3 a match in the EFL"}
-  away_card_gap:      {range: [0.10, 0.40], ref: "approx: away sides get about 0.2-0.3 more yellows"}
+  home_win:           {range: [0.41, 0.47], ref: "fd E1-E3 41.7-46.0%; pooled E1 44.0%, E2 43.8%, E3 43.0%"}
+  draw:               {range: [0.23, 0.29], ref: "fd E1-E3 23.4-28.6%; pooled E1 26.0%, E2 24.5%, E3 25.7%"}
+  away_win:           {range: [0.26, 0.34], ref: "fd E1-E3 25.9-33.2%; pooled E1 30.0%, E2 31.6%, E3 31.3%"}
+  # Home advantage's traces (Step 2.1): fd E1-E3 23/24-25/26 pooled (1,656 matches a division).
+  home_goal_diff:     {range: [0.15, 0.40], ref: "fd pooled E1 +0.30 ±0.08, E2 +0.26 ±0.08, E3 +0.23 ±0.08"}
+  away_card_gap:      {range: [0.15, 0.45], ref: "fd pooled E1 +0.35, E2 +0.25, E3 +0.29 yellows (±0.08)"}
+  away_foul_gap:      {range: [0.30, 1.20], ref: "fd pooled E1 +0.69, E2 +0.63, E3 +0.86 fouls (±0.24)"}
+  home_shot_gap:      {range: [1.4, 3.4], ref: "fd pooled E1 +2.89, E2 +2.08, E3 +1.98 shots (±0.37)"}
+  home_sot_gap:       {range: [0.40, 1.10], ref: "fd pooled E1 +0.86, E2 +0.75, E3 +0.69 shots on target (±0.16)"}
   nil_nil:            {range: [0.05, 0.09], ref: "fd E1-E3 4.9-8.7%"}
   six_plus_goals:     {range: [0.025, 0.06], ref: "fd E1-E3 3.1-4.7% (9.1% outlier)"}
   margin_4_plus:      {range: [0.025, 0.06], ref: "fd E1-E3 3.3-5.4%"}

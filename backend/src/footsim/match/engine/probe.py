@@ -516,6 +516,14 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
         "home_goal_diff": _mean(float(m["score"][0] - m["score"][1]) for m in matches),
         "away_card_gap": _mean(float(m["teams"][1]["yellows"] - m["teams"][0]["yellows"])
                                for m in matches),
+        # Home advantage's other traces (Step 2.1): the away side's extra fouls, and the home
+        # side's extra shots and shots on target.
+        "away_foul_gap": _mean(float(m["teams"][1]["fouls"] - m["teams"][0]["fouls"])
+                               for m in matches),
+        "home_shot_gap": _mean(float(m["teams"][0]["shots"] - m["teams"][1]["shots"])
+                               for m in matches),
+        "home_sot_gap": _mean(float(m["teams"][0]["shots_on_target"]
+                                    - m["teams"][1]["shots_on_target"]) for m in matches),
         "nil_nil": _mean(float(g == 0) for g in goals),
         "six_plus_goals": _mean(float(g >= 6) for g in goals),
         "margin_4_plus": _mean(float(mg >= 4) for mg in margins),

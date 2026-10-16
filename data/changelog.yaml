@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.71"
+  date: "2026-10-16"
+  title: "Clearer waiting substitutions"
+  changes:
+    - "A substitution chosen while paused with the ball in play now says it is made at the first stoppage after play resumes (the fourth official waits for a dead ball), instead of claiming it happens as soon as play resumes. Paused at a break or a restart, it is still made as play resumes."
+
 - version: "1.70"
   date: "2026-10-16"
   title: "Later seasons simulate faster"

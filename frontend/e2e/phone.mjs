@@ -71,17 +71,22 @@ await shot('p08-live')
 await fits('live match')
 await page.getByRole('button', { name: 'Pause' }).tap()
 
-// A substitution by tapping while paused: it waits, with Undo, until play resumes.
+// A substitution by tapping while paused: it waits, with Undo, until play resumes and, paused in
+// open play, until the first stoppage after (the fourth official waits for a dead ball).
 await page.getByRole('tab', { name: 'Subs' }).tap()
 await page.waitForTimeout(500)
-// An outfield substitute for an outfield player (the bench's first is the reserve keeper).
-await page.locator('[title*="condition"]').nth(1).tap()
-await page.locator('[title*="match rating"]').first().tap()
+// An outfield substitute (the bench's reserve keeper can be anywhere in it) for an outfield player
+// (the keeper is the first of the eleven).
+await page.locator('[title*="condition"]').filter({ hasNotText: '· GK' }).first().tap()
+await page.locator('[title*="match rating"]').nth(1).tap()
 await page.getByRole('button', { name: 'Undo' }).waitFor({ timeout: 5000 })
 await shot('p09-live-sub-staged')
 await page.getByRole('button', { name: 'Play' }).tap()
-await page.waitForTimeout(3000)
-if (await page.getByRole('button', { name: 'Undo' }).count()) errors.push('the substitution was still waiting after play resumed')
+try {
+  await page.getByRole('button', { name: 'Undo' }).waitFor({ state: 'detached', timeout: 60000 })
+} catch {
+  errors.push('the substitution was still waiting a minute after play resumed')
+}
 await shot('p10-live-sub-made')
 
 await page.getByRole('button', { name: 'Instant result' }).tap()

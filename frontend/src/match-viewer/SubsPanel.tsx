@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { POSITION_ORDER, matchRatingColor } from '../lib/format'
 import { currentRoleKey } from './protocol'
 import type { BenchStatus } from './protocol'
-import { CardIcon, PendingSubs, RoleSelect } from './SubsParts'
+import { CardIcon, PendingSubs, RoleSelect, whenMade } from './SubsParts'
 import SubsPitch from './SubsPitch'
 import type { LiveMatch } from './useLiveMatch'
 
@@ -49,7 +49,6 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
   const left = live.subsLeft[team]
   const nameOf = (id: number) =>
     players.find((p) => p.player_id === id)?.short_name ?? bench.find((b) => b.player_id === id)?.short_name ?? '?'
-  const dead = live.paused || live.atBreak || live.restart !== null
   return (
     <Stack gap="xs">
       <Group justify="space-between">
@@ -198,7 +197,7 @@ export default function SubsPanel({ match, onInspect }: { match: LiveMatch; onIn
         }}
       >
         {leaving && coming
-          ? `${coming.short_name} on for ${leaving.short_name}${dead ? ', made when play resumes' : ', at the next stoppage'}`
+          ? `${coming.short_name} on for ${leaving.short_name}, ${whenMade(live, false)}`
           : 'Pick a player off and one on'}
       </Button>
       </>)}

@@ -58,6 +58,14 @@ export function RoleSelect({
   )
 }
 
+/** When a substitution chosen now is made. The fourth official waits for a dead ball: a change
+ * chosen while paused in open play is handed over when play resumes, then waits for a stoppage. */
+export function whenMade(live: { paused: boolean; atBreak: boolean; restart: unknown }, staged: boolean): string {
+  const deadBall = live.atBreak || live.restart !== null
+  if (staged || live.paused) return deadBall ? 'made when play resumes' : 'made at the first stoppage after play resumes'
+  return deadBall ? 'made now' : 'made at the next stoppage'
+}
+
 /** Substitutions waiting (staged while paused, or for the next stoppage): the newcomer's role, and Undo. */
 export function PendingSubs({ match, nameOf }: { match: LiveMatch; nameOf: (id: number) => string }) {
   const { live, send } = match
@@ -70,7 +78,7 @@ export function PendingSubs({ match, nameOf }: { match: LiveMatch; nameOf: (id: 
         <Box key={`${w.out}-${w.in}`} p={6} style={{ border: '1px solid var(--mantine-color-orange-6)', borderRadius: 6 }}>
           <Group justify="space-between" wrap="nowrap" gap="xs">
             <Text size="xs" c="orange" fw={600}>
-              Waiting: {nameOf(w.out)} ⇄ {nameOf(w.in)}, {w.staged ? 'made when play resumes' : 'made at the next stoppage'}
+              Waiting: {nameOf(w.out)} ⇄ {nameOf(w.in)}, {w.staged ? whenMade(live, true) : 'made at the next stoppage'}
             </Text>
             <Button size="compact-xs" variant="default" style={{ flexShrink: 0 }} onClick={() => send({ type: 'cancel_sub', out: w.out })}>
               Undo

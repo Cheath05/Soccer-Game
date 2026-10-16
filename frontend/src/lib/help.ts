@@ -125,7 +125,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       [
         'Subs tab: you can make up to five substitutions. Assistant makes subs is on to begin with and makes changes from about the hour mark; untick it to do them all yourself.',
         'On the pitch view, drag a substitute onto the player he replaces (on a phone, tap one and then the other). Drag one player onto another to swap their positions. The List view does the same with rows and a button.',
-        'A change that is waiting to be made (until the next stoppage while the match runs, or until play resumes if you are paused or at a break) shows at the top of the Subs tab with an Undo button and a choice of role for the newcomer. Changes made together count as one stoppage.',
+        'A change that is waiting to be made shows at the top of the Subs tab with an Undo button and a choice of role for the newcomer. Changes made together count as one stoppage. When it is made: the fourth official waits for a dead ball, so a change chosen while the match runs is made at the next stoppage; one chosen while paused at a break or a restart is made as play resumes; and one chosen while paused with the ball in play is made at the first stoppage after play resumes.',
         'After a red card, move a player into the empty position (drag him onto it, or pick him and then the position) so the team can reshape. Cards show beside the players.',
         'Half-time shows the stats, who is most tired and who is rated best. Make changes in the Tactics and Subs tabs, then start the second half. Cup ties can go to extra time and penalties.',
         'At full time, Match report shows the stats, the events and every player’s rating.',

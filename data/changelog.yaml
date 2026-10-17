@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.75"
+  date: "2026-10-16"
+  title: "Home advantage as in real football"
+  changes:
+    - "Playing at home now counts as much as it does in real football: about a quarter of a goal a match. Home sides win about 40% of matches and away sides about 30%, where before home and away were almost even."
+    - "It comes from the crowd and the referee, not from better players: away players choose and pass worse when they're under pressure, and referees show away sides about a third of a yellow card more a match. A neutral ground has none of it."
+    - "Matches you don't watch (simulated in the background) have the same home advantage, a little smaller than before, matching real league results."
+
 - version: "1.71"
   date: "2026-10-16"
   title: "Clearer waiting substitutions"

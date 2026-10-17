@@ -3,16 +3,39 @@
 #
 # Referee: studies of the 2020-21 matches played behind closed doors found that crowds mainly
 # sway referees' decisions, cards above all, against the away side (Reade, Singleton et al.;
-# Economics Letters' "ghost matches" study). Crowd: away players decide and execute a little
-# worse when they're under pressure.
+# Economics Letters' "ghost matches" study). Crowd: away players decide and execute worse when
+# they're under pressure. Behind closed doors home advantage shrank but didn't vanish (McCarrick
+# et al. 2021, 15 leagues): familiarity and travel play a part too. The engine models neither,
+# so the crowd values carry the whole of it.
 #
 # Each number is a relative gap between the sides, split evenly: the away side's rate rises by
 # half of it and the home side's falls by half, so match totals (fouls, cards, pass accuracy)
-# keep their calibration. Fitted to the home/draw/away split and the home goal difference in
-# calibration/match_targets.yaml.
+# keep their calibration.
+#
+# Fitted in Step 2.1 (docs/calibration/20261016-step2.1-home-advantage.md): mirrored batches
+# (each pair home and away), ENG1 and ENG4 on seeds 31-33, each value to its own trace in real
+# football (calibration/match_targets.yaml, football-data E0-E3 2023/24-2025/26):
+# - the crowd to the home goal and xG difference (real +0.23 to +0.30 a match), with the home
+#   side's share of the shots as a check. 0.3 gave +0.10 and 1.0 gave +0.35 xG on the same
+#   fixtures; 0.85 gives +0.19 to +0.29 xG and +0.17 to +0.38 goals by batch (about +0.24 and
+#   +0.28 over all six), and the home side's share of the shots and of the shots on target at or
+#   near real football's;
+# - the referee's card value to the away side's extra yellows (real 6.7-9.3% of the yellows;
+#   0.08 gives 7-8%);
+# - his foul value small: 0.05 on its own would be a 5% gap in fouls, more than the whole real
+#   gap (2.2% of fouls in the PL, 3.8% in League Two), and most of the engine's comes from
+#   behaviour (the away side defends more). The batches can't tell 0.05 from 0.02 apart.
+#
+# A conflict, recorded rather than hidden: with the crowd carrying all of home advantage, its
+# effect is concentrated where a player is under pressure. With a man right on him an away
+# player's pass error and decision noise are 1.43 times neutral and a home player's 0.58 times,
+# so the away side's extra fouls (5.3-5.7% of them) run 1.5-2.4 times real football's, and its
+# shortfall in pass completion (1.0-1.6 points) is large next to the engine's low pass error. A
+# second mechanism for home advantage's non-crowd part (familiarity, territory) would let these
+# values come down: a follow-up in progress.md.
 referee:
-  foul: 0.05       # challenges by the away side are called fouls this much more often
-  card: 0.15       # the away side's fouls draw a card this much more often
+  foul: 0.02       # challenges by the away side are called fouls this much more often
+  card: 0.08       # the away side's fouls draw a card this much more often
 crowd:             # both scale with pressure: nothing unchallenged, all of it with a man on him
-  decisions: 0.3   # extra decision noise for the away side's player on the ball
-  execution: 0.3   # extra error in the away side's passes
+  decisions: 0.85  # extra decision noise for the away side's player on the ball
+  execution: 0.85  # extra error in the away side's passes

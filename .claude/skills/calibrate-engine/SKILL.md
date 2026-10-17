@@ -60,6 +60,7 @@ uv run --frozen footsim calibrate-engine --division ENG4 --n 200 --seed 11 --wor
   --ab "high_line:line=high" --ab "wide:width=wide" --ab "attacking:mentality=attacking"
 ```
 
+- `--mirror` plays each pair drawn twice, home and away (n must be even). Use it for anything about home advantage; a plain run of the same seed is unchanged by it.
 - `--ab NAME:KEY=VALUE,...` sets instructions for the focus side. A `formation=4-4-2` key changes the formation for a formation A/B.
 - The first arm is always the unchanged baseline.
 - Instruction keys and levels are in `data/config/match/instructions/`, and what each level does is in `data/config/match/tactics.yaml`.
@@ -98,7 +99,7 @@ All values are per match with both teams combined, unless the name says `per_tea
 | `corner_attackers_in_box` | attackers in the box when a corner is taken | real 4–5 |
 | `wait_*` | seconds from the ball going dead to the restart | from Opta |
 
-The home, draw and away shares show no home advantage. The agent engine had none until Step 2.1 of the recovery plan.
+**Home advantage (Step 2.1).** Read the home, draw and away shares, `home_goal_diff` and the other home traces (`away_card_gap`, `away_foul_gap`, `home_shot_gap`, `home_sot_gap`) from a `--mirror` batch only: with random pairs, which side happens to be at home moves them by more than the targets' width. Each mirrored pair plays both ways, as a season does, and the report's intervals resample whole pairs. Goal difference is noisy (±0.16 at 400 matches); the home xG difference is about half as noisy, and goals follow it.
 
 ## How a report is organised (since Step 2.3a)
 

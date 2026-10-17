@@ -59,7 +59,9 @@ duel at the real success rate with carriers daring as often as real ones, interc
 the real count, and defenders clearing first time under pressure in their danger zone
 (Phase D6, Mac only); counters: after an open-play regain in their own half with at least
 two opponents caught upfield, sides play balls in behind and value forward passes more
-(Phase E, Mac only).
+(Phase E, Mac only); home advantage fitted to real football's home edge, the crowd's
+decision noise and pass error under pressure at 0.85 and the referee's card and foul bias at
+0.08 and 0.02 (Step 2.1, Mac only).
 """
 
 import json

@@ -5,7 +5,7 @@
 # Targets (recent Premier League seasons): ~2.8 goals per match, home wins ~44%, draws ~24%.
 
 base_goals: 1.30
-home_advantage: 1.15
+home_advantage: 1.10  # Step 2.1: a goal edge of about +0.27 at even strength, as in real football (+0.23 to +0.30)
 attack_beta: 0.060
 midfield_beta: 0.025
 second_half_share: 0.55

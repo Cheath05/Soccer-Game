@@ -130,6 +130,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         'Half-time shows the stats, who is most tired and who is rated best. Make changes in the Tactics and Subs tabs, then start the second half. Cup ties can go to extra time and penalties.',
         'At full time, Match report shows the stats, the events and every player’s rating.',
       ],
+      'Home advantage: playing at home is worth about a quarter of a goal a match, as in real football. The crowd unsettles the away side’s players when they are under pressure, so they choose and pass worse, and referees show away sides about a third of a yellow card more a match. Home sides win about 40% of matches, away sides about 30%. A neutral ground (a cup final) has none of it.',
     ],
   },
   {

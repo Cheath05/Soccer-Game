@@ -484,6 +484,18 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
     def per_team(key: str) -> float:
         return _mean(float(m["teams"][t][key]) for m in matches for t in (0, 1))
 
+    def home_share(key: str) -> float:
+        """The home side's surplus of ``key`` as a share of the match totals (home advantage's
+        traces judged as home_advantage.yaml defines its values: relative to the totals)."""
+        home = sum(float(m["teams"][0][key]) for m in matches)
+        away = sum(float(m["teams"][1][key]) for m in matches)
+        return (home - away) / (home + away) if home + away else math.nan
+
+    def accuracy(t: int) -> float:
+        tried = sum(m["teams"][t]["passes"] for m in matches)
+        made = sum(m["teams"][t]["passes_completed"] for m in matches)
+        return made / tried if tried else math.nan
+
     goals = [sum(m["score"]) for m in matches]
     margins = [abs(m["score"][0] - m["score"][1]) for m in matches]
     shots = [s for m in matches for s in m["shots"]]
@@ -524,6 +536,13 @@ def aggregate(matches: Sequence[dict[str, Any]]) -> dict[str, float]:
                                for m in matches),
         "home_sot_gap": _mean(float(m["teams"][0]["shots_on_target"]
                                     - m["teams"][1]["shots_on_target"]) for m in matches),
+        "home_xg_diff": _mean(float(m["teams"][0]["xg"] - m["teams"][1]["xg"]) for m in matches),
+        "away_foul_share_gap": -home_share("fouls"),
+        "away_card_share_gap": -home_share("yellows"),
+        "home_shot_share_gap": home_share("shots"),
+        "home_sot_share_gap": home_share("shots_on_target"),
+        # What a viewer sees of the crowd's pressure on passing: home completion minus away.
+        "home_pass_acc_gap": accuracy(0) - accuracy(1),
         "nil_nil": _mean(float(g == 0) for g in goals),
         "six_plus_goals": _mean(float(g >= 6) for g in goals),
         "margin_4_plus": _mean(float(mg >= 4) for mg in margins),

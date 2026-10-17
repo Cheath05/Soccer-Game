@@ -16,11 +16,12 @@ from footsim.calibration.engine_batch import (
     compare,
     load_targets,
     make_tasks,
+    measured,
     paired_deltas,
 )
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
-from footsim.match.engine.probe import summarize
+from footsim.match.engine.probe import aggregate, summarize
 from footsim.match.synthetic import synthetic_sheet
 from footsim.world.context import World, get_world
 
@@ -106,6 +107,41 @@ def test_a_mirrored_batch_resamples_whole_pairs(world: World) -> None:
                for k in range(8)]
     assert bootstrap_ci(matches, reps=50, mirrored=True)["home_goal_diff"] == 0.0
     assert bootstrap_ci(matches, reps=50)["home_goal_diff"] > 0.0
+
+
+def test_home_advantage_traces_are_read_against_the_totals(world: World) -> None:
+    home = synthetic_sheet(world.defs, world.picker, 1, 74)
+    away = synthetic_sheet(world.defs, world.picker, 2, 71)
+    engine = MatchEngine(world.defs, home, away, derive_rng(2, "traces"), record=False)
+    engine.run(max_ticks=600)
+    summary = summarize(engine)
+    teams = [{**summary["teams"][0], "fouls": 10, "yellows": 1, "shots": 12, "xg": 1.5,
+              "passes": 100, "passes_completed": 90},
+             {**summary["teams"][1], "fouls": 12, "yellows": 3, "shots": 8, "xg": 1.0,
+              "passes": 100, "passes_completed": 80}]
+    agg = aggregate([{**summary, "teams": teams}] * 3)
+    assert agg["away_foul_share_gap"] == pytest.approx(2 / 22)
+    assert agg["away_card_share_gap"] == pytest.approx(2 / 4)
+    assert agg["home_shot_share_gap"] == pytest.approx(4 / 20)
+    assert agg["home_xg_diff"] == pytest.approx(0.5)
+    assert agg["home_pass_acc_gap"] == pytest.approx(0.1)
+
+
+def test_mirrored_ab_differences_count_each_pair_once() -> None:
+    # Arm B gains one goal's worth of xG in a pair's first leg and loses it in the second: per
+    # pair nothing changes, so a mirrored run sees no difference and no spread.
+    results = [_result(k, "base", (0, 0), 1.0) for k in range(4)]
+    results += [_result(k, "b", (0, 0), 2.0 if k % 2 == 0 else 0.0) for k in range(4)]
+    mean, half = paired_deltas(results, "base", "b", mirrored=True)["xg_for"]
+    assert mean == pytest.approx(0.0) and half == pytest.approx(0.0)
+    mean, half = paired_deltas(results, "base", "b")["xg_for"]
+    assert mean == pytest.approx(0.0) and half > 0.0
+
+
+def test_a_report_records_what_it_measured() -> None:
+    first = measured()
+    assert first["commit"] and len(first["config"]) == 10
+    assert measured() == first  # the same config gives the same fingerprint
 
 
 def test_equal_synthetic_sides_share_a_quality() -> None:

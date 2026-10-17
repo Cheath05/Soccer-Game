@@ -9,6 +9,7 @@ different formation) for one side, the "focus" team, so the differences between 
 from the tactic rather than from luck.
 """
 
+import hashlib
 import json
 import math
 import os
@@ -30,6 +31,7 @@ import numpy as np
 import yaml
 from sqlalchemy import Engine, create_engine, text
 
+from footsim.core.build_info import build_info
 from footsim.core.paths import REPO_ROOT, config_dir
 from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
@@ -359,21 +361,23 @@ def _nanmean(values: Sequence[float]) -> float:
 
 
 def paired_deltas(results: Sequence[dict[str, Any]], base_arm: str,
-                  arm: str) -> dict[str, tuple[float, float]]:
+                  arm: str, mirrored: bool = False) -> dict[str, tuple[float, float]]:
     """Mean difference (arm minus baseline) in each focus-side metric over the fixtures both
     arms played, with the half-width of its 95% confidence interval. The arms replay the same
-    fixtures and seeds, so pairing removes most of the match-to-match noise."""
+    fixtures and seeds, so pairing removes most of the match-to-match noise. In a mirrored
+    batch a pair's two legs count as one unit (the same sides meet twice)."""
     base = {r["index"]: r for r in results if r["arm"] == base_arm}
     other = {r["index"]: r for r in results if r["arm"] == arm}
-    diffs: dict[str, list[float]] = {}
+    diffs: dict[str, dict[int, list[float]]] = {}
     for index in sorted(base.keys() & other.keys()):
         before, after = focus_values(base[index]), focus_values(other[index])
         for key, value in after.items():
             if not (math.isnan(value) or math.isnan(before[key])):
-                diffs.setdefault(key, []).append(value - before[key])
+                unit = index // 2 if mirrored else index
+                diffs.setdefault(key, {}).setdefault(unit, []).append(value - before[key])
     out: dict[str, tuple[float, float]] = {}
-    for key, values in diffs.items():
-        d = np.asarray(values)
+    for key, units in diffs.items():
+        d = np.asarray([float(np.mean(v)) for v in units.values()])
         half = 1.96 * float(d.std(ddof=1)) / math.sqrt(len(d)) if len(d) > 1 else float("nan")
         out[key] = (float(d.mean()), half)
     return out
@@ -404,6 +408,19 @@ def bootstrap_ci(matches: Sequence[dict[str, Any]], reps: int = BOOTSTRAP_REPS,
             if key not in ("matches", "goals_sd") and len(v) >= reps // 2}
 
 
+def measured() -> dict[str, Any]:
+    """What a report measured: the commit (and whether tracked files had changed since it), and
+    the config directory with a fingerprint of its YAML, so a sweep's config copy is on record."""
+    info = build_info()
+    root = config_dir()
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*.yaml")):
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(path.read_bytes())
+    return {"commit": info["commit"], "dirty": info["dirty"], "config_dir": str(root),
+            "config": digest.hexdigest()[:10]}
+
+
 def write_report(out: Path, label: str, division: str, synthetic: bool,
                  results: Sequence[dict[str, Any]], arms: Sequence[Arm],
                  elapsed: float, teams: str | None = None, mirrored: bool = False) -> Path:
@@ -411,8 +428,12 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     targets = load_targets(division)
     teams = teams or ("synthetic teams" if synthetic else division)
+    provenance = measured()
+    changed = " (with uncommitted changes)" if provenance["dirty"] else ""
     lines = [f"# Engine calibration: {label}", "",
-             f"{len(results)} matches ({teams}) in {elapsed:.0f} s, {stamp} UTC.", ""]
+             f"{len(results)} matches ({teams}) in {elapsed:.0f} s, {stamp} UTC.", "",
+             f"Code {provenance['commit']}{changed}; config {provenance['config']} "
+             f"({provenance['config_dir']}).", ""]
     baseline = [r for r in results if r["arm"] == arms[0].name]
     agg = aggregate(baseline)
     ci = bootstrap_ci(baseline, mirrored=mirrored)
@@ -457,7 +478,8 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
         base_name = arms[0].name
         views = {arm.name: focus_view([r for r in results if r["arm"] == arm.name])
                  for arm in arms}
-        deltas = {arm.name: paired_deltas(results, base_name, arm.name) for arm in arms[1:]}
+        deltas = {arm.name: paired_deltas(results, base_name, arm.name, mirrored)
+                  for arm in arms[1:]}
         keys = list(views[base_name])
         lines += ["", "## A/B arms (focus side)", "",
                   f"Each arm replays the same fixtures and seeds as {base_name}. Cells show the "
@@ -476,7 +498,7 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
     path.write_text("\n".join(lines) + "\n", "utf-8")
     (out / f"{stamp}-{label}.json").write_text(json.dumps(
         {"label": label, "division": division, "synthetic": synthetic, "teams": teams,
-         "mirrored": mirrored,
+         "mirrored": mirrored, "measured": provenance,
          "aggregate": agg,
          "ci95": ci,
          "reliability": rel,

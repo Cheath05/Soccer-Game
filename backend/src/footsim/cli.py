@@ -138,6 +138,14 @@ def _europe_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _responses(args: argparse.Namespace) -> int:
+    from footsim.calibration.responses import lines
+
+    for report in args.reports:
+        print("\n".join(lines(report)))
+    return 0
+
+
 def _cross_engine(args: argparse.Namespace) -> int:
     from footsim.calibration.cross_engine import compare_engines
     from footsim.world.context import get_world
@@ -235,12 +243,16 @@ def _calibrate_engine(args: argparse.Namespace) -> int:
         print(f"No world at {world}: build one with `just build-world`, or use --synthetic.")
         return 1
     low, _, high = args.quality.partition("-")
+    fixed: tuple[float, float] | None = None
+    if args.qualities:
+        first, _, second = args.qualities.partition(",")
+        fixed = (float(first), float(second))
     with current_world(world) if world is not None else nullcontext(None) as current:
         path = calibrate(args.division, args.n, args.seed, arms, current, args.synthetic,
                          args.workers, args.focus_club, args.out,
                          ai_manager=args.ai_manager == "on",
                          quality=(float(low), float(high or low)), equal=args.equal,
-                         mirror=args.mirror)
+                         mirror=args.mirror, fixed=fixed)
     print(path.read_text(encoding="utf-8"))
     print(f"Report written to {path}")
     return 0
@@ -272,6 +284,11 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--out", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     build.add_argument("--force", action="store_true", help="overwrite an existing world")
     build.set_defaults(func=_build_world)
+
+    resp = sub.add_parser("responses",
+                          help="how much a rating advantage shows in a batch report's matches")
+    resp.add_argument("reports", type=Path, nargs="+", help="batch reports (.json)")
+    resp.set_defaults(func=_responses)
 
     cross = sub.add_parser("cross-engine",
                            help="the fast engine against the agent engine on a batch's fixtures")
@@ -344,6 +361,8 @@ def main(argv: list[str] | None = None) -> int:
     eng.add_argument("--focus-club", type=int, default=None,
                      help="club that A/B arms apply to (default: random clubs)")
     eng.add_argument("--out", type=Path, default=None)
+    eng.add_argument("--qualities", default=None, metavar="A,B",
+                     help="with --synthetic, every fixture is quality A against B, both ways")
     eng.add_argument("--mirror", action="store_true",
                      help="each pair drawn plays twice, home and away, as in a league season")
     eng.add_argument("--ai-manager", choices=("on", "off"), default="on",

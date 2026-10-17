@@ -43,6 +43,9 @@ from footsim.world.context import AI_FORMATIONS, World, get_world
 MATCH_DAY = date(2026, 8, 22)  # ages and availability are taken on this day
 TARGETS = config_dir() / "calibration" / "match_targets.yaml"
 BOOTSTRAP_REPS = 200  # resamples behind each ±95% interval in a report
+# Per-team measurements kept in each match's row, beyond the score, xG and shots.
+RESPONSE_KEYS = ("shots_on_target", "possession", "passes", "passes_completed",
+                 "final_third_entries", "box_entries", "take_ons", "take_ons_won")
 
 
 @dataclass(frozen=True)
@@ -197,10 +200,14 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
                focus_club: int | None = None,
                quality: tuple[float, float] = (62.0, 86.0),
                ai_manager: bool = True, equal: bool = False,
-               mirror: bool = False) -> list[MatchTask]:
+               mirror: bool = False,
+               fixed: tuple[float, float] | None = None) -> list[MatchTask]:
     """``n`` fixtures, each played once per arm with the same seed. With ``clubs`` the teams
     are real; otherwise synthetic with qualities drawn from ``quality``, the same for both
     sides of a fixture when ``equal`` (section S judges tactics between equal teams).
+
+    ``fixed``: every synthetic fixture is one quality against the other (home and away taking
+    turns), the cleanest measure of what a rating gap is worth.
 
     ``mirror``: each pair drawn plays twice, home and away (fixtures 2j and 2j + 1), as every
     pair does in a league season. Which side happens to be at home then can't tilt the home
@@ -230,6 +237,8 @@ def make_tasks(n: int, seed: int, arms: Sequence[Arm], clubs: Sequence[int] | No
             low, high = quality
             first, second = float(rng.uniform(low, high)), float(rng.uniform(low, high))
             qualities = (first, first if equal else second)
+            if fixed is not None:
+                qualities = fixed if k % 2 == 0 else (fixed[1], fixed[0])
         managers = (ai_manager, ai_manager)
         if len(arms) > 1:
             managers = (False, ai_manager) if focus == 0 else (ai_manager, False)
@@ -514,7 +523,9 @@ def write_report(out: Path, label: str, division: str, synthetic: bool,
                       "away_club": r["away_club"], "xi_rating": r["xi_rating"],
                       "score": list(r["score"]),
                       "xg": [round(r["teams"][t]["xg"], 3) for t in (0, 1)],
-                      "shots": [r["teams"][t]["shots"] for t in (0, 1)]}
+                      "shots": [r["teams"][t]["shots"] for t in (0, 1)],
+                      # what a rating advantage should show in (calibration/responses.py)
+                      **{key: [r["teams"][t].get(key) for t in (0, 1)] for key in RESPONSE_KEYS}}
                      for r in results]},
         indent=1, default=float), "utf-8")
     return path
@@ -524,14 +535,15 @@ def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path
               synthetic: bool, workers: int | None = None, focus_club: int | None = None,
               out: Path | None = None, ai_manager: bool = True,
               quality: tuple[float, float] = (62.0, 86.0), equal: bool = False,
-              mirror: bool = False) -> Path:
+              mirror: bool = False, fixed: tuple[float, float] | None = None) -> Path:
     if len({arm.name for arm in arms}) < len(arms):
         raise ValueError("A/B arm names must be unique")
     workers = workers or max(1, (os.cpu_count() or 2) - 1)
     clubs = None if synthetic or world is None else division_clubs(world, division)
     if mirror and n % 2:
         raise ValueError("a mirrored batch plays each pair twice: --n must be even")
-    tasks = make_tasks(n, seed, arms, clubs, focus_club, quality, ai_manager, equal, mirror)
+    tasks = make_tasks(n, seed, arms, clubs, focus_club, quality, ai_manager, equal, mirror,
+                       fixed)
     started = time.perf_counter()
     results = run_tasks(tasks, None if synthetic else world, workers)
     elapsed = time.perf_counter() - started
@@ -542,6 +554,9 @@ def calibrate(division: str, n: int, seed: int, arms: Sequence[Arm], world: Path
         label += f"-q{low:g}-{high:g}" + ("-equal" if equal else "")
         teams = (f"synthetic teams, quality {low:g}–{high:g}"
                  + (", equal sides" if equal else ""))
+        if fixed is not None:
+            label = f"synthetic-n{n}-q{fixed[0]:g}v{fixed[1]:g}"
+            teams = f"synthetic teams, quality {fixed[0]:g} against {fixed[1]:g}"
     if len(arms) > 1:
         label += "-ab"
     if not ai_manager:

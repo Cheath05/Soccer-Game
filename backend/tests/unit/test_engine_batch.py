@@ -96,6 +96,12 @@ def test_a_mirrored_batch_plays_each_pair_both_ways() -> None:
                                                               first.home_quality)
 
 
+def test_fixed_qualities_take_turns_at_home() -> None:
+    tasks = make_tasks(6, 3, [BASELINE], None, mirror=True, fixed=(70.0, 78.0))
+    assert [(t.home_quality, t.away_quality) for t in tasks] == [(70.0, 78.0), (78.0, 70.0)] * 3
+    assert (tasks[1].home, tasks[1].away) == (tasks[0].away, tasks[0].home)
+
+
 def test_a_mirrored_batch_resamples_whole_pairs(world: World) -> None:
     home = synthetic_sheet(world.defs, world.picker, 1, 74)
     away = synthetic_sheet(world.defs, world.picker, 2, 71)

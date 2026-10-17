@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.76"
+  date: "2026-10-17"
+  title: "A livelier transfer market, and clubs keep their goalkeepers"
+  changes:
+    - "Other clubs no longer let their backup goalkeepers go when their contracts run out: by a career's third season, one club in five had been left with fewer than two keepers. Every club now keeps at least two, as it keeps at least 16 senior players."
+    - "When a club turns down another club's bid, the bidder can come back once with a better offer, as far as it is prepared to go. About twice as many deals now happen between other clubs; Premier League clubs make about four signings a summer, and their cash no longer piles up as fast."
+    - "Relegated clubs shed more of their wages over the next summer."
+
 - version: "1.75"
   date: "2026-10-16"
   title: "Home advantage as in real football"

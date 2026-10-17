@@ -125,3 +125,22 @@ def test_the_user_is_reminded_in_spring(game: tuple[TestClient, CareerSession, i
         world = get_world()
         assert contract_reminders(conn, world, meta, date(2027, 4, 1), SEASON_END)
         assert contract_reminders(conn, world, meta, date(2027, 4, 2), SEASON_END) == []
+
+
+def test_no_club_is_left_without_two_keepers(
+        game: tuple[TestClient, CareerSession, int]) -> None:
+    """Backup keepers rarely play, but clubs keep them (2 at the least): before this, a season's
+    renewals let them go, and by the third season 166 of 905 league clubs had fewer than two."""
+    _, session, user = game
+    clubs = [user] + [_club(session, key, i) for key in ("ENG1", "ENG4", "ESP2") for i in (0, 5)]
+    with session.write() as conn:
+        conn.execute(text("UPDATE contract SET end_date = :e WHERE is_active = 1 AND club_id IN ("
+                          + ", ".join(str(c) for c in clubs) + ")"), {"e": SEASON_END.isoformat()})
+        settle_expiring(conn, get_world(), read_meta(conn), SEASON_END, NEXT_END)
+        for club_id in clubs:
+            keepers = conn.execute(text(
+                "SELECT COUNT(*) FROM contract k WHERE k.club_id = :c AND k.is_active = 1 "
+                "AND k.kind = 'player' AND (SELECT position FROM player_position pp WHERE "
+                "pp.player_id = k.person_id ORDER BY familiarity DESC, position LIMIT 1) = 'GK'"),
+                {"c": club_id}).scalar_one()
+            assert keepers >= 2, club_id

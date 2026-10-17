@@ -17,6 +17,7 @@ import statistics
 import tempfile
 import time
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
@@ -203,4 +204,172 @@ def _report(conn: Connection, world: World, first: date, last: date, season: int
         "AND kind != 'loan' GROUP BY person_id HAVING COUNT(*) > 1)")).scalar_one()
     lines.append(f"Checks: players with two owners {owners}; "
                  f"clubs whose balance isn't their ledger {len(ledger_mismatches(conn))}.")
+    return lines
+
+
+
+# --- several seasons ------------------------------------------------------------------------
+
+# Snapshots each season: after the summer window (every country's has shut by then) and after
+# the winter one.
+AFTER_SUMMER = (10, 1)
+AFTER_WINTER = (2, 15)
+BALANCE_LEAGUES = ("ENG1", "ENG2", "ENG4", "ESP1", "GER1", "GRE1", "SMR1")
+# Where relegated clubs' wage bills are compared with clubs that stayed up.
+STAYED_UP = ("ENG1", "ENG2", "ESP1", "ITA1", "GER1", "FRA1")
+
+
+@dataclass
+class Snapshot:
+    day: date
+    wages: dict[int, int]  # each club's weekly wage bill (cents)
+    free: list[date]  # the free agents' birth dates
+    short: dict[str, int]  # clubs under 16 seniors or 2 keepers, by league
+    balances: dict[str, float]  # each league's mean balance (euros)
+
+
+def _window(day: str) -> str:
+    """Which window a move belongs to: summer (May to October) or winter (November to April)."""
+    return "summer" if 5 <= int(day[5:7]) <= 10 else "winter"
+
+
+def _snapshot(conn: Connection, season: int) -> Snapshot:
+    wages = {int(r.club_id): int(r.w) for r in conn.execute(text(
+        "SELECT club_id, SUM(wage_weekly_cents) AS w FROM contract WHERE is_active = 1 "
+        "AND kind IN ('player', 'loan', 'youth') GROUP BY club_id"))}
+    births: list[str] = list(conn.execute(text(
+        "SELECT pe.birth_date FROM player p JOIN person pe ON pe.id = p.person_id "
+        "WHERE p.retired_on IS NULL AND NOT EXISTS (SELECT 1 FROM contract k "
+        "WHERE k.person_id = p.person_id AND k.is_active = 1)")).scalars())
+    free = [date.fromisoformat(born) for born in births]
+    short = {key: n for key, rows in _squads(conn, season).items()
+             if (n := sum(1 for _, seniors, keepers in rows if seniors < 16 or keepers < 2))}
+    balances = {k: b for k, (b, _) in _money(conn, season).items()}
+    return Snapshot(read_meta(conn).current_date, wages, free, short, balances)
+
+
+def market_seasons(base_world: Path, world: World, seed: int, seasons: int,
+                   keep: Path | None = None) -> str:
+    """A watch-only career through ``seasons`` whole seasons: both windows each season, free
+    agents, relegated clubs' wage bills and the money between the tiers (W4's follow-up)."""
+    lines = [f"# The AI market over {seasons} season(s), seed {seed}"]
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "career.sqlite"
+        shutil.copy(base_world, path)
+        engine = open_database(path)
+        migrate(engine)
+        with engine.begin() as conn:
+            initialize_career(conn, world, None, None, seed=seed)
+        for _ in range(seasons):
+            began = time.perf_counter()
+            with engine.connect() as conn:
+                meta = read_meta(conn)
+                season, year = meta.season_id, meta.current_date.year
+                shots = {"start": _snapshot(conn, season)}
+                leagues = club_leagues(conn, season)
+            marks = [("summer", date(year, *AFTER_SUMMER)),
+                     ("winter", date(year + 1, *AFTER_WINTER))]
+            while True:
+                with engine.begin() as conn:
+                    meta = read_meta(conn)
+                    if meta.season_id != season:
+                        break
+                    days = CHUNK_DAYS
+                    if marks:
+                        days = max(1, min(CHUNK_DAYS, (marks[0][1] - meta.current_date).days))
+                    advance(conn, world, max_days=days)
+                    now = read_meta(conn)
+                    if marks and now.season_id == season and now.current_date >= marks[0][1]:
+                        shots[marks.pop(0)[0]] = _snapshot(conn, season)
+            with engine.connect() as conn:
+                shots["end"] = _snapshot(conn, read_meta(conn).season_id)
+                lines += _season_lines(conn, world, season, leagues, shots,
+                                       time.perf_counter() - began)
+        with engine.connect() as conn:
+            owners: int = conn.execute(text(
+                "SELECT COUNT(*) FROM (SELECT person_id FROM contract WHERE is_active = 1 "
+                "AND kind != 'loan' GROUP BY person_id HAVING COUNT(*) > 1)")).scalar_one()
+            lines.append(f"\nChecks: players with two owners {owners}; clubs whose balance "
+                         f"isn't their ledger {len(ledger_mismatches(conn))}.")
+        engine.dispose()
+        if keep is not None:  # the career, to look into what the report shows
+            shutil.copy(path, keep)
+    return "\n".join(lines)
+
+
+def _season_lines(conn: Connection, world: World, season: int,
+                  leagues: dict[int, tuple[str, int]], shots: dict[str, Snapshot],
+                  elapsed: float) -> list[str]:
+    tier = {k: world.defs.leagues[k].tier for k in world.defs.leagues}
+
+    def group(club: int | None) -> str:
+        if club is None:
+            return "free agency"
+        key = leagues[club][0] if club in leagues else None
+        if key is None or key not in tier:
+            return "outside the leagues"
+        return "top flights" if tier[key] == 1 else "lower divisions"
+
+    deals = conn.execute(text(
+        "SELECT * FROM transfer WHERE season_id = :s AND kind IN ('transfer', 'free') "
+        "ORDER BY id"), {"s": season}).all()
+    lines = [f"\n## Season {season} ({elapsed:.0f} s)"]
+    premier = [c for c, (key, *_) in leagues.items() if key == "ENG1"]
+    for window in ("summer", "winter"):
+        moves = [d for d in deals if _window(d.date) == window]
+        signed: dict[int, int] = defaultdict(int)
+        flow: dict[tuple[str, str], int] = defaultdict(int)
+        for d in moves:
+            signed[d.to_club_id] += 1
+            flow[(group(d.from_club_id), group(d.to_club_id))] += d.fee_cents
+        counts = sorted(signed.get(c, 0) for c in premier)
+        spread = (f"{counts[0]} / {statistics.median(counts):.0f} / {counts[-1]}"
+                  if counts else "-")
+        lines.append(f"- {window}: {len(moves)} deals "
+                     f"({sum(1 for d in moves if d.from_club_id is None)} from free agency), "
+                     f"fees {_eur(sum(d.fee_cents for d in moves))}; Premier League signings a "
+                     f"club min / median / max {spread}")
+        if flow:
+            lines.append("  fees by direction: " + ", ".join(
+                f"{a} -> {b} {_eur(v)}"
+                for (a, b), v in sorted(flow.items(), key=lambda x: -x[1]) if v))
+    start = shots["start"].day
+
+    def pool(shot: Snapshot) -> str:
+        if not shot.free:
+            return "0"
+        age = statistics.median((start - b).days / 365.25 for b in shot.free)
+        return f"{len(shot.free)} (median age {age:.1f})"
+
+    lines.append("- free agents: " + " -> ".join(
+        f"{k} {pool(v)}" for k, v in shots.items()))
+    # Relegated clubs' wage bills from the season's start (just after they went down) to after
+    # its summer window, against clubs that stayed up.
+    relegated = {int(r.club_id) for r in conn.execute(text(
+        "SELECT club_id FROM league_final WHERE season_id = :s AND outcome = 'relegated'"),
+        {"s": season - 1})}
+    stayed = {int(r.club_id) for r in conn.execute(text(
+        "SELECT club_id FROM league_final f JOIN competition c ON c.id = f.competition_id "
+        "WHERE f.season_id = :s AND f.outcome IS NULL AND c.key IN "
+        f"({', '.join(repr(k) for k in STAYED_UP)})"), {"s": season - 1})}
+    if relegated and "summer" in shots:
+        before, after = shots["start"].wages, shots["summer"].wages
+
+        def change(clubs: set[int]) -> str:
+            pairs = [(before[c], after.get(c, 0)) for c in clubs if before.get(c)]
+            if not pairs:
+                return "-"
+            middle = statistics.median(b / a - 1 for a, b in pairs)
+            return f"{middle:+.0%} median ({len(pairs)} clubs)"
+
+        lines.append(f"- wage bills over the summer: relegated last season {change(relegated)}; "
+                     f"stayed up in {', '.join(STAYED_UP)} {change(stayed)}")
+    lines.append("- clubs under 16 seniors or 2 keepers: " + ", ".join(
+        f"{k} {sum(v.short.values())}" for k, v in shots.items()))
+    worst = sorted(shots["summer" if "summer" in shots else "end"].short.items(),
+                   key=lambda kv: -kv[1])[:8]
+    lines.append("  after the summer window, by league: " + ", ".join(f"{k} {n}" for k, n in worst))
+    lines.append("- mean balance at the end: " + ", ".join(
+        f"{k} {_eur(shots['end'].balances[k] * 100)}" for k in BALANCE_LEAGUES
+        if k in shots["end"].balances))
     return lines

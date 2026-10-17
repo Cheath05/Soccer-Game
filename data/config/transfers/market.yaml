@@ -58,6 +58,13 @@ listed_multiplier: 0.8
 distressed_multiplier: 0.85 # a club in debt asks less
 counter_from: 0.75          # a bid at least this share of the asking price gets a counter at it
 bid_eagerness: [0.85, 1.05] # a buyer's opening bid, as a share of value (keyed draw)
+# Turned down, an AI buyer comes back once with a better offer: the asking price, or as far as
+# its ceiling goes (max_premium and urgent_premium above). Without it, an opening bid had to reach
+# counter_from of the asking price, and a starter on a long contract (1.25 x 1.1 of value) took a
+# bid of 1.03 x value: 64% of the Premier League's bids were turned down for good, its clubs
+# signed 2 a summer by the second season, and their cash piled up (`footsim market-report
+# --seasons 3`, 17 Oct).
+ai_rebid: true
 max_premium: 1.45           # a buyer pays up to this many times the value ...
 urgent_premium: 0.35        # ... plus this much more for an urgent need
 max_deal_share: 0.8         # of its budget a club spends on one signing, at most

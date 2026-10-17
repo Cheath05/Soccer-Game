@@ -422,6 +422,11 @@ class _Market:
                                    player_id).uniform(*rules.bid_eagerness)
             bid = opening_bid(float(self.value[k]), eagerness)
             answer = seller_answer(bid, ask, rules)
+            if answer.kind == "reject" and rules.ai_rebid:
+                # Turned down, the buyer comes back once, as far as it would go.
+                better = min(ask, buyer_ceiling(float(self.value[k]), need.urgency, rules))
+                if better > bid:
+                    answer = seller_answer(better, ask, rules)
             if answer.kind == "reject":
                 return None
             fee = answer.fee

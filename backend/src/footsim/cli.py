@@ -114,7 +114,13 @@ def _market_report(args: argparse.Namespace) -> int:
     from footsim.calibration.market_report import market_report
     from footsim.world.context import get_world
 
-    report = market_report(args.world, get_world(), args.seed, date.fromisoformat(args.until))
+    if args.seasons:
+        from footsim.calibration.market_report import market_seasons
+
+        report = market_seasons(args.world, get_world(), args.seed, args.seasons, args.keep)
+    else:
+        report = market_report(args.world, get_world(), args.seed,
+                               date.fromisoformat(args.until))
     print(report)
     if args.out:
         args.out.write_text(report + "\n")
@@ -294,6 +300,9 @@ def main(argv: list[str] | None = None) -> int:
     market.add_argument("--world", type=Path, default=_default("worlds/base-2026-27.sqlite"))
     market.add_argument("--seed", type=int, default=5)
     market.add_argument("--until", default="2026-09-03", help="simulate up to this day")
+    market.add_argument("--seasons", type=int, default=0,
+                        help="instead, play this many whole seasons and report each")
+    market.add_argument("--keep", type=Path, help="with --seasons, also keep the career here")
     market.add_argument("--out", type=Path, help="also write the report here")
     market.set_defaults(func=_market_report)
 

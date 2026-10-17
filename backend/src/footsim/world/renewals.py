@@ -86,6 +86,10 @@ def _terms(market: _Market, club_id: int, k: int) -> tuple[int, int, bool]:
     return asks, years, willing
 
 
+def _is_keeper(market: _Market, k: int) -> bool:
+    return str(market.players.primary[k]) == "GK"
+
+
 def _keeps(market: _Market, club_id: int, k: int) -> bool:
     """Whether an AI club wants to keep a player whose contract is ending."""
     view = market.view(market.clubs[club_id])
@@ -95,6 +99,14 @@ def _keeps(market: _Market, club_id: int, k: int) -> bool:
         return age <= KEY_AGE_LIMIT
     if role in (Role.STARTER, Role.ROTATION):
         return age <= AGE_LIMIT
+    if _is_keeper(market, k):
+        # A club keeps its best few keepers (market.yaml keepers_wanted) though only one plays:
+        # its backups are kept as rotation players are, keepers playing on longer.
+        p = market.players
+        keepers = sorted((j for j in view.rows if _is_keeper(market, j)),
+                         key=lambda j: (-float(p.in_group["GK"][j]), int(p.ids[j])))
+        if k in keepers[:market.rules.keepers_wanted]:
+            return age <= AGE_LIMIT + market.world.defs.lifecycle.retirement.keeper_years
     pid = int(market.players.ids[k])
     potential: int = market.conn.execute(text("SELECT pa_hidden FROM player WHERE person_id = :p"),
                                     {"p": pid}).scalar_one()
@@ -150,9 +162,11 @@ def _keep_a_squad(conn: Connection, world: World, market: _Market,
                   renewals: list[dict[str, object]]) -> tuple[list[tuple[int, int, int]],
                                                              list[str]]:
     """No club is left unable to field a side: where the leavers would take a club below the
-    senior floor (``user_min_players``), its best leavers stay on one-year deals at the wage they
-    ask until it's back at the floor. Returns the leavers who still go, and the user's news."""
+    senior floor (``user_min_players``) or the keepers' (``user_min_keepers``), its best leavers
+    (keepers first, for the keepers' floor) stay on one-year deals at the wage they ask until
+    it's back at the floors. Returns the leavers who still go, and the user's news."""
     floor = world.defs.lifecycle.squads.user_min_players
+    keeper_floor = world.defs.lifecycle.squads.user_min_keepers
     by_club: dict[int, list[tuple[int, int, int]]] = {}
     for leaver in leavers:
         by_club.setdefault(leaver[2], []).append(leaver)
@@ -166,15 +180,25 @@ def _keep_a_squad(conn: Connection, world: World, market: _Market,
             "SELECT COUNT(*) FROM contract WHERE id IN (" + ", ".join(
                 str(c) for c, _, _ in club_leavers) + ") AND kind = 'player'")).scalar_one())
         short = floor - (seniors - leaving_seniors)
+        index = market.players.index
+        leaving = {person for _, person, _ in club_leavers}
+        on_books: list[int] = list(conn.execute(text(
+            "SELECT person_id FROM contract WHERE club_id = :c AND is_active = 1 "
+            "AND kind = 'player'"), {"c": club_id}).scalars())
+        staying = [p for p in on_books if p not in leaving]
+        keepers = sum(1 for p in staying if p in index and _is_keeper(market, index[p]))
+        keepers_short = keeper_floor - keepers
         ranked = sorted(club_leavers, key=lambda lv: (
-            -float(market.players.overall[market.players.index[lv[1]]])
-            if lv[1] in market.players.index else 0.0, lv[1]))
+            not (keepers_short > 0 and lv[1] in index and _is_keeper(market, index[lv[1]])),
+            -float(market.players.overall[index[lv[1]]]) if lv[1] in index else 0.0, lv[1]))
         for contract_id, person, _ in ranked:
-            k = market.players.index.get(person)
-            if short > 0 and k is not None and club_id in market.clubs:
+            k = index.get(person)
+            keeper_needed = keepers_short > 0 and k is not None and _is_keeper(market, k)
+            if (short > 0 or keeper_needed) and k is not None and club_id in market.clubs:
                 asks, _, _ = _terms(market, club_id, k)
                 renewals.append({"id": contract_id, "end": end, "wage": asks * 100})
                 short -= 1
+                keepers_short -= int(keeper_needed)
                 if club_id == market.meta.user_club_id:
                     who = conn.execute(text("SELECT first_name, last_name, known_as FROM person "
                                             "WHERE id = :p"), {"p": person}).one()

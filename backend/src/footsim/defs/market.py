@@ -60,6 +60,7 @@ class MarketDef(DefModel):
     distressed_multiplier: float = Field(gt=0)
     counter_from: float = Field(gt=0, le=1)
     bid_eagerness: tuple[float, float]
+    ai_rebid: bool = True  # turned down, an AI buyer improves its bid once, as far as it'd go
     max_premium: float = Field(gt=0)
     urgent_premium: float = Field(ge=0)
     max_deal_share: float = Field(gt=0, le=1)

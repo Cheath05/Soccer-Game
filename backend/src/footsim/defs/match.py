@@ -269,12 +269,22 @@ class ShotReferenceDef(DefModel):
     keeper: float = Field(ge=1, le=99)
 
 
+class SkillScaleDef(DefModel):
+    """How a rating moves a chance around its xG: ``(base + slope x rating / 100)`` against the
+    same at the reference rating (``base - slope x ...`` for a keeper, who takes chances away)."""
+
+    base: float = Field(gt=0)
+    slope: float = Field(ge=0)
+
+
 class ShootingDef(DefModel):
     """A shot's chance, the ratings it stands for, and when a player goes for goal
     (data/config/match/shooting.yaml)."""
 
     chance: ShotChanceDef
     reference: ShotReferenceDef
+    finishing: SkillScaleDef
+    keeping: SkillScaleDef
     min_xg: float = Field(ge=0, le=1)
     value: float = Field(gt=0)
     header_xg: float = Field(ge=0, le=1)

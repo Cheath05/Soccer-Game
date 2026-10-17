@@ -25,6 +25,14 @@ reference:
   heading: 70
   keeper: 81
 
+# How the shooter's rating (finishing, long shots, heading or free kicks, by the shot) and the
+# keeper's (reflexes, diving and positioning) move a chance around its xG: the goal chance is xG
+# x (base + slope x rating / 100) / (the same at the reference rating), and for the keeper
+# (base - slope x rating / 100) / (the same at the reference). At these values a shooter 20
+# points better scores about 7% more, and a keeper 20 better concedes about 15% fewer.
+finishing: {base: 0.7, slope: 0.35}
+keeping: {base: 1.3, slope: 0.6}
+
 # When a player goes for goal (actions.decide). A shot is an option from the xG real players
 # shoot from: .015 is the 5th percentile of the fitted xG of the Premier League's open-play shots
 # (the median is .06), with no room needed (real long shots are struck with a defender about

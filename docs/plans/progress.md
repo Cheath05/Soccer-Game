@@ -36,7 +36,11 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (17 Oct): why watched matches end level too often; tools to measure rating responses** (the commit that adds this line; v1.77, nothing a player sees). The user switched to Max for the engine design work.
+- **Latest checkpoint (17 Oct): finishing and keeping scales in YAML; fixed-gap baselines** (the commit that adds this line; v1.78, nothing a player sees).
+  - `shooting.yaml` `finishing` and `keeping` (`{base, slope}`, `defs.match.SkillScaleDef`) replace the constants in `actions.py`'s shot outcome, with the same arithmetic: the golden values hold.
+  - **Fixed-gap baselines** (measure worktree at 40d521d, synthetic, 200 mirrored a pair, seed 61, `reports/engine/draws/gap-base`), per side per point of XI advantage: goals +0.047 ±0.015 (62 v 70) and +0.032 ±0.016 (76 v 84) against real +0.088; shots +0.29 / +0.38 (real +0.57); on target +0.13 / +0.15 (+0.20); possession +0.17 / 0.0 points; pass accuracy +0.08 / +0.06 points; xG per shot flat.
+  - **Next:** the levers on the same fixtures: control by rating (A1's values), finishing and keeping by rating, then both, then real squads.
+- **Earlier checkpoint (17 Oct): why watched matches end level too often; tools to measure rating responses** (40d521d; v1.77, nothing a player sees). The user switched to Max for the engine design work.
   - **Real references** (football-data E0-E3 2023/24-2025/26; FC 27's starting elevens as the harness picks them, against 2025-26's real results):
     - draws match an independent Poisson at each league's mean goals (PL .245 against .242); home and away goals correlate -0.13 (PL) to -0.01 (League Two);
     - half time to full time: level at half time ends level 33-38% of the time; a one-goal half-time lead ends drawn 22-24%; second halves have 19-29% more goals than first;

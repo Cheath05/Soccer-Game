@@ -1355,8 +1355,10 @@ def start_shot(eng: "MatchEngine", i: int, header: bool = False, penalty: bool =
               else chance.xg)
         p_on = clamp(0.20 + 0.40 * skill / 100 - 0.012 * max(distance - 10, 0)
                              - 0.08 * pressure + 0.35 * math.exp(-distance / 4), 0.12, 0.92)
-        finishing = (0.7 + 0.35 * skill / 100) / (0.7 + 0.35 * average / 100)
-        keeping = (1.3 - 0.6 * gk / 100) / (1.3 - 0.6 * ref.keeper / 100)
+        fin, keep = eng.defs.shooting.finishing, eng.defs.shooting.keeping
+        finishing = (fin.base + fin.slope * skill / 100) / (fin.base + fin.slope * average / 100)
+        keeping = ((keep.base - keep.slope * gk / 100)
+                   / (keep.base - keep.slope * ref.keeper / 100))
         # The xG has blocks in it; a shot that gets through scores that much more often.
         p_goal = min(0.95, xg / (1 - chance.block) * finishing * keeping)
     p_on = max(p_on, min(0.95, p_goal / 0.95))

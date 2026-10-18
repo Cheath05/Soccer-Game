@@ -422,7 +422,10 @@ def pass_error(eng: "MatchEngine", team: int, skill: Any, pressure: float, fatig
               + ex.lofted * lofted)
     spread = spread * (1 + eng.effect(team, "tempo").hurry)  # hurried passes go astray more
     if crowd:
-        spread = spread * eng.venue_bias(team, eng.defs.home_advantage.crowd.execution * pressure)
+        home = eng.defs.home_advantage
+        spread = spread * eng.venue_bias(team, home.crowd.execution * pressure)
+        if home.familiarity.execution:
+            spread = spread * eng.venue_bias(team, home.familiarity.execution)
     length_spread = (ex.length_skill * (1.2 - skill / 100)
                      + (ex.length_per_metre + ex.lofted_length_per_metre * lofted) * distance)
     return spread, length_spread
@@ -985,6 +988,9 @@ def resolve_loose_or_pass(eng: "MatchEngine") -> None:
                     base = control.receiver if c == info.receiver else control.teammate
                     touch = control.touch_skill
                     p = base * ((1 - touch) + touch * eng.a(c, "first_touch") / 100)
+                    familiar = eng.defs.home_advantage.familiarity.control
+                    if familiar:  # at home a little surer, away a little less (2 - the bias)
+                        p *= 2 - eng.venue_bias(int(eng.team_of[c]), familiar)
                     p *= 1 - max(0.0, speed - 15) / 30
                     p *= 1 - _touch_pressure(eng, c) * (1 - eng.a(c, "first_touch") / 100)
                     info.tried.add(c)  # one touch: a miscontrol leaves the ball loose

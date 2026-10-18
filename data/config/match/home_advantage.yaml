@@ -33,6 +33,12 @@
 # shortfall in pass completion (1.0-1.6 points) is large next to the engine's low pass error. A
 # second mechanism for home advantage's non-crowd part (familiarity, territory) would let these
 # values come down: a follow-up in progress.md.
+# Familiarity (Step 2.1's second mechanism, off until fitted): the home side knows its ground,
+# so at any pressure its passes go a little less astray and its first touch is a little surer,
+# and the away side's the reverse (each a gap split evenly, as above).
+familiarity:
+  execution: 0.0   # pass error
+  control: 0.0     # first-touch control
 referee:
   foul: 0.02       # challenges by the away side are called fouls this much more often
   card: 0.08       # the away side's fouls draw a card this much more often

@@ -463,9 +463,18 @@ class CrowdEffectDef(DefModel):
     execution: float = Field(ge=0, le=1)
 
 
+class FamiliarityDef(DefModel):
+    """The home side knows its ground: at any pressure, a gap in pass error and in first-touch
+    control (Step 2.1's second mechanism)."""
+
+    execution: float = Field(ge=0, le=1)
+    control: float = Field(ge=0, le=1)
+
+
 class HomeAdvantageDef(DefModel):
     """How the crowd tilts a match towards the home side (data/config/match/home_advantage.yaml).
     Each value is a relative gap between the sides, split evenly between them."""
 
     referee: RefereeBiasDef
     crowd: CrowdEffectDef
+    familiarity: FamiliarityDef

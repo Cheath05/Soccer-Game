@@ -41,7 +41,8 @@ def test_the_gap_is_split_between_the_sides(world: World) -> None:
 
 def test_a_neutral_venue_plays_like_no_home_advantage(world: World) -> None:
     zero = HomeAdvantageDef.model_validate(
-        {"referee": {"foul": 0, "card": 0}, "crowd": {"decisions": 0, "execution": 0}})
+        {"referee": {"foul": 0, "card": 0}, "crowd": {"decisions": 0, "execution": 0},
+         "familiarity": {"execution": 0, "control": 0}})
     home_without = _engine(world, defs=replace(world.defs, home_advantage=zero))
     neutral = _engine(world, neutral=True)
     home = _engine(world)
@@ -49,3 +50,17 @@ def test_a_neutral_venue_plays_like_no_home_advantage(world: World) -> None:
         engine.run(max_ticks=TICKS)
     assert _state(neutral) == _state(home_without)
     assert _state(home) != _state(neutral)  # the crowd and referee do change the match
+
+
+def test_familiarity_tilts_a_home_match_but_not_a_neutral_one(world: World) -> None:
+    familiar = world.defs.home_advantage.model_copy(update={
+        "familiarity": world.defs.home_advantage.familiarity.model_copy(
+            update={"execution": 0.3, "control": 0.1})})
+    defs = replace(world.defs, home_advantage=familiar)
+    plain_home, familiar_home = _engine(world), _engine(world, defs=defs)
+    plain_neutral = _engine(world, neutral=True)
+    familiar_neutral = _engine(world, neutral=True, defs=defs)
+    for engine in (plain_home, familiar_home, plain_neutral, familiar_neutral):
+        engine.run(max_ticks=TICKS)
+    assert _state(familiar_neutral) == _state(plain_neutral)
+    assert _state(familiar_home) != _state(plain_home)

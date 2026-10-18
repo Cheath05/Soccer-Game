@@ -36,7 +36,18 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (18 Oct): section J's fatigue, built switched off; the first lever results** (the commit that adds this line; v1.79, nothing a player sees).
+- **Latest checkpoint (18 Oct): home advantage's second mechanism, familiarity, built switched off; fatigue measured** (the commit that adds this line; v1.80, nothing a player sees).
+  - **`home_advantage.yaml` `familiarity`** (`execution`, `control`; 0 for now, so the golden values hold): the home side knows its ground, so at any pressure its passes go a little less astray and its first touch is a little surer, the away side's the reverse, each a gap split evenly. It answers 2.1's recorded conflict: with the crowd carrying all of home advantage, its effect was concentrated under pressure. Test: `test_familiarity_tilts_a_home_match_but_not_a_neutral_one`.
+  - **Fatigue on top of AB1** (6aa828e, config copies, ENG1, 400 mirrored, seed 33, managers on; `scratchpad/diag-*-ENG1.pkl`):
+    | | AB1 | F1 (press 0.6, gap 1.5, reaction 1.0) | F2 (press 1.0, gap 3.0, reaction 1.0) | Real PL |
+    |---|---|---|---|---|
+    | Draws | .292 | .268 | .260 | .245 |
+    | Goals, 1st / 2nd half | 1.60 / 1.70 | 1.51 / 1.73 | 1.60 / 1.76 | 1.30 / 1.68 |
+    | Level at half time → ends level | .418 | .489 | .357 | .350 |
+    | One-goal half-time lead → wins / draws / loses | .605 / .299 / .096 | .706 / .224 / .071 | .618 / .294 / .088 | .622 / .236 / .142 |
+    AB1 alone takes level half-times ending level from .53 to .42; F2 to the real .357. The second half's goals are about real already (1.76 against 1.68): **the excess is the first half's** (1.60 against 1.30), the early-match quirk and open play while fresh. Each transition rests on 130-170 matches (about ±0.07).
+  - **Next:** F2 on League Two (running), then the 2.1 refit with crowd and familiarity on top of AB1 and F2, then the new defaults together, golden values, the reviewer, the full suite.
+- **Earlier checkpoint (18 Oct): section J's fatigue, built switched off; the first lever results** (6aa828e; v1.79, nothing a player sees).
   - **Fatigue (match-believability.md section J), all 0 for now, so the golden values hold:** `shape.yaml` `fatigue.press` (a tired side's pressing trigger x (1 - press x tiredness)) and `fatigue.gap` (the widest gaps behind its midfield and forwards x (1 + gap x tiredness)), with a side's tiredness 1 minus its outfield players' mean stamina (`MatchEngine.tiredness`); `tactics.yaml` `transition.reaction_fatigue` (a player's alertness after a turnover x (1 - this x (1 - stamina))).
   - **Levers at fixed gaps** (cd2161f, config copies, 200 mirrored a pair, seed 61, `reports/engine/draws/gap-*`), goals per side per point of XI advantage (real +0.088):
     | | 62 v 70 | 76 v 84 |

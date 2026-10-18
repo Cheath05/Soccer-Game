@@ -103,7 +103,7 @@ def _team(eng: "MatchEngine", team: int) -> None:
         else:
             line_effect = eng.effect(team, "line")
             lines = _defending_lines(eng, bx, line_effect.height, line_effect.span,
-                                     ins.get("pressing") == "high")
+                                     ins.get("pressing") == "high", eng.tiredness(team))
             back, front = lines[0], lines[2]
     stretch = (front - back) / (X_FRONT - X_BACK)
     if eng.debug:
@@ -180,20 +180,22 @@ def _team(eng: "MatchEngine", team: int) -> None:
 
 
 def _defending_lines(eng: "MatchEngine", bx: float, height: float, span: float,
-                     pressing_high: bool) -> tuple[float, float, float]:
+                     pressing_high: bool, tired: float = 0.0) -> tuple[float, float, float]:
     """Out of possession, with the ball ``bx`` m from our goal: our back line, midfield and
     forwards, in m from our goal (shape.yaml defending). The back line keeps its buffer
     goal-side of the ball, no higher than the line instruction's height (4 m more when we press
     high and the ball is in their third). The midfield keeps just goal-side of the ball and
     the forwards a little upfield of it, each within its gap of the line behind, and the whole
-    side within the instruction's span."""
+    side within the instruction's span. A ``tired`` side's widest gaps open (shape.yaml
+    fatigue)."""
     rules = eng.defs.shape.defending
+    loosen = 1 + eng.defs.shape.fatigue.gap * tired
     top = height + 4 if pressing_high and bx > 60 else height
     back = clamp(min(top, bx - rules.back_buffer), rules.back_floor, top)
     low, high = rules.mid_gap
-    mid = clamp(bx - rules.mid_buffer, back + low, back + min(high, span))
+    mid = clamp(bx - rules.mid_buffer, back + low, back + min(high * loosen, span))
     low, high = rules.front_gap
-    front = clamp(bx + rules.front_ahead, mid + low, min(mid + high, back + span))
+    front = clamp(bx + rules.front_ahead, mid + low, min(mid + high * loosen, back + span))
     return back, mid, max(front, mid)
 
 
@@ -219,6 +221,7 @@ def _react(eng: "MatchEngine", idx: np.ndarray, targets: np.ndarray, team: int) 
         if k in nearest or eng.group[i] is PositionGroup.GK:
             continue
         alertness = (eng.a(i, "anticipation") + eng.a(i, "work_rate")) / 200
+        alertness *= 1 - eng.defs.tactics.transition.reaction_fatigue * (1 - float(eng.stamina[i]))
         if since < low + (high - low) * (1 - alertness):
             ahead = eng.pos[i] + eng.vel[i] * 0.8
             targets[k] = eng.att_points(team, ahead[None, :])[0]
@@ -344,6 +347,7 @@ def _defend(eng: "MatchEngine", team: int, idx: np.ndarray, targets: np.ndarray,
             opp_pts: np.ndarray, bx: float, by: float, ins: dict[str, str]) -> None:
     press = eng.effect(team, "pressing")
     trigger, pressers = press.trigger, press.pressers
+    trigger *= 1 - eng.defs.shape.fatigue.press * eng.tiredness(team)
     ball = np.array([bx, by])
     own = eng.att_points(team, eng.pos[idx])
     loose = eng.owner < 0

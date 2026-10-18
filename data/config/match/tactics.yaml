@@ -43,6 +43,8 @@ passing:      # directness: preference for balls forward over keeping possession
 transition:
   reaction: [0.3, 1.1]    # s before a player switches to recovering (quicker with better
                           # anticipation and work rate); until then he carries on
+  reaction_fatigue: 0.0   # a tired player reacts later: his alertness x (1 - this x (1 -
+                          # stamina)) (match-believability.md section J)
   counter_hold: 0.6       # s on the ball for a player who has just won it in his own half
   counter_window: 6.0     # s after winning the ball that runners break forward
   # Phase E: a counter is on while a side that won the ball in its own half is inside the

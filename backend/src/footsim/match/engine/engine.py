@@ -280,6 +280,14 @@ class MatchEngine:
         keep: npt.NDArray[np.int64] = idx[[self.group[i] is not PositionGroup.GK for i in idx]]
         return keep
 
+    def tiredness(self, team: int) -> float:
+        """1 minus the side's outfield players' mean stamina: 0 fresh, about 0.2-0.3 late on
+        (shape.yaml fatigue)."""
+        if not (self.defs.shape.fatigue.press or self.defs.shape.fatigue.gap):
+            return 0.0  # nothing reads it (and the arithmetic stays as before)
+        idx = self.outfield_indices(team)
+        return float(1 - np.mean(self.stamina[idx])) if len(idx) else 0.0
+
     def keeper(self, team: int) -> int | None:
         for i in self.team_indices(team):
             if self.group[i] is PositionGroup.GK:

@@ -36,7 +36,19 @@
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (17 Oct): finishing and keeping scales in YAML; fixed-gap baselines** (the commit that adds this line; v1.78, nothing a player sees).
+- **Latest checkpoint (18 Oct): section J's fatigue, built switched off; the first lever results** (the commit that adds this line; v1.79, nothing a player sees).
+  - **Fatigue (match-believability.md section J), all 0 for now, so the golden values hold:** `shape.yaml` `fatigue.press` (a tired side's pressing trigger x (1 - press x tiredness)) and `fatigue.gap` (the widest gaps behind its midfield and forwards x (1 + gap x tiredness)), with a side's tiredness 1 minus its outfield players' mean stamina (`MatchEngine.tiredness`); `tactics.yaml` `transition.reaction_fatigue` (a player's alertness after a turnover x (1 - this x (1 - stamina))).
+  - **Levers at fixed gaps** (cd2161f, config copies, 200 mirrored a pair, seed 61, `reports/engine/draws/gap-*`), goals per side per point of XI advantage (real +0.088):
+    | | 62 v 70 | 76 v 84 |
+    |---|---|---|
+    | baseline | +0.047 | +0.032 |
+    | A1, control by rating (`touch_skill` 0.5, `receiver` 0.99, `execution.skill` 0.15) | +0.059 | +0.069 |
+    | B1, finishing and keeping (`finishing.slope` 3.0, `keeping.slope` 0.8) | +0.056 | +0.040 |
+    | **AB1, both** | **+0.065** | **+0.079** |
+    A1 also makes possession follow quality (+0.23-0.26 points a point, from about 0) and pass accuracy twice as much. xG per shot stays flat in all of them: better sides make more chances, not better ones.
+  - **AB1 on real squads** (400 mirrored, seed 33, `ab1-ENG1/ENG4`): draws .318 → .292 (ENG1) and .318 → .307 (ENG4); goals 3.04 → 3.30 and 2.55 → 2.66; pass accuracy .870 / .873 (still high, and not apart by division); shots per point +0.565 (real +0.57; from +0.49); home goal diff rises to +0.43 / +0.48 (the 2.1 crowd values act through execution, which now weighs ratings more: 2.1 is refitted last); high regains above range (22.4 / 31.9). Early-match quirk noted for later: shots in the first two minutes convert at 1.74 x xG (1.1 later), and a pass rolled into the net with no shot (match 281 of the seed-33 diagnostic, 11.5 s).
+  - **Next:** fatigue variants on top of AB1 (real squads: second-half goals, half time to full time, draws), then choose values, then the second home-advantage mechanism and the 2.1 refit.
+- **Earlier checkpoint (17 Oct): finishing and keeping scales in YAML; fixed-gap baselines** (cd2161f; v1.78, nothing a player sees).
   - `shooting.yaml` `finishing` and `keeping` (`{base, slope}`, `defs.match.SkillScaleDef`) replace the constants in `actions.py`'s shot outcome, with the same arithmetic: the golden values hold.
   - **Fixed-gap baselines** (measure worktree at 40d521d, synthetic, 200 mirrored a pair, seed 61, `reports/engine/draws/gap-base`), per side per point of XI advantage: goals +0.047 ±0.015 (62 v 70) and +0.032 ±0.016 (76 v 84) against real +0.088; shots +0.29 / +0.38 (real +0.57); on target +0.13 / +0.15 (+0.20); possession +0.17 / 0.0 points; pass accuracy +0.08 / +0.06 points; xG per shot flat.
   - **Next:** the levers on the same fixtures: control by rating (A1's values), finishing and keeping by rating, then both, then real squads.

@@ -19,3 +19,10 @@ defending:
   drop: {W: 0.44, AM: 0.50} # the number 10 stand no further forward than these formation x
                             # (the midfield line, and just ahead of it): a 4-3-3 defends as a
                             # 4-5-1 and a 4-2-3-1 as a 4-4-1-1
+# A tired side holds a looser shape (match-believability.md section J): its tiredness is 1 minus
+# its outfield players' mean stamina (0 at kick-off, about 0.2-0.3 late on). It presses from
+# closer in (its pressing trigger x (1 - press x tiredness)) and lets the gaps behind its
+# midfield and forwards open wider (their widest x (1 + gap x tiredness)).
+fatigue:
+  press: 0.0
+  gap: 0.0

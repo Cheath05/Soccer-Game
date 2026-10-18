@@ -244,10 +244,19 @@ class DefendingLinesDef(DefModel):
         return self
 
 
+class ShapeFatigueDef(DefModel):
+    """How a tired side's shape loosens (match-believability.md section J). A side's tiredness
+    is 1 minus its outfield players' mean stamina: 0 at kick-off, about 0.2-0.3 late on."""
+
+    press: float = Field(ge=0, le=1)  # its pressing trigger shrinks by this x tiredness
+    gap: float = Field(ge=0)  # the widest gaps behind its midfield and forwards grow by this
+
+
 class ShapeDef(DefModel):
     """Where a side stands out of possession (data/config/match/shape.yaml)."""
 
     defending: DefendingLinesDef
+    fatigue: ShapeFatigueDef
 
 
 class ShotChanceDef(DefModel):
@@ -369,6 +378,7 @@ class PassingEffect(DefModel):
 
 class TransitionDef(DefModel):
     reaction: tuple[float, float]
+    reaction_fatigue: float = Field(ge=0, le=1)  # alertness x (1 - this x (1 - stamina))
     counter_hold: float = Field(gt=0)
     counter_window: float = Field(gt=0)
     counter_unset: int = Field(ge=0, le=10)

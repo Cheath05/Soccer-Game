@@ -34,9 +34,19 @@
     - clauses in a sale: a buy-back clause, and a percentage of the next sale (sell-on).
     - Design these in W4's terms (`docs/plans/w3-w4-finances-transfers.md`: `validate_move`, `complete_move`, the loan table, renewals) so AI clubs can use the same clauses and lengths, and the money stays in the ledger.
   - **Academy recruits' wages:** the user thinks youth intake players can come in on £200k+ a week. Investigate first (the youth intake in the lifecycle rules, and the wage levels it uses); the user said not to fix it yet.
+- **Commercial iOS release (4 Nov, the user): planned in `docs/plans/commercial-ios-release.md`.** Don't start it before it's placed in the order of work.
+  - It covers: a free App Store app running the game on the phone, with ads and fair purchases; a public world with no EA or Transfermarkt data and renamed clubs; three gates.
+  - The user's choices: the whole world at launch; US-based.
 - **11 Oct: the phone layout and accounts for friends are built** (`docs/plans/phone-and-accounts.md`, all of tracks U and M). The roadmap resumes with the calibration follow-ups below and the market report.
 - **Standing rule from 14 Oct:** every change a player can see adds an entry to `data/changelog.yaml` in the same commit, with the version the commit ships in (`git describe --tags --match 'v[0-9]*' --long` count + 1), and updates `frontend/src/lib/help.ts` when it adds or changes something a player can do.
-- **Latest checkpoint (18 Oct): home advantage's second mechanism, familiarity, built switched off; fatigue measured** (the commit that adds this line; v1.80, nothing a player sees).
+- **Latest checkpoint (4 Nov): the commercial iOS release is planned** (the commit that adds this line; docs only, nothing a player sees).
+  - **Plan:** `docs/plans/commercial-ios-release.md` (approved 4 Nov). Nothing is built. The study and the research found:
+    - **pydantic-core** has no iOS build anywhere, so it is built with maturin (Phase 0's critical path);
+    - **numpy** for iOS exists only at 2.5.2 (BeeWare's index), and PyYAML needs a pure-Python wheel;
+    - **StatsBomb's terms** probably rule out paid use of the parameters fitted on its data: ask, or refit from Wyscout and SkillCorner.
+  - **A bug in today's game (step I2a):** `world/market.py`'s `_CACHE` is keyed only by month and player count. Viewing the market on a month's 1st makes that day's AI market (`world/season.py:206`) use the ratings from before that day's development (`:190`).
+  - **Next:** unchanged for the engine work. It is the 18 Oct entry's Next below: F2 on League Two, then the 2.1 refit. I2a can be fixed whenever the user chooses.
+- **Earlier checkpoint (18 Oct): home advantage's second mechanism, familiarity, built switched off; fatigue measured** (7692943; v1.80, nothing a player sees).
   - **`home_advantage.yaml` `familiarity`** (`execution`, `control`; 0 for now, so the golden values hold): the home side knows its ground, so at any pressure its passes go a little less astray and its first touch is a little surer, the away side's the reverse, each a gap split evenly. It answers 2.1's recorded conflict: with the crowd carrying all of home advantage, its effect was concentrated under pressure. Test: `test_familiarity_tilts_a_home_match_but_not_a_neutral_one`.
   - **Fatigue on top of AB1** (6aa828e, config copies, ENG1, 400 mirrored, seed 33, managers on; `scratchpad/diag-*-ENG1.pkl`):
     | | AB1 | F1 (press 0.6, gap 1.5, reaction 1.0) | F2 (press 1.0, gap 3.0, reaction 1.0) | Real PL |

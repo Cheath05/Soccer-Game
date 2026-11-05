@@ -19,10 +19,11 @@ import json
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Any
+from weakref import WeakKeyDictionary
 
 import numpy as np
 import numpy.typing as npt
-from sqlalchemy import Connection, select, text, update
+from sqlalchemy import Connection, Engine, select, text, update
 
 from footsim.core.rng import derive_rng
 from footsim.defs.calendar import DateRange
@@ -52,7 +53,7 @@ from footsim.transfers.valuation import values_eur, years_old
 from footsim.world.context import AI_FORMATIONS, World
 from footsim.world.finance import wage_bills, weeks_left
 from footsim.world.loans import Loan, start_loan
-from footsim.world.meta import CareerMeta
+from footsim.world.meta import CareerMeta, players_epoch
 from footsim.world.money import money_text, quote, quote_wage
 from footsim.world.squads import display_name
 from footsim.world.transfers import Move, MoveRefused, complete_move
@@ -82,15 +83,27 @@ class _Players:
     reputation: npt.NDArray[np.float64]
 
 
-_CACHE: dict[tuple[Any, ...], _Players] = {}
+# The latest _Players for each open database, by players_epoch (world/meta.py): every writer of
+# the columns read here bumps the epoch in the save itself, so a cache filled before a change,
+# here or in another process, is never used. The date and counts are a second guard. The epoch
+# counts changes along one line of play, so it can't tell two lines apart; but each opening of
+# a save (a load, a new career, a sim worker's job) is its own Engine, so another line of play
+# never finds this one's players. A write that rolls back forgets what it may have cached.
+_CACHE: WeakKeyDictionary[Engine, tuple[tuple[Any, ...], _Players]] = WeakKeyDictionary()
+
+
+def forget_players(engine: Engine) -> None:
+    """Drop the players cached for ``engine``: a write to it rolled back."""
+    _CACHE.pop(engine, None)
 
 
 def _players(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Players:
     count, top = conn.execute(text(
         "SELECT COUNT(*), MAX(person_id) FROM player WHERE retired_on IS NULL")).one()
-    key = (str(conn.engine.url), meta.seed, meta.season_id, day.year, day.month, count, top)
-    if key in _CACHE:
-        return _CACHE[key]
+    key = (meta.seed, meta.season_id, day.year, day.month, count, top, players_epoch(conn))
+    cached = _CACHE.get(conn.engine)
+    if cached is not None and cached[0] == key:
+        return cached[1]
     rows = conn.execute(text(
         "SELECT p.person_id AS id, pe.birth_date AS birth, p.reputation AS reputation, "
         "COALESCE(p.value_premium, 0) AS premium, a.* FROM player p "
@@ -120,8 +133,7 @@ def _players(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Pl
     players = _Players(ids, index, in_group, can_play, primary, np.round(overall),
                        [r.birth for r in rows], np.array([r.premium for r in rows], dtype=float),
                        np.array([r.reputation for r in rows], dtype=float))
-    _CACHE.clear()
-    _CACHE[key] = players
+    _CACHE[conn.engine] = (key, players)
     return players
 
 

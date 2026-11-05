@@ -22,6 +22,7 @@ from footsim.persistence.saves import SaveManager
 from footsim.world.career import initialize_career
 from footsim.world.context import get_world
 from footsim.world.finance import set_sandbox_budget
+from footsim.world.market import forget_players
 from footsim.world.meta import read_meta
 from footsim.world.money import set_currency
 
@@ -125,8 +126,14 @@ class CareerSession:
 
     @contextmanager
     def write(self) -> Iterator[Connection]:
-        with self.lock, self.engine.begin() as conn:
-            yield conn
+        with self.lock:
+            engine = self.engine
+            try:
+                with engine.begin() as conn:
+                    yield conn
+            except BaseException:
+                forget_players(engine)  # it may hold what the rolled-back write saw
+                raise
 
 
 def default_session() -> CareerSession:

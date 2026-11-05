@@ -32,7 +32,7 @@ from footsim.persistence.schema import club_finance, contract, tactic, transfer
 from footsim.transfers.valuation import plain_values, values_eur, years_old
 from footsim.world.context import World
 from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
-from footsim.world.meta import CareerMeta
+from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.money import money_text
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import club_name, display_name
@@ -306,3 +306,4 @@ def initialize_value_premiums(conn: Connection, world: World, day: date) -> None
         updates.append({"p": i, "premium": round(premium, 4)})
     conn.execute(text("UPDATE player SET value_premium = :premium WHERE person_id = :p"),
                  updates)
+    bump_players_epoch(conn)

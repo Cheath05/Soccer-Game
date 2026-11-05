@@ -13,7 +13,7 @@ from datetime import date
 from sqlalchemy import Connection, text
 
 from footsim.world.context import World
-from footsim.world.meta import CareerMeta
+from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.squads import display_name
 
 
@@ -66,6 +66,7 @@ def train_positions(conn: Connection, world: World, meta: CareerMeta, day: date)
         "LEFT JOIN player_position pp ON pp.player_id = t.player_id AND pp.position = t.position "
         "ORDER BY t.player_id")).all()
     news = []
+    changed = False
     for r in rows:
         age = (day - date.fromisoformat(r.birth_date)).days / 365.25
         progress = float(r.progress) + _rate(world, age)
@@ -80,6 +81,7 @@ def train_positions(conn: Connection, world: World, meta: CareerMeta, day: date)
                 conn.execute(text("UPDATE player_position SET familiarity = :f WHERE "
                                   "player_id = :p AND position = :pos"),
                              {"p": r.player_id, "pos": r.position, "f": new})
+            changed = True
         if new >= natural:
             conn.execute(text("DELETE FROM position_training WHERE player_id = :p"),
                          {"p": r.player_id})
@@ -88,6 +90,8 @@ def train_positions(conn: Connection, world: World, meta: CareerMeta, day: date)
         else:
             conn.execute(text("UPDATE position_training SET progress = :g WHERE player_id = :p"),
                          {"g": progress - points, "p": r.player_id})
+    if changed:
+        bump_players_epoch(conn)
     return news
 
 

@@ -46,7 +46,7 @@ from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
 from footsim.world.market import run_market
-from footsim.world.meta import CareerMeta
+from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.overall_history import record_season_start
 from footsim.world.renewals import contract_reminders, settle_expiring
 from footsim.world.reputation import drift_reputations
@@ -477,6 +477,7 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     if params:
         assignments = ", ".join(f"{a} = :{a}" for a in ATTRIBUTES)
         conn.execute(text(f"UPDATE player_attr SET {assignments} WHERE player_id = :pid"), params)
+        bump_players_epoch(conn)
     conn.execute(text("UPDATE player_development SET progress = :progress, trend = :trend, "
                       "potential_boost = :boost WHERE player_id = :pid"),
                  [{"pid": pid, "progress": float(p), "trend": float(t), "boost": float(b)}

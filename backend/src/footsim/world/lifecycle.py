@@ -35,7 +35,7 @@ from footsim.persistence.schema import (
 )
 from footsim.scouting.estimates import potential_label
 from footsim.world.context import World
-from footsim.world.meta import CareerMeta
+from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.squads import display_name
 
 NATURAL = 20  # familiarity in a player's own position
@@ -117,6 +117,8 @@ def retire_players(conn: Connection, world: World, meta: CareerMeta, day: date) 
         conn.execute(update(contract).where(contract.c.person_id == r.id,
                                             contract.c.is_active == 1)
                      .values(is_active=0, end_date=day.isoformat()))
+    if retiring:
+        bump_players_epoch(conn)
     club_names = {c.id: c.name for c in conn.execute(select(club.c.id, club.c.name))}
     news = []
     for r, age, overall in sorted(retiring, key=lambda x: -x[2]):
@@ -226,6 +228,8 @@ def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) ->
                        (contract, "contract"), (player_state, "state")):
         if rows[key]:
             conn.execute(table.insert(), rows[key])
+    if rows["player"]:
+        bump_players_epoch(conn)
     if not ours:
         return []
     listed = ", ".join(f"{name} ({position}, {age})" for name, position, age, _ in ours)

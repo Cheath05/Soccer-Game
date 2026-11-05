@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.83"
+  date: "2026-11-04"
+  title: "Looking at the transfer market no longer changes it"
+  changes:
+    - "Fixed: opening the transfer market on the 1st of a month could make other clubs shop that day as if their players hadn't developed that month, so a career played differently depending on whether you had looked. Clubs now always judge players on their current ratings."
+
 - version: "1.76"
   date: "2026-10-17"
   title: "A livelier transfer market, and clubs keep their goalkeepers"

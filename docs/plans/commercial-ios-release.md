@@ -227,7 +227,7 @@ Read on 3–4 Nov. The "Commercial?" column is my reading of the published terms
 
 | | Server (Tailscale) | Personal | Store (TestFlight / App Store) |
 |---|---|---|---|
-| Runs on | the VM, your Mac | your Mac; your own iPhone (free provisioning, re-signed every 7 days) | iPhones |
+| Runs on | the VM, your Mac | your Mac; your own iPhone (development signing with your paid account; never uploaded) | iPhones |
 | World and config | EA world, shared config | EA world, shared config | **Public world**, public config overlay |
 | Names | real (from the EA file) | real | fictional by default; (b) only after the lawyer; (c) by the player |
 | Entitlements | `unlocked` | `unlocked` | `store` |
@@ -298,7 +298,7 @@ iPhone app (Swift)                                 Python thread (embedded CPyth
 
 I'll install Rust's iOS targets (`rustup`) when I0 starts.
 
-### I0. Phase 0: the test build (main session, Opus High; free, no developer account)
+### I0. Phase 0: the test build (main session, Opus High; uses your developer account for signing)
 
 - **I0a. Dependency audit (Mac only).**
   - Create `ios/requirements-phone.txt`: the runtime dependencies minus scipy, alembic and uvicorn's extras, plus websockets.
@@ -321,7 +321,7 @@ I'll install Rust's iOS targets (`rustup`) when I0 starts.
   - Swift sets the `FOOTSIM_*` variables, then the Python thread runs `footsim.phone.main`. That builds `CareerSession(saves_dir(), <world>, keep_backups=2)` and `create_app(session=…)`, and starts uvicorn in code (`http="h11"`, `loop="asyncio"`).
   - For the spike, Swift copies the world into the container on first launch (I2 replaces this with a read-only open).
   - The web view loads once `/api/health` answers.
-- **I0e. Simulator first, then your iPhone 17 Pro Max** with free provisioning.
+- **I0e. Simulator first, then your iPhone 17 Pro Max**, signed with your developer account.
   - The benchmark uses synthetic teams.
   - A real career day uses your personal world: personal use, on your own device.
 - **I0f. Measure with `footsim.bench`,** run through the CLI on the M3 and on the i5-9500T VM, and through a bench endpoint on the phone. It uses the same fixture and seed everywhere and writes JSON (to `reports/bench/` on the computers). It measures:
@@ -426,7 +426,7 @@ I'll install Rust's iOS targets (`rustup`) when I0 starts.
 - **The guards** (section 2) run as a Release/Archive build phase.
 - **`just ios-build`** builds for the simulator, followed by an XCUITest smoke test: launch, the web view loads, a match starts.
 
-### I7. TestFlight (needs ST1: the $99 account)
+### I7. TestFlight (needs I6; the account is ready)
 
 - Internal testers first, then an external group with a public link, which goes through Beta App Review.
 - **An in-app bench screen** lets testers report their phone's numbers. They decide the minimum device at G3.
@@ -630,7 +630,7 @@ I'll install Rust's iOS targets (`rustup`) when I0 starts.
   - verified transactions only;
   - **Restore Purchases** (`AppStore.sync()`);
   - the verified set is posted to Python.
-- **Testing:** an Xcode StoreKit configuration file for local tests (no account needed), then sandbox testers after ST1.
+- **Testing:** an Xcode StoreKit configuration file for local tests (no account needed), then sandbox testers (available now: you have the account).
 
 ### MO5. Ads (Opus High; Swift plus backend)
 
@@ -662,11 +662,15 @@ I'll install Rust's iOS targets (`rustup`) when I0 starts.
 
 ### ST1. Accounts and business set-up (you)
 
-- **Join the Apple Developer Program ($99/yr) only after G1.** Then:
+- **You already have the Apple Developer Program account (noted 4 Nov).** What's still to set up:
   - the Paid Applications Agreement;
   - the US tax form (W-9) and banking;
   - the Small Business Program (15%);
   - an AdMob account with its payments profile.
+- **Can be done now, at no extra cost:**
+  - reserve the bundle id;
+  - create the app record with a trademark-free name (this reserves the name);
+  - apply for the Small Business Program.
 - **Decide:**
   - **An individual or an LLC.** A paid or ad-supported app makes you a "trader" in the EU, so as an individual your address, phone and email appear on EU product pages. An LLC with a business address avoids showing your home address.
   - **Storefronts:** the US only, or US + UK + EU at launch. The UK and EU add GDPR, the UK Children's Code and the DSA.
@@ -732,7 +736,7 @@ A US IP or entertainment lawyer, for one hour, before PW10 and before submission
 
 ## 7. Gates
 
-**G1, after I0 and I1** (free; before paying Apple). Passes when:
+**G1, after I0 and I1** (the go/no-go before the big tracks). Passes when:
 - every dependency loads on the device, including the pydantic-core we built;
 - cold start takes 6 s or less;
 - an agent match takes 8 s or less on the 17 Pro Max (Phase D's budget);
@@ -743,7 +747,7 @@ A US IP or entertainment lawyer, for one hour, before PW10 and before submission
 If it fails:
 - a missing wheel → its fallback from 1.2;
 - too slow → `performance.md`'s P1–P2 first;
-- neither works → stop here, having spent nothing.
+- neither works → stop here, having spent only the developer fee you already paid.
 
 **G2, after PW8 and PW9.** Passes when:
 - on 1,000 paired fixtures, the public world passes every **rate** and **volume** target in `match_targets.yaml` that the personal world passes at the same commit, on ENG1 and EFL;
@@ -782,7 +786,7 @@ If it fails: fix the generator, then measure again.
 | MO1–MO3 | — | Track I | Opus High + engine-reviewer |
 | MO4, MO5 | I3 | — | Opus High |
 | MO6, MO7 | MO1–MO5 | — | Sonnet High |
-| ST1 | G1 | — | you |
+| ST1 | — (account done; the rest any time) | anything | you |
 | ST2 | before PW10 and G3 | — | you (questions at Opus High) |
 | ST3–ST6 | ST2's answers | — | Sonnet High |
 | I7 | I6, ST1 | — | Sonnet High |
@@ -814,7 +818,7 @@ If it fails: fix the generator, then measure again.
 | A takedown over altered names | Low to medium with (b) | Removal | (b) waits on the lawyer; swap the names in an update |
 | The public world feels flat | Medium | Fewer players | G2; (c) names import; play-tests |
 | Validating the full world takes long | High | Later launch | England first; the existing reports for the rest; one batch at a time |
-| Ad revenue is tiny | High at small scale | Little money | Expected (1.8); keep spending at $99 until G2 |
+| Ad revenue is tiny | High at small scale | Little money | Expected (1.8); keep spending at the $99 already paid until G2 |
 | The engine gets tuned twice (EA world, then public) | High | Wasted batches | From PW8 on, acceptance runs on both worlds (section 11) |
 | A store bundle ships EA data or trademarks | Low | Severe | Archive-phase guards; the clean-room test; a separate personal bundle id |
 | The engine work in flight gets interrupted | — | Delay | This plan starts only when you place it |

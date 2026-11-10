@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from scipy.optimize import linear_sum_assignment
 
+from footsim.core.assignment import linear_sum_assignment
 from footsim.defs.formations import FormationDef
 from footsim.defs.loader import GameDefinitions
 from footsim.defs.positions import PositionGroup

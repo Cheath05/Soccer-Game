@@ -83,4 +83,16 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
     return app
 
 
-app = create_app()
+_app: FastAPI | None = None
+
+
+def __getattr__(name: str) -> FastAPI:
+    """``footsim.api.app:app`` (uvicorn, the justfile, deploy): the configured app, built the
+    first time it is asked for. Importing this module builds nothing, so the phone
+    (footsim.phone.main) can make its own with ``create_app``."""
+    global _app
+    if name != "app":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    if _app is None:
+        _app = create_app()
+    return _app

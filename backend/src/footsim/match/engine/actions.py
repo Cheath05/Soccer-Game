@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.special import erf
 
+from footsim.core.special import erf
 from footsim.defs.positions import PositionGroup
 from footsim.domain.attributes import ATTR_INDEX
 from footsim.match.engine import duels

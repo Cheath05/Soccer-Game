@@ -36,3 +36,9 @@ reports/
 
 # Measurement worktrees (calibration batches run from a pinned commit)
 .worktrees/
+
+# iOS build artefacts (filled by ios/scripts/build_wheels.sh and install_site_packages.sh)
+ios/wheelhouse/
+ios/support/
+ios/build/
+ios/Footsim.xcodeproj/

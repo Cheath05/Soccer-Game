@@ -8,9 +8,9 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.8",
     "sqlalchemy>=2.0",
-    "alembic>=1.13",
-    "numpy>=2.1",
-    "scipy>=1.14",
+    # Pinned: 2.5.2 is the only numpy 2.5.x with an iOS build (BeeWare), and the engine's golden
+    # values are checked against exactly this version.
+    "numpy==2.5.2",
     "pyyaml>=6.0",
 ]
 
@@ -25,6 +25,9 @@ dev = [
     "mypy>=1.11",
     "types-pyyaml",
     "httpx2>=2.13.1",
+    # SciPy is not a runtime dependency (no iOS build): it is the reference for the
+    # assignment and erf ports in tests, and calibration's shot fit uses it.
+    "scipy>=1.14",
     "scipy-stubs>=1.18.1.1",
 ]
 data = [
@@ -32,6 +35,7 @@ data = [
     "kagglehub>=1.0.2",
     "pandas>=2.2",
     "rapidfuzz>=3.9",
+    "scipy>=1.14",
 ]
 
 [build-system]

@@ -1,0 +1,32 @@
+# Python runtime dependencies for the iOS build (CPython 3.13, iOS 17.0+).
+#
+# These are the versions locked in backend/uv.lock, with three differences:
+#   - numpy is 2.5.2 (BeeWare's 2.5.2.post1 iOS build), not the locked 2.5.3;
+#   - scipy, alembic (with mako, markupsafe) are left out;
+#   - uvicorn comes without its "standard" extras (no uvloop, httptools,
+#     watchfiles, python-dotenv); websockets is listed on its own.
+#
+# Every transitive dependency is pinned here, so the install can run with
+# --no-index against ios/wheelhouse/ and fail loudly if something is missing.
+# sqlalchemy's optional greenlet (asyncio extra) has no iOS wheel and is not used.
+
+# Direct
+fastapi==0.141.1
+uvicorn==0.54.0
+websockets==17.1
+pydantic==2.13.5
+sqlalchemy==2.1.1
+numpy==2.5.2.*
+pyyaml==6.0.3
+
+# Transitive
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+click==8.5.0
+h11==0.16.0
+idna==3.20
+pydantic-core==2.46.5
+starlette==1.7.0
+typing-extensions==4.16.0
+typing-inspection==0.4.4

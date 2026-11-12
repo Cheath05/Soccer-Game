@@ -27,6 +27,17 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.87"
+  date: "2026-11-12"
+  title: "A new look, and a tab bar on phones"
+  changes:
+    - "The game has a new dark look everywhere: a bright accent, bolder headings and scores, and cards instead of outlined boxes."
+    - "On a phone, a bar at the bottom takes you to Home, Squad, Tactics and Transfers with one tap; More holds the other pages. It replaces the menu button."
+    - "Home leads with your next match, and your league position, recent results, squad status and finances follow as cards. Tap a card to open its page."
+    - "The squad on a phone is a list of players with the overall as the big number, a condition bar under each name, and a Sort menu."
+    - "Match day has one big Watch match button, with Instant result and Tactics beside each other under it."
+    - "The start page shows a saved career with its club, and the Start career button stays in reach once you've picked a club."
+
 - version: "1.83"
   date: "2026-11-04"
   title: "Looking at the transfer market no longer changes it"

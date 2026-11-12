@@ -18,7 +18,7 @@ export async function toMatchDay(page) {
   }
   await closeDialogs(page)
   await matchDay.click()
-  await page.getByText('Your starting XI').waitFor({ timeout: 30000 })
+  await page.getByText(/Starting XI/).waitFor({ timeout: 30000 })
   await closeNews(page)
 }
 

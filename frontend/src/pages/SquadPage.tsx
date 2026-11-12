@@ -1,4 +1,4 @@
-import { Badge, Group, Progress, SegmentedControl, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
+import { Badge, Card, Group, NativeSelect, Progress, SegmentedControl, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 
@@ -60,6 +60,76 @@ export default function SquadPage() {
     return sort.desc ? sorted.reverse() : sorted
   }, [squad.data, group, sort, selection])
 
+  const open = (id: number) => {
+    rememberPlayerList(rows.map((r) => r.id))
+    void navigate({ to: '/players/$playerId', params: { playerId: String(id) } })
+  }
+
+  if (phone) {
+    // A phone gets a list of players, not a table: the name, what matters at a glance, the
+    // overall as the big number.
+    return (
+      <Stack gap="sm">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Title order={2}>Squad</Title>
+          <NativeSelect
+            size="xs"
+            aria-label="Sort by"
+            value={sort.key}
+            onChange={(e) => {
+              const key = e.currentTarget.value as SortKey
+              setSort({ key, desc: !!COLUMNS.find((c) => c.key === key)?.numeric })
+            }}
+            data={COLUMNS.map((c) => ({ value: c.key, label: `Sort: ${c.label === 'Pos' ? 'Position' : c.label === 'Ovr' ? 'Overall' : c.label}` }))}
+          />
+        </Group>
+        <SegmentedControl fullWidth value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
+        <Stack gap={8}>
+          {rows.map((p) => {
+            const role = selection.get(p.id)
+            return (
+              <Card key={p.id} className="fs-row" withBorder padding="sm" style={{ cursor: 'pointer' }} onClick={() => open(p.id)}>
+                <Group wrap="nowrap" gap="sm">
+                  <Badge color={positionColor(p.position)} variant="light" w={46} style={{ flexShrink: 0 }}>
+                    {p.position}
+                  </Badge>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap={6} wrap="nowrap">
+                      <Text fw={600} truncate>
+                        {p.name}
+                      </Text>
+                      {p.injury && (
+                        <Badge color="red" size="xs" style={{ flexShrink: 0 }}>
+                          INJ
+                        </Badge>
+                      )}
+                      {p.suspended > 0 && (
+                        <Badge color="orange" size="xs" style={{ flexShrink: 0 }}>
+                          SUS
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="xs" c="dimmed" truncate>
+                      {p.age}y{role !== undefined ? ` · ${['XI', 'Bench', 'Reserve'][role]}` : ''} · {money(p.value_eur)}
+                      {p.appearances > 0 ? ` · ${p.goals}/${p.assists} G/A` : ''}
+                    </Text>
+                    <Progress mt={6} value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size={4} aria-label={`Condition ${p.condition}%`} />
+                  </div>
+                  <Stack gap={0} align="flex-end" style={{ flexShrink: 0 }}>
+                    <Text className="fs-num" fz={28} lh={1} c={ratingColor(p.overall)}>
+                      {p.overall}
+                    </Text>
+                    <SeasonChange start={p.season_start_overall} now={p.overall} />
+                  </Stack>
+                </Group>
+              </Card>
+            )
+          })}
+        </Stack>
+      </Stack>
+    )
+  }
+
   return (
     <Stack>
       <Group justify="space-between">
@@ -87,10 +157,7 @@ export default function SquadPage() {
           </Table.Thead>
           <Table.Tbody>
             {rows.map((p) => (
-              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => {
-                  rememberPlayerList(rows.map((r) => r.id))
-                  void navigate({ to: '/players/$playerId', params: { playerId: String(p.id) } })
-                }}>
+              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => open(p.id)}>
                 <Table.Td>
                   <Badge color={positionColor(p.position)} variant="light" w={44}>
                     {p.position}

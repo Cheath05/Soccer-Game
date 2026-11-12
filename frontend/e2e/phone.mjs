@@ -22,9 +22,14 @@ const fits = async (where) => {
   const [scroll, inner] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth])
   if (scroll > inner) errors.push(`${where}: the page is ${scroll}px wide on a ${inner}px screen`)
 }
+// The tab bar holds Home, Squad, Tactics and Transfers; the other pages are in the More sheet.
 const menu = async (label) => {
-  await page.getByRole('button', { name: 'Menu' }).tap()
-  await page.getByRole('navigation').getByText(label, { exact: true }).tap()
+  const tab = page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: label, exact: true })
+  if (await tab.count()) await tab.tap()
+  else {
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'More', exact: true }).tap()
+    await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).tap()
+  }
   await page.waitForTimeout(1200)
   await closeNews(page)
 }
@@ -33,9 +38,9 @@ await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await fits('start')
 await page.getByPlaceholder('Your name').fill('Phone')
-await page.getByRole('button', { name: /^Brentford Squad/ }).tap()
+await page.getByRole('button', { name: /^Brentford / }).tap()
 await page.getByRole('button', { name: 'Start career' }).tap()
-await page.getByText('Dashboard', { exact: true }).first().waitFor()
+await page.getByText('Next match', { exact: true }).first().waitFor()
 await shot('p01-dashboard')
 await fits('dashboard')
 
@@ -58,7 +63,7 @@ await fits('tactics')
 console.log(`tactics: tapped ${benchName} onto the pitch`)
 
 // A live match on the upright pitch.
-await menu('Dashboard')
+await menu('Home')
 await toMatchDay(page)
 await page.getByRole('button', { name: 'Watch match' }).tap()
 await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })

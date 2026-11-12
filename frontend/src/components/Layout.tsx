@@ -1,4 +1,4 @@
-import { AppShell, Badge, Box, Burger, Button, Center, Group, List, Loader, Menu, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Box, Button, Center, Group, List, Loader, Menu, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
@@ -10,6 +10,7 @@ import { useDevice } from '../lib/device'
 import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
 import { AccountFooter } from './AuthGate'
 import ClubSearch from './ClubSearch'
+import { Crest, MoreSheet, type NavItem, TabBar } from './PhoneNav'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
 import VersionTag from './VersionTag'
@@ -82,30 +83,59 @@ export default function Layout() {
     })
   }
 
+  // A live match has the whole screen: its own controls sit where the tab bar would.
+  const tabBar = phone && !path.startsWith('/live/')
+  const at = (to: string) => (to === '/' ? path === '/' : path.startsWith(to))
+  const go = (to: string) => {
+    close()
+    void navigate({ to })
+  }
+  const clubPath = `/clubs/${data.club.id}`
+  const tabs: NavItem[] = [
+    { to: '/', label: 'Home', icon: 'home', active: at('/') },
+    { to: '/squad', label: 'Squad', icon: 'squad', active: at('/squad') },
+    { to: '/tactics', label: 'Tactics', icon: 'tactics', active: at('/tactics') },
+    { to: '/transfers', label: 'Transfers', icon: 'transfers', active: at('/transfers') },
+  ]
+  const more: NavItem[] = [
+    { to: '/league', label: 'League', icon: 'league', active: at('/league') },
+    { to: '/fixtures', label: 'Fixtures', icon: 'fixtures', active: at('/fixtures') },
+    { to: '/calendar', label: 'Calendar', icon: 'calendar', active: at('/calendar') },
+    { to: '/cups', label: 'Cups', icon: 'cups', active: at('/cups') },
+    ...(hasEurope ? [{ to: '/europe', label: 'Europe', icon: 'europe', active: at('/europe') } as NavItem] : []),
+    { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
+    { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
+    { to: '/start', label: 'Save / Load', icon: 'saves', active: false },
+  ]
+
   const onSave = () => saveGame.mutate(undefined, { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 1500) } })
 
   return (
     <AppShell
       header={{ height: 'calc(60px + env(safe-area-inset-top))' }}
-      navbar={{ width: 210, breakpoint: 'sm', collapsed: { mobile: !opened } }}
-      padding="md"
+      navbar={{ width: 210, breakpoint: 'sm', collapsed: { mobile: true } }}
+      footer={tabBar ? { height: 58 } : undefined} // the tab bar (--fs-tabbar); Mantine adds the home indicator's inset
+      padding={phone ? 'sm' : 'md'}
     >
       {/* Standalone on an iPhone (viewport-fit=cover) the header must clear the notch and the landscape insets. */}
       <AppShell.Header style={{ paddingTop: 'env(safe-area-inset-top)', paddingInline: 'env(safe-area-inset-left) env(safe-area-inset-right)' }}>
         {phone ? (
           <Group h="100%" px="xs" gap={6} wrap="nowrap">
-            <Burger opened={opened} onClick={toggle} size="sm" aria-label="Menu" style={{ minWidth: 44, minHeight: 44 }} />
+            <Box pl={4} style={{ lineHeight: 0 }}>
+              <Crest name={data.club.name} size={38} mine />
+            </Box>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Title order={4} fz={16} lineClamp={1}>
+              <Title order={4} fz={20} lh={1.1} lineClamp={1}>
                 {data.club.name}
               </Title>
-              {/* The navbar is folded away on a phone, so the version tag sits under the name there. */}
-              <VersionTag truncate />
+              <Text size="xs" c="dimmed" truncate>
+                {longDate(data.date)}
+              </Text>
             </div>
             <Button
               size="md"
               h={44}
-              px={12}
+              px={18}
               color={matchToday ? 'orange' : 'teal'}
               loading={advance.isPending}
               onClick={onContinue}
@@ -197,7 +227,7 @@ export default function Layout() {
           <VersionTag />
         </AppShell.Section>
       </AppShell.Navbar>
-      <AppShell.Main>
+      <AppShell.Main pb={tabBar ? 'calc(var(--app-shell-footer-offset, 0rem) + var(--app-shell-padding) + env(safe-area-inset-bottom))' : undefined}>
         {advance.error && (
           <Text c="red" mb="sm">
             {advance.error.message}
@@ -205,6 +235,26 @@ export default function Layout() {
         )}
         <Outlet key={currency} />
       </AppShell.Main>
+      {tabBar && (
+        <AppShell.Footer>
+          <TabBar items={tabs} moreActive={opened || more.some((m) => m.active)} onPick={go} onMore={toggle} />
+        </AppShell.Footer>
+      )}
+      {phone && (
+        <MoreSheet
+          opened={opened}
+          onClose={close}
+          items={more}
+          onPick={go}
+          header={<ClubSearch onPick={close} />}
+          footer={
+            <Group justify="space-between" align="center">
+              <AccountFooter />
+              <VersionTag />
+            </Group>
+          }
+        />
+      )}
       <Modal
         opened={seasonFinal !== null}
         onClose={() => setSeasonFinal(null)}

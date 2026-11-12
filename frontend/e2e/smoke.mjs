@@ -22,7 +22,7 @@ await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Alex')
 // The club tile is a button; the saved-careers list may show the same name as text.
-await page.getByRole('button', { name: /^Arsenal Squad/ }).click()
+await page.getByRole('button', { name: /^Arsenal / }).click()
 await shot('01-start')
 await page.getByRole('button', { name: 'Start career' }).click()
 await page.getByText('Dashboard', { exact: true }).first().waitFor()

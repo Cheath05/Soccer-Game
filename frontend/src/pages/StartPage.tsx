@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
+import { Crest } from '../components/PhoneNav'
 import VersionTag from '../components/VersionTag'
 import { AccountFooter } from '../components/AuthGate'
 import { CURRENCIES, type Currency, longDate, setCurrency, toEuros, useCurrency } from '../lib/format'
@@ -36,12 +37,16 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const ignore = () => undefined
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg" py="lg" px="sm">
       <Stack gap="xl">
         <Group justify="space-between">
           <div>
-            <Title order={1}>Footsim</Title>
-            <Text c="dimmed">A football management simulation.</Text>
+            <Title order={1} fz={52} lh={0.95}>
+              Foot<span className="fs-accent">sim</span>
+            </Title>
+            <Text c="dimmed" mt={4}>
+              Football management, on your own terms.
+            </Text>
             <VersionTag />
             <Box mt="xs">
               <AccountFooter />
@@ -59,32 +64,39 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           <Title order={3}>Saved careers</Title>
           <SimpleGrid cols={{ base: 1, sm: 3 }}>
             {(saves.data ?? []).map((s) => (
-              <Card key={s.slot} withBorder>
-                <Group justify="space-between" mb="xs">
-                  <Text fw={600}>Slot {s.slot}</Text>
+              <Card key={s.slot} withBorder className={s.has_save || s.has_autosave ? 'fs-hero' : undefined} padding="md">
+                <Group justify="space-between">
+                  <span className="fs-label">Slot {s.slot}</span>
                   {s.active && <Badge color="teal">Playing</Badge>}
                 </Group>
                 {s.has_save || s.has_autosave ? (
-                  <Stack gap={4}>
-                    <Text>{s.club ?? 'Career'}</Text>
-                    <Text size="sm" c="dimmed">
-                      {s.manager ?? ''} {s.game_date ? `· ${longDate(s.game_date)}` : ''}
-                    </Text>
-                    <Group gap="xs" mt="xs">
+                  <Stack gap="sm" mt="xs">
+                    <Group wrap="nowrap" gap="sm">
+                      <Crest name={s.club ?? 'Career'} size={48} mine />
+                      <div style={{ minWidth: 0 }}>
+                        <Text className="fs-num" fz={24} lh={1.1} tt="uppercase" truncate>
+                          {s.club ?? 'Career'}
+                        </Text>
+                        <Text size="sm" c="dimmed" truncate>
+                          {s.manager ?? ''} {s.game_date ? `· ${longDate(s.game_date)}` : ''}
+                        </Text>
+                      </div>
+                    </Group>
+                    <Group gap="xs" grow>
                       {s.has_save && (
-                        <Button size="xs" loading={loadCareer.isPending} onClick={() => void loadCareer.mutateAsync({ slot: s.slot }).then(goHome, ignore)}>
+                        <Button size="sm" loading={loadCareer.isPending} onClick={() => void loadCareer.mutateAsync({ slot: s.slot }).then(goHome, ignore)}>
                           Load
                         </Button>
                       )}
                       {s.has_autosave && (
-                        <Button size="xs" variant="default" onClick={() => void loadCareer.mutateAsync({ slot: s.slot, autosave: true }).then(goHome, ignore)}>
-                          Load autosave
+                        <Button size="sm" variant="default" onClick={() => void loadCareer.mutateAsync({ slot: s.slot, autosave: true }).then(goHome, ignore)}>
+                          Autosave
                         </Button>
                       )}
                     </Group>
                   </Stack>
                 ) : (
-                  <Text c="dimmed" size="sm">
+                  <Text c="dimmed" size="sm" mt={4}>
                     Empty
                   </Text>
                 )}
@@ -145,13 +157,23 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
                 {selectedLeague?.clubs.map((c) => (
                   <UnstyledButton key={c.id} onClick={() => setClubId(c.id)}>
-                    <Card withBorder padding="sm" bg={clubId === c.id ? 'var(--mantine-color-teal-light)' : undefined}>
-                      <Text fw={600} truncate>
-                        {c.name}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Squad {c.average_overall.toFixed(1)} · Reputation {c.reputation}
-                      </Text>
+                    <Card
+                      withBorder
+                      padding="sm"
+                      bg={clubId === c.id ? 'var(--mantine-color-teal-light)' : undefined}
+                      style={clubId === c.id ? { borderColor: 'var(--fs-accent)' } : undefined}
+                    >
+                      <Group wrap="nowrap" gap={8}>
+                        <Crest name={c.name} size={32} mine={clubId === c.id} />
+                        <div style={{ minWidth: 0 }}>
+                          <Text fw={600} size="sm" truncate>
+                            {c.name}
+                          </Text>
+                          <Text size="xs" c="dimmed" truncate>
+                            {c.average_overall.toFixed(1)} ovr · rep {c.reputation}
+                          </Text>
+                        </div>
+                      </Group>
                     </Card>
                   </UnstyledButton>
                 ))}
@@ -160,9 +182,10 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           )}
           {slotInfo?.has_save && <Alert color="yellow">Slot {slot} already has a career. Starting a new one replaces it.</Alert>}
           {newCareer.error && <Alert color="red">{newCareer.error.message}</Alert>}
-          <Group>
+          <Group style={clubId !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
             <Button
-              size="md"
+              size="lg"
+              fullWidth
               disabled={clubId === null}
               loading={newCareer.isPending}
               onClick={() =>

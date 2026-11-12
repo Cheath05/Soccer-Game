@@ -257,7 +257,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: 'The phone layout, tapping instead of dragging, and Add to Home Screen.',
     blocks: [
       [
-        'On a phone the menu folds away behind the menu button. The header has your club’s name with the version under it, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to….',
+        'On a phone, a bar at the bottom has Home, Squad, Tactics and Transfers; More opens the rest (League, Fixtures, Calendar, Cups, Europe, Finances, your club, Save / Load) with the club search and the version. The header has your club’s name and the date, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to…. The bar steps aside while you watch a match.',
         'Tables keep their key columns and put the rest in a small line under the name. The Transfers filters are behind a Filters button.',
         'There is no dragging on a touch screen. On Tactics and in the live match, tap a player and then tap where he should go.',
         'The live match draws the pitch upright. Half-time is a full-screen sheet; Tactics and substitutions puts it aside so you can make changes, with a bar at the bottom to bring it back or start the second half.',

@@ -8,16 +8,16 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
     private let spinner = UIActivityIndicatorView(style: .large)
     private var background: UIBackgroundTaskIdentifier = .invalid
     private var loaded = false
-    /// The pages' own background in light and dark (Mantine's body colours), so the status
-    /// bar strip above the web view matches the page.
-    private let pitch = UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.141, green: 0.141, blue: 0.141, alpha: 1) : .white
-    }
+    /// The pages' own background (the game is always dark), so the strip behind the status
+    /// bar matches the page.
+    private let pitch = UIColor(red: 0.043, green: 0.059, blue: 0.078, alpha: 1)
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = pitch
+        overrideUserInterfaceStyle = .dark
 
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true

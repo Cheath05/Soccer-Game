@@ -56,3 +56,28 @@ api:
 # Frontend dev server on http://127.0.0.1:5173 (proxies /api to the backend)
 web:
     cd {{frontend}} && npm run dev
+
+# iOS app (docs/plans/commercial-ios-release.md, Track I; see ios/README.md).
+# Python packages for iOS into ios/wheelhouse and ios/build/site-packages-* (once, or after a
+# dependency changes)
+ios-wheels:
+    ios/scripts/build_wheels.sh
+    ios/scripts/install_site_packages.sh device ios/build/site-packages-device
+    ios/scripts/install_site_packages.sh simulator ios/build/site-packages-simulator
+
+# Assemble the game for the app (ios/build/app) and generate the Xcode project
+ios-bundle profile="personal":
+    ios/scripts/assemble_bundle.sh {{profile}}
+    cd ios && xcodegen generate
+
+# Build and run in the simulator
+ios-sim device="iPhone 17 Pro Max": ios-bundle
+    cd ios && xcodebuild -project Footsim.xcodeproj -scheme Footsim -destination 'platform=iOS Simulator,name={{device}}' -derivedDataPath build/dd build | grep -E "error:|BUILD"
+    xcrun simctl boot "{{device}}" || true
+    xcrun simctl install "{{device}}" ios/build/dd/Build/Products/Debug-iphonesimulator/Footsim.app
+    xcrun simctl launch --terminate-running-process "{{device}}" com.alexbenton.footsim.personal
+
+# Build, sign and install on the connected iPhone (Xcode needs your Apple account: Settings > Accounts)
+ios-phone: ios-bundle
+    cd ios && xcodebuild -project Footsim.xcodeproj -scheme Footsim -destination 'generic/platform=iOS' -derivedDataPath build/dd -allowProvisioningUpdates build | grep -E "error:|BUILD"
+    xcrun devicectl device install app --device "$(xcrun devicectl list devices | awk '/iPhone/ && /physical/ {for (i=1;i<=NF;i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) print $i}' | head -1)" ios/build/dd/Build/Products/Debug-iphoneos/Footsim.app

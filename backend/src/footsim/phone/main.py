@@ -15,8 +15,10 @@ thread of its own and calls ``main()``, which serves the game until the app dies
 
 import json
 import os
+import secrets
 import shutil
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +54,9 @@ class LoopbackOnly:
             return True
         cookies = headers.get(b"cookie", b"").decode("latin-1")
         pairs = (c.strip().partition("=") for c in cookies.split(";"))
-        return any(name == COOKIE and value == self.secret for name, _, value in pairs)
+        key = self.secret.encode()
+        return any(name == COOKIE and secrets.compare_digest(value.encode("latin-1"), key)
+                   for name, _, value in pairs)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket") or self._allowed(scope):
@@ -105,6 +109,8 @@ def main(port: int | None = None, secret: str | None = None) -> None:
     global _server
     port = port if port is not None else int(os.environ["FOOTSIM_PHONE_PORT"])
     secret = secret if secret is not None else os.environ.get("FOOTSIM_PHONE_SECRET", "")
+    if not secret:
+        raise RuntimeError("the host gave no key (FOOTSIM_PHONE_SECRET): refusing to serve")
     app = build(port, secret)
     while True:
         _awake.wait()
@@ -112,8 +118,13 @@ def main(port: int | None = None, secret: str | None = None) -> None:
                                 ws="websockets-sansio", lifespan="off", log_level="warning",
                                 access_log=False)
         with _lock:
-            _server = uvicorn.Server(config)
-        _server.run()
+            if not _awake.is_set():  # paused since the wait: don't start listening
+                continue
+            _server = server = uvicorn.Server(config)
+        try:
+            server.run()
+        except (SystemExit, OSError):  # the port wasn't free yet (uvicorn exits on that)
+            time.sleep(0.5)
 
 
 def pause() -> None:

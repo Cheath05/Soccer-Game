@@ -111,6 +111,8 @@ def linear_sum_assignment(
         nr, nc = nc, nr
     if maximize:
         arr = -arr
+    if np.isnan(arr).any() or np.isneginf(arr).any():  # as SciPy: never a silent wrong answer
+        raise ValueError("matrix contains invalid numeric entries")
     cost: list[list[float]] = arr.tolist()
 
     u = [0.0] * nr

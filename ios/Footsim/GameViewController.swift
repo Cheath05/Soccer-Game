@@ -8,9 +8,12 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
     private let spinner = UIActivityIndicatorView(style: .large)
     private var background: UIBackgroundTaskIdentifier = .invalid
     private var loaded = false
-    private let pitch = UIColor(red: 0.07, green: 0.09, blue: 0.11, alpha: 1)
-
-    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    /// The pages' own background in light and dark (Mantine's body colours), so the status
+    /// bar strip above the web view matches the page.
+    private let pitch = UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.141, green: 0.141, blue: 0.141, alpha: 1) : .white
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,7 +34,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         config.userContentController.addUserScript(
             WKUserScript(source: quiet, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         webView = WKWebView(frame: view.bounds, configuration: config)
-        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.isOpaque = false
@@ -43,11 +46,19 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         webView.isHidden = true
         if #available(iOS 16.4, *) { webView.isInspectable = true }
         view.addSubview(webView)
+        // Below the status bar (so no page sits under the clock), to the screen's other edges
+        // (the pages pad themselves for the home indicator and the notch in landscape).
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
 
-        spinner.color = .white
+        spinner.color = .label
         spinner.startAnimating()
         status.text = "Starting the game…"
-        status.textColor = .white
+        status.textColor = .label
         status.numberOfLines = 0
         status.textAlignment = .center
         status.font = .preferredFont(forTextStyle: .body)

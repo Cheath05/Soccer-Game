@@ -4,7 +4,8 @@
   --fs-surface: #151c25;
   --fs-surface-2: #1f2935;
   --fs-border: #2a3644;
-  --fs-accent: #c6f432;
+  --fs-accent: #2f8cff;
+  --fs-accent-text: #6fb0ff; /* the accent as text on the dark background */
   --fs-dim: #8f9bab;
   --fs-heading: "Barlow Condensed", "Arial Narrow", -apple-system, system-ui, sans-serif;
   --fs-tabbar: 58px;
@@ -45,12 +46,12 @@ body { -webkit-font-smoothing: antialiased; }
   text-transform: uppercase;
   color: var(--fs-dim);
 }
-.fs-accent { color: var(--fs-accent); }
+.fs-accent { color: var(--fs-accent-text); }
 
 /* A card that leads its screen: a faint pitch-green glow behind the next match. */
 .fs-hero {
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(198, 244, 50, 0.16) 0%, rgba(198, 244, 50, 0) 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(47, 140, 255, 0.24) 0%, rgba(47, 140, 255, 0) 60%),
     linear-gradient(160deg, #1b2530 0%, #121922 100%);
   border: 1px solid var(--fs-border);
 }
@@ -73,7 +74,7 @@ body { -webkit-font-smoothing: antialiased; }
   font-weight: 700;
   color: #e8edf3;
 }
-.fs-crest[data-mine] { background: var(--fs-accent); border-color: var(--fs-accent); color: #10140a; }
+.fs-crest[data-mine] { background: var(--fs-accent); border-color: var(--fs-accent); color: #fff; }
 
 /* Rows you can tap. */
 .fs-row { border-radius: 10px; transition: background 0.12s; }
@@ -106,7 +107,7 @@ body { -webkit-font-smoothing: antialiased; }
   user-select: none;
 }
 .fs-tab svg { width: 24px; height: 24px; }
-.fs-tab[data-active] { color: var(--fs-accent); }
+.fs-tab[data-active] { color: var(--fs-accent-text); }
 .fs-tab:active { opacity: 0.6; }
 .fs-tab[data-matchday] { color: #ff922b; }
 
@@ -128,6 +129,53 @@ body { -webkit-font-smoothing: antialiased; }
   font-weight: 600;
   cursor: pointer;
 }
-.fs-more-item svg { width: 24px; height: 24px; color: var(--fs-accent); }
+.fs-more-item svg { width: 24px; height: 24px; color: var(--fs-accent-text); }
 .fs-more-item:active { background: var(--fs-border); }
 .fs-more-item[data-active] { border-color: var(--fs-accent); }
+
+/* The start page: a pitch drawn faintly behind the name. */
+.fs-start-hero {
+  position: relative;
+  overflow: hidden;
+  margin-inline: calc(-1 * var(--mantine-spacing-sm));
+  padding: calc(28px + env(safe-area-inset-top)) 20px 28px;
+  min-height: 230px;
+  display: flex;
+  align-items: flex-end;
+  background:
+    radial-gradient(90% 120% at 85% 0%, rgba(47, 140, 255, 0.42) 0%, rgba(47, 140, 255, 0) 62%),
+    linear-gradient(180deg, #101a29 0%, var(--fs-bg) 100%);
+  border-bottom: 1px solid var(--fs-border);
+}
+.fs-start-pitch { position: absolute; inset: 0; width: 100%; height: 100%; color: rgba(160, 200, 255, 0.13); }
+.fs-start-hero-text { position: relative; }
+
+/* A numbered step in the new-career flow. */
+.fs-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--fs-accent);
+  color: #fff;
+  font-family: var(--fs-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* A club to pick. */
+.fs-club {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--fs-surface-2);
+  border: 1px solid var(--fs-border);
+}
+.fs-club:active { background: var(--fs-border); }
+.fs-club[data-picked] { border-color: var(--fs-accent); background: rgba(47, 140, 255, 0.16); }

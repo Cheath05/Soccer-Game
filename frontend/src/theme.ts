@@ -1,10 +1,10 @@
 import { Badge, Button, Card, Modal, Paper, Table, Title, createTheme, type MantineColorsTuple } from '@mantine/core'
 
-// The look of the game: dark, with one loud accent. The accent takes the place of Mantine's
+// The look of the game: dark, with one loud accent (an electric blue). The accent takes the place of Mantine's
 // `teal`, which the pages already use for "good" (a fit player, a promotion place, Continue), so
 // they all follow without naming a new colour.
 const accent: MantineColorsTuple = [
-  '#f8ffe1', '#eefdbd', '#e2fb8f', '#d5f85f', '#cbf53e', '#c6f432', '#a9d51f', '#86ab14', '#63800c', '#425706',
+  '#e9f3ff', '#d0e5ff', '#a3cbff', '#74b0ff', '#4f9bff', '#2f8cff', '#1f76e6', '#155fc0', '#0e4a98', '#083572',
 ]
 // Mantine's dark scale, from text (0) to the deepest background (9): body is 7, cards and inputs
 // 6, borders 4.
@@ -17,8 +17,7 @@ export const HEADING_FONT = '"Barlow Condensed", "Arial Narrow", -apple-system, 
 export const theme = createTheme({
   primaryColor: 'teal',
   primaryShade: { light: 5, dark: 5 },
-  autoContrast: true, // dark text on the bright accent
-  luminanceThreshold: 0.45,
+  autoContrast: true, // white text on the accent
   colors: { teal: accent, dark },
   defaultRadius: 'md',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',

@@ -140,7 +140,7 @@ export function attributeLabel(key: string): string {
 }
 
 export function ratingColor(value: number): string {
-  if (value >= 85) return 'teal.7'
+  if (value >= 85) return 'teal.3'
   if (value >= 75) return 'green.6'
   if (value >= 65) return 'lime.7'
   if (value >= 55) return 'yellow.7'
@@ -149,7 +149,7 @@ export function ratingColor(value: number): string {
 }
 
 export function matchRatingColor(value: number): string {
-  if (value >= 8) return 'teal.7'
+  if (value >= 8) return 'teal.3'
   if (value >= 7) return 'green.6'
   if (value >= 6.3) return 'lime.7'
   if (value >= 5.5) return 'orange.6'

@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.88"
+  date: "2026-11-16"
+  title: "Blue, and a new start screen"
+  changes:
+    - "The game's accent colour is now blue."
+    - "The start screen is rebuilt: the game's name over a pitch, your saved careers first under Continue, then a new career in three steps (you, your club, options). The first free save slot is picked for you, and the options (board, currency, sandbox budget) fold away until you want them."
+
 - version: "1.87"
   date: "2026-11-12"
   title: "A new look, and a tab bar on phones"

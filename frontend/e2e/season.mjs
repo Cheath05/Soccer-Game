@@ -20,7 +20,7 @@ await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Season')
 await page.getByRole('button', { name: /^Arsenal / }).click()
-await page.getByRole('button', { name: 'Start career' }).click()
+await page.getByRole('button', { name: /^Start with/ }).click()
 await page.getByText('Dashboard', { exact: true }).first().waitFor()
 
 await page.getByRole('button', { name: 'Sim to…' }).click()

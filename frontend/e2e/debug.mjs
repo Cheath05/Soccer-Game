@@ -20,7 +20,7 @@ await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Debug')
 // The club tile is a button; the saved-careers list may show the same name as text.
 await page.getByRole('button', { name: /^Arsenal / }).click()
-await page.getByRole('button', { name: 'Start career' }).click()
+await page.getByRole('button', { name: /^Start with/ }).click()
 await toMatchDay(page)
 await page.getByRole('button', { name: 'Watch match' }).click()
 await page.getByRole('button', { name: 'Play' }).waitFor({ timeout: 30000 })

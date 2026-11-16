@@ -75,6 +75,7 @@ from footsim.persistence.schema import (
     cup_tie,
     fixture,
     league_final,
+    league_title,
     nation,
     person,
     player_attr,
@@ -633,14 +634,20 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
         return f.outcome in ("promoted", "playoff_winner") or (
             f.outcome == "champion" and (comps[f.competition_id].tier or 1) > 1)
 
+    won = conn.execute(select(league_title).where(league_title.c.club_id == club_id)
+                       .order_by(league_title.c.season_id, league_title.c.won_on)).all()
+
+    def title_key(t: Row[Any]) -> str:  # a league's own title by its key; its others apart
+        key = comps[t.competition_id].key
+        return key if t.title == comps[t.competition_id].name else f"{key}|{t.title}"
+
     return ClubHistoryOut(
         club=ClubRef(id=club_id, name=names[club_id]), seasons=rows,
-        titles=sum(f.outcome == "champion" for f in finals),
+        titles=sum(t.kind == "champion" for t in won),
         promotions=sum(promoted(f) for f in finals),
         relegations=sum(f.outcome == "relegated" for f in finals),
         trophies=trophy_cabinet(
-            world, labels, [(f.season_id, comps[f.competition_id].key, comps[f.competition_id].name)
-                            for f in finals if f.outcome == "champion"], runs, europe),
+            world, labels, [(t.season_id, title_key(t), t.title) for t in won], runs, europe),
         treble_seasons=[r.season for r in reversed(rows) if r.treble],
         european_titles=sum(run.won for season_runs in europe.values() for run in season_runs),
     )

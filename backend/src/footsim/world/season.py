@@ -11,13 +11,21 @@ import numpy as np
 from sqlalchemy import Connection, Row, bindparam, func, select, text, update
 
 from footsim.competitions.calendars import shifted_calendar
-from footsim.competitions.fixtures import round_robin
-from footsim.competitions.playoffs import Entrant, legs_for, round_ties
-from footsim.competitions.scheduling import league_round_dates, playoff_dates
+from footsim.competitions.fixtures import Round, grouped_rounds, round_robin, split_phases
+from footsim.competitions.playoffs import Entrant, Seeds, legs_for, round_ties, series_winner
+from footsim.competitions.scheduling import PLAYOFF_GAP, league_round_dates, playoff_dates
 from footsim.competitions.standings import Result, TableRow, league_table
 from footsim.core.rng import derive_rng, derive_seed
 from footsim.defs.calendar import SeasonCalendarDef
-from footsim.defs.competitions import LeagueDef, MovementKind, PlayoffDef, SimLevel
+from footsim.defs.competitions import (
+    GroupsFormat,
+    LeagueDef,
+    MovementKind,
+    PhaseDef,
+    PlayoffDef,
+    PlayoffRoundDef,
+    SimLevel,
+)
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.match.report import Decider
 from footsim.people.development import (
@@ -28,11 +36,13 @@ from footsim.people.development import (
     draw_traits,
 )
 from footsim.persistence.schema import (
+    club,
     club_league_membership,
     competition,
     contract,
     fixture,
     league_final,
+    league_title,
     player_attr,
     player_development,
     playoff_tie,
@@ -64,6 +74,40 @@ class ActiveLeague:
 
 def season_calendar(world: World, meta: CareerMeta, season_id: int) -> SeasonCalendarDef:
     return shifted_calendar(world.defs.calendars[meta.base_calendar], season_id - 1)
+
+
+def league_groups(conn: Connection, league: LeagueDef, clubs: Sequence[int]
+                  ) -> dict[str, set[int]]:
+    """Each conference's or zone's clubs among ``clubs`` (this season's members), found by name.
+    Empty for a league without groups."""
+    if not league.groups:
+        return {}
+    names = {r.id: r.name for r in conn.execute(select(club.c.id, club.c.name).where(
+        club.c.id.in_(list(clubs))))}
+    by_name = {name: cid for cid, name in names.items()}
+    missing = [n for g in league.groups for n in g.clubs if n not in by_name]
+    if missing:
+        raise RuntimeError(f"{league.key}: clubs of its groups not in the league: {missing}")
+    return {g.key: {by_name[n] for n in g.clubs} for g in league.groups}
+
+
+def _club_ids(conn: Connection, names: Sequence[str]) -> dict[str, int]:
+    return {r.name: r.id for r in conn.execute(select(club.c.id, club.c.name).where(
+        club.c.name.in_(list(names))))}
+
+
+def season_rounds(conn: Connection, league: LeagueDef, clubs: list[int],
+                  rng: np.random.Generator) -> list[list[Round]]:
+    """The season's league rounds, by phase (one run for a league without phases)."""
+    phases = max(1, len(league.phases))
+    fmt = league.format
+    if isinstance(fmt, GroupsFormat):
+        groups = league_groups(conn, league, clubs)
+        ids = _club_ids(conn, [c for pair in fmt.rivals for c in pair])
+        rivals = [(ids[a], ids[b]) for a, b in fmt.rivals]
+        return grouped_rounds([sorted(groups[g.key]) for g in league.groups], fmt.legs,
+                              fmt.cross_rounds, rivals, phases, rng)
+    return split_phases(round_robin(clubs, fmt.legs * phases, rng), phases)
 
 
 def league_calendar(world: World, league: LeagueDef, season_id: int) -> SeasonCalendarDef:
@@ -135,37 +179,71 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
         league = active.league
         clubs = members(conn, season_id, active.competition_id)
         rng = derive_rng(meta.seed, "fixtures", season_id, league.key)
-        rounds = round_robin(clubs, league.format.legs, rng)
         own = league_calendar(world, league, season_id)
-        dates = league_round_dates(own.competitions[league.key], own, len(rounds),
-                                   blocked_dates(world, own, league.key))
-        conn.execute(fixture.insert(), [
-            {"season_id": season_id, "competition_id": active.competition_id, "stage": "league",
-             "round": number, "date": day.isoformat(), "home_club_id": home,
-             "away_club_id": away, "neutral": 0, "status": "scheduled"}
-            for number, (games, day) in enumerate(zip(rounds, dates, strict=True), start=1)
-            for home, away in games
-        ])
+        first = 1
+        phases: list[PhaseDef | None] = list(league.phases) or [None]
+        for phase, rounds in zip(phases, season_rounds(conn, league, clubs, rng), strict=True):
+            dated = own.competitions[league.calendar_key(phase.key if phase else None)]
+            dates = league_round_dates(dated, own, len(rounds),
+                                       blocked_dates(world, own, league.key))
+            conn.execute(fixture.insert(), [
+                {"season_id": season_id, "competition_id": active.competition_id,
+                 "stage": "league", "round": number, "date": day.isoformat(),
+                 "home_club_id": home, "away_club_id": away, "neutral": 0,
+                 "status": "scheduled"}
+                for number, (games, day) in enumerate(zip(rounds, dates, strict=True),
+                                                      start=first)
+                for home, away in games
+            ])
+            first += len(rounds)
     news += start_cups(conn, world, meta, meta.current_date)
     return news + start_europe(conn, world, meta, season_id, meta.current_date)
 
 
-def league_results(conn: Connection, competition_id: int, season_id: int) -> list[Result]:
-    rows = conn.execute(select(fixture).where(
+def league_results(conn: Connection, competition_id: int, season_id: int,
+                   rounds: tuple[int, int] | None = None) -> list[Result]:
+    """The season's played league results; ``rounds``: only those of these rounds (a phase)."""
+    query = select(fixture).where(
         fixture.c.competition_id == competition_id, fixture.c.season_id == season_id,
         fixture.c.stage == "league", fixture.c.status == "played",
-    ))
-    return [Result(r.home_club_id, r.away_club_id, r.home_goals, r.away_goals) for r in rows]
+    )
+    if rounds is not None:
+        query = query.where(fixture.c.round.between(*rounds))
+    return [Result(r.home_club_id, r.away_club_id, r.home_goals, r.away_goals)
+            for r in conn.execute(query)]
+
+
+def phase_rounds(conn: Connection, league: LeagueDef, competition_id: int, season_id: int,
+                 phase: str) -> tuple[int, int]:
+    """The first and last league round of a phase: the season's rounds split evenly."""
+    total = int(conn.execute(select(func.max(fixture.c.round)).where(
+        fixture.c.competition_id == competition_id, fixture.c.season_id == season_id,
+        fixture.c.stage == "league")).scalar() or 0)
+    size = total // len(league.phases)
+    k = [p.key for p in league.phases].index(phase)
+    return k * size + 1, (k + 1) * size
 
 
 def standings(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
-              season_id: int) -> list[TableRow]:
+              season_id: int, phase: str | None = None) -> list[TableRow]:
+    """The season's table (every league match), or a phase's (its rounds only)."""
     key: str = conn.execute(select(competition.c.key).where(competition.c.id == competition_id)
                             ).scalar_one()
     league = world.defs.leagues[key]
+    rounds = (phase_rounds(conn, league, competition_id, season_id, phase)
+              if phase is not None else None)
+    lots = (derive_seed(meta.seed, "lots", season_id, key) if phase is None
+            else derive_seed(meta.seed, "lots", season_id, key, phase))
     return league_table(members(conn, season_id, competition_id),
-                        league_results(conn, competition_id, season_id), league.points,
-                        league.tiebreakers, derive_seed(meta.seed, "lots", season_id, key))
+                        league_results(conn, competition_id, season_id, rounds), league.points,
+                        league.tiebreakers, lots)
+
+
+def group_table(rows: Sequence[TableRow], clubs: set[int]) -> list[TableRow]:
+    """A conference's or zone's table: the league table's rows of its clubs, in the league's
+    order (every match counts, the other group's too), renumbered."""
+    return [TableRow(**{**vars(r), "position": k})
+            for k, r in enumerate((r for r in rows if r.club_id in clubs), start=1)]
 
 
 def _scheduled(conn: Connection, competition_id: int, season_id: int, stage: str) -> int:
@@ -182,9 +260,9 @@ def _finalized(conn: Connection, competition_id: int, season_id: int) -> bool:
 
 
 def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
-    """Close finished leagues, start and advance play-offs, and on the first of each month let
-    players develop and settle every club's month of money; in a transfer window the AI clubs
-    trade (world/market.py). Returns news messages."""
+    """Close finished leagues and phases, start and advance play-offs, and on the first of each
+    month let players develop and settle every club's month of money; in a transfer window the
+    AI clubs trade (world/market.py). Returns news messages."""
     messages: list[str] = []
     if day.day == 1:
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
@@ -196,12 +274,15 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     messages += progress_europe(conn, world, meta, day)
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
+        for phase in league.phases:
+            messages += _progress_phase(conn, world, meta, cid, league, phase, day)
         if not _finalized(conn, cid, meta.season_id):
             if _scheduled(conn, cid, meta.season_id, "league") == 0:
                 messages += _finalize_league(conn, world, meta, cid, league, day)
             continue
         for playoff in league.playoffs:
-            messages += _progress_playoff(conn, world, meta, cid, league, playoff)
+            if playoff.phase is None:
+                messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
                            season_calendar(world, meta, meta.season_id).season_end)
@@ -218,79 +299,200 @@ def _league_positions(conn: Connection, world: World,
     return result
 
 
+def _seeds(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
+           league: LeagueDef, phase: str | None) -> Seeds:
+    """The table a play-off seeds from (the season's, or a phase's), by league rank and by rank
+    within each group."""
+    rows = standings(conn, world, meta, competition_id, meta.season_id, phase)
+    groups = league_groups(conn, league, [r.club_id for r in rows])
+    return Seeds.of([r.club_id for r in rows], groups)
+
+
+def _entrants(seeds: Seeds, playoff: PlayoffDef) -> set[int]:
+    """The clubs a play-off's ranks name."""
+    return ({seeds.ranks[r] for r in playoff.entrant_ranks()}
+            | {seeds.groups[g][r] for g, r in playoff.group_ranks()})
+
+
+def _record_title(conn: Connection, meta: CareerMeta, competition_id: int, title: str,
+                  club_id: int, kind: str, day: date, phase: str | None = None) -> bool:
+    """A title won; False if it was recorded already."""
+    exists = conn.execute(select(league_title.c.club_id).where(
+        league_title.c.season_id == meta.season_id,
+        league_title.c.competition_id == competition_id, league_title.c.title == title)).first()
+    if exists is not None:
+        return False
+    conn.execute(league_title.insert().values(
+        season_id=meta.season_id, competition_id=competition_id, title=title, club_id=club_id,
+        kind=kind, phase=phase, won_on=day.isoformat()))
+    return True
+
+
+def phase_title(league: LeagueDef, phase: PhaseDef) -> str:
+    return f"{league.short_name} {phase.name}"
+
+
+def _progress_phase(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
+                    league: LeagueDef, phase: PhaseDef, day: date) -> list[str]:
+    """A phase whose rounds are all played: its play-offs begin (or, with none, its table's top
+    club is its champion), and they advance."""
+    first, last = phase_rounds(conn, league, competition_id, meta.season_id, phase.key)
+    if last < first:
+        return []
+    left = conn.execute(select(func.count()).select_from(fixture).where(
+        fixture.c.competition_id == competition_id, fixture.c.season_id == meta.season_id,
+        fixture.c.stage == "league", fixture.c.status == "scheduled",
+        fixture.c.round.between(first, last))).scalar_one()
+    if left:
+        return []
+    playoffs = [p for p in league.playoffs if p.phase == phase.key]
+    messages: list[str] = []
+    for playoff in playoffs:
+        started = conn.execute(select(playoff_tie.c.id).where(
+            playoff_tie.c.season_id == meta.season_id,
+            playoff_tie.c.playoff_key == playoff.key)).first()
+        if started is None:
+            seeds = _seeds(conn, world, meta, competition_id, league, phase.key)
+            _create_playoff_round(conn, world, meta, competition_id, league, playoff, 0,
+                                  seeds, {})
+            leader = club_name(conn, seeds.ranks[1])
+            messages.append(f"{leader} top the {phase_title(league, phase)} table; the "
+                            f"{playoff.name} begins.")
+        else:
+            messages += _progress_playoff(conn, world, meta, competition_id, league, playoff,
+                                          day)
+    if not any(p.title for p in playoffs):
+        top = standings(conn, world, meta, competition_id, meta.season_id, phase.key)[0].club_id
+        title = phase_title(league, phase)
+        if _record_title(conn, meta, competition_id, title, top, "champion", day, phase.key):
+            messages.append(f"{club_name(conn, top)} are {title} champions.")
+    return messages
+
+
 def _finalize_league(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
                      league: LeagueDef, day: date) -> list[str]:
     table = standings(conn, world, meta, competition_id, meta.season_id)
-    outcome: dict[int, str] = {}
+    seeds = Seeds.of([r.club_id for r in table],
+                     league_groups(conn, league, [r.club_id for r in table]))
+    outcome: dict[int, str] = {}  # by club
     for mv in league.movements:
         label = "promoted" if mv.kind is MovementKind.PROMOTION else "relegated"
         for pos in range(mv.ranks[0], mv.ranks[1] + 1):
-            outcome[pos] = label
+            outcome[seeds.ranks[pos]] = label
     for playoff in league.playoffs:
-        for pos in playoff.entrant_ranks():
-            outcome[pos] = "playoffs"
-    outcome[1] = "champion"
+        if playoff.phase is None:
+            for club_id in _entrants(seeds, playoff):
+                outcome[club_id] = "playoffs"
+    leader = table[0].club_id
+    champion = club_name(conn, leader)
+    if league.table_title is not None:
+        outcome[leader] = "table_title"
+        _record_title(conn, meta, competition_id, league.table_title, leader, "award", day)
+        messages = [f"{champion} win the {league.table_title}."]
+    elif league.title_playoff is None and not league.phases:
+        outcome[leader] = "champion"
+        _record_title(conn, meta, competition_id, league.name, leader, "champion", day)
+        messages = [f"{champion} are {league.name} champions."]
+    else:
+        messages = [f"{champion} top the {league.name} table."] if league.phases else []
     conn.execute(league_final.insert(), [
         {"season_id": meta.season_id, "competition_id": competition_id, "club_id": row.club_id,
          "position": row.position, "played": row.played, "won": row.won, "drawn": row.drawn,
          "lost": row.lost, "goals_for": row.goals_for, "goals_against": row.goals_against,
-         "points": row.points, "outcome": outcome.get(row.position)}
+         "points": row.points, "outcome": outcome.get(row.club_id)}
         for row in table
     ])
     pay_merit(conn, world, meta, league.key, competition_id,
               [(row.position, row.club_id) for row in table], day)
-    champion = club_name(conn, table[0].club_id)
-    messages = [f"{champion} are {league.name} champions."]
-    ranks = {row.position: row.club_id for row in table}
     for playoff in league.playoffs:
-        _create_playoff_round(conn, world, meta, competition_id, league, playoff, 0, ranks, {})
+        if playoff.phase is None:
+            _create_playoff_round(conn, world, meta, competition_id, league, playoff, 0,
+                                  seeds, {})
     return messages
 
 
 def _create_playoff_round(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
                           league: LeagueDef, playoff: PlayoffDef, round_index: int,
-                          ranks: dict[int, int], winners: dict[str, Entrant]) -> None:
+                          seeds: Seeds, winners: dict[str, Entrant]) -> None:
     calendar = league_calendar(world, league, meta.season_id)
-    dates_cfg = calendar.competitions[league.key]
+    dates_cfg = calendar.competitions[league.calendar_key(playoff.phase)]
     leg_dates = playoff_dates(dates_cfg.end, dates_cfg.playoffs_end, playoff.rounds)[round_index]
     rnd = playoff.rounds[round_index]
-    for tie in round_ties(playoff, round_index, ranks, winners):
+    for tie in round_ties(playoff, round_index, seeds, winners):
         conn.execute(playoff_tie.insert().values(
             season_id=meta.season_id, competition_id=competition_id, playoff_key=playoff.key,
             tie=tie.tie_id, round=round_index, club_a_id=tie.a.club_id, club_b_id=tie.b.club_id,
             rank_a=tie.a.rank, rank_b=tie.b.rank,
         ))
-        for leg, day in zip(legs_for(tie, rnd), leg_dates, strict=True):
-            conn.execute(fixture.insert().values(
-                season_id=meta.season_id, competition_id=competition_id, stage=playoff.key,
-                round=round_index, tie=tie.tie_id, leg=leg.leg, date=day.isoformat(),
-                home_club_id=leg.home, away_club_id=leg.away, neutral=int(leg.neutral),
-                status="scheduled",
-            ))
+        legs = legs_for(tie, rnd)
+        if rnd.games > 1:  # a series: the games one club needs to win it, the rest if needed
+            legs = legs[:rnd.games // 2 + 1]
+        for leg, day in zip(legs, leg_dates, strict=False):
+            _insert_tie_match(conn, meta, competition_id, playoff, round_index, tie.tie_id, rnd,
+                              leg.home, leg.away, leg.leg, leg.neutral, day)
 
 
-def _tie_winner(conn: Connection, season_id: int, playoff_key: str, tie_id: str,
-                club_a: int, club_b: int) -> int | None:
-    games = conn.execute(select(fixture).where(
-        fixture.c.season_id == season_id, fixture.c.stage == playoff_key, fixture.c.tie == tie_id,
-    ).order_by(fixture.c.leg)).all()
+def _insert_tie_match(conn: Connection, meta: CareerMeta, competition_id: int,
+                      playoff: PlayoffDef, round_index: int, tie_id: str, rnd: PlayoffRoundDef,
+                      home: int, away: int, leg: int | None, neutral: bool, day: date) -> None:
+    """One match of a play-off tie. A series' games are ties of their own (``E1:2``), so no
+    game is read as the second leg of another."""
+    conn.execute(fixture.insert().values(
+        season_id=meta.season_id, competition_id=competition_id, stage=playoff.key,
+        round=round_index, tie=f"{tie_id}:{leg}" if rnd.games > 1 else tie_id,
+        leg=leg, date=day.isoformat(), home_club_id=home, away_club_id=away,
+        neutral=int(neutral), status="scheduled",
+    ))
+
+
+def _tie_games(conn: Connection, season_id: int, playoff: PlayoffDef, rnd: PlayoffRoundDef,
+               tie_id: str) -> list[Row[Any]]:
+    ties = ([f"{tie_id}:{g}" for g in range(1, rnd.games + 1)] if rnd.games > 1 else [tie_id])
+    return list(conn.execute(select(fixture).where(
+        fixture.c.season_id == season_id, fixture.c.stage == playoff.key,
+        fixture.c.tie.in_(ties)).order_by(fixture.c.leg)).all())
+
+
+def _tie_winner(conn: Connection, meta: CareerMeta, competition_id: int, playoff: PlayoffDef,
+                tie: Row[Any]) -> int | None:
+    """A tie's winner once it's decided; a series still level after its games so far gets its
+    next game."""
+    rnd = playoff.rounds[tie.round]
+    games = _tie_games(conn, meta.season_id, playoff, rnd, tie.tie)
     if not games or any(g.status != "played" for g in games):
         return None
-    goals = {club_a: 0, club_b: 0}
+    if rnd.games > 1:
+        winner = series_winner(tie.club_a_id, tie.club_b_id, rnd.games, [
+            (g.home_club_id, g.away_club_id, g.home_goals, g.away_goals, g.home_pens,
+             g.away_pens) for g in games])
+        if winner is None and len(games) < rnd.games:
+            last = games[-1]
+            day = date.fromisoformat(last.date) + timedelta(days=PLAYOFF_GAP)
+            better = tie.club_a_id if rnd.host == "higher_ranked" else tie.club_b_id
+            other = tie.club_b_id if better == tie.club_a_id else tie.club_a_id
+            game = len(games) + 1
+            home, away = (better, other) if game % 2 else (other, better)
+            _insert_tie_match(conn, meta, competition_id, playoff, tie.round, tie.tie, rnd,
+                              home, away, game, False, day)
+        return winner
+    goals = {tie.club_a_id: 0, tie.club_b_id: 0}
     for g in games:
         goals[g.home_club_id] += g.home_goals
         goals[g.away_club_id] += g.away_goals
-    if goals[club_a] != goals[club_b]:
-        return club_a if goals[club_a] > goals[club_b] else club_b
+    a, b = int(tie.club_a_id), int(tie.club_b_id)
+    if goals[a] != goals[b]:
+        return a if goals[a] > goals[b] else b
+    if rnd.higher_seed_on_level:
+        return a if tie.rank_a <= tie.rank_b else b
     last = games[-1]
     if last.home_pens is None:
         return None
-    winner: int = last.home_club_id if last.home_pens > last.away_pens else last.away_club_id
-    return winner
+    winner_: int = last.home_club_id if last.home_pens > last.away_pens else last.away_club_id
+    return winner_
 
 
 def _progress_playoff(conn: Connection, world: World, meta: CareerMeta, competition_id: int,
-                      league: LeagueDef, playoff: PlayoffDef) -> list[str]:
+                      league: LeagueDef, playoff: PlayoffDef, day: date) -> list[str]:
     ties = conn.execute(select(playoff_tie).where(
         playoff_tie.c.season_id == meta.season_id, playoff_tie.c.playoff_key == playoff.key,
     )).all()
@@ -298,8 +500,7 @@ def _progress_playoff(conn: Connection, world: World, meta: CareerMeta, competit
         return []
     for t in ties:
         if t.winner_club_id is None:
-            winner = _tie_winner(conn, meta.season_id, playoff.key, t.tie, t.club_a_id,
-                                 t.club_b_id)
+            winner = _tie_winner(conn, meta, competition_id, playoff, t)
             if winner is not None:
                 conn.execute(update(playoff_tie).where(playoff_tie.c.id == t.id)
                              .values(winner_club_id=winner))
@@ -313,18 +514,29 @@ def _progress_playoff(conn: Connection, world: World, meta: CareerMeta, competit
     if current + 1 < len(playoff.rounds):
         if any(t.round == current + 1 for t in ties):
             return []
-        finals = conn.execute(select(league_final).where(
-            league_final.c.season_id == meta.season_id,
-            league_final.c.competition_id == competition_id,
-        )).all()
-        ranks = {r.position: r.club_id for r in finals}
-        rank_of = {r.club_id: r.position for r in finals}
+        seeds = _seeds(conn, world, meta, competition_id, league, playoff.phase)
+        rank_of = seeds.rank_of
         winners = {t.tie: Entrant(t.winner_club_id, rank_of[t.winner_club_id]) for t in ties
                    if t.winner_club_id is not None}
         _create_playoff_round(conn, world, meta, competition_id, league, playoff, current + 1,
-                              ranks, winners)
+                              seeds, winners)
         return []
     champion = in_round[0].winner_club_id
+    if playoff.title:
+        phase = next((p for p in league.phases if p.key == playoff.phase), None)
+        title = phase_title(league, phase) if phase is not None else playoff.name
+        if not _record_title(conn, meta, competition_id, title, champion, "champion", day,
+                             playoff.phase):
+            return []
+        if phase is None:
+            conn.execute(update(league_final).where(
+                league_final.c.season_id == meta.season_id, league_final.c.club_id == champion,
+                league_final.c.competition_id == competition_id,
+            ).values(outcome="champion"))
+            return [f"{club_name(conn, champion)} win {playoff.name}: they are the "
+                    f"{league.name} champions."]
+        return [f"{club_name(conn, champion)} win the {playoff.name}: they are {title} "
+                "champions."]
     already: str | None = conn.execute(select(league_final.c.outcome).where(
         league_final.c.season_id == meta.season_id, league_final.c.club_id == champion,
         league_final.c.competition_id == competition_id,
@@ -350,7 +562,7 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         competition.c.id == fx.competition_id)).scalar_one()
     playoff = next(p for p in world.defs.leagues[comp_key].playoffs if p.key == fx.stage)
     rnd = playoff.rounds[fx.round]
-    if rnd.legs == 1:
+    if rnd.legs == 1:  # a single match, or a series' game: decided on the day
         return Decider(extra_time=rnd.extra_time, penalties=rnd.penalties)
     if fx.leg != 2:
         return None

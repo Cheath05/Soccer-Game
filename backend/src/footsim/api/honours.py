@@ -159,9 +159,10 @@ def trophy_cabinet(world: World, labels: dict[int, str], titles: list[tuple[int,
 
     def order(item: tuple[tuple[str, str], tuple[str, list[int]]]) -> tuple[int, int, str]:
         (kind, key), (name, _) = item
+        league = key.split("|")[0]  # a league's other titles (MLS Cup, Apertura): "MLS1|..."
         rank = (world.defs.continental[key].rank if kind == "europe"
-                else world.defs.leagues[key].tier if kind == "league" and key in world.defs.leagues
-                else 0)
+                else world.defs.leagues[league].tier if kind == "league"
+                and league in world.defs.leagues else 0)
         return _KIND_ORDER[kind], rank, name
 
     return [TrophyOut(kind=kind, key=key, name=name,

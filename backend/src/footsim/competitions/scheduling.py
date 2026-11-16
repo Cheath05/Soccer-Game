@@ -70,13 +70,14 @@ def league_round_dates(
 def playoff_dates(
     league_end: date, playoffs_end: date | None, rounds: list[PlayoffRoundDef]
 ) -> list[list[date]]:
-    """Dates for each leg of each play-off round, starting a few days after the league."""
+    """Dates for each leg (or series game) of each play-off round, starting a few days after
+    the league."""
     result: list[list[date]] = []
     day = league_end + timedelta(days=PLAYOFF_GAP)
     for index, rnd in enumerate(rounds):
         if index == len(rounds) - 1 and playoffs_end is not None:
-            day = max(day, playoffs_end - timedelta(days=PLAYOFF_GAP * (rnd.legs - 1)))
-        legs = [day + timedelta(days=PLAYOFF_GAP * leg) for leg in range(rnd.legs)]
+            day = max(day, playoffs_end - timedelta(days=PLAYOFF_GAP * (rnd.matches - 1)))
+        legs = [day + timedelta(days=PLAYOFF_GAP * leg) for leg in range(rnd.matches)]
         result.append(legs)
         day = legs[-1] + timedelta(days=PLAYOFF_GAP)
     return result

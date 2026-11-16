@@ -34,6 +34,7 @@ from footsim.persistence.schema import (
     contract,
     cup_tie,
     league_final,
+    league_title,
     nation,
     player_season_overall,
     season,
@@ -73,12 +74,12 @@ def _honours(conn: Connection, world: World, season_id: int, comps: dict[int, Ro
         return ClubRef(id=club_id, name=names[club_id])
 
     honours: list[HonourOut] = []
-    for r in conn.execute(select(league_final).where(league_final.c.season_id == season_id,
-                                                     league_final.c.position == 1)):
+    for r in conn.execute(select(league_title).where(league_title.c.season_id == season_id)
+                          .order_by(league_title.c.won_on, league_title.c.title)):
         comp = comps[r.competition_id]
         league = world.defs.leagues.get(comp.key)
         if league is not None:
-            honours.append(HonourOut(kind="league", key=comp.key, name=comp.name,
+            honours.append(HonourOut(kind="league", key=comp.key, name=r.title,
                                      nation=league.nation, tier=league.tier,
                                      winner=ref(r.club_id)))
     for cup in world.defs.cups.values():
@@ -118,8 +119,8 @@ def _league_titles(conn: Connection, world: World, season_id: int, comps: dict[i
     for lg in world.defs.leagues.values():
         divisions[lg.nation] += 1
     headlines = []
-    for r in conn.execute(select(league_final).where(league_final.c.season_id == season_id,
-                                                     league_final.c.position == 1)):
+    for r in conn.execute(select(league_title).where(league_title.c.season_id == season_id,
+                                                     league_title.c.kind == "champion")):
         comp = comps[r.competition_id]
         league = world.defs.leagues.get(comp.key)
         if (league is None or divisions[league.nation] < MAJOR_LEAGUE_MIN_DIVISIONS
@@ -127,7 +128,7 @@ def _league_titles(conn: Connection, world: World, season_id: int, comps: dict[i
                                       if lg.nation == league.nation)):
             continue
         headlines.append((league.nation, HeadlineOut(
-            kind="league_title", text=f"{names[r.club_id]} are {comp.name} champions.",
+            kind="league_title", text=f"{names[r.club_id]} are {r.title} champions.",
             club=ClubRef(id=r.club_id, name=names[r.club_id]), competition=comp.name,
             nation=league.nation)))
     headlines.sort(key=lambda h: (h[0] != "ENG", h[0], h[1].competition))

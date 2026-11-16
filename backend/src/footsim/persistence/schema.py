@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 21  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 22  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -262,6 +262,22 @@ league_final = Table(
     Column("points", Integer, nullable=False),
     Column("outcome", Text),  # champion | promoted | playoff_winner | relegated | None
     PrimaryKeyConstraint("season_id", "competition_id", "club_id"),
+)
+
+# Every league title won (W9a): a league's champions, a phase's (Apertura, Clausura), a title
+# play-off's winners (MLS Cup) and a table's own title when the champion is decided otherwise
+# (the Supporters' Shield). ``kind``: champion | award.
+league_title = Table(
+    "league_title",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("competition_id", ForeignKey("competition.id"), nullable=False),
+    Column("title", Text, nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("phase", Text),
+    Column("won_on", Text),
+    PrimaryKeyConstraint("season_id", "competition_id", "title"),
 )
 
 match_event = Table(

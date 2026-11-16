@@ -257,8 +257,13 @@ def _cross_validate(defs: GameDefinitions) -> None:
             errors.append(f"league {league.key}: unknown nation code {league.nation}")
         if league.calendar not in defs.calendars:
             errors.append(f"league {league.key}: unknown calendar {league.calendar}")
-        elif league.key not in defs.calendars[league.calendar].competitions:
-            errors.append(f"league {league.key}: no dates in calendar {league.calendar}")
+        else:
+            league_dates = defs.calendars[league.calendar].competitions
+            for key in ([league.calendar_key(p.key) for p in league.phases]
+                        or [league.key]):
+                if key not in league_dates:
+                    errors.append(f"league {league.key}: no dates for {key} in calendar "
+                                  f"{league.calendar}")
         targets = [m.to for m in league.movements] + [
             p.winner_to for p in league.playoffs if p.winner_to
         ]

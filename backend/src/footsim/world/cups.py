@@ -12,7 +12,7 @@ from collections import Counter
 from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import Connection, Row, or_, select, text, update
+from sqlalchemy import Connection, Row, func, or_, select, text, update
 
 from footsim.competitions.calendars import shifted_calendar
 from footsim.core.rng import derive_rng
@@ -413,8 +413,16 @@ def _free_day(conn: Connection, world: World, fx: Row[Any], today: date) -> date
     Those are all on the league's own calendar."""
     key: str = conn.execute(select(competition.c.key).where(
         competition.c.id == fx.competition_id)).scalar_one()
-    calendar = season_calendar_of(world, world.defs.leagues[key].calendar, fx.season_id)
-    dates = calendar.competitions[key]
+    league = world.defs.leagues[key]
+    calendar = season_calendar_of(world, league.calendar, fx.season_id)
+    phase = None
+    if league.phases:  # a phase's match stays within the phase's dates
+        total = int(conn.execute(select(func.max(fixture.c.round)).where(
+            fixture.c.competition_id == fx.competition_id, fixture.c.season_id == fx.season_id,
+            fixture.c.stage == "league")).scalar() or 1)
+        size = max(1, total // len(league.phases))
+        phase = league.phases[min(len(league.phases) - 1, (fx.round - 1) // size)].key
+    dates = calendar.competitions[league.calendar_key(phase)]
     clubs = (fx.home_club_id, fx.away_club_id)
     others = [date.fromisoformat(row.date) for row in conn.execute(select(fixture.c.date).where(
         fixture.c.id != fx.id,

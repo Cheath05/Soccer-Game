@@ -56,6 +56,7 @@ _COVERED_NEWS = [re.compile(pattern) for pattern in (
     r" (promoted|relegated) to the .+\.$",
     r" retires at \d+\.$",
     r"^Youth intake: ",
+    r"^College soccer: ",  # the NCAA's new classes: the College page shows them
 )]
 
 

@@ -53,6 +53,8 @@ class NewCareerIn(BaseModel):
     # False: play without a board (no expectations or sacking; the budget is all the cash).
     board_enabled: bool = True
     currency: str = "USD"  # the currency money is shown and quoted in (finance.yaml)
+    # The leagues given fast results instead of full simulation (world/fast_sim.py).
+    fast_leagues: list[str] = []
 
 
 class FixtureOut(BaseModel):
@@ -634,6 +636,9 @@ class MatchOut(BaseModel):
     home_lines: list[PlayerLineOut]
     away_lines: list[PlayerLineOut]
     stats: dict[str, dict[str, float]] | None
+    # A fast result (world/fast_sim.py): its league isn't fully simulated, so the match has only
+    # its score, scorers, substitutions and line-ups.
+    fast_result: bool = False
 
 
 class SlotOut(BaseModel):

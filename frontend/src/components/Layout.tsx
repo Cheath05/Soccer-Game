@@ -31,6 +31,7 @@ const NAV = [
   { to: '/draft', label: 'Draft' },
   { to: '/europe', label: 'Europe' },
   { to: '/college', label: 'College' },
+  { to: '/settings', label: 'Settings' },
   { to: '/start', label: 'Save / Load' },
 ] as const
 
@@ -116,6 +117,7 @@ export default function Layout() {
     { to: '/college', label: 'College', icon: 'college', active: at('/college') },
     { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
     { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
+    { to: '/settings', label: 'Settings', icon: 'settings', active: at('/settings') },
     { to: '/start', label: 'Save / Load', icon: 'saves', active: false },
   ]
 

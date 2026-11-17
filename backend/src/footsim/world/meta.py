@@ -1,7 +1,7 @@
 """Career-level state stored in game_meta."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from sqlalchemy import Connection, select, text
@@ -24,6 +24,9 @@ class CareerMeta:
     # The currency the user sees money in (finance.yaml currencies): server text and the prices
     # quoted to them use it. Saves from before it: dollars, the default.
     currency: str = "USD"
+    # The leagues the user has switched off full simulation (world/fast_sim.py): their matches
+    # get fast results. Empty, as in saves from before it: every league fully simulated.
+    fast_leagues: list[str] = field(default_factory=list)
 
     @property
     def seed(self) -> int:
@@ -41,6 +44,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         manager_name=values.get("manager_name"),
         board_enabled=bool(values.get("board_enabled", True)),
         currency=str(values.get("currency", "USD")),
+        fast_leagues=[str(k) for k in values.get("fast_leagues", [])],
     )
 
 
@@ -54,6 +58,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "manager_name": meta.manager_name,
         "board_enabled": meta.board_enabled,
         "currency": meta.currency,
+        "fast_leagues": meta.fast_leagues,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

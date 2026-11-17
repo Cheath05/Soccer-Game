@@ -36,4 +36,5 @@ def mls_world() -> World:
     defs = replace(base.defs, leagues={**base.defs.leagues, "USA1": league},
                    calendars={**base.defs.calendars, "TST-MLS": _calendar()},
                    finance=base.defs.finance.model_copy(update={"league_income": income}))
-    return World(defs=defs, model=base.model, picker=base.picker, quick=base.quick)
+    return World(defs=defs, model=base.model, picker=base.picker, quick=base.quick,
+                 fast=base.fast)

@@ -5,6 +5,7 @@ from functools import cache
 
 from footsim.core.paths import config_dir
 from footsim.defs.loader import GameDefinitions, load_definitions
+from footsim.match.fast import FastResults
 from footsim.match.quick import QuickEngine
 from footsim.match.teams import LineupPicker
 from footsim.ratings.overall import RatingModel, load_overall_scaling
@@ -18,6 +19,7 @@ class World:
     model: RatingModel
     picker: LineupPicker
     quick: QuickEngine
+    fast: FastResults  # leagues not fully simulated (world/fast_sim.py)
 
 
 def default_instructions(defs: GameDefinitions) -> dict[str, str]:
@@ -30,4 +32,6 @@ def get_world() -> World:
     model = RatingModel.build(
         defs, load_overall_scaling(config_dir() / "calibration" / "overall_scaling.yaml")
     )
-    return World(defs=defs, model=model, picker=LineupPicker(defs, model), quick=QuickEngine(defs))
+    quick = QuickEngine(defs)
+    return World(defs=defs, model=model, picker=LineupPicker(defs, model), quick=quick,
+                 fast=FastResults(defs, quick))

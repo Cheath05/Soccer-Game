@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
+import SimulationPicker from '../components/SimulationPicker'
 import { Crest } from '../components/PhoneNav'
 import VersionTag from '../components/VersionTag'
 import { AccountFooter } from '../components/AuthGate'
@@ -28,6 +29,8 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   // The slot to start in: the first free one, until the player picks.
   const [slotChoice, setSlot] = useState<string | null>(null)
   const [options, setOptions] = useState(false)
+  // The leagues given fast results instead of full simulation (none: everything fully simulated).
+  const [fast, setFast] = useState<string[]>([])
 
   const selectedLeague = leagues.data?.find((l) => l.key === league)
   const firstFree = saves.data?.find((s) => !s.has_save && !s.has_autosave)?.slot
@@ -51,6 +54,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
         manager: manager || 'Manager',
         budget: budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
         boardEnabled: board,
+        fastLeagues: fast.filter((k) => k !== league),
       })
       .then(goHome, ignore)
 
@@ -194,7 +198,8 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                 <Step n={3} title="Options" />
                 <Text size="sm" c="dimmed">
                   {board ? 'Board on' : 'No board'} · {CURRENCIES[currency].label}
-                  {budgetMillions === '' ? '' : ' · sandbox'} {options ? '▴' : '▾'}
+                  {budgetMillions === '' ? '' : ' · sandbox'}
+                  {fast.filter((k) => k !== league).length > 0 ? ' · fast leagues' : ''} {options ? '▴' : '▾'}
                 </Text>
               </Group>
             </UnstyledButton>
@@ -233,6 +238,12 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     if (!boardTouched) setBoard(v === '')
                   }}
                 />
+                <div>
+                  <Text size="sm" fw={500} mb={4}>
+                    Simulation
+                  </Text>
+                  <SimulationPicker fast={fast} onChange={setFast} userLeague={league} />
+                </div>
               </Stack>
             </Collapse>
           </Card>

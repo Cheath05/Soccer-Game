@@ -68,7 +68,15 @@ export default function MatchReportPage() {
             <Text fw={600} mb="xs">
               Statistics
             </Text>
-            {stats ? <MatchStats home={stats.home} away={stats.away} /> : <Text size="sm">No statistics recorded.</Text>}
+            {stats ? (
+              <MatchStats home={stats.home} away={stats.away} />
+            ) : match.data.fast_result ? (
+              <Text size="sm" c="dimmed">
+                A fast result: this league isn’t fully simulated (Settings → Simulation), so the match has its score, scorers and line-ups but no statistics.
+              </Text>
+            ) : (
+              <Text size="sm">No statistics recorded.</Text>
+            )}
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>

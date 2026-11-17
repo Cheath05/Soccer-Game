@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.109"
+  date: "2026-11-17"
+  title: "Faster sims: choose which leagues are fully simulated"
+  changes:
+    - "Settings → Simulation (and Options when starting a career): choose which leagues are fully simulated, by continent, country or league, or with a preset (Everything, Big five + my country, My country, My league only). The other leagues get fast results: the score from the teams' strengths in one go, with scorers, assists, substitutes, minutes and ratings, so tables, top scorers and player development carry on, but no cards, injuries or match statistics."
+    - "Your own league is always fully simulated. Clubs from fast leagues are still fully simulated in European competitions and in cup ties against fully simulated clubs."
+    - "Everything stays fully simulated unless you change it, including in careers you already have."
+
 - version: "1.107"
   date: "2026-11-17"
   title: "The MLS SuperDraft, the MLS roster page and College soccer"

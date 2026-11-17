@@ -14,6 +14,7 @@ from footsim.match.report import MatchReport
 from footsim.match.teams import BENCH_SIZE, sub_order
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.context import World
+from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
 from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
@@ -45,7 +46,7 @@ class AdvanceResult:
 
 def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name: str | None, seed: int | None = None,
-                      board_enabled: bool = True) -> None:
+                      board_enabled: bool = True, fast_leagues: list[str] | None = None) -> None:
     """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only).
 
     Each career gets its own random seed (unless one is given), so two careers from the
@@ -60,6 +61,8 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     meta = CareerMeta(world_seed=career_seed, current_date=start, season_id=1,
                       base_calendar=calendar_key, user_club_id=club_id,
                       manager_name=manager_name, board_enabled=board_enabled)
+    if fast_leagues:
+        set_fast_leagues(world, meta, fast_leagues)
     write_meta(conn, meta)
     conn.execute(player_state.insert().from_select(
         ["player_id", "condition", "form", "suspended_matches", "season_yellows"],
@@ -134,13 +137,16 @@ def play_user_instant(conn: Connection, world: World, meta: CareerMeta, fx: Row[
 
 
 def _play_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> None:
-    games = conn.execute(select(fixture).where(
+    games = [fx for fx in conn.execute(select(fixture).where(
         fixture.c.date == day.isoformat(), fixture.c.status == "scheduled",
     ).order_by(fixture.c.id)).all()
-    for fx in games:
-        if meta.user_club_id in (fx.home_club_id, fx.away_club_id):
-            continue
+        if meta.user_club_id not in (fx.home_club_id, fx.away_club_id)]
+    # The leagues the user switched off full simulation get fast results (world/fast_sim.py),
+    # after the fully simulated matches; with none switched off, every match is played here.
+    real, fast = split_day(conn, world, meta, games)
+    for fx in real:
         play_fixture(conn, world, meta, fx, day)
+    play_fast(conn, world, meta, fast, day)
 
 
 def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) -> AdvanceResult:

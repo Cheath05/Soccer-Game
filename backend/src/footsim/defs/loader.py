@@ -35,6 +35,7 @@ from footsim.defs.match import (
     ClockDef,
     DefendingDef,
     DuelsDef,
+    FastResultsParams,
     HomeAdvantageDef,
     InstructionDef,
     PassingDef,
@@ -79,6 +80,7 @@ class GameDefinitions:
     valuation: ValuationDef
     market: MarketDef
     quick_engine: QuickEngineParams
+    fast_results: FastResultsParams  # leagues not fully simulated (match/fast.py)
     instructions: dict[str, InstructionDef]
     presentation: PresentationDef
     clock: ClockDef
@@ -171,6 +173,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         valuation=_parse(ValuationDef, root / "transfers" / "valuation.yaml"),
         market=_parse(MarketDef, root / "transfers" / "market.yaml"),
         quick_engine=_parse(QuickEngineParams, root / "match" / "quick_engine.yaml"),
+        fast_results=_parse(FastResultsParams, root / "match" / "fast_results.yaml"),
         instructions=_load_dir(InstructionDef, root / "match" / "instructions"),
         presentation=_parse(PresentationDef, root / "match" / "presentation.yaml"),
         clock=_parse(ClockDef, root / "match" / "clock.yaml"),

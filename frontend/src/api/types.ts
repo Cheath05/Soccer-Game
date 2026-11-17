@@ -530,6 +530,7 @@ export interface MatchReport {
   home_lines: PlayerLine[]
   away_lines: PlayerLine[]
   stats: { home: TeamStats; away: TeamStats } | null
+  fast_result?: boolean // a league not fully simulated: score, scorers and line-ups only
 }
 
 export interface FormationSlot {
@@ -876,4 +877,18 @@ export interface Draft {
   picks: DraftPick[]
   prospects: DraftProspect[]
   board: number[]
+}
+
+// GET /api/world/simulation (api/simulation.py SimLeagueOut): a league that can be given fast results.
+export interface SimLeague {
+  key: string
+  name: string
+  nation: string // a nation code such as ENG
+  tier: number
+}
+
+// GET/PUT /api/settings/simulation: the leagues given fast results; the user's league is always fully simulated.
+export interface SimulationSettings {
+  fast: string[]
+  user_league: string | null
 }

@@ -107,6 +107,7 @@ from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.europe.common import competitions_by_rank, stage_name
 from footsim.world.europe.places import CountryPlace, country_places
 from footsim.world.europe.qualifying import Node, node_of, round_name
+from footsim.world.fast_sim import SIM as FAST_SIM
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
 from footsim.world.season import (
@@ -1233,7 +1234,7 @@ def match_detail(conn: Connection, fixture_id: int) -> MatchOut:
     stats = json.loads(row.stats) if row.stats else None
     return MatchOut(fixture=fixtures_out(conn, [row], names, comps)[0], events=events,
                     home_lines=lines[row.home_club_id], away_lines=lines[row.away_club_id],
-                    stats=stats)
+                    stats=stats, fast_result=row.sim == FAST_SIM)
 
 
 # --- tactics --------------------------------------------------------------------------

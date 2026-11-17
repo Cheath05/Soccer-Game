@@ -1,0 +1,26 @@
+# Fast results: the matches of leagues the user has switched off "full simulation" (Settings →
+# Simulation; world/fast_sim.py). One draw per match instead of the fast engine's minute by
+# minute: each side's goals are Poisson from the fast engine's expected goals (the same team
+# strengths, home advantage and instructions: quick_engine.yaml), then scorers, assists,
+# substitutes, minutes and ratings are handed out. No cards, injuries or fatigue.
+# Continental matches, and cup ties with a fully simulated club, still use the fast engine.
+
+# Goals come as a Poisson process with the fast engine's game state (a side well ahead easing off,
+# late chasing), so blowouts stay as rare as there. The scale is on the fast engine's expected
+# goals, as it also scores through its added time (about four minutes a match). Measured on 400
+# random league fixtures of the base world x 30 on the same sheets (17 Nov): the fast engine 2.76
+# goals a match (home wins 41.9%, draws 25.0%, 5+ goals 14.2%); fast results at 1.05: 2.75 (42.4%,
+# 24.9%, 14.1%).
+goals_scale: 1.05
+extra_time_share: 0.30  # extra time's goals as a share of a 90-minute match's
+
+# Substitutes: this many a side, coming on in this minute range, for the lowest-rated outfielders.
+subs_per_team: 3
+sub_minutes: [58, 85]
+# Rotation: each outfield starter is rested for a substitute of the same position group (his
+# replacement starts) with this chance, so squad players get some minutes as well.
+rest_chance: 0.08
+
+# Ratings: as the fast engine's (6.3 base, +-0.3 for the result, goals and assists, defenders'
+# clean sheets), with this much noise.
+rating_noise: 0.35

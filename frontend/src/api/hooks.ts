@@ -8,6 +8,8 @@ import type {
   Career,
   Changelog,
   Draft,
+  SimLeague,
+  SimulationSettings,
   ClubHistory,
   Finances,
   ClubOverview,
@@ -66,6 +68,22 @@ export const useWorldLeagues = () =>
 
 /** The countries with a league or a cup, with their continent and their place in the lists. The
  * order follows the career's UEFA ranking, so it is fetched again whenever the game moves on. */
+/** Every league that can be given fast results instead of full simulation (no career needed). */
+export const useSimLeagues = () =>
+  useQuery({ queryKey: ['sim-leagues'], queryFn: () => api.get<SimLeague[]>('/world/simulation'), staleTime: Infinity })
+
+/** The career's Settings → Simulation: which leagues get fast results. */
+export const useSimulation = () =>
+  useQuery({ queryKey: ['simulation'], queryFn: () => api.get<SimulationSettings>('/settings/simulation') })
+
+export function useSetSimulation() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (fast: string[]) => api.put<SimulationSettings>('/settings/simulation', { fast }),
+    onSuccess: (data) => client.setQueryData(['simulation'], data),
+  })
+}
+
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })
 
@@ -231,13 +249,14 @@ export function useSaveTactics() {
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number; manager: string; budget?: number | null; boardEnabled?: boolean }) =>
+    mutationFn: (args: { slot: number; clubId: number; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
       api.post<Career>(`/saves/${args.slot}/new`, {
         club_id: args.clubId,
         manager_name: args.manager,
         budget_eur: args.budget ?? null,
         board_enabled: args.boardEnabled ?? true,
         currency: shownCurrency(),
+        fast_leagues: args.fastLeagues ?? [],
       }),
     onSuccess: invalidate,
   })

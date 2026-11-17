@@ -22,6 +22,7 @@ from footsim.api.mls import router as mls_router
 from footsim.api.routes import router
 from footsim.api.session import CareerSession, NoCareer, SessionRegistry, default_registry
 from footsim.api.sim import router as sim_router
+from footsim.api.simulation import router as simulation_router
 from footsim.api.training import router as training_router
 from footsim.api.transfers import router as transfers_router
 from footsim.core.build_info import build_info
@@ -75,6 +76,7 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
     app.include_router(college_router)
     app.include_router(mls_router)
     app.include_router(draft_router)
+    app.include_router(simulation_router)
 
     if frontend is not None and (frontend / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")

@@ -175,7 +175,8 @@ def world() -> World:
               **{k: LeagueIncome(base=5_000_000, merit=3_000_000) for k in leagues}}
     defs = replace(base.defs, leagues={**base.defs.leagues, **leagues}, calendars=calendars,
                    finance=base.defs.finance.model_copy(update={"league_income": income}))
-    return World(defs=defs, model=base.model, picker=base.picker, quick=base.quick)
+    return World(defs=defs, model=base.model, picker=base.picker, quick=base.quick,
+                 fast=base.fast)
 
 
 @pytest.fixture(scope="module")

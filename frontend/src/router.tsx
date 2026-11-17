@@ -16,6 +16,7 @@ import MatchdayPage from './pages/MatchdayPage'
 import MatchReportPage from './pages/MatchReportPage'
 import MlsRosterPage from './pages/MlsRosterPage'
 import PlayerPage from './pages/PlayerPage'
+import SettingsPage from './pages/SettingsPage'
 import SquadPage from './pages/SquadPage'
 import TacticsPage from './pages/TacticsPage'
 import TransfersPage from './pages/TransfersPage'
@@ -39,6 +40,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/europe', component: EuropePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/mls-roster', component: MlsRosterPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/college', component: CollegePage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/match/$fixtureId', component: MatchReportPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/live/$fixtureId', component: LivePage }),

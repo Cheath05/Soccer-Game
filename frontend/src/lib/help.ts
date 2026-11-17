@@ -28,6 +28,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         'Sandbox budget (optional): type an amount, in millions of the money shown, and your club starts with that to spend on transfer fees and wages (up to about €10 billion). Leave it empty to play on the board’s budget. A sandbox starts with the board off, unless you switch it on.',
         'Board expectations: on, the board expects a league finish, its confidence in you moves with results, and your budget each season comes from the club’s income and cash. Off, there are no targets and all your cash is your budget. You can change it later on the Finances page.',
         'Currency: pick dollars, euros or pounds next to the budget. It only changes how money is shown (prices are quoted as round figures in it), and you can change it later on the Finances page.',
+        'Simulation: choose which leagues are fully simulated. Everything is, unless you change it; fewer fully simulated leagues make simulating faster. You can change it later under Settings (see Simulation settings).',
       ],
     ],
   },
@@ -278,6 +279,21 @@ export const HELP_TOPICS: HelpTopic[] = [
       [
         'Search for any club by name with the box in the header (on a narrow screen, at the top of the menu). Accents don’t matter.',
         'A club page shows its league position, squad, average age and rating, manager, reputation, wage bill, budget and balance (estimates for other clubs), and its squad table. Click a player there for his page. Club & history in the menu is your own club’s page, with its history: how each past season ended. The history lists the trophies won, European ones in their competition’s colour (Champions League blue, Europa League orange, Conference League green), and each season’s European run; winning the league, the main domestic cup and the Champions League in one season is a Treble, shown with a gold banner.',
+      ],
+    ],
+  },
+  {
+    id: 'simulation',
+    title: 'Simulation settings: faster sims',
+    summary: 'Choosing which leagues are fully simulated and which get fast results.',
+    blocks: [
+      'Settings in the menu (under More on a phone), or Options when starting a career, chooses which leagues are fully simulated. A fully simulated league plays every match minute by minute, with cards, injuries, bans and fitness. The others get a fast result: the score comes from the two teams’ strengths in one go, with the scorers, assists, substitutes, minutes and ratings handed out, so tables, top scorers, player pages and development all carry on. Fast results have no cards, injuries or match statistics.',
+      [
+        'Presets: Everything (the default), Big five + my country (the top flights of England, Spain, Italy, Germany and France, and every league in your country), My country, and My league only. Or tick leagues by continent and country; the College season (NCAA) is there too.',
+        'Your own league is always fully simulated, even if you switch to a club in a league you made fast.',
+        'Clubs from fast leagues are still fully simulated in the Champions League, Europa League and Conference League, and in a cup tie against a club from a fully simulated league. Cup ties between two fast-league clubs get fast results.',
+        'Transfers are unchanged: clubs in fast leagues still buy and sell as before.',
+        'Changes apply from the next day played; matches already played keep their results. A fast result’s match page shows the score, scorers and line-ups.',
       ],
     ],
   },

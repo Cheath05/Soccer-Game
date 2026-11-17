@@ -44,7 +44,7 @@ from footsim.api.session import CareerSession, NoCareer
 from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
-from footsim.world import tactic_presets
+from footsim.world import fast_sim, tactic_presets
 from footsim.world.career import advance, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
@@ -131,7 +131,8 @@ def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
                        body.budget_eur, body.board_enabled,
                        body.currency if body.currency in get_world().defs.finance.currencies
-                       else "USD")
+                       else "USD",
+                       [k for k in body.fast_leagues if k in fast_sim.selectable(get_world())])
     _record_club_name(session)
     session.save()
     return _career(session)

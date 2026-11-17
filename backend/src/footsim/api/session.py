@@ -21,6 +21,7 @@ from footsim.persistence.migrations import migrate
 from footsim.persistence.saves import SaveManager
 from footsim.world.career import initialize_career
 from footsim.world.context import get_world
+from footsim.world.fast_sim import forget_sheets
 from footsim.world.finance import set_sandbox_budget
 from footsim.world.market import forget_players
 from footsim.world.meta import read_meta
@@ -77,7 +78,7 @@ class CareerSession:
 
     def new_career(self, slot: int, club_id: int, manager_name: str,
                    budget_eur: int | None = None, board_enabled: bool = True,
-                   currency: str = "USD") -> None:
+                   currency: str = "USD", fast_leagues: list[str] | None = None) -> None:
         """Start a career. The sandbox: ``budget_eur`` is the club's budget to start with for
         fees and wages (the owner puts in the cash). ``board_enabled`` False plays without a
         board."""
@@ -87,7 +88,7 @@ class CareerSession:
             self._open(slot, working)
             with self.engine.begin() as conn:
                 initialize_career(conn, get_world(), club_id, manager_name,
-                                  board_enabled=board_enabled)
+                                  board_enabled=board_enabled, fast_leagues=fast_leagues)
                 set_currency(conn, get_world(), currency)
                 if budget_eur is not None:
                     set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)
@@ -133,6 +134,7 @@ class CareerSession:
                     yield conn
             except BaseException:
                 forget_players(engine)  # it may hold what the rolled-back write saw
+                forget_sheets(engine)
                 raise
 
 

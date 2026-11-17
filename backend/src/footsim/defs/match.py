@@ -453,6 +453,24 @@ class QuickEngineParams(DefModel):
     instructions: dict[str, dict[str, InstructionEffect]] = {}
 
 
+class FastResultsParams(DefModel):
+    """Fast results for leagues not fully simulated (match/fast.py, fast_results.yaml)."""
+
+    goals_scale: float = Field(gt=0)  # on the fast engine's expected goals
+    extra_time_share: float = Field(ge=0, le=1)  # extra time's goals against 90 minutes'
+    subs_per_team: int = Field(ge=0, le=5)
+    sub_minutes: tuple[int, int]
+    rest_chance: float = Field(ge=0, le=1)  # an outfield starter rested for a substitute
+    rating_noise: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _minutes(self) -> Self:
+        low, high = self.sub_minutes
+        if not 1 <= low <= high <= 89:
+            raise ValueError("sub_minutes must be a range within the 90 minutes")
+        return self
+
+
 class RefereeBiasDef(DefModel):
     foul: float = Field(ge=0, le=1)
     card: float = Field(ge=0, le=1)

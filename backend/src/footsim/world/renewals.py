@@ -26,6 +26,7 @@ from footsim.transfers.decisions import (
     player_accepts,
     wage_demand,
 )
+from footsim.world.college.common import COLLEGE_CONTRACT
 from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
 from footsim.world.market import FREE, _Market
@@ -56,11 +57,14 @@ class Expiring:
 
 def _expiring_rows(conn: Connection, season_end: date, club_id: int | None = None
                    ) -> list[tuple[int, int, int, str]]:
-    """Active non-loan contracts ending by ``season_end``: (contract id, person, club, end)."""
+    """Active non-loan contracts ending by ``season_end``: (contract id, person, club, end).
+    College players' aren't contracts to renew: college soccer runs its own cycle
+    (world/college)."""
     where = "AND club_id = :c" if club_id is not None else ""
     return [(int(r.id), int(r.person_id), int(r.club_id), str(r.end_date)) for r in conn.execute(
         text(f"SELECT id, person_id, club_id, end_date FROM contract WHERE is_active = 1 "
-             f"AND kind != 'loan' AND end_date <= :e {where} ORDER BY id"),
+             f"AND kind NOT IN ('loan', '{COLLEGE_CONTRACT}') AND end_date <= :e {where} "
+             "ORDER BY id"),
         {"e": season_end.isoformat(), "c": club_id})]
 
 

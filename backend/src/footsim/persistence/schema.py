@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 22  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 24  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -540,4 +540,50 @@ tactic = Table(
     Column("roles", Text, nullable=False),  # JSON {slot id: role key}
     Column("lineup", Text),  # JSON {slot id: player id}, None = pick automatically
     Column("instructions", Text, nullable=False),  # JSON {instruction: level}
+)
+
+# --- US college soccer (W9a, the NCAA season: world/college/) ---------------------------------
+# The college programs: clubs without finances or a league, in a conference, with a program
+# level (the mean overall it recruits to).
+college_team = Table(
+    "college_team",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("conference", Text, nullable=False),  # its key in data/config/college/ncaa_d1.yaml
+    Column("tier", Integer, nullable=False),  # 1 (a national power) to 5
+    Column("level", Float, nullable=False),
+)
+
+# Every college player, past and present. ``status``: enrolled (on a college roster) | prospect
+# (declared for the draft, still on the roster) | pro (turned pro: drafted or signed) |
+# undrafted (left college unsigned: a free agent). Enrolled or a prospect, he is outside the
+# professional game: no market, loans, renewals or wages.
+college_player = Table(
+    "college_player",
+    metadata,
+    Column("player_id", ForeignKey("person.id"), primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),  # his college program
+    Column("class_year", Integer, nullable=False),  # 1 Fr, 2 So, 3 Jr, 4 Sr
+    Column("status", Text, nullable=False),
+    Column("ga", Integer, nullable=False, server_default="0"),  # an underclassman who declared
+    Column("entered_season", Integer, nullable=False),
+    Column("declared_season", Integer),  # the season whose draft pool he is in
+    Column("left_on", Text),  # the day he left college (turned pro or went undrafted)
+    Index("ix_college_player_status", "status"),
+)
+
+# Who is in a college event of a season, and how: a conference tournament (``CT:<key>``) or the
+# NCAA tournament (``NCAA``). ``seed`` is the bracket position (1 = top); ``bid``: auto |
+# at_large for the NCAA; ``rank`` and ``rating``: the RPI the field was picked by.
+college_entry = Table(
+    "college_entry",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("event", Text, nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("seed", Integer, nullable=False),
+    Column("bid", Text),
+    Column("rank", Integer),
+    Column("rating", Float),
+    PrimaryKeyConstraint("season_id", "event", "club_id"),
 )

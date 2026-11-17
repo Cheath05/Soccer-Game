@@ -34,6 +34,7 @@ from footsim.persistence.schema import (
     player_state,
 )
 from footsim.scouting.estimates import potential_label
+from footsim.world.college.common import COLLEGE_CLUBS_SQL, COLLEGE_CONTRACT
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.squads import display_name
@@ -145,9 +146,11 @@ def _name_pools(conn: Connection) -> dict[int | None, tuple[list[str], list[str]
 def youth_intake(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
     """Every club's youngsters from its academy; returns news of the user's."""
     rules = world.defs.lifecycle.youth
-    clubs = conn.execute(text("""
+    # College programs recruit instead (world/college/roster.py).
+    clubs = conn.execute(text(f"""
         SELECT c.id, c.reputation, c.nation_id FROM club c
         WHERE EXISTS (SELECT 1 FROM contract k WHERE k.club_id = c.id AND k.is_active = 1)
+        AND c.id NOT IN ({COLLEGE_CLUBS_SQL})
         ORDER BY c.id""")).all()
     squad_nations: dict[int, Counter[int]] = defaultdict(Counter)
     for r in conn.execute(text("""SELECT k.club_id, p.nation_id FROM contract k
@@ -246,6 +249,7 @@ def trim_squads(conn: Connection, world: World, meta: CareerMeta, day: date) -> 
     rules = world.defs.lifecycle.squads
     adult = world.defs.lifecycle.youth.contract_age
     rows = [r for r in _players(conn) if r.club_id is not None and r.club_id != meta.user_club_id
+            and r.contract_kind != COLLEGE_CONTRACT  # college rosters run their own cycle
             and not (r.contract_kind == "youth"
                      and age_on(date.fromisoformat(r.birth_date), day) < adult)]
     by_club: dict[int, list[Any]] = defaultdict(list)

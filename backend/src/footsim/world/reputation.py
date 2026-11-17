@@ -19,6 +19,7 @@ from collections import defaultdict
 import numpy as np
 from sqlalchemy import Connection, text
 
+from footsim.world.college.common import college_club_ids
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import player_overalls
@@ -80,9 +81,10 @@ def drift_reputations(conn: Connection, world: World, meta: CareerMeta, old_seas
         members[comp].append(current[club_id])
     standing = {comp: float(np.mean(reps)) for comp, reps in members.items()}
     updates, news = [], []
+    college = college_club_ids(conn)  # a college program's standing is its own (world/college)
     for club_id, rep in sorted(current.items()):
         squad = squads.get(club_id)
-        if squad is None:
+        if squad is None or club_id in college:
             continue  # a club without players keeps its name, and its standing
         target = squad
         if club_id in league_of:

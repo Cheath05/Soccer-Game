@@ -19,6 +19,7 @@ from datetime import date
 
 from sqlalchemy import Connection, text
 
+from footsim.world.college.common import in_college
 from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
 from footsim.world.meta import CareerMeta
@@ -51,6 +52,8 @@ def validate_loan(conn: Connection, world: World, meta: CareerMeta, loan: Loan,
                          {"p": loan.player_id}).first()
     if alive is None or alive.retired_on is not None:
         raise MoveRefused("No such player.")
+    if in_college(conn, loan.player_id):
+        raise MoveRefused("He plays college soccer: he can't be loaned.")
     owner = owner_contract(conn, loan.player_id)
     if owner is None:
         raise MoveRefused("A free agent can't be loaned: sign him instead.")

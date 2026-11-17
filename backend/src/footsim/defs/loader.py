@@ -14,6 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from footsim.core.paths import config_dir
 from footsim.defs.calendar import SeasonCalendarDef
+from footsim.defs.college import CollegeDef, ProgramsFile
 from footsim.defs.competitions import LeagueDef
 from footsim.defs.cups import CupDef
 from footsim.defs.development import DevelopmentDef
@@ -98,6 +99,7 @@ class GameDefinitions:
     europe_calendars: dict[str, EuropeCalendarDef]
     association_coefficients: AssociationCoefficientsFile  # countries' real seasons, seeds
     season_before: SeasonBeforeFile  # how the season before the career really finished
+    college: CollegeDef  # US college soccer: the NCAA season and its programs (W9a)
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -137,6 +139,15 @@ def load_server(root: Path | None = None) -> ServerDef:
     """The server's own settings (data/config/server.yaml), apart from the game's definitions:
     the accounts command and the API read them without loading the whole game."""
     return _parse(ServerDef, (root or config_dir()) / "server.yaml")
+
+
+def load_college(root: Path) -> CollegeDef:
+    """The NCAA's rules and its programs, from two files (data/config/college/)."""
+    rules_path = root / "college" / "rules.yaml"
+    programs_path = root / "college" / "ncaa_d1.yaml"
+    programs = _parse(ProgramsFile, programs_path)
+    return _validate(CollegeDef, {"rules": _read_yaml(rules_path),
+                                  "conferences": programs.conferences}, rules_path)
 
 
 def load_definitions(root: Path | None = None) -> GameDefinitions:
@@ -180,6 +191,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
         association_coefficients=_parse(AssociationCoefficientsFile,
                                         root / "europe" / "association_coefficients.yaml"),
         season_before=_parse(SeasonBeforeFile, root / "europe" / "season_before.yaml"),
+        college=load_college(root),
     )
     _cross_validate(defs)
     return defs
@@ -288,6 +300,18 @@ def _cross_validate(defs: GameDefinitions) -> None:
     unknown_positions = set(defs.lifecycle.youth.positions) - set(defs.positions)
     if unknown_positions:
         errors.append(f"lifecycle.yaml youth: unknown positions {sorted(unknown_positions)}")
+    college = defs.college.rules
+    if set(college.roster.shape) - set(defs.positions):
+        errors.append("college/rules.yaml roster shape: unknown positions "
+                      f"{sorted(set(college.roster.shape) - set(defs.positions))}")
+    if college.formation not in defs.formations:
+        errors.append(f"college/rules.yaml: unknown formation {college.formation}")
+    if college.nation not in defs.nations:
+        errors.append(f"college/rules.yaml: unknown nation {college.nation}")
+    if college.key in defs.leagues or college.key in defs.cups:
+        errors.append(f"college/rules.yaml: key {college.key} is a league's or a cup's")
+    if len(college.roster.shape) < college.roster.size[1]:
+        errors.append("college/rules.yaml: the roster shape is shorter than a roster")
 
     sizes = {key: league.clubs for key, league in defs.leagues.items()}
     for cup in defs.cups.values():

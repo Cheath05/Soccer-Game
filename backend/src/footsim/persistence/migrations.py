@@ -232,11 +232,28 @@ def _to_v22(conn: Connection) -> None:
         WHERE f.outcome = 'champion'"""))
 
 
+def _to_v23(conn: Connection) -> None:
+    """Placeholder: v23 belongs to the MLS rules (W9a B3), built on another branch. The merge
+    replaces this step with theirs and renumbers the NCAA step below."""
+
+
+def _to_v24(conn: Connection) -> None:
+    """US college soccer (W9a, the NCAA season): its programs, players and event entries. The
+    college world itself is added to a career at its next season (world/college ensure_college).
+    Only these tables, so the step also runs on a v22 database."""
+    from footsim.persistence.schema import college_entry, college_player, college_team
+
+    for table in (college_team, college_player, college_entry):
+        table.create(conn, checkfirst=True)
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_college_player_status "
+                      "ON college_player (status)"))
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
     16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20,
-    21: _to_v21, 22: _to_v22}
+    21: _to_v21, 22: _to_v22, 23: _to_v23, 24: _to_v24}
 
 
 def migrate(engine: Engine) -> int:

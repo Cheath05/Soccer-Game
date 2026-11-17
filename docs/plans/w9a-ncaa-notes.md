@@ -128,7 +128,12 @@ The run without college was the slower one both times, because the other agents'
   - the rollover's classes, freshmen and contracts;
   - no college player in any build of the market's players, no finances, ledger, transfers, youth contracts, league membership or reputation drift for college clubs;
   - the read API on the played season.
-- `tests/unit/test_migrations.py`'s v9 finance test now counts only non-college clubs.
+- `tests/unit/test_migrations.py`'s v9 finance test now counts only non-college clubs. So does `tests/integration/test_finance.py`. `test_renewals.py`'s stale-contract check leaves out college contracts, which the college cycle ends.
+- **Run and passing** (not the full suite):
+  - unit: college, migrations, saves, definitions, league formats, lifecycle;
+  - integration: college season, loans, renewals, finance, transfers, market cache, reputation;
+  - `just lint` (ruff and strict mypy).
+- **Already failing at 9939c99 (B1's WIP), not from this branch:** three tests in `tests/unit/test_season_views.py`. Their fixture writes champions to `league_final` only, while B1's honours read `league_title`.
 
 ## Follow-ups
 - B5 (the SuperDraft) uses `draft_pool` and `turn_pro`; it may call `release_undrafted` after its last round.

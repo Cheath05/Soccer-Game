@@ -27,6 +27,16 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.93"
+  date: "2026-11-17"
+  title: "The Americas: MLS, Liga MX, Argentina and Brazil"
+  changes:
+    - "Four new leagues: Major League Soccer (East and West conferences, the MLS Cup Playoffs with a Wild Card and best-of-three first round, and the Supporters' Shield), Liga MX (an Apertura and a Clausura, each with its Liguilla), Argentina's Liga Profesional (two zones with interzonal derbies, two tournaments with knockouts, and the Campeón de Liga for the season's table) and Brazil's Série A. You can start a career at any of their clubs."
+    - "Their cups: the U.S. Open Cup, the Canadian Championship, the Copa Argentina and the Copa do Brasil."
+    - "Their seasons run July to June like everyone else's (MLS really moves to that calendar from 2027-28), with a winter break in MLS."
+    - "Liga MX clubs get their accents back (Club León, FC Juárez, Querétaro, Atlético de San Luis), and Toronto, Montréal and Vancouver are Canadian."
+    - "A career already under way gets MLS, Liga MX and Argentina (and their cups) from its next season; Brazil needs a new career."
+
 - version: "1.90"
   date: "2026-11-16"
   title: "League play-offs on the League page"

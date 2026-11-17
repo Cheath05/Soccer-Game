@@ -61,14 +61,19 @@ def test_every_move_keeps_the_invariants(traded: Engine) -> None:
         assert conn.execute(text(
             "SELECT COUNT(*) FROM (SELECT person_id FROM contract WHERE is_active = 1 "
             "AND kind != 'loan' GROUP BY person_id HAVING COUNT(*) > 1)")).scalar_one() == 0
-        # Every transfer's fee left the buyer and reached the seller, once.
+        # Every transfer's fee left the buyer and reached the seller, once. A sale by an MLS
+        # club pays it 95%, part of it as GAM, and a trade within MLS is paid in GAM
+        # (world/mls_market.py): they're checked by tests/integration/test_mls_season.py.
+        gam = ("(SELECT 1 FROM mls_club_season s WHERE s.club_id = t.from_club_id AND "
+               "s.season_id = t.season_id)")
         unpaid = conn.execute(text(
             "SELECT COUNT(*) FROM transfer t WHERE t.fee_cents > 0 AND (SELECT COUNT(*) "
-            "FROM finance_ledger l WHERE l.kind = 'transfer' AND l.ref_id = t.id) != 2"
-        )).scalar_one()
+            "FROM finance_ledger l WHERE l.kind = 'transfer' AND l.ref_id = t.id) != 2 "
+            f"AND NOT EXISTS {gam}")).scalar_one()
         assert unpaid == 0
         assert conn.execute(text(
-            "SELECT COALESCE(SUM(amount_cents), 0) FROM finance_ledger WHERE kind = 'transfer'"
+            "SELECT COALESCE(SUM(l.amount_cents), 0) FROM finance_ledger l JOIN transfer t "
+            f"ON t.id = l.ref_id WHERE l.kind = 'transfer' AND NOT EXISTS {gam}"
         )).scalar_one() == 0  # money moved between clubs: none made or lost
         # Nobody spent beyond the budget, and no player moved twice.
         assert conn.execute(text(

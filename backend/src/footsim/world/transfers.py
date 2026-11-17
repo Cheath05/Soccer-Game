@@ -33,6 +33,8 @@ from footsim.transfers.valuation import plain_values, values_eur, years_old
 from footsim.world.context import World
 from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
 from footsim.world.meta import CareerMeta, bump_players_epoch
+from footsim.world.mls import sync_clubs
+from footsim.world.mls_market import FeeSplit, addition_problem, apply_fee_gam, fee_split
 from footsim.world.money import money_text
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import club_name, display_name
@@ -134,13 +136,21 @@ def validate_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
         club_finance.c.club_id == move.to_club_id)).first()
     if money is None:
         raise MoveRefused("That club has no finances.")
+    split = fee_split(conn, world, meta, owner.club_id if owner is not None else None,
+                      move.to_club_id, move.fee_cents)
+    if split.refusal is not None:
+        raise MoveRefused(split.refusal)
     weeks = weeks_left(conn, meta.season_id, day)
-    if signing_cost_cents(move.fee_cents, move.wage_weekly_cents, weeks) > (
+    if signing_cost_cents(split.buyer_cash, move.wage_weekly_cents, weeks) > (
             money.transfer_budget_cents):
         raise MoveRefused("That's beyond the budget.")
     if (len(senior_squad(conn, world, move.to_club_id, day)) + 1
             > world.defs.lifecycle.squads.max_players):
         raise MoveRefused("The squad is full.")
+    problem = addition_problem(conn, world, meta, move.to_club_id, move.player_id,
+                               move.wage_weekly_cents, day, gam_spent=split.buyer_gam)
+    if problem is not None:
+        raise MoveRefused(problem)
     if owner is not None:
         _check_seller(conn, world, owner.club_id, move.player_id, day)
 
@@ -190,13 +200,17 @@ def complete_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
             start_date=day.isoformat(), end_date=move.contract_end.isoformat(),
             wage_weekly_cents=move.wage_weekly_cents, release_clause_cents=None, is_active=1,
             listed=0))
+    split = fee_split(conn, world, meta, seller, move.to_club_id, move.fee_cents)
     if move.fee_cents and seller is not None and move.to_club_id is not None:
+        # Outside MLS the fee is cash; MLS trades and sales move GAM too (world/mls_market.py).
         post(conn, day, meta.season_id, [
-            Entry(move.to_club_id, "transfer", -move.fee_cents, transfer_id),
-            Entry(seller, "transfer", move.fee_cents, transfer_id)])
+            Entry(move.to_club_id, "transfer", -split.buyer_cash, transfer_id),
+            Entry(seller, "transfer", split.seller_cash, transfer_id)])
+        apply_fee_gam(conn, meta, seller, move.to_club_id, split, day, transfer_id)
     if move.to_club_id is not None:  # a release changes no budget
-        _move_budgets(conn, world, meta, move, owner, day)
+        _move_budgets(conn, world, meta, move, owner, day, split)
     void_offers(conn, move.player_id, keep_user_talks=move.by_user)
+    sync_clubs(conn, world, meta, [seller, move.to_club_id], day)
     return [_news(conn, world, meta, move, seller, kind)]
 
 
@@ -212,16 +226,17 @@ def void_offers(conn: Connection, player_id: int, keep_user_talks: bool = False)
 
 
 def _move_budgets(conn: Connection, world: World, meta: CareerMeta, move: Move,
-                  owner: Row[Any] | None, day: date) -> None:
-    """The buyer's budget pays the signing's cost (the fee and his new wage for the rest of the
-    season). The seller's gets back ``reinvest`` of the fee, and the wage it no longer pays for
-    the rest of the season (``owner``: the contract he left)."""
+                  owner: Row[Any] | None, day: date, split: FeeSplit) -> None:
+    """The buyer's budget pays the signing's cost (the cash of its fee and his new wage for the
+    rest of the season). The seller's gets back ``reinvest`` of the cash it gets, and the wage
+    it no longer pays for the rest of the season (``owner``: the contract he left). Outside MLS
+    the cash is the fee (world/mls_market.py ``fee_split``)."""
     weeks = weeks_left(conn, meta.season_id, day)
     changes = [{"club": move.to_club_id,
-                "change": -signing_cost_cents(move.fee_cents, move.wage_weekly_cents, weeks)}]
+                "change": -signing_cost_cents(split.buyer_cash, move.wage_weekly_cents, weeks)}]
     if owner is not None:
         changes.append({"club": owner.club_id,
-                        "change": round(world.defs.finance.reinvest * move.fee_cents)
+                        "change": round(world.defs.finance.reinvest * split.seller_cash)
                         + round(owner.wage_weekly_cents * weeks)})
     conn.execute(text(
         "UPDATE club_finance SET transfer_budget_cents = transfer_budget_cents + :change "

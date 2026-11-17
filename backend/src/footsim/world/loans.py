@@ -22,6 +22,8 @@ from sqlalchemy import Connection, text
 from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
 from footsim.world.meta import CareerMeta
+from footsim.world.mls import sync_clubs
+from footsim.world.mls_market import addition_problem
 from footsim.world.squads import club_name, display_name
 from footsim.world.transfers import (
     MoveRefused,
@@ -74,6 +76,11 @@ def validate_loan(conn: Connection, world: World, meta: CareerMeta, loan: Loan,
     if (len(senior_squad(conn, world, loan.borrower_id, day)) + 1
             > world.defs.lifecycle.squads.max_players):
         raise MoveRefused("The squad is full.")
+    problem = addition_problem(conn, world, meta, loan.borrower_id, loan.player_id,
+                               round(loan.share * owner.wage_weekly_cents), day, loan=True,
+                               contract_weekly=owner.wage_weekly_cents)
+    if problem is not None:
+        raise MoveRefused(problem)
     _check_seller(conn, world, owner.club_id, loan.player_id, day)
 
 
@@ -103,6 +110,7 @@ def start_loan(conn: Connection, world: World, meta: CareerMeta, loan: Loan,
     _drop_from_lineup(conn, owner.club_id, loan.player_id)
     conn.execute(text("UPDATE contract SET loan_listed = 0 WHERE id = :id"), {"id": owner.id})
     void_offers(conn, loan.player_id, keep_user_talks=loan.by_user)
+    sync_clubs(conn, world, meta, [owner.club_id, loan.borrower_id], day)
     return (f"{_name(conn, loan.player_id)} joins {club_name(conn, loan.borrower_id)} on loan "
             f"from {club_name(conn, owner.club_id)} until {loan.end.strftime('%B %Y')}.")
 

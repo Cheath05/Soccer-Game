@@ -268,3 +268,11 @@ def test_the_roster_page(tmp_path: Path) -> None:
     assert refused.status_code == 409 and "Generation adidas" in refused.json()["detail"]
     other = client.get("/api/mls/roster", params={"club_id": club_id + 1}).json()
     assert not other["yours"]
+    # The clubs an international slot could be bought from: other MLS clubs with one to spare.
+    slots = client.get("/api/mls/international-slot").json()
+    assert slots["price_eur"] > 0 and slots["gam_left_eur"] == page["allocation"]["gam_left_eur"]
+    assert all(s["club"]["id"] != club_id and s["spare"] > 0 for s in slots["sellers"])
+    # Before the field is picked a college tournament's bracket is empty (the page says when).
+    for event in ("NCAA", "CT:ACC"):
+        bracket = client.get("/api/college/bracket", params={"event": event})
+        assert bracket.status_code == 200 and bracket.json()["rounds"] == []

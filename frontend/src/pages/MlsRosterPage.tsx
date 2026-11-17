@@ -184,7 +184,8 @@ export default function MlsRosterPage() {
                         {p.age}y · paid {money(p.salary_eur)}/yr
                       </Text>
                       <Group gap={6} mt={4} wrap="wrap">
-                        <DesignationBadge p={p} />
+                        {/* With a choice to make, the select below says it. */}
+                        {!(yours && p.options.length > 1) && <DesignationBadge p={p} />}
                         <ChargeText p={p} roster={p.roster} />
                       </Group>
                     </div>

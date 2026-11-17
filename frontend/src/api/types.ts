@@ -839,3 +839,41 @@ export interface EuropeRankings {
   countries: CountryCoefficient[]
   clubs: ClubCoefficient[]
 }
+
+/** MLS's SuperDraft (GET /api/draft). */
+export interface DraftProspect {
+  player_id: number
+  name: string
+  college: ClubRef
+  class_year: string
+  age: number
+  position: string
+  overall: number
+  potential_low: number // the user's scouts' view, a band
+  potential_high: number
+  ga: boolean // Generation adidas
+  board_rank: number | null
+}
+
+export interface DraftPick {
+  pick: number
+  round: number
+  club: ClubRef
+  player_id: number | null
+  name: string | null
+  position: string | null
+  college: string | null
+  signed: boolean
+  mine: boolean
+}
+
+export interface Draft {
+  season: string
+  date: string
+  made: boolean
+  in_mls: boolean
+  rounds: number
+  picks: DraftPick[]
+  prospects: DraftProspect[]
+  board: number[]
+}

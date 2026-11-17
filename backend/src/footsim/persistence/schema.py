@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 24  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 25  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -660,4 +660,30 @@ mls_gam = Table(
     Column("amount_cents", Integer, nullable=False),
     Column("ref_id", Integer),  # a transfer, or the other club of a slot trade
     Index("ix_mls_gam_club", "club_id", "season_id"),
+)
+
+
+# MLS's SuperDraft (W9a B5, world/draft.py; v25): each season's picks, in order, and the user's
+# own ranking of the prospects (the draft takes the best still there when the club is on the
+# clock).
+draft_pick = Table(
+    "draft_pick",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("pick", Integer, nullable=False),  # 1, 2, ... through every round
+    Column("round", Integer, nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("player_id", ForeignKey("person.id"), nullable=False),
+    Column("signed", SmallInteger, nullable=False, server_default="0"),
+    PrimaryKeyConstraint("season_id", "pick"),
+)
+
+draft_board = Table(
+    "draft_board",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("player_id", ForeignKey("person.id"), nullable=False),
+    Column("rank", Integer, nullable=False),
+    PrimaryKeyConstraint("season_id", "club_id", "player_id"),
 )

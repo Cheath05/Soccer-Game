@@ -44,6 +44,35 @@ class MlsAiDef(DefModel):
     spare_slots_kept: int = Field(ge=0)
 
 
+class SuperDraftDef(DefModel):
+    """MLS's SuperDraft (W9a B5): college prospects (world/college) picked in January."""
+
+    date: str  # "MM-DD" in the January of the season
+    rounds: int = Field(ge=1)
+    reminder_days: int = Field(ge=0)  # the user's club hears of it this long before
+    # A pick's value to a club: his overall plus this share of the potential above it (as the
+    # club's scouts see it: potential with a club's own error of this spread), plus a bonus for a
+    # position group the club is short in.
+    potential_weight: float = Field(ge=0)
+    scouting_sd: float = Field(ge=0)
+    need_bonus: float = Field(ge=0)
+    # The players a club wants in each position group, for the need.
+    group_targets: dict[str, int]
+    # Signing: a pick from the first round is paid the senior minimum, a later one the reserve
+    # minimum (the senior minimum if he's older than the reserve age); contracts of these years,
+    # Generation adidas picks' longer. AI clubs sign the picks of the first ``ai_sign_rounds``
+    # rounds when the rules allow; the rest keep their rights only.
+    contract_years: int = Field(ge=1)
+    ga_contract_years: int = Field(ge=1)
+    ga_seasons: int = Field(ge=1)  # Generation adidas (the supplemental roster) this many seasons
+    ai_sign_rounds: int = Field(ge=0)
+    rights_seasons: int = Field(ge=1)  # an unsigned pick's rights last this many seasons
+
+    def month_day(self) -> tuple[int, int]:
+        month, day = (int(x) for x in self.date.split("-"))
+        return month, day
+
+
 class MlsStartDef(DefModel):
     model1_min_third_overall: float
     dp_reference_overall: float
@@ -94,6 +123,7 @@ class MlsRulesDef(DefModel):
     green_card_seasons: int = Field(ge=1)
     ai: MlsAiDef
     start: MlsStartDef
+    superdraft: SuperDraftDef
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:

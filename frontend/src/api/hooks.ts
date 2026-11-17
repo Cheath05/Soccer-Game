@@ -7,6 +7,7 @@ import type {
   CalendarData,
   Career,
   Changelog,
+  Draft,
   ClubHistory,
   Finances,
   ClubOverview,
@@ -321,3 +322,25 @@ export function useDeleteTacticPreset() {
 /** The patch notes, fetched when the What's new window opens (`enabled`) and kept for a while. */
 export const useChangelog = (enabled: boolean) =>
   useQuery({ queryKey: ['changelog'], queryFn: () => api.get<Changelog>('/changelog'), enabled, staleTime: 10 * 60_000, retry: 1 })
+
+export const useDraft = (enabled = true) =>
+  useQuery({ queryKey: ['draft'], queryFn: () => api.get<Draft>('/draft'), enabled, retry: false })
+
+export function useDraftBoard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (playerIds: number[]) => api.put<Draft>('/draft/board', { player_ids: playerIds }),
+    onSuccess: (data) => qc.setQueryData(['draft'], data),
+  })
+}
+
+export function useSignPick() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (playerId: number) => api.post<Draft>(`/draft/sign/${playerId}`),
+    onSuccess: (data) => {
+      qc.setQueryData(['draft'], data)
+      void qc.invalidateQueries({ queryKey: ['squad'] })
+    },
+  })
+}

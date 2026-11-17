@@ -76,6 +76,15 @@ def _newcomer(conn: Connection, world: World, meta: CareerMeta, club_id: int, pl
         contract_wage=contract_weekly * WEEKS if contract_weekly is not None else None)
 
 
+def draft_rights_holder(conn: Connection, player_id: int, season_id: int) -> int | None:
+    """The MLS club holding a player's SuperDraft rights this season (world/draft.py), if any:
+    no other MLS club may sign him."""
+    holder = conn.execute(text(
+        "SELECT club_id FROM mls_rights WHERE player_id = :p AND kind = 'draft' "
+        "AND until_season >= :s"), {"p": player_id, "s": season_id}).scalar()
+    return int(holder) if holder is not None else None
+
+
 def addition_problem(conn: Connection, world: World, meta: CareerMeta, club_id: int,
                      player_id: int, weekly_cents: int, day: date, *, loan: bool = False,
                      contract_weekly: int | None = None, gam_spent: int = 0) -> str | None:
@@ -83,6 +92,9 @@ def addition_problem(conn: Connection, world: World, meta: CareerMeta, club_id: 
     pays; ``gam_spent``: the GAM it pays for him), or None (also for any club outside MLS)."""
     if not under_rules(conn, club_id, meta.season_id):
         return None
+    holder = draft_rights_holder(conn, player_id, meta.season_id)
+    if holder is not None and holder != club_id:
+        return "Another MLS club holds his draft rights."
     fig = figures(world)
     money = money_for(world, meta)
     ai = _is_ai(meta, club_id)

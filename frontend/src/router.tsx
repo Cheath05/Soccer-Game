@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import CalendarPage from './pages/CalendarPage'
 import ClubPage from './pages/ClubPage'
 import CupsPage from './pages/CupsPage'
+import DraftPage from './pages/DraftPage'
 import DashboardPage from './pages/DashboardPage'
 import EuropePage from './pages/EuropePage'
 import FinancesPage from './pages/FinancesPage'
@@ -32,6 +33,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/fixtures', component: FixturesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/league', component: LeaguePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/cups', component: CupsPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/draft', component: DraftPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/europe', component: EuropePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/match/$fixtureId', component: MatchReportPage }),

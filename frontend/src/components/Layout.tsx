@@ -26,6 +26,7 @@ const NAV = [
   { to: '/fixtures', label: 'Fixtures' },
   { to: '/league', label: 'League' },
   { to: '/cups', label: 'Cups' },
+  { to: '/draft', label: 'Draft' },
   { to: '/europe', label: 'Europe' },
   { to: '/start', label: 'Save / Load' },
 ] as const
@@ -37,6 +38,8 @@ export default function Layout() {
   const advance = useAdvance()
   // Europe is in the menu only for a game that has the European competitions.
   const hasEurope = useEuropeList(career.data !== undefined).data?.enabled === true
+  // The SuperDraft is in the menu for an MLS club's manager.
+  const inMls = career.data?.competition?.key === 'USA1'
   const saveGame = useSaveGame()
   const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
@@ -102,6 +105,7 @@ export default function Layout() {
     { to: '/fixtures', label: 'Fixtures', icon: 'fixtures', active: at('/fixtures') },
     { to: '/calendar', label: 'Calendar', icon: 'calendar', active: at('/calendar') },
     { to: '/cups', label: 'Cups', icon: 'cups', active: at('/cups') },
+    ...(inMls ? [{ to: '/draft', label: 'Draft', icon: 'league', active: at('/draft') } as NavItem] : []),
     ...(hasEurope ? [{ to: '/europe', label: 'Europe', icon: 'europe', active: at('/europe') } as NavItem] : []),
     { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
     { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
@@ -186,7 +190,7 @@ export default function Layout() {
         <Box hiddenFrom="md" mb="xs">
           <ClubSearch onPick={close} />
         </Box>
-        {NAV.filter((item) => item.to !== '/europe' || hasEurope).map((item) => (
+        {NAV.filter((item) => (item.to !== '/europe' || hasEurope) && (item.to !== '/draft' || inMls)).map((item) => (
           <div key={item.to}>
             {item.to === '/start' && data && (
               <NavLink

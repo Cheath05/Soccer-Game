@@ -59,6 +59,7 @@ from footsim.world.college.season import (
 )
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
+from footsim.world.draft import draft_day
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.lifecycle import season_turnover
@@ -302,6 +303,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
             if playoff.phase is None:
                 messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
     messages += progress_college(conn, world, meta, day)
+    messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
                            season_calendar(world, meta, meta.season_id).season_end)

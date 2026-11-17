@@ -92,3 +92,21 @@ start:
   # fits with this much of the budget left over and the AI's GAM reserve unspent.
   budget_headroom: 250000
   homegrown_max_age: 22    # domestic players this young at the start count as Homegrown
+
+# --- the SuperDraft (W9a B5: world/draft.py) ---------------------------------------------------
+# Three rounds in January, after the College Cup: the clubs pick in reverse order of last
+# season's Supporters' Shield table, adjusted for the play-offs (the MLS Cup winners last), from
+# the college prospects (world/college). The game's January is mid-season (the winter break).
+superdraft:
+  date: "01-12"
+  rounds: 3
+  reminder_days: 14
+  potential_weight: 0.5
+  scouting_sd: 3.0
+  need_bonus: 2.5
+  group_targets: {GK: 3, DEF: 8, MID: 8, FWD: 5}
+  contract_years: 2
+  ga_contract_years: 3
+  ga_seasons: 3
+  ai_sign_rounds: 2
+  rights_seasons: 1

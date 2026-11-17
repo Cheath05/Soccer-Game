@@ -229,6 +229,18 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'superdraft',
+    title: 'The MLS SuperDraft',
+    summary: 'Drafting college players into an MLS club in January.',
+    blocks: [
+      [
+        'Every January the MLS clubs draft the college players of the NCAA season just finished: three rounds, in reverse order of last season’s table, with the play-off clubs after the rest and the MLS Cup winners last (in your first season, the table so far). Managing an MLS club, you get a reminder two weeks before.',
+        'Open Draft (in the menu for an MLS club, or from the MLS table) to see the prospects: each one’s college, class, position and overall, and your scouts’ view of his potential as a range. Add the ones you want to your board and put them in order. When your club is on the clock it takes the best one still on your board; if none is left, your scouts choose.',
+        'Picks join your squad at the league minimum if MLS’s rules allow (roster places, the salary budget, international slots). Generation adidas picks (underclassmen who declared) go on the supplemental roster and cost nothing against the budget. A pick who can’t be signed yet stays yours: sign him from the Draft page once you’ve made room, while you hold his rights. No other MLS club can sign him meanwhile.',
+      ],
+    ],
+  },
+  {
     id: 'clubs',
     title: 'Other clubs and club history',
     summary: 'Club search, club pages and your club’s history.',

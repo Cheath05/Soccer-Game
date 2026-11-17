@@ -1,0 +1,12 @@
+# Clubs of another country than their league's (W9a B2): a club's nation is its league's
+# (the import profile's league_nations) unless it is listed here, by the source league's name,
+# then the club's name as the world has it, then its nation code (nations.yaml). Applied when a
+# world is built (importers/build_world.py) and, for saves already made, as each season starts
+# (world/season.py ensure_leagues), by name, so it is safe to run again.
+#
+# MLS's three Canadian clubs (mlssoccer.com, the 2026 clubs): they enter the Canadian
+# Championship, not the U.S. Open Cup.
+MLS:
+  Toronto FC: CAN
+  CF Montréal: CAN
+  Whitecaps FC: CAN

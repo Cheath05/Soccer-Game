@@ -1,0 +1,33 @@
+# Brazil (Série A) 2026-27 (W9a B2). Real life runs January to December (2026: 28 January to
+# 2 December, with a break for the World Cup); the game's season runs July to June, so these dates
+# are approximate: the 38 rounds from late July to late May, with the summer break from
+# mid-December to late January.
+# Seasons share England's boundaries (1 July to 30 June), so every league turns over together.
+key: BRA-2026-27
+season: "2026-27"
+nation: BRA
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  BRA1: {start: 2026-07-25, end: 2027-05-23}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-02}   # approximate
+  - {start: 2027-01-05, end: 2027-03-03}   # approximate: the 2026 window's dates
+blackout:
+  - {start: 2026-12-14, end: 2027-01-22}   # the summer break (approximate)
+# Cup rounds, one date per leg (approximate): the Copa do Brasil on Wednesdays, two legs from the
+# fifth phase (where the Série A clubs enter) to the semi-finals, then a single final at a
+# neutral ground on the Sunday after the league's last round (2026's is the first: 6 December,
+# Brasília).
+cups:
+  COPA_DO_BRASIL:
+    - [2026-08-05, 2026-08-19]
+    - [2026-09-02, 2026-09-16]
+    - [2026-10-14, 2026-10-28]
+    - [2027-02-03, 2027-02-17]
+    - [2027-05-30]

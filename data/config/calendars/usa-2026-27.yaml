@@ -1,0 +1,35 @@
+# United States (MLS) 2026-27 (W9a B2). MLS moves to a fall-to-spring calendar from 2027-28
+# (mlssoccer.com, its 2027 Sprint Season and 2027-28 calendar announcements, as summarised in
+# docs/plans/w9a-americas.md: the season from July to May, a winter break from
+# mid-December to early February, MLS Cup in late May), after a short "Sprint Season" in spring
+# 2027. The game plays the 2027-28 shape a year early, so its 2026-27 MLS season runs mid-July
+# 2026 to late April 2027, then the MLS Cup Playoffs to late May. Approximate dates.
+# Seasons share England's boundaries (1 July to 30 June), so every league turns over together.
+# International windows: the FIFA calendar, as in every country's file.
+key: USA-2026-27
+season: "2026-27"
+nation: USA
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  USA1: {start: 2026-07-18, end: 2027-04-25, playoffs_end: 2027-05-29}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate: in step with Europe's summer window
+  - {start: 2027-01-04, end: 2027-03-01}   # approximate: the winter break's
+blackout:
+  - {start: 2026-12-14, end: 2027-02-05}   # the winter break (approximate)
+# Cup rounds, one date per leg (approximate), on Wednesdays clear of the international windows,
+# the winter break and MLS's own rounds. The U.S. Open Cup's MLS clubs start in the round of 16
+# (the lower divisions' rounds aren't played), its final in the autumn. The Canadian
+# Championship is dated on Canada's calendar (can-2026-27.yaml).
+cups:
+  US_OPEN_CUP:
+    - [2026-08-19]
+    - [2026-09-16]
+    - [2026-10-28]
+    - [2026-11-04]

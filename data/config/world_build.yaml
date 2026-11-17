@@ -91,6 +91,7 @@ new_leagues:
       MLT: [Brazil, Serbia]
       FRO: [Denmark, Iceland]
       LIE: [Switzerland, Austria]
+      BRA: [Argentina, Uruguay, Colombia, Paraguay, Ecuador]  # W9a: Série A's usual imports
     travellers: [Brazil, Serbia, Nigeria, Croatia, Ghana, Portugal, Spain, France,
                  Bosnia and Herzegovina, North Macedonia, Montenegro, Senegal, Georgia, Ukraine,
                  Slovenia, Albania, Cameroon, "Côte d'Ivoire"]

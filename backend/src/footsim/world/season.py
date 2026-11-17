@@ -49,6 +49,7 @@ from footsim.persistence.schema import (
     season,
     tactic,
 )
+from footsim.world.club_names import apply_club_names, apply_club_nations
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
@@ -120,7 +121,13 @@ def ensure_leagues(conn: Connection, world: World, season_id: int) -> list[str]:
     """Leagues the definitions have and the save doesn't (a world built before them, or a
     career from before them): their competitions, and their clubs for the season, found by the
     ratings source's names for the league. A league whose clubs don't add up is left out, so a
-    rollover can't end up with leagues of the wrong size. Returns news."""
+    rollover can't end up with leagues of the wrong size. Returns news.
+
+    First, clubs a save has under the source's names or nation get their real ones
+    (world/club_names.yaml, club_nations.yaml: Liga MX's accents, MLS's Canadian clubs), so a
+    career from before them has them as their league begins. Both are idempotent."""
+    apply_club_names(conn)
+    apply_club_nations(conn)
     existing = {r.key for r in conn.execute(select(competition.c.key))}
     nation_ids = {r.code: r.id for r in conn.execute(text("SELECT id, code FROM nation"))}
     taken = {r.club_id for r in conn.execute(select(club_league_membership.c.club_id).where(

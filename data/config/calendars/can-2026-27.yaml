@@ -1,0 +1,26 @@
+# Canada 2026-27 (W9a B2): no league of its own in the game (its three MLS clubs play on MLS's
+# calendar, usa-2026-27.yaml, and follow MLS's transfer windows), only its cup, the Canadian
+# Championship, dated here on Wednesdays clear of MLS's rounds, the international windows and the
+# winter break (approximate: its two-legged semi-final in August and September, its final in
+# October).
+# The international and transfer windows are MLS's.
+key: CAN-2026-27
+season: "2026-27"
+nation: CAN
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions: {}
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-09-01}   # approximate: as MLS's
+  - {start: 2027-01-04, end: 2027-03-01}   # approximate
+blackout:
+  - {start: 2026-12-14, end: 2027-02-05}   # MLS's winter break (approximate)
+cups:
+  CANADIAN_CHAMPIONSHIP:
+    - [2026-08-12, 2026-09-02]
+    - [2026-10-14]

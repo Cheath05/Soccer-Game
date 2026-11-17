@@ -26,6 +26,7 @@ from footsim.persistence.schema import (
     cup_tie,
     fixture,
     league_final,
+    nation,
 )
 from footsim.world.context import World
 from footsim.world.finance import Entry, post
@@ -214,9 +215,14 @@ def _entrants(conn: Connection, cup: CupDef, round_index: int, season_id: int,
     ids = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
     clubs: list[int] = []
     for entry in cup.entering(round_index):
-        members = [r.club_id for r in conn.execute(select(club_league_membership.c.club_id).where(
+        query = select(club_league_membership.c.club_id).where(
             club_league_membership.c.season_id == season_id,
-            club_league_membership.c.competition_id == ids[entry.league]))]
+            club_league_membership.c.competition_id == ids[entry.league])
+        if entry.nation is not None:  # the league's clubs of one nation (MLS's US clubs)
+            query = query.join(club, club.c.id == club_league_membership.c.club_id).where(
+                club.c.nation_id == select(nation.c.id).where(
+                    nation.c.code == entry.nation).scalar_subquery())
+        members = [r.club_id for r in conn.execute(query)]
         members.sort(key=lambda c: standing[c][1:])  # last season's finish within the league
         if entry.ranks is not None:
             members = members[entry.ranks[0] - 1:entry.ranks[1]]
@@ -240,6 +246,10 @@ def _draw(conn: Connection, world: World, meta: CareerMeta, calendar: SeasonCale
     rng = derive_rng(meta.seed, "cup-draw", season_id, cup.key, round_index)
     order = [playing[k] for k in rng.permutation(len(playing))]
     ties = list(zip(order[0::2], order[1::2], strict=True))
+    if rnd.host == "higher_ranked":  # the better-placed club hosts
+        worst = (99, 99, 99, 0)
+        ties = [(a, b) if standing.get(a, worst) <= standing.get(b, worst) else (b, a)
+                for a, b in ties]
     rows = [{"tie": f"B{n}", "club_a_id": c, "club_b_id": None, "winner_club_id": c}
             for n, c in enumerate(exempt, start=1)]
     rows += [{"tie": str(n), "club_a_id": a, "club_b_id": b, "winner_club_id": None}

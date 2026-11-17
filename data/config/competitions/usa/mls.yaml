@@ -1,0 +1,80 @@
+# Major League Soccer (W9a B2, docs/plans/w9a-americas.md). Sources: MLS 2026 Competition
+# Guidelines (mlssoccer.com, as of 3 Feb 2026); the clubs' 2026 conference alignment
+# (mlssoccer.com standings, read 16 Nov 2026); MLS's announcement of its 2027-28 move to a
+# July-to-May calendar.
+#
+# 30 clubs, the Eastern and Western Conferences of 15. 34 matches: each conference opponent twice
+# (28) and six of the other conference's once. The Supporters' Shield goes to the best regular
+# season (the whole league's table); the MLS Cup Playoffs crown the champion:
+# - seeds 8 v 9 of each conference play a Wild Card match (no extra time; penalties);
+# - Round One, best of three: 1 v the Wild Card winner, 2 v 7, 3 v 6, 4 v 5, the better seed
+#   at home in games 1 and 3, every game to penalties after 90 minutes;
+# - the conference semi-finals (1/8/9 v 4/5, 2/7 v 3/6) and finals: single matches at the
+#   better seed, with extra time and penalties;
+# - MLS Cup: at the finalist higher in the Supporters' Shield table.
+# MLS has no relegation.
+#
+# Tiebreakers (2026 Competition Guidelines): wins, goal difference, goals for, then head-to-head
+# (points, goal difference; the guidelines' intraconference head-to-head), away goals, then
+# fewer disciplinary points (not kept), then a drawing of lots. Conference tables use the same.
+# Nation: the United States, though Toronto FC, CF Montréal and Whitecaps FC are Canadian clubs
+# (world/club_nations.yaml).
+key: USA1
+name: Major League Soccer
+short_name: MLS
+nation: USA
+tier: 1
+clubs: 30
+sim_level: simulated
+calendar: USA-2026-27
+source_leagues: [MLS]
+format: {type: groups, legs: 2, cross_rounds: 6}
+groups:
+  - key: E
+    name: Eastern Conference
+    clubs: ["Atlanta United", "Charlotte FC", "Chicago Fire FC", "Columbus Crew", "D.C. United",
+            "FC Cincinnati", "Inter Miami CF", "CF Montréal", "Nashville SC", "New England",
+            "New York City FC", "Red Bulls", "Orlando City", "Philadelphia", "Toronto FC"]
+  - key: W
+    name: Western Conference
+    clubs: ["Austin FC", "Colorado Rapids", "FC Dallas", "Houston Dynamo", "LA Galaxy", "LAFC",
+            "Minnesota United", "Portland Timbers", "Real Salt Lake", "SJ Earthquakes",
+            "San Diego FC", "Sounders FC", "Sporting KC", "St. Louis CITY SC", "Whitecaps FC"]
+tiebreakers: [points, wins, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              away_goals_for, drawing_of_lots]
+table_title: Supporters' Shield
+playoffs:
+  - key: USA1_PO
+    name: MLS Cup
+    title: true
+    rounds:
+      - name: Wild Card
+        extra_time: false
+        ties:
+          - {id: WCE, a: {group: E, rank: 8}, b: {group: E, rank: 9}}
+          - {id: WCW, a: {group: W, rank: 8}, b: {group: W, rank: 9}}
+      - name: Round One
+        games: 3
+        extra_time: false
+        ties:
+          - {id: E1, a: {group: E, rank: 1}, b: {winner_of: [WCE]}}
+          - {id: E2, a: {group: E, rank: 2}, b: {group: E, rank: 7}}
+          - {id: E3, a: {group: E, rank: 3}, b: {group: E, rank: 6}}
+          - {id: E4, a: {group: E, rank: 4}, b: {group: E, rank: 5}}
+          - {id: W1, a: {group: W, rank: 1}, b: {winner_of: [WCW]}}
+          - {id: W2, a: {group: W, rank: 2}, b: {group: W, rank: 7}}
+          - {id: W3, a: {group: W, rank: 3}, b: {group: W, rank: 6}}
+          - {id: W4, a: {group: W, rank: 4}, b: {group: W, rank: 5}}
+      - name: Conference Semifinals
+        ties:
+          - {id: ES1, a: {winner_of: [E1]}, b: {winner_of: [E4]}}
+          - {id: ES2, a: {winner_of: [E2]}, b: {winner_of: [E3]}}
+          - {id: WS1, a: {winner_of: [W1]}, b: {winner_of: [W4]}}
+          - {id: WS2, a: {winner_of: [W2]}, b: {winner_of: [W3]}}
+      - name: Conference Finals
+        ties:
+          - {id: EF, a: {winner_of: [ES1]}, b: {winner_of: [ES2]}}
+          - {id: WF, a: {winner_of: [WS1]}, b: {winner_of: [WS2]}}
+      - name: MLS Cup
+        ties:
+          - {id: F, a: {winner_of: [EF]}, b: {winner_of: [WF]}}

@@ -39,7 +39,7 @@ from footsim.importers.synthetic import synthesize, with_new_leagues
 from footsim.persistence import schema as t
 from footsim.persistence.database import create_database, write_meta
 from footsim.ratings.overall import OverallScaling, RatingModel
-from footsim.world.club_names import load_club_names
+from footsim.world.club_names import load_club_names, load_club_nations
 
 NATURAL = 20
 ALTERNATE = 15
@@ -171,12 +171,18 @@ def _write_world(
     season_start = calendar.season_start
     rules = defs.world_build
     by_name = {n.name: n for n in defs.nations.values()}
+    club_nations = load_club_nations()
+    unknown = {code for clubs in club_nations.values() for code in clubs.values()} - set(
+        defs.nations)
+    if unknown:
+        raise BuildError(f"world/club_nations.yaml: unknown nation codes {sorted(unknown)}")
 
     # Nations: every nationality and club country we saw, plus nations leagues refer to.
     nation_names = sorted(
         {p.nationality for p in players}
         | set(profile.league_nations.values())
         | {defs.nations[lg.nation].name for lg in defs.leagues.values()}
+        | {defs.nations[code].name for clubs in club_nations.values() for code in clubs.values()}
     )
     nation_id = {name: i for i, name in enumerate(nation_names, start=1)}
     nation_rows = [
@@ -196,11 +202,17 @@ def _write_world(
         for key in club_keys
     }
     real_names = load_club_names()
+    names = {key: real_names.get(profile.league_nations.get(key[0], ""), {}).get(key[1], key[1])
+             for key in club_keys}
+    # A club's nation is its league's, unless it is of another country (MLS's Canadian clubs).
+    own_nation = {(league, name): defs.nations[code].name
+                  for league, clubs in club_nations.items() for name, code in clubs.items()}
     club_rows = [
         {
             "id": club_id[key],
-            "name": real_names.get(profile.league_nations.get(key[0], ""), {}).get(key[1], key[1]),
-            "nation_id": nation_id.get(profile.league_nations.get(key[0], "")),
+            "name": names[key],
+            "nation_id": nation_id.get(own_nation.get(
+                (key[0], names[key]), profile.league_nations.get(key[0], ""))),
             "source_league": key[0],
             "reputation": club_rep[key],
             "stadium_name": None,

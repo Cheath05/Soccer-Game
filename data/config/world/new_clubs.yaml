@@ -5,8 +5,31 @@
 # UEFA qualifying lineups, and generated players for the rest. `ea_names`: a club's name in FC 27
 # where it isn't plain from its name here. `tm_names`: its name on Transfermarkt where the name
 # match would miss it (Greece's formal names) or find the wrong club (null: none is it; checked
-# by hand against Transfermarkt's names, 15 Oct 2026).
+# by hand against Transfermarkt's names, 15 Oct 2026). `ea_league` may be a list: FC 27's league
+# for the clubs first, then other FC 27 leagues holding one of them, whose club of the very same
+# name is moved into the first. `level`: the league's level (FC 27 overall of its clubs' best
+# sixteen) for a country without a UEFA coefficient (which otherwise gives it). `club_levels:
+# values`: its clubs differ by their squads' market values rather than their Elo.
 leagues:
+  # Brazil's Série A (W9a B2), from English Wikipedia, "2026 Campeonato Brasileiro Série A" and
+  # "2025 ..." (read 16 Nov 2026): the 16 who stayed up in their 2025 finishing order, then the
+  # four promoted from Série B (Coritiba, Athletico Paranaense, Chapecoense, Remo). FC 27 has
+  # Bahia (its "Liga do Brasil") and Botafogo (under "CONMEBOL Sudamericana", moved into the
+  # league as FC 27 has it); Transfermarkt has the rest (its formal names in `tm_names`).
+  # `level`: Brazil has no UEFA coefficient to give one, so it is set by hand: South America's
+  # strongest league, centred near FC 27's own Bahia and Botafogo (7th and 6th in 2025; 72.7 and
+  # 72.6 in the built world), above the LPF and Liga MX (70.6 and 70.4). `club_levels: values`:
+  # its clubs differ by their squads' market values (Flamengo's best sixteen worth about 77 by
+  # the value model, Chapecoense's 69), as Transfermarkt's Brazilian games start only in 2025,
+  # too few for an Elo to tell them apart.
+  BRA1:
+    nation: BRA
+    ea_league: ["Liga do Brasil", "CONMEBOL Sudamericana"]
+    tm_league: BRA1
+    level: 72.5
+    club_levels: values
+    clubs: ["Flamengo", "Palmeiras", "Cruzeiro", "Mirassol", "Fluminense", "Botafogo", "Bahia", "São Paulo", "Grêmio", "Red Bull Bragantino", "Atlético Mineiro", "Santos", "Corinthians", "Vasco da Gama", "Vitória", "Internacional", "Coritiba", "Athletico Paranaense", "Chapecoense", "Remo"]
+    tm_names: {"Flamengo": "Clube de Regatas do Flamengo", "Palmeiras": "Sociedade Esportiva Palmeiras", "Cruzeiro": "Cruzeiro Esporte Clube", "Mirassol": "Mirasol Futebol Clube", "Fluminense": "Fluminense Football Club", "Botafogo": "S. A. F. Botafogo", "Bahia": "Esporte Clube Bahia", "São Paulo": "São Paulo Futebol Clube", "Grêmio": "Grêmio Foot-Ball Porto Alegrense", "Red Bull Bragantino": "Red Bull Bragantino", "Atlético Mineiro": "Clube Atlético Mineiro", "Santos": "Santos Futebol Clube", "Corinthians": "Sport Club Corinthians Paulista", "Vasco da Gama": "Club de Regatas Vasco da Gama", "Vitória": "Esporte Clube Vitória", "Internacional": "Sport Club Internacional", "Coritiba": "Coritiba Foot Ball Club", "Athletico Paranaense": "Clube Atlético Paranaense", "Chapecoense": "Associação Chapecoense de Futebol", "Remo": "Clube do Remo"}
   ALB1:
     nation: ALB
     clubs: ["Egnatia", "Elbasani", "Vllaznia", "Dinamo City", "Partizani", "Tirana", "Vora", "Teuta", "Laçi", "Skënderbeu"]

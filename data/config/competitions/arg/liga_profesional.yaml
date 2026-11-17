@@ -1,0 +1,112 @@
+# Argentina's Liga Profesional (W9a B2, docs/plans/w9a-americas.md). Sources: "2026 Argentine
+# Primera División" (English Wikipedia, read 16 Nov 2026); the 2026 zones and interzonal rivals
+# as drawn on 17 Dec 2025 (ESPN Deportes, "Los grupos para la Liga Profesional 2026"; El
+# Economista); the Clausura 2026's play-offs (El Economista, El Gráfico).
+#
+# 30 clubs in zones A and B of 15, two tournaments a season, each with its own champion. Real
+# life runs January to December (the Apertura, then the Clausura); the game's season runs July to
+# June, so its 2026-27 plays the Clausura 2026 (July to December) and then the Apertura 2027
+# (January to June) in the 2026 format, the last one confirmed (the league approved a single
+# table for 2027 in late October 2026, its details not settled).
+# Each tournament:
+# - a single round robin within the zone (14 matches), plus two interzonal matches: the club's
+#   rival from the other zone (`rivals`) and one drawn;
+# - the top eight of each zone to a single-match knockout: the round of 16 crossing the zones
+#   (A1 v B8 ... A8 v B1, a fixed bracket in which the zones' leaders can meet only in the
+#   final), the quarter-finals and semi-finals, all at the better-placed club,
+#   level after 90 minutes going to penalties; the final at a neutral ground, with extra time.
+# The annual table (both tournaments' zone stages, every club's 32 matches) crowns the "Campeón
+# de Liga". Real life: the last club of the annual table and the worst three-season average go
+# down to the Primera Nacional, which isn't in the data, so nobody moves.
+# Tiebreakers: points, goal difference, goals for, head-to-head, then a drawing of lots.
+#
+# The clubs as FC 27 names them: "Asociación Atlética Estudiantes" is Estudiantes de Río Cuarto,
+# "Club Atlético Gimnasia y Esgrima" Gimnasia y Esgrima de Mendoza, "Gimnasia" Gimnasia y Esgrima
+# La Plata, "Estudiantes" Estudiantes de La Plata, "Ind. Rivadavia" Independiente Rivadavia
+# (checked against their squads).
+key: ARG1
+name: Liga Profesional de Fútbol
+short_name: LPF
+nation: ARG
+tier: 1
+clubs: 30
+sim_level: simulated
+calendar: ARG-2026-27
+source_leagues: [LPF]
+format:
+  type: groups
+  legs: 1
+  cross_rounds: 2
+  # Zone A's club, then its interzonal rival in zone B.
+  rivals:
+    - ["Boca Juniors", "River Plate"]
+    - ["Independiente", "Racing Club"]
+    - ["San Lorenzo", "Huracán"]
+    - ["Dep. Riestra", "Barracas Central"]
+    - ["Talleres", "Belgrano"]
+    - ["Instituto", "Asociación Atlética Estudiantes"]
+    - ["Platense", "Argentinos Jrs."]
+    - ["Estudiantes", "Gimnasia"]
+    - ["Club Atlético Gimnasia y Esgrima", "Ind. Rivadavia"]
+    - ["Vélez Sarsfield", "Tigre"]
+    - ["Newell's", "Rosario Central"]
+    - ["Unión", "Sarmiento"]
+    - ["Lanús", "Banfield"]
+    - ["Central Córdoba", "Atlético Tucumán"]
+    - ["Defensa", "Aldosivi"]
+groups:
+  - key: A
+    name: Zone A
+    clubs: ["Boca Juniors", "Independiente", "San Lorenzo", "Dep. Riestra", "Talleres",
+            "Instituto", "Platense", "Estudiantes", "Club Atlético Gimnasia y Esgrima",
+            "Vélez Sarsfield", "Newell's", "Unión", "Lanús", "Central Córdoba", "Defensa"]
+  - key: B
+    name: Zone B
+    clubs: ["River Plate", "Racing Club", "Huracán", "Barracas Central", "Belgrano",
+            "Asociación Atlética Estudiantes", "Ind. Rivadavia", "Gimnasia", "Tigre",
+            "Argentinos Jrs.", "Sarmiento", "Rosario Central", "Banfield", "Atlético Tucumán",
+            "Aldosivi"]
+phases:
+  - {key: CL, name: Clausura}
+  - {key: AP, name: Apertura}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+table_title: Campeón de Liga
+playoffs:
+  - key: ARG1_CL
+    name: Clausura knockout
+    title: true
+    phase: CL
+    rounds: &knockout
+      - name: Round of 16
+        extra_time: false
+        ties:
+          - {id: R1, a: {group: A, rank: 1}, b: {group: B, rank: 8}}
+          - {id: R2, a: {group: A, rank: 2}, b: {group: B, rank: 7}}
+          - {id: R3, a: {group: A, rank: 3}, b: {group: B, rank: 6}}
+          - {id: R4, a: {group: A, rank: 4}, b: {group: B, rank: 5}}
+          - {id: R5, a: {group: A, rank: 5}, b: {group: B, rank: 4}}
+          - {id: R6, a: {group: A, rank: 6}, b: {group: B, rank: 3}}
+          - {id: R7, a: {group: A, rank: 7}, b: {group: B, rank: 2}}
+          - {id: R8, a: {group: A, rank: 8}, b: {group: B, rank: 1}}
+      - name: Quarter-finals
+        extra_time: false
+        ties:
+          - {id: Q1, a: {winner_of: [R1]}, b: {winner_of: [R4]}}
+          - {id: Q2, a: {winner_of: [R2]}, b: {winner_of: [R3]}}
+          - {id: Q3, a: {winner_of: [R8]}, b: {winner_of: [R5]}}
+          - {id: Q4, a: {winner_of: [R7]}, b: {winner_of: [R6]}}
+      - name: Semi-finals
+        extra_time: false
+        ties:
+          - {id: S1, a: {winner_of: [Q1]}, b: {winner_of: [Q2]}}
+          - {id: S2, a: {winner_of: [Q3]}, b: {winner_of: [Q4]}}
+      - name: Final
+        host: neutral
+        ties:
+          - {id: F, a: {winner_of: [S1]}, b: {winner_of: [S2]}}
+  - key: ARG1_AP
+    name: Apertura knockout
+    title: true
+    phase: AP
+    rounds: *knockout

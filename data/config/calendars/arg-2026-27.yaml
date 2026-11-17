@@ -1,0 +1,31 @@
+# Argentina (Liga Profesional) 2026-27 (W9a B2). The Clausura 2026: the Liga Profesional's
+# calendar (El Economista, La Capital, El Gráfico): the first round on 23-26 July, the zone stage
+# to 8 November, the knockout from 21 November, the final on 12 December in La Plata. The
+# Apertura 2027 is approximate, after the Apertura 2026's pattern (late January to May).
+# Seasons share England's boundaries (1 July to 30 June), so every league turns over together.
+# A tournament's dates are the calendar's ARG1:<phase>.
+key: ARG-2026-27
+season: "2026-27"
+nation: ARG
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  "ARG1:CL": {start: 2026-07-23, end: 2026-11-08, playoffs_end: 2026-12-12}
+  "ARG1:AP": {start: 2027-01-22, end: 2027-05-09, playoffs_end: 2027-05-30}   # approximate
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-08-31}   # approximate
+  - {start: 2027-01-01, end: 2027-02-28}   # approximate
+# Cup rounds, one date per leg (approximate): the Copa Argentina on Wednesdays through the
+# season, clear of the international windows and the summer break, the final in April.
+cups:
+  COPA_ARGENTINA:
+    - [2026-08-12]
+    - [2026-09-16]
+    - [2026-10-21]
+    - [2027-03-03]
+    - [2027-04-14]

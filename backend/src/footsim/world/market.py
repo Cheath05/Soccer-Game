@@ -50,6 +50,7 @@ from footsim.transfers.decisions import (
     wage_demand,
 )
 from footsim.transfers.valuation import values_eur, years_old
+from footsim.world.college.common import IN_COLLEGE_SQL
 from footsim.world.context import AI_FORMATIONS, World
 from footsim.world.finance import wage_bills, weeks_left
 from footsim.world.loans import Loan, start_loan
@@ -104,11 +105,14 @@ def _players(conn: Connection, world: World, meta: CareerMeta, day: date) -> _Pl
     cached = _CACHE.get(conn.engine)
     if cached is not None and cached[0] == key:
         return cached[1]
+    # College players are outside the market until they turn pro (world/college): leaving them
+    # out here keeps them out of every club's view, search and offer, and the cache smaller.
     rows = conn.execute(text(
         "SELECT p.person_id AS id, pe.birth_date AS birth, p.reputation AS reputation, "
         "COALESCE(p.value_premium, 0) AS premium, a.* FROM player p "
         "JOIN person pe ON pe.id = p.person_id JOIN player_attr a ON a.player_id = p.person_id "
-        "WHERE p.retired_on IS NULL ORDER BY p.person_id")).all()
+        f"WHERE p.retired_on IS NULL AND p.person_id NOT IN ({IN_COLLEGE_SQL}) "
+        "ORDER BY p.person_id")).all()
     ids = np.array([r.id for r in rows], dtype=np.int64)
     index = {int(i): n for n, i in enumerate(ids)}
     attrs = np.array([[getattr(r, a) for a in ATTRIBUTES] for r in rows], dtype=float)

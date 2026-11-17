@@ -19,6 +19,7 @@ from collections import defaultdict
 import numpy as np
 from sqlalchemy import Connection, text
 
+from footsim.world.college.common import COLLEGE_CLUBS_SQL
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta
 from footsim.world.overall_history import player_overalls
@@ -27,11 +28,13 @@ TOP_PLAYERS = 18  # as the world build rates a club (world_build.yaml reputation
 
 
 def _squad_targets(conn: Connection, world: World) -> dict[int, float]:
-    """The reputation each club's squad is worth now, by the world build's formula."""
+    """The reputation each club's squad is worth now, by the world build's formula. College
+    programs have none: their standing is their own (world/college), and doesn't drift."""
     rules = world.defs.world_build.reputation
     overalls = player_overalls(conn, world)
     by_club: dict[int, list[int]] = defaultdict(list)
-    for r in conn.execute(text("SELECT person_id, club_id FROM playing")):
+    for r in conn.execute(text(f"SELECT person_id, club_id FROM playing WHERE club_id NOT IN "
+                               f"({COLLEGE_CLUBS_SQL})")):
         if r.person_id in overalls:
             by_club[int(r.club_id)].append(overalls[r.person_id])
     targets = {}

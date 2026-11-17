@@ -57,8 +57,10 @@ def test_an_ai_club_keeps_its_team_and_lets_the_rest_go(
                             {"a": ai, "n": NEXT_END.isoformat()}).scalar_one()
         gone = conn.execute(text("SELECT COUNT(*) FROM transfer WHERE from_club_id = :a "
                                  "AND kind = 'expired'"), {"a": ai}).scalar_one()
+        # College contracts aren't renewals' (W9a): the college cycle ends them at the rollover.
         stale = conn.execute(text("SELECT COUNT(*) FROM contract WHERE is_active = 1 AND "
-                                  "end_date <= :e"), {"e": SEASON_END.isoformat()}).scalar_one()
+                                  "end_date <= :e AND kind != 'college'"),
+                             {"e": SEASON_END.isoformat()}).scalar_one()
         users_left = conn.execute(text("SELECT COUNT(*) FROM contract WHERE club_id = :u AND "
                                        "is_active = 1"), {"u": user}).scalar_one()
     assert kept + gone == before

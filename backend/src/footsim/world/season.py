@@ -50,6 +50,13 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.world.club_names import apply_club_names, apply_club_nations
+from footsim.world.college.common import is_college_stage
+from footsim.world.college.draft import college_turnover
+from footsim.world.college.season import (
+    college_decider,
+    create_college_fixtures,
+    progress_college,
+)
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
@@ -203,6 +210,8 @@ def create_season_fixtures(conn: Connection, world: World, meta: CareerMeta,
                 for home, away in games
             ])
             first += len(rounds)
+    news += create_college_fixtures(conn, world, meta, season_id,
+                                    season_calendar(world, meta, season_id).season_start)
     news += start_cups(conn, world, meta, meta.current_date)
     return news + start_europe(conn, world, meta, season_id, meta.current_date)
 
@@ -290,6 +299,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
         for playoff in league.playoffs:
             if playoff.phase is None:
                 messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
+    messages += progress_college(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
                            season_calendar(world, meta, meta.season_id).season_end)
@@ -561,6 +571,8 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
     """Knockout rules for a play-off or cup fixture; None for league games and first legs."""
     if fx.stage == "league":
         return None
+    if is_college_stage(fx.stage):
+        return college_decider(world, fx.stage)
     if fx.stage in world.defs.cups:
         return cup_decider(conn, world, fx)
     if fx.stage in world.defs.continental:
@@ -633,6 +645,7 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
         messages.append(f"{club_name(conn, club_id)} {verb} the {new_league.name}.")
 
     messages += season_turnover(conn, world, meta, calendar.season_start)
+    messages += college_turnover(conn, world, meta, new, calendar.season_start)
     record_season_start(conn, world, new, calendar.season_start)
     messages += settle_expiring(conn, world, meta, calendar.season_start - timedelta(days=1),
                                 calendar.season_end)

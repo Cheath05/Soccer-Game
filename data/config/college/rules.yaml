@@ -1,0 +1,103 @@
+# US college soccer: the NCAA Division I men's season (W9a; world/college/). Its programs and
+# conferences are in ncaa_d1.yaml. College players are the pool of MLS's SuperDraft. They stay
+# outside the professional game while in college: no transfers, loans, wages or finances.
+#
+# Dates are MM-DD in the game's July-June season: July to December in its first year, January to
+# June in the next. The 2026 season's real shape: the regular season from 20 August to early
+# November, conference tournaments in early-to-mid November, selection on 16 November, the NCAA
+# tournament's first round on 19 November and the College Cup (semi-finals and final, at a
+# neutral ground) on 11 and 14 December.
+
+key: NCAA
+name: NCAA Division I Men's Soccer
+short_name: NCAA
+nation: USA
+source_league: "footsim:NCAA"
+formation: 4-4-2  # every program's (they are run by the computer, and rosters are similar)
+points: {win: 3, draw: 1, loss: 0}
+# Conference tables: points, then goal difference, goals scored and the games between the level
+# teams. (Conferences use their own mixes; this one is common.)
+tiebreakers: [points, h2h_points, goal_difference, goals_for, wins, drawing_of_lots]
+
+regular_season:
+  start: "08-20"
+  end: "11-04"
+  # Each team plays its conference once (a single round robin, in the last weeks), and fills the
+  # rest with non-conference games (the first weeks, and its conference's open dates). Regular-
+  # season games can end level: there is no overtime since 2022.
+  matches: 17
+  slots: 19  # match days, about two a week: two spare for pairing the non-conference games
+
+conference_tournament:
+  # A date per round, the last the final's: a tournament of 9-16 teams uses all four, of 5-8 the
+  # last three. Single matches at the higher seed, overtime then penalties.
+  rounds: ["11-07", "11-09", "11-12", "11-15"]
+
+ncaa:
+  teams: 48  # the conference champions (automatic bids) and the best of the rest by the RPI
+  seeds: 16  # the top 16 by the RPI are seeded and go straight to the second round
+  selection: "11-16"
+  # First round, second round, third round, quarter-finals, College Cup semi-finals, final.
+  rounds: ["11-19", "11-22", "11-29", "12-05", "12-11", "12-14"]
+  round_names: [First round, Second round, Third round, Quarterfinals, College Cup semifinals,
+                College Cup final]
+  neutral_from: 4  # the College Cup is at a neutral ground; before it, the higher seed hosts
+  extra_time: true
+  penalties: true
+
+ranking:
+  # The Rating Percentage Index: a quarter the team's own winning share, half its opponents', a
+  # quarter its opponents' opponents'. A draw (and a shoot-out, which counts as one) is half.
+  weights: [0.25, 0.50, 0.25]
+  draw_value: 0.5
+
+roster:
+  size: [26, 28]
+  # Positions by depth (a first eleven, then the cover), as many as a roster has.
+  shape: [GK, CB, CB, LB, RB, DM, CM, CM, AM, LW, ST,
+          RW, ST, GK, CB, LB, RB, DM, CM, AM, LW, ST, CB, CM, RW, GK, ST, CB]
+  class_shares: {1: 0.30, 2: 0.26, 3: 0.23, 4: 0.21}  # freshmen to seniors
+  age: {1: 18.5, 2: 19.5, 3: 20.5, 4: 21.6}  # on 1 July
+  age_sd: 0.45
+  age_range: [17.8, 23.5]  # seniors include a few fifth-year and graduate players
+  # A program's level: the mean overall of its sophomores. The best college players sit about
+  # 55-62 (a senior at a power, two spreads above), a typical starter 45-52. For scale: MLS
+  # squads average about 63-68, League Two's about 55-60.
+  level_by_tier: {1: 50.5, 2: 48.5, 3: 46.0, 4: 43.5, 5: 40.5}
+  level_sd: 1.2
+  class_offset: {1: -3.0, 2: -1.0, 3: 1.0, 4: 2.5}
+  player_sd: 4.0
+  player_sd_cap: 2.5  # so no college player is far beyond the best (about 62)
+  template_pool: 12  # attributes copied from one of the 12 professionals nearest his overall
+  reputation_by_tier: {1: 42, 2: 36, 3: 30, 4: 25, 5: 20}
+  foreign_share: 0.22  # about a fifth of D-I men's players are international
+  foreign_nations: [England, Germany, Spain, Brazil, Ghana, Nigeria, Jamaica, Canada, Mexico,
+                    Sweden, Norway, Denmark, France, Japan, Iceland, Netherlands,
+                    Republic of Ireland, Scotland, Argentina, Colombia]
+
+potential:
+  # How far above his overall a college player can still grow, by class: a freshman has the
+  # most to come. A few have far more: the future MLS starters and better.
+  room_by_class: {1: 14.0, 2: 11.5, 3: 9.0, 4: 7.0}
+  room_sd: 5.0
+  min_room: 2.0
+  star_share: 0.03
+  star_bonus: [6.0, 14.0]
+  max_potential: 86
+
+recruiting:
+  roster_target: 27  # each program signs freshmen to get back to this many
+  recruits: [6, 10]  # but never fewer or more than this in a class
+  age: 18.3
+  age_sd: 0.35
+
+draft:
+  # After the College Cup the seniors leave for the draft pool, with the best underclassmen
+  # (Generation adidas-style top prospects) who declare: this many at most, each with at least
+  # this much potential.
+  underclassmen: 8
+  min_potential: 66
+  # Prospects the SuperDraft (January) didn't take become free agents on this day of the spring;
+  # one still unsigned this many seasons after retires.
+  release: "02-15"
+  grace_seasons: 1

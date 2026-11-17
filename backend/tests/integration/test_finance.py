@@ -93,7 +93,9 @@ def _revenue(conn: Connection) -> dict[int, tuple[str | None, int]]:
 
 def test_every_club_has_finances_and_its_balance_is_its_ledger(career: Engine) -> None:
     with career.connect() as conn:
-        clubs = conn.execute(text("SELECT COUNT(*) FROM club")).scalar_one()
+        # Every professional club: college programs (W9a) have no finances.
+        clubs = conn.execute(text("SELECT COUNT(*) FROM club WHERE id NOT IN "
+                                  "(SELECT club_id FROM college_team)")).scalar_one()
         assert conn.execute(text("SELECT COUNT(*) FROM club_finance")).scalar_one() == clubs
         assert ledger_mismatches(conn) == []
         opening = conn.execute(text(

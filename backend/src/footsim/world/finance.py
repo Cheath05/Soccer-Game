@@ -28,6 +28,7 @@ from sqlalchemy import Connection, bindparam, or_, select, text, update
 
 from footsim.persistence.schema import club, club_finance, finance_ledger
 from footsim.persistence.schema import season as season_table
+from footsim.world.college.common import college_club_ids
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta, write_meta
 from footsim.world.overall_history import player_overalls
@@ -157,6 +158,7 @@ def initialize_finances(conn: Connection, world: World, meta: CareerMeta, day: d
     existing = {int(r.club_id) for r in conn.execute(select(club_finance.c.club_id))}
     bills = wage_bills(conn)
     leagues = club_leagues(conn, meta.season_id)
+    existing |= college_club_ids(conn)  # college programs have no ledger (world/college)
     new_rows, opening = [], []
     for (club_id,) in conn.execute(select(club.c.id).order_by(club.c.id)):
         if club_id in existing:

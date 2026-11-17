@@ -4,6 +4,7 @@ import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { ApiError } from '../api/client'
+import { MLS_LEAGUE } from '../api/americas'
 import { useAdvance, useCareer, useEuropeList, useSaveGame } from '../api/hooks'
 import type { SeasonFinal } from '../api/types'
 import { useDevice } from '../lib/device'
@@ -19,6 +20,7 @@ import StartPage from '../pages/StartPage'
 const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/squad', label: 'Squad' },
+  { to: '/mls-roster', label: 'MLS roster' },
   { to: '/tactics', label: 'Tactics' },
   { to: '/transfers', label: 'Transfers' },
   { to: '/finances', label: 'Finances' },
@@ -27,6 +29,7 @@ const NAV = [
   { to: '/league', label: 'League' },
   { to: '/cups', label: 'Cups' },
   { to: '/europe', label: 'Europe' },
+  { to: '/college', label: 'College' },
   { to: '/start', label: 'Save / Load' },
 ] as const
 
@@ -66,6 +69,8 @@ export default function Layout() {
   }
 
   const data = career.data
+  // MLS's roster rules are on a page of their own for a club in MLS.
+  const isMls = data.competition?.key === MLS_LEAGUE
   const matchToday = data.next_fixture?.date === data.date
 
   const onContinue = () => {
@@ -103,6 +108,8 @@ export default function Layout() {
     { to: '/calendar', label: 'Calendar', icon: 'calendar', active: at('/calendar') },
     { to: '/cups', label: 'Cups', icon: 'cups', active: at('/cups') },
     ...(hasEurope ? [{ to: '/europe', label: 'Europe', icon: 'europe', active: at('/europe') } as NavItem] : []),
+    ...(isMls ? [{ to: '/mls-roster', label: 'MLS roster', icon: 'roster', active: at('/mls-roster') } as NavItem] : []),
+    { to: '/college', label: 'College', icon: 'college', active: at('/college') },
     { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
     { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
     { to: '/start', label: 'Save / Load', icon: 'saves', active: false },
@@ -186,7 +193,7 @@ export default function Layout() {
         <Box hiddenFrom="md" mb="xs">
           <ClubSearch onPick={close} />
         </Box>
-        {NAV.filter((item) => item.to !== '/europe' || hasEurope).map((item) => (
+        {NAV.filter((item) => (item.to !== '/europe' || hasEurope) && (item.to !== '/mls-roster' || isMls)).map((item) => (
           <div key={item.to}>
             {item.to === '/start' && data && (
               <NavLink

@@ -24,6 +24,8 @@ const ICONS = {
   europe: icon(<><circle cx="12" cy="12" r="8" /><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16" /></>),
   club: icon(<><path d="M12 3.5 19 6v5.500c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" /><path d="M9.5 12 11.5 14l3.5-4" /></>),
   saves: icon(<><path d="M5 4.500h11l3 3V19.500H5z" /><path d="M8 4.500v5h7v-5M8 19.500v-6h8v6" /></>),
+  roster: icon(<><rect x="5" y="4.500" width="14" height="16" rx="2" /><path d="M9 4.500V3h6v1.5" /><path d="M8.500 10h7M8.500 13.500h7M8.500 17h4" /></>),
+  college: icon(<><path d="m3 9.500 9-4.500 9 4.500-9 4.500z" /><path d="M7 11.500V16c1.5 1.500 3 2 5 2s3.5-.5 5-2v-4.500" /><path d="M21 9.500V14" /></>),
   matchday: icon(<><circle cx="12" cy="12" r="8" /><path d="m12 8 3.2 2.3-1.2 3.700h-4l-1.2-3.700z" /></>),
 } as const
 

@@ -1,7 +1,8 @@
-import { Badge, Card, Group, NativeSelect, Progress, SegmentedControl, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
+import { Badge, Button, Card, Group, NativeSelect, Progress, SegmentedControl, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 
+import { MLS_LEAGUE } from '../api/americas'
 import { useCareer, useSquad, useTactics } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
 import { SeasonChange } from '../components/SeasonChange'
@@ -51,6 +52,12 @@ export default function SquadPage() {
     return map
   }, [tactics])
   const [group, setGroup] = useUrlState('group', 'All')
+  // An MLS club's roster rules (designations, the salary budget) are on a page of their own.
+  const mlsButton = career?.competition?.key === MLS_LEAGUE && (
+    <Button size="xs" variant="light" onClick={() => void navigate({ to: '/mls-roster' })}>
+      MLS roster
+    </Button>
+  )
   const [sort, setSort] = useUrlState<{ key: SortKey; desc: boolean }>('sort', { key: 'position', desc: false })
 
   const rows = useMemo(() => {
@@ -72,6 +79,7 @@ export default function SquadPage() {
       <Stack gap="sm">
         <Group justify="space-between" align="center" wrap="nowrap">
           <Title order={2}>Squad</Title>
+          {mlsButton}
           <NativeSelect
             size="xs"
             aria-label="Sort by"
@@ -133,7 +141,10 @@ export default function SquadPage() {
   return (
     <Stack>
       <Group justify="space-between">
-        <Title order={2}>Squad</Title>
+        <Group gap="sm">
+          <Title order={2}>Squad</Title>
+          {mlsButton}
+        </Group>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
       <Table.ScrollContainer minWidth={phone ? 0 : 1040}>

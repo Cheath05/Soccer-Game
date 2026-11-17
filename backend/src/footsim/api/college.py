@@ -200,7 +200,9 @@ def college_bracket(session: Session, event: str = NCAA,
     """A tournament's bracket: ``NCAA`` (the default) or ``CT:<conference key>``."""
     world = get_world()
     college = world.defs.college
-    if event != NCAA and event.removeprefix(conference_event("")) not in college.conferences:
+    prefix = conference_event("")
+    if event != NCAA and not (event.startswith(prefix)
+                              and event.removeprefix(prefix) in college.conferences):
         raise HTTPException(404, "no such college tournament")
     with session.read() as conn:
         meta = read_meta(conn)

@@ -6,6 +6,8 @@ college programs have no finances or youth intake. Needs the built world."""
 
 import shutil
 from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -15,6 +17,7 @@ import pytest
 from sqlalchemy import Connection, select, text
 
 import footsim.world.market as market
+from footsim.api import college as api
 from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
@@ -235,6 +238,45 @@ def test_the_rollover_graduates_and_recruits(played: _Season) -> None:
         comp = college_competition(conn, world)
         assert conn.execute(select(fixture.c.id).where(
             fixture.c.competition_id == comp, fixture.c.season_id == 2)).first() is not None
+
+
+class _Reader:
+    """Stands in for the API's career session: reads one database."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    @contextmanager
+    def read(self) -> Iterator[Connection]:
+        engine = open_database(self.path)
+        try:
+            with engine.connect() as conn:
+                yield conn
+        finally:
+            engine.dispose()
+
+
+def test_the_read_api(played: _Season) -> None:
+    session: Any = _Reader(played.after_cup)
+    tables = api.conferences(session)
+    assert len(tables) == len(get_world().defs.college.conferences)
+    acc = next(t for t in tables if t.key == "ACC")
+    assert len(acc.rows) == 15 and acc.rows[0].position == 1
+    assert acc.regular_season_champion == acc.rows[0].club and acc.tournament_champion
+    assert sum(r.in_tournament for r in acc.rows) == acc.tournament
+    ranks = api.college_rankings(session, limit=10)
+    assert [r.rank for r in ranks] == list(range(1, 11)) and ranks[0].rpi >= ranks[-1].rpi
+    ncaa = api.college_bracket(session)
+    assert len(ncaa.entrants) == 48 and ncaa.seeded == 16 and ncaa.champion is not None
+    assert [len(r.matches) for r in ncaa.rounds] == [32, 16, 8, 4, 2, 1]
+    assert sum(m.bye for m in ncaa.rounds[0].matches) == 16
+    assert ncaa.rounds[-1].name == "College Cup final"
+    assert ncaa.rounds[-1].matches[0].winner is not None
+    assert ncaa.rounds[-1].matches[0].winner.club == ncaa.champion
+    conference = api.college_bracket(session, event="CT:ACC")
+    assert conference.champion == acc.tournament_champion
+    pool = api.college_draft_pool(session)
+    assert pool and pool[0].college.name and pool[0].class_year in ("Fr", "So", "Jr", "Sr")
 
 
 def test_college_stays_out_of_the_professional_game(played: _Season) -> None:

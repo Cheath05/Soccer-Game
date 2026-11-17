@@ -26,6 +26,14 @@ leagues:
   Trendyol Süper Lig:    {reference_overall: 67.5, reference_wage: 12000, per_point: 1.12}
   1A Pro League:         {reference_overall: 65.5, reference_wage: 7000, per_point: 1.11}
   Scottish Premiership:  {reference_overall: 65, reference_wage: 5000, per_point: 1.12}
+  # W9a: Argentina's and Brazil's top flights, at their players' mean overall in the built world
+  # (LPF 67.1; Brazil's FC 27 clubs 69.8, its league centred near them), with rough typical
+  # weekly wages from public reports (tune freely): Argentina's below Mexico's, steep at the top
+  # (River and Boca); Brazil's the richest in South America, its big clubs' payrolls about
+  # Liga MX's best. Brazil's FC 27 clubs (Bahia, Botafogo) and its built ones pay alike.
+  LPF:                   {reference_overall: 67, reference_wage: 4000, per_point: 1.13}
+  Liga do Brasil:        {reference_overall: 69, reference_wage: 10000, per_point: 1.12}
+  "footsim:BRA1":        {reference_overall: 69, reference_wage: 10000, per_point: 1.12}
   # W7: the leagues FC 27 doesn't cover (importers/synthetic.py), each at its built level,
   # with a rough typical weekly wage for the country (public reports; tune freely). The
   # smallest are part-time: the minimum wage above is their floor.

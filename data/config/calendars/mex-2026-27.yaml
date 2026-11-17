@@ -1,0 +1,22 @@
+# Mexico (Liga MX) 2026-27 (W9a B2). The Apertura 2026: Liga MX's calendar (mediotiempo.com,
+# El Financiero, 9 Jun 2026): the first round on 16-18 July, the 17th on 22 November, the
+# Liguilla's final legs on 10 and 13 December. The Clausura 2027 is approximate, after the
+# Clausura 2026's pattern (January to May), its final in late May before the Gold Cup.
+# Seasons share England's boundaries (1 July to 30 June), so every league turns over together.
+# A phase's dates are the calendar's MEX1:<phase>. Liga MX has no cup (the Copa MX ended in 2020).
+key: MEX-2026-27
+season: "2026-27"
+nation: MEX
+season_start: 2026-07-01
+season_end: 2027-06-30
+competitions:
+  "MEX1:AP": {start: 2026-07-16, end: 2026-11-22, playoffs_end: 2026-12-13}
+  "MEX1:CL": {start: 2027-01-08, end: 2027-05-02, playoffs_end: 2027-05-30}   # approximate
+international_windows:
+  - {start: 2026-09-21, end: 2026-10-06}
+  - {start: 2026-11-09, end: 2026-11-17}
+  - {start: 2027-03-22, end: 2027-03-30}
+  - {start: 2027-05-31, end: 2027-06-08}   # approximate
+transfer_windows:
+  - {start: 2026-07-01, end: 2026-08-31}   # approximate
+  - {start: 2026-12-14, end: 2027-02-01}   # approximate

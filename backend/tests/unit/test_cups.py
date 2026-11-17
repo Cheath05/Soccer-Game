@@ -8,8 +8,10 @@ import pytest
 from sqlalchemy import insert
 
 from footsim.competitions.calendars import shifted_calendar
+from footsim.competitions.fixtures import phase_round_counts
 from footsim.competitions.scheduling import league_round_dates, playoff_dates
 from footsim.defs.calendar import SeasonCalendarDef
+from footsim.defs.competitions import LeagueDef
 from footsim.defs.loader import load_definitions
 from footsim.persistence.database import open_database
 from footsim.persistence.schema import competition, metadata
@@ -69,12 +71,23 @@ def test_each_countrys_cups_add_up() -> None:
     for key in ("DBU_POKALEN", "SWISS_CUP", "OFB_CUP"):  # 12: four byes
         assert defs.cups[key].sizes(sizes) == [(12, 8), *last], key
     assert defs.cups["FAI_CUP"].sizes(sizes) == [(10, 8), *last]  # 10: six byes
-    # Two-legged semi-finals where the real cup has them, and neutral finals everywhere.
+    # The Americas (W9a B2): the U.S. Open Cup's 16 US MLS clubs; the Canadian
+    # Championship's three Canadian ones (a bye for the best); the LPF's 30 (two byes); the
+    # Série A's 20 in the Copa do Brasil's fifth phase (twelve byes).
+    assert defs.cups["US_OPEN_CUP"].sizes(sizes) == [(16, 8), *last]
+    assert defs.cups["CANADIAN_CHAMPIONSHIP"].sizes(sizes) == [(3, 2), (2, 1)]
+    assert defs.cups["COPA_ARGENTINA"].sizes(sizes) == [(30, 16), (16, 8), *last]
+    assert defs.cups["COPA_DO_BRASIL"].sizes(sizes) == [(20, 16), (16, 8), *last]
+    # Two-legged semi-finals where the real cup has them, and neutral finals everywhere but
+    # North America's (the U.S. Open Cup's at the better-placed club, the Canadian
+    # Championship's at one of its finalists').
     legs = {key: [r.legs for r in cup.rounds] for key, cup in defs.cups.items()}
     two_legged = {"EFL_CUP", "COPA_DEL_REY", "COPPA_ITALIA", "TACA_DE_PORTUGAL", "BELGIAN_CUP",
-                  "CUPA_ROMANIEI", "DBU_POKALEN"}
+                  "CUPA_ROMANIEI", "DBU_POKALEN", "CANADIAN_CHAMPIONSHIP", "COPA_DO_BRASIL"}
     assert {key for key, rounds in legs.items() if 2 in rounds} == two_legged
-    assert all(cup.rounds[-1].neutral for cup in defs.cups.values())
+    assert {key for key, cup in defs.cups.items() if not cup.rounds[-1].neutral} == {
+        "US_OPEN_CUP", "CANADIAN_CHAMPIONSHIP"}
+    assert defs.cups["US_OPEN_CUP"].rounds[-1].host == "higher_ranked"
 
 
 def test_every_cup_is_dated_on_its_own_countrys_calendar() -> None:
@@ -82,9 +95,21 @@ def test_every_cup_is_dated_on_its_own_countrys_calendar() -> None:
     for key, cup in defs.cups.items():
         dated = [c for c in defs.calendars.values() if key in c.cups]
         assert [c.nation for c in dated] == [cup.nation], key
-        assert {defs.leagues[e.league].nation for e in cup.entrants} == {cup.nation}, key
-    # Every country in the game has a cup.
-    assert {c.nation for c in defs.cups.values()} == {lg.nation for lg in defs.leagues.values()}
+        # Its entrants: its country's league clubs, or one nation's clubs of a league (MLS's
+        # Canadian clubs in the Canadian Championship, its US ones in the U.S. Open Cup).
+        assert {e.nation or defs.leagues[e.league].nation for e in cup.entrants} == {
+            cup.nation}, key
+    # Every country in the game has a cup, but Mexico (the Copa MX ended in 2020); Canada has
+    # one for MLS's Canadian clubs.
+    assert {c.nation for c in defs.cups.values()} == {
+        lg.nation for lg in defs.leagues.values()} - {"MEX"} | {"CAN"}
+
+
+def _league_rounds(league: LeagueDef) -> list[tuple[str | None, int]]:
+    """Each phase's (or the season's) key and number of league rounds (conferences and zones
+    with their byes and cross rounds; an Apertura and a Clausura)."""
+    keys: list[str | None] = [p.key for p in league.phases] or [None]
+    return list(zip(keys, phase_round_counts(league), strict=True))
 
 
 def _cup_days(calendar: SeasonCalendarDef, key: str) -> list[date]:
@@ -96,7 +121,8 @@ def test_cups_keep_clear_of_their_countrys_league_days(years: int) -> None:
     """In this season and the next three (calendars move forward a year at a time): a cup's
     rounds fall outside its country's international windows and winter break, three or more days
     from its other cups' and from every round of its leagues (play-offs included), and leagues
-    still fit their rounds in with the days the cup rounds that block them keep free."""
+    still fit their rounds in with the days the cup rounds that block them keep free. A country
+    with no league of its own (Canada) keeps its cup clear of the league its clubs play in."""
     world = get_world()
     for base in world.defs.calendars.values():
         calendar = shifted_calendar(base, years)
@@ -104,18 +130,21 @@ def test_cups_keep_clear_of_their_countrys_league_days(years: int) -> None:
         for (a, key_a), (b, key_b) in zip(every, every[1:], strict=False):
             assert (b - a).days >= 3, (key_a, a, key_b, b)
         league_days: list[date] = []
+        entered = {e.league for cup in calendar.cups for e in world.defs.cups[cup].entrants}
         for key, league in world.defs.leagues.items():
-            if league.calendar != base.key:
+            if league.calendar != base.key and (base.competitions or key not in entered):
                 continue
-            dates = calendar.competitions[key]
-            blocked = blocked_dates(world, calendar, key)
-            days = league_round_dates(dates, calendar, league.format.legs * (league.clubs - 1),
-                                      blocked)
-            assert not set(days) & blocked, key
-            league_days += days
-            for playoff in league.playoffs:
-                league_days += [day for legs in playoff_dates(dates.end, dates.playoffs_end,
-                                                              playoff.rounds) for day in legs]
+            own = shifted_calendar(world.defs.calendars[league.calendar], years)
+            blocked = blocked_dates(world, own, key)
+            for phase, rounds in _league_rounds(league):
+                dates = own.competitions[league.calendar_key(phase)]
+                days = league_round_dates(dates, own, rounds, blocked)
+                assert not set(days) & blocked, key
+                league_days += days
+                for playoff in league.playoffs:
+                    if playoff.phase == phase:
+                        league_days += [day for legs in playoff_dates(
+                            dates.end, dates.playoffs_end, playoff.rounds) for day in legs]
         for day, key in every:
             if key in REARRANGED:
                 continue

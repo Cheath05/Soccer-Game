@@ -10,16 +10,22 @@ from footsim.defs.common import DefModel
 
 class CupEntryDef(DefModel):
     """Clubs of one league entering in one round: all of them, or a range of their ranks
-    (last season's finish, promoted clubs below those who stayed up)."""
+    (last season's finish, promoted clubs below those who stayed up). With ``nation``, only the
+    league's clubs of that nation, ranked among themselves (MLS's US clubs for the U.S. Open
+    Cup, its Canadian ones for the Canadian Championship); such an entry gives its ``ranks``,
+    as the definitions alone can't count a nation's clubs."""
 
     league: str
     round: int = Field(ge=1)
     ranks: tuple[int, int] | None = None
+    nation: str | None = None  # a nation code (club.nation_id)
 
     @model_validator(mode="after")
     def _ordered(self) -> "CupEntryDef":
         if self.ranks is not None and not 1 <= self.ranks[0] <= self.ranks[1]:
             raise ValueError(f"invalid ranks {self.ranks}")
+        if self.nation is not None and self.ranks is None:
+            raise ValueError(f"an entry of {self.league}'s {self.nation} clubs needs its ranks")
         return self
 
 
@@ -30,9 +36,18 @@ class CupRoundDef(DefModel):
     qualifiers: int | None = None
     legs: Literal[1, 2] = 1
     neutral: bool = False  # at a neutral ground (Wembley) rather than the first-drawn club's
+    # A single match's host when not neutral: the first-drawn club, or the better-placed one
+    # (by the standing that decides byes: the U.S. Open Cup final).
+    host: Literal["drawn", "higher_ranked"] = "drawn"
     extra_time: bool = True
     penalties: bool = True
     blocks: list[str] = []  # leagues that play no matches on this round's date(s)
+
+    @model_validator(mode="after")
+    def _host(self) -> "CupRoundDef":
+        if self.host == "higher_ranked" and (self.neutral or self.legs != 1):
+            raise ValueError(f"{self.name}: only a single match at a club's ground has a host")
+        return self
 
 
 class CupDef(DefModel):

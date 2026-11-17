@@ -38,3 +38,32 @@ def apply_club_names(conn: Connection, names: dict[str, dict[str, str]] | None =
                 conn.execute(text("UPDATE game_meta SET value = :v WHERE key = 'club_name'"),
                              {"v": json.dumps(new)})
     return renamed
+
+
+def load_club_nations(root: Path | None = None) -> dict[str, dict[str, str]]:
+    """{source league: {club name: nation code}}: clubs of another country than their league's
+    (world/club_nations.yaml; MLS's Canadian clubs)."""
+    path = (root or config_dir()) / "world" / "club_nations.yaml"
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    return {str(league): {str(name): str(code) for name, code in clubs.items()}
+            for league, clubs in raw.items()}
+
+
+def apply_club_nations(conn: Connection, nations: dict[str, dict[str, str]] | None = None
+                       ) -> int:
+    """Give the listed clubs their own nation, by source league and name. Idempotent. Returns
+    the number of clubs changed."""
+    nations = load_club_nations() if nations is None else nations
+    changed = 0
+    for league, clubs in nations.items():
+        for name, code in clubs.items():
+            result = conn.execute(text(
+                "UPDATE club SET nation_id = (SELECT id FROM nation WHERE code = :code) "
+                "WHERE source_league = :league AND name = :name AND (nation_id IS NULL OR "
+                "nation_id != (SELECT id FROM nation WHERE code = :code))"),
+                {"code": code, "league": league, "name": name})
+            changed += result.rowcount or 0
+    return changed

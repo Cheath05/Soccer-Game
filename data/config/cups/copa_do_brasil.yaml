@@ -1,0 +1,22 @@
+# The Copa do Brasil (W9a B2). Source: the CBF's 2026 format (Band, 1 Oct 2025 and 6 Jan 2026;
+# "2026 Copa do Brasil", English Wikipedia): 126 clubs; the first four phases single matches; the
+# Série A clubs join in the fifth phase; two legs from there to the semi-finals, a level aggregate
+# going straight to penalties; for the first time a single final, at a neutral ground (6 December
+# 2026, Brasília). Round dates are in calendars/bra-*.yaml (cups: COPA_DO_BRASIL).
+#
+# The lower divisions aren't in the data, so the fifth phase is the 20 Série A clubs, the 12
+# highest-ranked exempt (byes, in place of the 12 lower-division clubs who would come through)
+# and the other 8 in four ties, for the round of 16 to have its 16. The final, level after 90
+# minutes, goes to penalties (approximate: the CBF's cup has no extra time).
+key: COPA_DO_BRASIL
+name: Copa do Brasil
+short_name: Copa do Brasil
+nation: BRA
+entrants:
+  - {league: BRA1, round: 1}
+rounds:
+  - {name: Fifth phase, qualifiers: 16, legs: 2, extra_time: false}
+  - {name: Round of 16, legs: 2, extra_time: false}
+  - {name: Quarter-final, legs: 2, extra_time: false}
+  - {name: Semi-final, legs: 2, extra_time: false}
+  - {name: Final, neutral: true, extra_time: false}

@@ -296,6 +296,12 @@ def _cross_validate(defs: GameDefinitions) -> None:
         if unknown:
             errors.append(f"cup {cup.key}: unknown leagues {sorted(unknown)}")
             continue
+        for entry in cup.entrants:
+            if entry.nation is not None and entry.nation not in defs.nations:
+                errors.append(f"cup {cup.key}: unknown nation {entry.nation}")
+            if entry.ranks is not None and entry.ranks[1] > sizes[entry.league]:
+                errors.append(f"cup {cup.key}: ranks {entry.ranks} of {entry.league}, which "
+                              f"has {sizes[entry.league]} clubs")
         for rnd, (clubs, through) in zip(cup.rounds, cup.sizes(sizes), strict=True):
             if clubs < 2 or not clubs / 2 <= through < clubs:
                 errors.append(f"cup {cup.key} {rnd.name}: {clubs} clubs can't send {through} "

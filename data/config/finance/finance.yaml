@@ -79,6 +79,11 @@ league_income:
   SVN1: {base: 1_050_000, merit: 700_000}   # mean wage bill €1.7m
   UKR1: {base: 2_200_000, merit: 1_470_000}   # mean wage bill €3.5m
   WAL1: {base: 350_000, merit: 240_000}   # mean wage bill €0.6m
+  # W9a: the Americas, from the built squads' mean wage bill, as above.
+  USA1: {base: 12_100_000, merit: 6_000_000}   # mean wage bill €14.5m
+  MEX1: {base: 14_700_000, merit: 7_300_000}   # mean wage bill €17.6m
+  ARG1: {base: 6_600_000, merit: 3_300_000}    # mean wage bill €7.9m
+  BRA1: {base: 15_500_000, merit: 7_800_000}   # mean wage bill €18.7m
 
 # Prize money for winning a cup tie (EUR), paid once to the winner of each tie as the tie is
 # decided (a bye wins nothing): one amount per round in the cup's order, so the last is the
@@ -186,6 +191,18 @@ cup_prizes:
   SVN_CUP: [3_000, 5_000, 13_000, 31_000]
   UKR_CUP: [3_000, 7_000, 17_000, 40_000]
   WAL_CUP: [2_000, 2_000, 2_000, 4_000]
+  # W9a: the Americas' cups (approximate, as above). The U.S. Open Cup and the Canadian
+  # Championship pay little (the Open Cup's winner $300,000 in 2025); the Copa Argentina more;
+  # the Copa do Brasil is the richest domestic cup anywhere (2025: about R$4m a club for the
+  # fifth phase to the quarter-finals, R$77m to the winner), here about half of it.
+  US_OPEN_CUP: [10_000, 25_000, 60_000, 250_000]
+  #             R16     QF      SF      Final
+  CANADIAN_CHAMPIONSHIP: [20_000, 100_000]
+  #                       SF      Final
+  COPA_ARGENTINA: [30_000, 60_000, 120_000, 250_000, 700_000]
+  #                R32     R16     QF       SF       Final
+  COPA_DO_BRASIL: [500_000, 700_000, 1_500_000, 3_000_000, 6_000_000]
+  #                5th      R16      QF         SF         Final
 
 wage_ratio_start: 0.6     # a club's wage bill was this share of its revenue when its finances
                           # began (its own income is derived from it)...

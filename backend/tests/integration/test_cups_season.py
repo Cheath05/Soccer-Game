@@ -2,7 +2,10 @@
 of one's own: every league finishes and starts the next season the right size, with clubs
 promoted and relegated in every country; every cup reaches a final and a winner, every round has
 the clubs it should, and no club ever plays twice within two days of a cup match moving its
-league match (now and then one day, in a crowded season with the European competitions).
+league match (now and then one day, in a crowded season with the European competitions). The
+Americas (W9a B2) too: MLS, Liga MX, the Liga Profesional and the Brasileirão finish with their
+play-offs and titles, their cups have winners of their own country, and the U.S. Open Cup no
+Canadian club.
 Skipped when the base world hasn't been built (it needs the locally downloaded EA FC 27 file,
 which isn't in the repository)."""
 
@@ -12,7 +15,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import Connection, select, text
 
 from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
@@ -23,6 +26,21 @@ from footsim.world.context import get_world
 
 BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
 pytestmark = pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
+
+# The Americas (W9a B2): the titles each league's season gives (a table's winner, a play-off's,
+# each tournament's) and the play-offs that decide them.
+AMERICAS = {
+    "USA1": ({"Supporters' Shield", "MLS Cup"}, ["USA1_PO"]),
+    "MEX1": ({"Liga MX Apertura", "Liga MX Clausura"}, ["MEX1_AP", "MEX1_CL"]),
+    "ARG1": ({"LPF Clausura", "LPF Apertura", "Campeón de Liga"}, ["ARG1_CL", "ARG1_AP"]),
+    "BRA1": ({"Campeonato Brasileiro Série A"}, []),
+}
+
+
+def _club_nation(conn: Connection, club_id: int) -> str:
+    return str(conn.execute(text(
+        "SELECT n.code FROM club c JOIN nation n ON n.id = c.nation_id WHERE c.id = :c"),
+        {"c": club_id}).scalar_one())
 
 
 def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
@@ -60,9 +78,19 @@ def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
                 "SELECT l.key FROM club_league_membership m JOIN competition l "
                 "ON l.id = m.competition_id WHERE m.season_id = 1 AND m.club_id = :c"),
                 {"c": winners[0]}).scalar_one()
-            assert world.defs.leagues[home].nation == cup.nation, key
+            # A cup of one nation's clubs of a league (the Canadian Championship: MLS's
+            # Canadian clubs) goes to a club of that nation; any other to its league's.
+            assert (_club_nation(conn, winners[0]) if any(e.nation for e in cup.entrants)
+                    else world.defs.leagues[home].nation) == cup.nation, key
+            for entry in cup.entrants:  # the U.S. Open Cup has no Canadian club
+                if entry.nation is not None:
+                    entered = {c for t in ties if t.round == entry.round - 1
+                               for c in (t.club_a_id, t.club_b_id) if c}
+                    assert {_club_nation(conn, c) for c in entered} == {entry.nation}, key
+        # Every country has a cup, but Mexico (the Copa MX ended in 2020); Canada has one
+        # for MLS's Canadian clubs.
         assert {c.nation for c in world.defs.cups.values()} == {
-            league.nation for league in world.defs.leagues.values()}
+            league.nation for league in world.defs.leagues.values()} - {"MEX"} | {"CAN"}
         # Every match, league, play-off, cup and European, at least two clear days after a
         # club's last (one only now and then, when a crowded season has no other day: a club in
         # Europe has twenty more dates), and every league match (moved or not) within its
@@ -73,8 +101,10 @@ def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
             assert f.status == "played"
             if f.stage == "league":
                 league = world.defs.leagues[keys[f.competition_id]]
-                dates = world.defs.calendars[league.calendar].competitions[league.key]
-                assert dates.start <= date.fromisoformat(f.date) <= dates.end
+                dated = world.defs.calendars[league.calendar].competitions
+                spans = [dated[league.calendar_key(p.key)] for p in league.phases] or [
+                    dated[league.key]]  # an Apertura's and a Clausura's own dates
+                assert any(s.start <= date.fromisoformat(f.date) <= s.end for s in spans)
             for club in (f.home_club_id, f.away_club_id):
                 days[club].append((date.fromisoformat(f.date),
                                    f.stage in world.defs.continental))
@@ -107,6 +137,27 @@ def test_a_season_of_leagues_and_cups(tmp_path: Path) -> None:
             JOIN competition k ON k.id = a.competition_id
             WHERE a.season_id = 1 AND a.competition_id != b.competition_id""")).scalars().all()
         assert {"ENG1", "ESP1", "ITA1", "GER1", "FRA1", "GER3"} <= set(moved)
+        assert not {"USA1", "MEX1", "ARG1", "BRA1"} & set(moved)  # nobody moves
+        # The Americas: every league's titles, each to one club, and every play-off tie
+        # decided; Liga MX's clubs under their real names, MLS's Canadian clubs Canadian.
+        for key, (titles, playoffs) in AMERICAS.items():
+            won = conn.execute(text(
+                "SELECT title, COUNT(*) FROM league_title WHERE season_id = 1 AND "
+                "competition_id = :c GROUP BY title"), {"c": ids[key]}).all()
+            assert {t for t, _ in won} == titles and all(n == 1 for _, n in won), key
+            for playoff in playoffs:
+                ties = conn.execute(text(
+                    "SELECT winner_club_id FROM playoff_tie WHERE season_id = 1 AND "
+                    "playoff_key = :k"), {"k": playoff}).scalars().all()
+                rounds = next(p for p in world.defs.leagues[key].playoffs
+                              if p.key == playoff).rounds
+                assert len(ties) == sum(len(r.ties) for r in rounds), playoff
+                assert all(ties), playoff
+        assert conn.execute(text(
+            "SELECT COUNT(*) FROM club WHERE name IN ('Club León', 'Atlético de San Luis', "
+            "'FC Juárez', 'Querétaro FC')")).scalar_one() == 4
+        assert {_club_nation(conn, c) for c in conn.execute(text(
+            "SELECT id FROM club WHERE source_league = 'MLS'")).scalars()} == {"USA", "CAN"}
         # The next season starts with every cup's first round drawn.
         for key, cup in world.defs.cups.items():
             first = conn.execute(text(

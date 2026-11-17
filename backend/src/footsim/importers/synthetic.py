@@ -26,7 +26,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import yaml
@@ -58,6 +58,16 @@ class NewLeague:
     ea_names: dict[str, str] = field(default_factory=dict)  # our name -> FC 27's
     # our name -> Transfermarkt's (its formal name, say), or None: no Transfermarkt club is it
     tm_names: dict[str, str | None] = field(default_factory=dict)
+    # Other FC 27 leagues holding one of its clubs (Botafogo under "CONMEBOL Sudamericana"):
+    # a club there of one of our names (or `ea_names`) is moved into `ea_league`, kept as it is.
+    ea_also: list[str] = field(default_factory=list)
+    # The league's level (FC 27 overall, the mean of its clubs' best `level_players`), for a
+    # country without a UEFA coefficient to give it one.
+    level: float | None = None
+    # How its clubs differ: by their Elo (the default), or by their squads' market values, for
+    # a league whose Elo is too young to tell them apart (Transfermarkt has Brazil's games from
+    # 2025 only) and whose every club Transfermarkt values.
+    club_levels: Literal["elo", "values"] = "elo"
 
 
 @dataclass
@@ -76,11 +86,21 @@ class SyntheticReport:
 def load_new_leagues(root: Path | None = None) -> list[NewLeague]:
     path = (root or config_dir()) / "world" / "new_clubs.yaml"
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return [NewLeague(key=k, nation=v["nation"], clubs=list(v["clubs"]),
-                      ea_league=v.get("ea_league"), tm_league=v.get("tm_league"),
-                      ea_names=dict(v.get("ea_names") or {}),
-                      tm_names=dict(v.get("tm_names") or {}))
-            for k, v in raw["leagues"].items()]
+    result = []
+    for k, v in raw["leagues"].items():
+        # `ea_league`: FC 27's league for these clubs, or a list of them, its own first.
+        ea = v.get("ea_league")
+        ea_leagues = [str(x) for x in ea] if isinstance(ea, list) else [str(ea)] if ea else []
+        level = v.get("level")
+        if v.get("club_levels", "elo") not in ("elo", "values"):
+            raise ValueError(f"new_clubs.yaml {k}: club_levels is 'elo' or 'values'")
+        result.append(NewLeague(
+            key=k, nation=v["nation"], clubs=list(v["clubs"]),
+            ea_league=ea_leagues[0] if ea_leagues else None, tm_league=v.get("tm_league"),
+            ea_names=dict(v.get("ea_names") or {}), tm_names=dict(v.get("tm_names") or {}),
+            ea_also=ea_leagues[1:], level=float(level) if level is not None else None,
+            club_levels="values" if v.get("club_levels") == "values" else "elo"))
+    return result
 
 
 def ea_pairs(league: NewLeague, ea_clubs: list[str]) -> dict[str, str]:
@@ -96,6 +116,32 @@ def ea_pairs(league: NewLeague, ea_clubs: list[str]) -> dict[str, str]:
         if found:
             pairs[found[0]] = theirs
     return pairs
+
+
+def _move_ea_clubs(league: NewLeague, players: list[SourcePlayer],
+                   paired: dict[str, str]) -> dict[str, str]:
+    """Our clubs that FC 27 has in another of its leagues (``ea_also``: Botafogo in "CONMEBOL
+    Sudamericana"), by `ea_names` or the very same name only (those leagues hold other
+    countries' clubs): their players are moved into ``ea_league`` (in place), so the club is
+    built once, as FC 27 has it, in our league. Our name -> FC 27's."""
+    if not league.ea_also or league.ea_league is None:
+        return {}
+    moved: dict[str, tuple[str, str]] = {}  # ours -> (FC 27's league, its name)
+    for other in league.ea_also:
+        theirs = sorted({p.club for p in players if p.league == other})
+        for ours in league.clubs:
+            if ours in paired or ours in moved:
+                continue
+            named = league.ea_names.get(ours)
+            found = ([named] if named in theirs else
+                     [c for c in theirs if norm(c) == norm(ours)])
+            if len(found) == 1:
+                moved[ours] = (other, found[0])
+    wanted = set(moved.values())
+    for p in players:
+        if (p.league, p.club) in wanted:
+            p.league = league.ea_league
+    return {ours: name for ours, (_, name) in moved.items()}
 
 
 def norm(name: str) -> str:
@@ -388,6 +434,31 @@ def tm_squads(tm_db: Path) -> TmSquads:
     return TmSquads(dict(by_club), dict(league_clubs))
 
 
+def _value_levels(lg: NewLeague, paired: dict[str, str], tm_ids: dict[str, int | None],
+                  squads: TmSquads, tm_by_id: dict[int, TmPlayer], value_coef: np.ndarray,
+                  season: date, rules: NewLeagueRules, league_level: float) -> dict[str, float]:
+    """A league whose clubs differ by their squads' market values (``club_levels: values``):
+    each built club's level is the league's plus how far its real players' level (by the
+    value model, the mean of its best ``level_players``) is from the built clubs' mean. Clubs
+    with fewer than ``min_valued`` valued players keep their Elo's level."""
+    top = rules.level_players
+    own: dict[str, float] = {}
+    for club in lg.clubs:
+        tm_id = tm_ids.get(club)
+        if club in paired or tm_id is None:
+            continue
+        ratings = [value_overall(value_coef, t.market_value_eur, t.birth_date,
+                                 (t.position or "") == "Goalkeeper", season)
+                   for i in squads.players_by_club.get(tm_id, []) if (t := tm_by_id.get(i))]
+        known = sorted((r for r in ratings if r is not None), reverse=True)
+        if len(known) >= rules.min_valued:
+            own[club] = float(np.mean(known[:top]))
+    if not own:
+        return {}
+    centre = float(np.mean(list(own.values())))
+    return {club: league_level + value - centre for club, value in own.items()}
+
+
 def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list[TmPlayer],
                tm_db: Path, defs: GameDefinitions, season: date, seed: int,
                leagues: list[NewLeague] | None = None
@@ -428,8 +499,9 @@ def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list
         ea_clubs = sorted({p.club for p in players if lg.ea_league and p.league == lg.ea_league})
         paired = ea_pairs(lg, ea_clubs)
         report.unmatched_ea += [f"{lg.key}: {c}" for c in ea_clubs if c not in paired.values()]
-        league_level = float(league_coef[0] + league_coef[1]
-                             * np.log(max(coefficient.get(lg.nation, 1.0), 1.0)))
+        paired |= _move_ea_clubs(lg, players, paired)
+        league_level = (lg.level if lg.level is not None else float(
+            league_coef[0] + league_coef[1] * np.log(max(coefficient.get(lg.nation, 1.0), 1.0))))
         # Each club's Elo: its own where it has played enough, else below the league's clubs
         # that have (by last season's table), the league's level spread around their mean.
         tm_ids: dict[str, int | None] = {}
@@ -457,6 +529,9 @@ def synthesize(players: list[SourcePlayer], match: MatchResult, tm_players: list
                 club, floor - rules.unrated_span * k / max(1, len(lg.clubs) - 1))
         mean_elo = float(np.mean(list(club_elos.values())))
         levels = {c: league_level + slope * (e - mean_elo) for c, e in club_elos.items()}
+        if lg.club_levels == "values":
+            levels |= _value_levels(lg, paired, tm_ids, squads, tm_by_id, value_coef, season,
+                                    rules, league_level)
         for k, club in enumerate(lg.clubs):
             rng = entity_rng(seed, SOURCE, lg.key, club)
             if club in paired:

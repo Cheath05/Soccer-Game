@@ -10,6 +10,8 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from footsim.defs.competitions import GroupsFormat, LeagueDef
+
 _BYE = -1
 
 Round = list[tuple[int, int]]  # (home club, away club)
@@ -156,3 +158,20 @@ def grouped_rounds(groups: Sequence[Sequence[int]], legs: int, cross: int,
             merged = balance_venues(merged)
         out.append(merged)
     return out
+
+
+def phase_round_counts(league: LeagueDef) -> list[int]:
+    """How many rounds each of a league's phases has (one number for a league without phases),
+    as a season's fixtures make them: with an odd group's byes and the cross-group rounds. For
+    dating a league's season without its clubs (the calendars' checks)."""
+    phases = max(1, len(league.phases))
+    rng = np.random.default_rng(0)  # the counts don't depend on the draw
+    fmt = league.format
+    if isinstance(fmt, GroupsFormat):
+        ids: dict[str, int] = {}
+        groups = [[ids.setdefault(name, len(ids)) for name in g.clubs] for g in league.groups]
+        rivals = [(ids[a], ids[b]) for a, b in fmt.rivals]
+        return [len(r) for r in grouped_rounds(groups, fmt.legs, fmt.cross_rounds, rivals,
+                                               phases, rng)]
+    return [len(r) for r in split_phases(round_robin(list(range(league.clubs)),
+                                                     fmt.legs * phases, rng), phases)]

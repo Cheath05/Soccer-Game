@@ -1,9 +1,13 @@
 """Matching the new leagues' clubs across sources (importers/synthetic.py): names, FC 27's clubs
 one to one, and Transfermarkt's clubs only in their own country."""
 
+from datetime import date
+
+from footsim.importers.records import SourcePlayer
 from footsim.importers.synthetic import (
     EloTable,
     NewLeague,
+    _move_ea_clubs,
     ea_pairs,
     load_new_leagues,
     norm,
@@ -48,3 +52,29 @@ def test_the_hand_written_names_are_well_formed() -> None:
     for league in load_new_leagues():
         assert set(league.tm_names) <= set(league.clubs), league.key
         assert set(league.ea_names) <= set(league.clubs), league.key
+
+
+def _player(club: str, league: str) -> SourcePlayer:
+    return SourcePlayer(source="ea", source_id=f"{league}:{club}", first_name="A", last_name="B",
+                        known_as=None, birth_date=date(2000, 1, 1), nationality="Brazil",
+                        club=club, league=league, position="CM", alt_positions=[],
+                        preferred_foot="right", weak_foot=3, skill_moves=2, height_cm=None,
+                        weight_kg=None, source_overall=70, playstyles=[])
+
+
+def test_a_club_in_another_fc27_league_moves_into_its_own() -> None:
+    """Botafogo is under FC 27's "CONMEBOL Sudamericana": with that league in `ea_also`, the club
+    of the very same name moves into the league's own FC 27 league, built once, as FC 27 has it;
+    the other countries' clubs there stay, even with a name like one of ours."""
+    league = NewLeague(key="BRA1", nation="BRA", clubs=["Botafogo", "Bahia", "Juventude"],
+                       ea_league="Liga do Brasil", ea_also=["CONMEBOL Sudamericana"])
+    players = [_player("Bahia", "Liga do Brasil"), _player("Botafogo", "CONMEBOL Sudamericana"),
+               _player("Juventud", "CONMEBOL Sudamericana")]
+    paired = ea_pairs(league, ["Bahia"])
+    assert _move_ea_clubs(league, players, paired) == {"Botafogo": "Botafogo"}
+    assert [p.league for p in players] == ["Liga do Brasil", "Liga do Brasil",
+                                           "CONMEBOL Sudamericana"]
+    assert _move_ea_clubs(league, players, paired | {"Botafogo": "Botafogo"}) == {}
+    brazil = next(lg for lg in load_new_leagues() if lg.key == "BRA1")
+    assert brazil.ea_league == "Liga do Brasil" and brazil.ea_also == ["CONMEBOL Sudamericana"]
+    assert brazil.level is not None and brazil.club_levels == "values"

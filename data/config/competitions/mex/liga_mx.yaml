@@ -1,0 +1,65 @@
+# Liga MX (W9a B2, docs/plans/w9a-americas.md). Sources: Liga MX's competition regulations for
+# 2025-26 and the Apertura 2026 calendar (ligamx.net; mediotiempo.com, 9 Jun 2026); the end of
+# the play-in from the Clausura 2026.
+#
+# 18 clubs, two tournaments a season, each with its own table and champion:
+# - the Apertura (July to December) and the Clausura (January to May), each a single round
+#   robin of 17 rounds, the Clausura with the Apertura's venues reversed;
+# - each tournament's top eight go to its Liguilla (no play-in since the Clausura 2026):
+#   quarter-finals 1 v 8, 2 v 7, 3 v 6, 4 v 5; semi-finals reseeded, the best left v the
+#   worst; all two legs, the better seed at home in the second; a level aggregate sends the
+#   better-placed club through, with no extra time or penalties, until the final, which has
+#   extra time and penalties.
+# The season's combined table crowns no one. Relegation is suspended (nobody moves).
+# Tiebreakers: points, goal difference, goals for, head-to-head, then a drawing of lots (the
+# regulations' fair-play and table criteria aren't kept).
+key: MEX1
+name: Liga MX
+short_name: Liga MX
+nation: MEX
+tier: 1
+clubs: 18
+sim_level: simulated
+calendar: MEX-2026-27
+source_leagues: [Liga BBVA MX]
+format: {type: round_robin, legs: 1}
+phases:
+  - {key: AP, name: Apertura}
+  - {key: CL, name: Clausura}
+tiebreakers: [points, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]
+playoffs:
+  - key: MEX1_AP
+    name: Liguilla (Apertura)
+    title: true
+    phase: AP
+    rounds: &liguilla
+      - name: Quarter-finals
+        legs: 2
+        extra_time: false
+        penalties: false
+        higher_seed_on_level: true
+        ties:
+          - {id: Q1, a: {rank: 1}, b: {rank: 8}}
+          - {id: Q2, a: {rank: 2}, b: {rank: 7}}
+          - {id: Q3, a: {rank: 3}, b: {rank: 6}}
+          - {id: Q4, a: {rank: 4}, b: {rank: 5}}
+      - name: Semi-finals
+        legs: 2
+        extra_time: false
+        penalties: false
+        higher_seed_on_level: true
+        ties:
+          - {id: S1, a: {winner_of: [Q1, Q2, Q3, Q4], pick: highest_ranked},
+             b: {winner_of: [Q1, Q2, Q3, Q4], pick: lowest_ranked}}
+          - {id: S2, a: {winner_of: [Q1, Q2, Q3, Q4], pick: second_highest},
+             b: {winner_of: [Q1, Q2, Q3, Q4], pick: second_lowest}}
+      - name: Final
+        legs: 2
+        ties:
+          - {id: F, a: {winner_of: [S1]}, b: {winner_of: [S2]}}
+  - key: MEX1_CL
+    name: Liguilla (Clausura)
+    title: true
+    phase: CL
+    rounds: *liguilla

@@ -57,18 +57,20 @@ def test_league_dates_fit_the_real_calendar() -> None:
 
 
 def test_every_league_fits_its_own_calendar() -> None:
-    """W2: each country's leagues are scheduled on its calendar (winter breaks included)."""
-    from footsim.competitions.fixtures import round_robin as rr
+    """W2: each country's leagues are scheduled on its calendar (winter breaks included); a
+    league in phases (an Apertura and a Clausura) each phase within its own dates."""
+    from footsim.competitions.fixtures import phase_round_counts
 
     defs = load_definitions()
     for key, league in defs.leagues.items():
         cal = defs.calendars[league.calendar]
-        comp = cal.competitions[key]
-        rounds = len(rr(list(range(league.clubs)), league.format.legs, np.random.default_rng(0)))
-        days = league_round_dates(comp, cal, rounds)
-        assert len(days) == len(set(days)) == rounds, key
-        assert days[0] >= comp.start and days[-1] <= comp.end, key
-        assert not any(b.contains(d) for b in cal.blackout for d in days), key
+        phases = [league.calendar_key(p.key) for p in league.phases] or [key]
+        for phase, rounds in zip(phases, phase_round_counts(league), strict=True):
+            comp = cal.competitions[phase]
+            days = league_round_dates(comp, cal, rounds)
+            assert len(days) == len(set(days)) == rounds, phase
+            assert days[0] >= comp.start and days[-1] <= comp.end, phase
+            assert not any(b.contains(d) for b in cal.blackout for d in days), phase
         assert cal.season_start == defs.calendars["ENG-2026-27"].season_start, key
 
 

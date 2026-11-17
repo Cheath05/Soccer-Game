@@ -1,0 +1,23 @@
+# Brazil's Série A, the Brasileirão (W9a B2, docs/plans/w9a-americas.md). Sources: "2026
+# Campeonato Brasileiro Série A" (English Wikipedia, read 16 Nov 2026); the CBF's 2026
+# competition regulations (tiebreakers).
+#
+# 20 clubs, a double round robin of 38 rounds; the table's winner is champion. Real life runs
+# January to December; the game's season runs July to June like every other league. The bottom
+# four go down to Série B, which isn't in the data, so nobody moves. Its clubs are built by the
+# W7 pipeline (world/new_clubs.yaml BRA1): FC 27's own Bahia and Botafogo, Transfermarkt's
+# squads for the rest.
+# Tiebreakers (CBF): wins, goal difference, goals for, head-to-head, then fewer red and yellow
+# cards (not kept), then a drawing of lots.
+key: BRA1
+name: Campeonato Brasileiro Série A
+short_name: Brasileirão
+nation: BRA
+tier: 1
+clubs: 20
+sim_level: simulated
+calendar: BRA-2026-27
+source_leagues: ["footsim:BRA1", "Liga do Brasil"]
+format: {type: round_robin, legs: 2}
+tiebreakers: [points, wins, goal_difference, goals_for, h2h_points, h2h_goal_difference,
+              drawing_of_lots]

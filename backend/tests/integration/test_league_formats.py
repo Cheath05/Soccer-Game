@@ -34,9 +34,9 @@ EAST = ["Atlanta United", "Charlotte FC", "Chicago Fire FC", "Columbus Crew", "D
 WEST = ["Austin FC", "Colorado Rapids", "FC Dallas", "Houston Dynamo", "LA Galaxy", "LAFC",
         "Minnesota United", "Portland Timbers", "Real Salt Lake", "SJ Earthquakes",
         "San Diego FC", "Sounders FC", "Sporting KC", "St. Louis CITY SC", "Whitecaps FC"]
-LIGA_MX = ["Atlante FC", "Atlas FC", "Atltico de SL", "CF Cruz Azul", "Club América",
-           "Club Guadalajara", "Club Len", "Club Necaxa", "Club Pachuca", "Club Puebla",
-           "Club Tigres", "Club Tijuana", "FC Jurez", "Monterrey", "Pumas", "Quertaro FC",
+LIGA_MX = ["Atlante FC", "Atlas FC", "Atlético de San Luis", "CF Cruz Azul", "Club América",
+           "Club Guadalajara", "Club León", "Club Necaxa", "Club Pachuca", "Club Puebla",
+           "Club Tigres", "Club Tijuana", "FC Juárez", "Monterrey", "Pumas", "Querétaro FC",
            "Santos Laguna", "Toluca FC"]
 ZONE_A = ["Aldosivi", "Argentinos Jrs.", "Asociación Atlética Estudiantes", "Atlético Tucumán",
           "Banfield", "Barracas Central", "Belgrano", "Boca Juniors", "Central Córdoba",

@@ -32,7 +32,8 @@ export default function CollegeBracket({ bracket, empty }: { bracket: Bracket; e
     )
   }
   const live = liveRound(bracket)
-  const from = start ?? Math.max(0, total - 5, Math.min(live, total - 2))
+  // Once it's over, the whole tree that fits; while it's on, from the round being played.
+  const from = start ?? (bracket.champion ? Math.max(0, total - 5) : Math.max(0, total - 5, Math.min(live, total - 2)))
   const round = phoneRound ?? live
   const rounds = bracket.rounds.map((r) => ({ value: String(r.round), label: `${r.name} · ${shortDate(r.date)}` }))
 

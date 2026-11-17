@@ -259,7 +259,10 @@ function DraftPool() {
   const [group, setGroup] = useUrlState('group', 'All')
   if (pool.isPending) return <Loader />
   if (!pool.data) return <Text c="red">{pool.error?.message}</Text>
-  const rows = pool.data.filter((p) => group === 'All' || GROUPS[group].includes(p.position))
+  // The server's order counts the hidden potential: by overall instead, so the list doesn't give it away.
+  const rows = pool.data
+    .filter((p) => group === 'All' || GROUPS[group].includes(p.position))
+    .sort((a, b) => b.overall - a.overall || a.age - b.age || a.name.localeCompare(b.name))
 
   return (
     <Stack gap="sm">

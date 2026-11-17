@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.99"
+- version: "1.102"
   date: "2026-11-17"
   title: "MLS's roster rules, and US college soccer"
   changes:

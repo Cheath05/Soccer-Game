@@ -55,6 +55,8 @@ from footsim.world.context import AI_FORMATIONS, World
 from footsim.world.finance import wage_bills, weeks_left
 from footsim.world.loans import Loan, start_loan
 from footsim.world.meta import CareerMeta, players_epoch
+from footsim.world.mls import WEEKS, figures
+from footsim.world.mls_market import addition_problem, fee_split
 from footsim.world.money import money_text, quote, quote_wage
 from footsim.world.squads import display_name
 from footsim.world.transfers import Move, MoveRefused, complete_move
@@ -158,6 +160,8 @@ class _Club:
     capacity: int  # the weekly wages its income supports, euros
     signed: int = 0  # this window
     sold: int = 0
+    minimum_wage: float = 0.0  # the least it pays a week, euros (MLS's senior minimum there)
+    mls: bool = False  # it plays under MLS's roster rules (world/mls.py)
 
     @property
     def distressed(self) -> bool:
@@ -258,6 +262,11 @@ class _Market:
         formations = {int(r.club_id): str(r.formation) for r in self.conn.execute(text(
             "SELECT club_id, formation FROM tactic"))}
         bills = {club: bill // 100 for club, bill in wage_bills(self.conn).items()}
+        # MLS's clubs pay at least its senior minimum (world/mls.py).
+        mls = {int(r.club_id) for r in self.conn.execute(text(
+            "SELECT club_id FROM mls_club_season WHERE season_id = :s"), {"s": season})}
+        mls_minimum = figures(world).senior_minimum / 100 / WEEKS
+        floor = world.defs.wage_levels.minimum_weekly_wage
         clubs = {}
         for r in self.conn.execute(text(
                 "SELECT c.id, c.reputation, c.source_league, n.code AS nation, "
@@ -275,7 +284,9 @@ class _Market:
                 league=league, wage_level=world.defs.wage_levels.for_league(source[0]),
                 formation=formation or world.defs.formations[AI_FORMATIONS[-1]],
                 budget=int(r.budget) // 100, balance=int(r.balance) // 100,
-                bill=bills.get(int(r.id), 0), capacity=int(r.capacity) // 100)
+                bill=bills.get(int(r.id), 0), capacity=int(r.capacity) // 100,
+                minimum_wage=max(floor, mls_minimum) if int(r.id) in mls else floor,
+                mls=int(r.id) in mls)
         return clubs
 
     def counts(self, club: _Club, window: DateRange) -> None:
@@ -370,8 +381,7 @@ class _Market:
     # --- buying ---------------------------------------------------------------------------
 
     def going_rate(self, club: _Club, overall: float) -> float:
-        return max(self.world.defs.wage_levels.minimum_weekly_wage,
-                   club.wage_level.wage_for(overall))
+        return max(club.minimum_wage, club.wage_level.wage_for(overall))
 
     def candidates(self, club: _Club, need: _Need, user_club: int | None) -> list[int]:
         p, rules = self.players, self.rules
@@ -391,7 +401,7 @@ class _Market:
         free = self.owner[rows] == FREE
         fee = np.where(free, 0.0, self.value[rows] * np.where(self.listed[rows], 0.9, 1.25))
         level = club.wage_level
-        going = np.maximum(self.world.defs.wage_levels.minimum_weekly_wage,
+        going = np.maximum(club.minimum_wage,
                            level.reference_wage * level.per_point ** (
                                p.overall[rows] - level.reference_overall))
         wage = np.where(free, going * rules.free_agent_discount,
@@ -577,6 +587,12 @@ class _Market:
         wage = quote_wage(wage, self.world, meta.currency)
         if (wage > club.capacity * rules.max_wage_share
                 or fee + wage * self.weeks_left > club.budget):
+            return None
+        # An MLS club bids only for a player its roster rules allow (world/mls_market.py).
+        if club.mls and (
+                fee_split(self.conn, self.world, meta, user.id, club.id, fee * 100).refusal
+                or addition_problem(self.conn, self.world, meta, club.id, player_id, wage * 100,
+                                    self.day)):
             return None
         mood = derive_rng(meta.seed, "market-mood", player_id, club.id,
                           window.start.isoformat()).normal()

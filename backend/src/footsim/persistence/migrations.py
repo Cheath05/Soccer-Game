@@ -233,8 +233,10 @@ def _to_v22(conn: Connection) -> None:
 
 
 def _to_v23(conn: Connection) -> None:
-    """Placeholder: v23 belongs to the MLS rules (W9a B3), built on another branch. The merge
-    replaces this step with theirs and renumbers the NCAA step below."""
+    """MLS's roster rules (W9a B3): clubs' seasons under the rules, designations, players'
+    MLS status, rights and the GAM ledger. Empty: a career under way takes up the rules on the
+    next first of the month (world/mls.py ``mls_month``)."""
+    metadata.create_all(conn)
 
 
 def _to_v24(conn: Connection) -> None:

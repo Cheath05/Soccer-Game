@@ -27,6 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.99"
+  date: "2026-11-17"
+  title: "MLS's roster rules, and US college soccer"
+  changes:
+    - "MLS clubs now play by MLS's 2026 roster rules: a salary budget, up to three Designated Players, U22 Initiative players, Targeted and General Allocation Money to buy charges down, 20 senior and 10 supplemental roster places, and eight international slots. A signing or renewal at an MLS club that breaks a rule is refused, with the rule that blocks it."
+    - "Moves between two MLS clubs are trades paid in General Allocation Money; a sale out of MLS turns part of the fee into GAM. AI clubs in MLS keep within the rules."
+    - "MLS stars are paid like Designated Players (Messi about $18m a year), and the rest of each squad fits under the budget. A new career starts this way; one under way takes up the rules on the next 1st of the month."
+    - "US college soccer runs alongside: 213 NCAA Division I programs in their real conferences, a regular season from late August, conference tournaments, and the 48-team NCAA tournament with the College Cup in December. Every year the seniors graduate and become draft prospects, and a new freshman class arrives. Its screens and the MLS SuperDraft come next."
+
 - version: "1.93"
   date: "2026-11-17"
   title: "The Americas: MLS, Liga MX, Argentina and Brazil"

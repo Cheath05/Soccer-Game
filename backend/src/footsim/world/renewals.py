@@ -31,6 +31,8 @@ from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
 from footsim.world.market import FREE, _Market
 from footsim.world.meta import CareerMeta
+from footsim.world.mls import sync_clubs
+from footsim.world.mls_market import filter_renewals, wage_problem
 from footsim.world.money import quote_wage
 from footsim.world.squads import display_name
 
@@ -139,6 +141,9 @@ def settle_expiring(conn: Connection, world: World, meta: CareerMeta, last_day: 
                 renewals.append({"id": contract_id, "end": end.isoformat(), "wage": asks * 100})
                 continue
         leavers.append((contract_id, person, club_id))
+    # MLS's clubs renew only within its roster rules (world/mls.py).
+    renewals, leavers = filter_renewals(conn, world, meta, last_day, renewals, leavers,
+                                        {c: (p, club) for c, p, club, _ in rows})
     leavers, kept = _keep_a_squad(conn, world, market, leavers, new_season_end, renewals)
     news += kept
     if renewals:
@@ -265,6 +270,10 @@ def renew(conn: Connection, world: World, meta: CareerMeta, day: date, season_en
                                    "WHERE club_id = :c"), {"c": meta.user_club_id}).scalar_one())
     if cost > budget:
         raise RenewalRefused("That's beyond the budget.")
+    assert meta.user_club_id is not None
+    problem = wage_problem(conn, world, meta, meta.user_club_id, player_id, wage * 100, day)
+    if problem is not None:
+        raise RenewalRefused(problem)
     end = date(season_end.year + length, 6, 30)
     conn.execute(text(
         "UPDATE contract SET end_date = :end, wage_weekly_cents = :wage WHERE person_id = :p "
@@ -274,6 +283,7 @@ def renew(conn: Connection, world: World, meta: CareerMeta, day: date, season_en
         conn.execute(text("UPDATE club_finance SET transfer_budget_cents = "
                           "transfer_budget_cents - :c WHERE club_id = :u"),
                      {"c": cost, "u": meta.user_club_id})
+    sync_clubs(conn, world, meta, [meta.user_club_id], day)
     return f"{terms.name} signs a new contract to {end.year}."
 
 

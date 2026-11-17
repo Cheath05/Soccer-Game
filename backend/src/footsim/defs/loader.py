@@ -45,6 +45,7 @@ from footsim.defs.match import (
     ShootingDef,
     TacticsDef,
 )
+from footsim.defs.mls import MlsRulesDef
 from footsim.defs.nations import NationDef, NationsFile
 from footsim.defs.overall import OverallDef
 from footsim.defs.positions import AdjacencyDef, PositionDef, PositionGroup, PositionsFile
@@ -100,6 +101,7 @@ class GameDefinitions:
     association_coefficients: AssociationCoefficientsFile  # countries' real seasons, seeds
     season_before: SeasonBeforeFile  # how the season before the career really finished
     college: CollegeDef  # US college soccer: the NCAA season and its programs (W9a)
+    mls: MlsRulesDef  # MLS's roster rules (world/mls.py)
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -192,6 +194,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
                                         root / "europe" / "association_coefficients.yaml"),
         season_before=_parse(SeasonBeforeFile, root / "europe" / "season_before.yaml"),
         college=load_college(root),
+        mls=_parse(MlsRulesDef, root / "rules" / "mls.yaml"),
     )
     _cross_validate(defs)
     return defs
@@ -351,6 +354,9 @@ def _cross_validate(defs: GameDefinitions) -> None:
                     f"{upper.key} relegates {down} to {lower.key} but {lower.key} "
                     f"promotes {up} to {upper.key}"
                 )
+
+    if "USD" not in defs.finance.currencies:
+        errors.append("rules/mls.yaml: MLS's figures are dollars, but finance.yaml has no USD rate")
 
     if errors:
         raise DefinitionError("invalid game definitions:\n  " + "\n  ".join(errors))

@@ -1,0 +1,94 @@
+# MLS's roster rules (W9a B3-B4; docs/plans/w9a-americas.md, "MLS's roster rules").
+# Figures from MLS's 2026 Roster Rules and Regulations (3 Feb 2026), in US dollars a year. The
+# game keeps euros: every figure is converted at finance.yaml currencies.USD.per_euro.
+# world/mls.py works the rules; docs/plans/w9a-mls-rules-notes.md says what is simplified.
+
+league: USA1               # the league whose clubs play by these rules
+source_league: MLS         # the source data's league: MLS clubs before USA1 is active
+domestic_nations:          # who is domestic, by the club's country (nation codes)
+  USA: [USA]
+  CAN: [USA, CAN]
+canadian_clubs:            # clubs whose country is Canada (until the world's club nations say so)
+  - Toronto FC
+  - CF Montréal
+  - Whitecaps FC
+canadian_minimum: 3        # Canadian clubs keep at least this many Canadians on the roster
+
+# --- the Salary Budget -----------------------------------------------------------------------
+salary_budget: 6425000     # the Senior Roster's (slots 1-20) budget charges
+max_charge: 803125         # the Maximum Salary Budget Charge for one player
+senior_minimum: 113400     # the senior minimum salary (slots 1-24)
+reserve_minimum: 88025     # the reserve minimum salary (slots 25-30)
+empty_slot_below: 18       # each empty senior slot below this many is charged the senior minimum
+
+# --- the roster ------------------------------------------------------------------------------
+senior_slots: 20
+supplemental_slots: 10
+supplemental_senior_slots: 4   # slots 21-24: senior minimum, Generation adidas, Homegrown
+reserve_max_age: 24            # slots 25-30: reserve minimum, 24 or younger
+# A Homegrown player on the Supplemental Roster may earn up to this (the game's stand-in for the
+# Homegrown subsidies; the real rules are more detailed).
+homegrown_supplemental_max: 250000
+
+# --- Designated Players and the U22 Initiative, by roster model ----------------------------
+roster_models:
+  1: {designated_players: 3, u22_players: 3, extra_gam: 0}
+  2: {designated_players: 2, u22_players: 4, extra_gam: 2000000}
+dp_charges:                # (age up to, charge): the charge of a young DP
+  - [20, 150000]
+  - [23, 200000]
+dp_charge: 803125          # any older DP
+dp_secondary_window_share: 0.5   # a DP signed after the secondary window opens
+third_dp_fee: 150000       # paid to the league by a club with a third DP (not for a young DP)
+young_dp_max_age: 23
+u22_signing_max_age: 22    # aged 22 or younger when signed...
+u22_max_age: 25            # ...and on the Initiative until this age
+u22_charges:
+  - [20, 150000]
+u22_charge: 200000
+u22_max_wage: 803125       # a U22 Initiative player is paid at most the maximum charge
+
+# --- allocation money --------------------------------------------------------------------------
+tam:                       # Targeted Allocation Money: a season's, not tradeable
+  by_season:               # by the calendar year the game's season starts in
+    2026: 2125000
+    2027: 2025000
+  ceiling: 1803125         # only for players paid between the maximum charge and this
+  floor: 150000            # bought down to as little as this
+gam:                       # General Allocation Money: tradeable, kept from season to season
+  annual: 3280000
+  max_share: 0.5           # buys a charge down by up to this share...
+  floor: 150000            # ...to no less than this
+  from_sales_cap: 3000000  # a season's sales outside MLS that may come as GAM
+  # A club that missed the play-offs gets this much more GAM for the next season. The game's
+  # figure: MLS doesn't publish its amount (docs/plans/w9a-mls-rules-notes.md).
+  missed_playoffs: 0
+sale_share: 0.95           # of a fee from outside MLS, the club's (the league keeps the rest)
+trade_min_cash: 50000      # cash in a trade within MLS, converted to GAM for the seller
+
+# --- international slots -------------------------------------------------------------------
+international_slots: 8     # per club and season; tradeable for the season
+slot_price_gam: 175000     # what an AI club asks in GAM for one of its spare slots
+# A foreign player on MLS rosters this many seasons has a green card: he's domestic.
+green_card_seasons: 4
+
+# --- the AI ----------------------------------------------------------------------------------
+ai:
+  gam_reserve_share: 0.25  # an AI club keeps this share of its GAM out of buy-downs (for trades)
+  spare_slots_kept: 1      # an AI club sells international slots it can spare beyond this
+
+# --- the starting squads (career start, or the first season MLS is played) -------------------
+start:
+  # Model 2 for a club whose third-best player is below this overall (else Model 1).
+  model1_min_third_overall: 70
+  # A DP's wage at the start: this at dp_reference_overall, times dp_per_point a point, at
+  # least dp_min_wage (and never less than he earns already).
+  # (FC 27's MLS: Messi near $20M, Son and De Paul about $12-15M, most DPs $2-6M.)
+  dp_reference_overall: 80
+  dp_reference_wage: 5000000
+  dp_per_point: 1.24
+  dp_min_wage: 1200000
+  # Other players keep their wages, cut evenly at a club whose wages don't fit the rules, so it
+  # fits with this much of the budget left over and the AI's GAM reserve unspent.
+  budget_headroom: 250000
+  homegrown_max_age: 22    # domestic players this young at the start count as Homegrown

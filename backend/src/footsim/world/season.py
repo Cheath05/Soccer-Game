@@ -57,6 +57,7 @@ from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
 from footsim.world.market import run_market
 from footsim.world.meta import CareerMeta, bump_players_epoch
+from footsim.world.mls import mls_month, new_mls_season
 from footsim.world.overall_history import record_season_start
 from footsim.world.renewals import contract_reminders, settle_expiring
 from footsim.world.reputation import drift_reputations
@@ -270,6 +271,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
         messages += train_positions(conn, world, meta, day)
         messages += contract_reminders(conn, world, meta, day,
                                        season_calendar(world, meta, meta.season_id).season_end)
+        messages += mls_month(conn, world, meta, day)
     messages += progress_cups(conn, world, meta, day)
     messages += progress_europe(conn, world, meta, day)
     for active in active_leagues(conn, world):
@@ -634,6 +636,9 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     refresh_ai_tactics(conn, world, meta, calendar.season_start)
     messages += create_season_fixtures(conn, world, meta, new)
     messages += drift_reputations(conn, world, meta, old, new)
+    # MLS's allocations and roster rules for the new season, before the budgets are set (the
+    # first season the save has MLS sets its squads' wages: world/mls.py).
+    messages += new_mls_season(conn, world, meta, old, calendar.season_start)
     start_season_finances(conn, world, meta, old, calendar.season_start)
     messages.insert(0, f"The {calendar.season} season begins.")
     return messages

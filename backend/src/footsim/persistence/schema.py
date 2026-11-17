@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 22  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 23  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -540,4 +540,79 @@ tactic = Table(
     Column("roles", Text, nullable=False),  # JSON {slot id: role key}
     Column("lineup", Text),  # JSON {slot id: player id}, None = pick automatically
     Column("instructions", Text, nullable=False),  # JSON {instruction: level}
+)
+
+
+# MLS's roster rules (world/mls.py, data/config/rules/mls.yaml; v23). Money in euro cents, as
+# everywhere: MLS's dollar figures are converted at the dollar rate.
+# A club's season under the rules: its roster model, its allocation money and its international
+# slots (traded for the season).
+mls_club_season = Table(
+    "mls_club_season",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("roster_model", SmallInteger, nullable=False),  # 1 or 2
+    Column("gam_cents", Integer, nullable=False),  # General Allocation Money it holds
+    Column("gam_expiring_cents", Integer, nullable=False),  # Model 2's, gone at the season's end
+    # The GAM its buy-downs take this season (worked out at each change; spent at the end).
+    Column("gam_committed_cents", Integer, nullable=False, server_default="0"),
+    Column("tam_cents", Integer, nullable=False),  # this season's Targeted Allocation Money
+    Column("international_slots", SmallInteger, nullable=False),
+    Column("gam_from_sales_cents", Integer, nullable=False, server_default="0"),
+    Column("dp_fee_paid", SmallInteger, nullable=False, server_default="0"),
+    PrimaryKeyConstraint("club_id", "season_id"),
+)
+
+# Each player's roster designation at an MLS club in a season: senior | supplemental | dp | u22 |
+# homegrown | generation_adidas, and the roster he sits on (senior or supplemental).
+mls_roster = Table(
+    "mls_roster",
+    metadata,
+    Column("season_id", ForeignKey("season.id"), nullable=False),
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("designation", Text, nullable=False),
+    Column("slot", Text, nullable=False),
+    PrimaryKeyConstraint("season_id", "player_id"),
+    Index("ix_mls_roster_club", "club_id", "season_id"),
+)
+
+# What a player keeps from club to club in MLS: the club whose academy made him (Homegrown
+# there), a green card (domestic), Generation adidas until a season, and his first MLS season.
+mls_player = Table(
+    "mls_player",
+    metadata,
+    Column("player_id", ForeignKey("player.person_id"), primary_key=True),
+    Column("homegrown_club_id", ForeignKey("club.id")),
+    Column("green_card", SmallInteger, nullable=False, server_default="0"),
+    Column("ga_until_season", Integer),  # Generation adidas through this season (the draft)
+    Column("since_season", Integer),  # his first season on an MLS roster
+)
+
+# A club's right to sign a player it hasn't signed (the SuperDraft's picks, Homegrown claims):
+# kind draft | homegrown | discovery, held until a season.
+mls_rights = Table(
+    "mls_rights",
+    metadata,
+    Column("player_id", ForeignKey("player.person_id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("season_id", Integer, nullable=False),  # the season the right was won
+    Column("until_season", Integer),
+    PrimaryKeyConstraint("player_id", "kind"),
+)
+
+# Every change to a club's GAM: allocation | trade | sale | slot | spent | expired | model.
+mls_gam = Table(
+    "mls_gam",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("season_id", Integer, nullable=False),
+    Column("date", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("amount_cents", Integer, nullable=False),
+    Column("ref_id", Integer),  # a transfer, or the other club of a slot trade
+    Index("ix_mls_gam_club", "club_id", "season_id"),
 )

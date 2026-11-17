@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 
 import Layout from './components/Layout'
 import CalendarPage from './pages/CalendarPage'
+import CollegePage from './pages/CollegePage'
 import ClubPage from './pages/ClubPage'
 import CupsPage from './pages/CupsPage'
 import DraftPage from './pages/DraftPage'
@@ -13,6 +14,7 @@ import LeaguePage from './pages/LeaguePage'
 import LivePage from './pages/LivePage'
 import MatchdayPage from './pages/MatchdayPage'
 import MatchReportPage from './pages/MatchReportPage'
+import MlsRosterPage from './pages/MlsRosterPage'
 import PlayerPage from './pages/PlayerPage'
 import SquadPage from './pages/SquadPage'
 import TacticsPage from './pages/TacticsPage'
@@ -35,6 +37,8 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/cups', component: CupsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/draft', component: DraftPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/europe', component: EuropePage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/mls-roster', component: MlsRosterPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/college', component: CollegePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/match/$fixtureId', component: MatchReportPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/live/$fixtureId', component: LivePage }),

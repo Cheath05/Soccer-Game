@@ -2,6 +2,7 @@ import { Badge, Button, Card, Grid, Group, Loader, SegmentedControl, SimpleGrid,
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useMemo } from 'react'
 
+import { MLS_LEAGUE } from '../api/americas'
 import { useClub, useClubPlayers } from '../api/hooks'
 import BackButton from '../components/BackButton'
 import type { ClubPlayer, Fixture } from '../api/types'
@@ -83,9 +84,16 @@ export default function ClubPage() {
           </Text>
         </div>
         {c.own_club && (
-          <Button variant="light" onClick={() => void navigate({ to: '/squad' })}>
-            Manage your squad
-          </Button>
+          <Group gap="xs">
+            {c.competition?.key === MLS_LEAGUE && (
+              <Button variant="light" onClick={() => void navigate({ to: '/mls-roster' })}>
+                MLS roster
+              </Button>
+            )}
+            <Button variant="light" onClick={() => void navigate({ to: '/squad' })}>
+              Manage your squad
+            </Button>
+          </Group>
         )}
       </Group>
 

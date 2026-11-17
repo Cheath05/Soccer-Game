@@ -212,6 +212,8 @@ def college_bracket(session: Session, event: str = NCAA,
         conference = {int(r.club_id): str(r.conference)
                       for r in conn.execute(select(college_team))}
         seeds, matches = bracket(conn, comp, sid, event)
+        if not seeds:  # the field isn't picked yet: no rounds to show
+            matches = []
         rows = {int(r.seed): r for r in conn.execute(select(college_entry).where(
             college_entry.c.season_id == sid, college_entry.c.event == event))}
         if event == NCAA:
@@ -221,7 +223,7 @@ def college_bracket(session: Session, event: str = NCAA,
             conf = college.conferences[event.removeprefix(conference_event(""))]
             name = f"{conf.short_name} Tournament"
             dates, seeded = college.rules.conference_tournament.rounds, len(seeds)
-        total = rounds_for(len(seeds))
+        total = rounds_for(len(seeds)) if seeds else 0
 
         def side(seed: int | None) -> BracketSideOut | None:
             if seed is None or seed == BYE:

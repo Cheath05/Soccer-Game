@@ -1,6 +1,7 @@
 import { Badge, Button, Card, Group, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 
+import { MLS_LEAGUE } from '../api/americas'
 import { useCareer, useClubHistory, useCompetitions, usePlayoffs, useSeasons, useTable } from '../api/hooks'
 import type { LeaguePlayoff, TableRow } from '../api/types'
 import ClubLink from '../components/ClubLink'
@@ -133,7 +134,7 @@ export default function LeaguePage() {
           )}
         </Group>
       )}
-      {active === 'USA1' && (
+      {active === MLS_LEAGUE && (
         <Group gap="xs">
           <Button component={Link} to="/draft" size="compact-sm" variant="light">
             The SuperDraft

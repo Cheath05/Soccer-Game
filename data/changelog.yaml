@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.107"
+  date: "2026-11-17"
+  title: "The MLS SuperDraft, the MLS roster page and College soccer"
+  changes:
+    - "The MLS SuperDraft: every January the MLS clubs draft the college prospects in three rounds, in reverse order of last season's table (the MLS Cup winners last). Managing an MLS club, rank the players you want on the Draft page: your club takes the best one still on your board when it's on the clock, or your scouts choose. Picks join your squad at the league minimum when MLS's rules allow; sign the others later while you hold their rights."
+    - "MLS roster (for an MLS club, from Squad, your club's page or the menu): the salary budget left, TAM and GAM, Designated Player, U22 and international slots, each player's designation, charge and buy-down, the roster model, and anything breaking the rules. Change designations and the roster model, or buy an international slot for GAM."
+    - "College (in the menu, under More on a phone): the NCAA conference tables and tournaments, the RPI rankings, the 48-team NCAA tournament bracket to the College Cup, and the draft pool."
+
 - version: "1.102"
   date: "2026-11-17"
   title: "MLS's roster rules, and US college soccer"

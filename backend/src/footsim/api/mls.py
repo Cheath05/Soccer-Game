@@ -87,6 +87,17 @@ class RosterOut(BaseModel):
     players: list[RosterPlayerOut]
 
 
+class SlotSellerOut(BaseModel):
+    club: ClubRef
+    spare: int  # slots it could sell (beyond the one it keeps)
+
+
+class SlotSellersOut(BaseModel):
+    price_eur: int  # a slot's price in GAM
+    gam_left_eur: int  # the user's GAM not taken by buy-downs
+    sellers: list[SlotSellerOut]
+
+
 class DesignationIn(BaseModel):
     player_id: int
     designation: str
@@ -171,6 +182,39 @@ def roster(session: Session, club_id: int | None = None) -> RosterOut:
         if club is None:
             raise HTTPException(404, "Watching only: there's no club of your own.")
         return _roster(conn, world, meta, club, meta.current_date)
+
+
+@router.get("/international-slot")
+def international_slot_sellers(session: Session) -> SlotSellersOut:
+    """The MLS clubs the user could buy an international slot from, most to spare first, and the
+    price in GAM."""
+    world = get_world()
+    rules = world.defs.mls
+    with session.read() as conn:
+        meta = read_meta(conn)
+        club_id = meta.user_club_id
+        if club_id is None or not mls.under_rules(conn, club_id, meta.season_id):
+            raise HTTPException(404, "Your club doesn't play under MLS's roster rules.")
+        day = meta.current_date
+        report = mls.club_report(conn, world, meta, club_id, day, mls.money_for(world, meta))
+        row = mls.state(conn, club_id, meta.season_id)
+        assert row is not None
+        gam = int(row.gam_cents) + int(row.gam_expiring_cents) - report.gam_used
+        sellers = []
+        for other in sorted(mls.mls_club_ids(conn, world, meta.season_id) - {club_id}):
+            state = mls.state(conn, other, meta.season_id)
+            if state is None:
+                continue
+            members, _ = mls.load_members(conn, world, meta, other, day)
+            spare = (int(state.international_slots) - sum(1 for m in members if m.international)
+                     - rules.ai.spare_slots_kept)
+            if spare > 0:
+                name = str(conn.execute(text("SELECT name FROM club WHERE id = :c"),
+                                        {"c": other}).scalar_one())
+                sellers.append(SlotSellerOut(club=ClubRef(id=other, name=name), spare=spare))
+        sellers.sort(key=lambda s: (-s.spare, s.club.name))
+        return SlotSellersOut(price_eur=_eur(mls.figures(world).c(rules.slot_price_gam)),
+                              gam_left_eur=_eur(gam), sellers=sellers)
 
 
 def _act(session: Session, body: DesignationIn | ModelIn | SlotIn) -> RosterOut:

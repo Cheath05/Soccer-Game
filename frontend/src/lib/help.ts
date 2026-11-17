@@ -241,6 +241,36 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'mls',
+    title: 'MLS’s roster rules',
+    summary: 'The MLS roster page: the salary budget, designations, TAM and GAM, slots and the roster model.',
+    blocks: [
+      'An MLS club plays under MLS’s roster rules. MLS roster (a button on Squad and on your club’s page, in the menu, and under More on a phone) shows where your club stands. Money is shown in your currency, a year at a time.',
+      [
+        'Salary budget: what the senior roster (slots 1–20) is charged, after TAM and GAM buy-downs, against the budget. A player’s charge is at most the maximum charge; the Supplemental Roster (slots 21–30) isn’t charged.',
+        'Designations: each player is a Designated Player (DP: charged a fixed amount whatever he earns), U22 Initiative (signed at 22 or younger), Senior, Supplemental, Homegrown (senior or supplemental) or Generation adidas. Pick one from the list beside him; if a rule forbids it, the reason appears under him and nothing changes.',
+        'TAM and GAM: Targeted and General Allocation Money buy players’ charges down, TAM first. The game spends only what’s needed; the Buy-down column shows what each player takes. GAM left over carries into next season and can buy an international slot.',
+        'Slots: DPs and U22 players by the roster model, international slots (8 a season; Buy a slot buys one from a club with one to spare, for GAM), and the senior and supplemental rosters.',
+        'Roster model: Model 1 has 3 DPs and 3 U22 players, Model 2 has 2 DPs, 4 U22 players and more GAM. You can change it until your first league match of the season.',
+        'Compliance: anything breaking the rules is listed in red at the top. Until it is fixed you can’t sign or borrow anyone (unless the move itself fixes it); matches are never blocked.',
+      ],
+    ],
+  },
+  {
+    id: 'college',
+    title: 'College soccer',
+    summary: 'NCAA conference tables, the RPI, the NCAA tournament bracket and the draft pool.',
+    blocks: [
+      'College in the menu (under More on a phone) follows NCAA Division I men’s soccer, whose players feed MLS’s SuperDraft. A career started before college soccer joined the game gets it from its next season.',
+      [
+        'Conferences: pick a conference for its table (conference games only; the marked places go to its tournament), or Tournament for its bracket in November. Its winner takes an automatic bid to the NCAA tournament.',
+        'RPI: the Rating Percentage Index, which picks the NCAA’s 25 at-large teams and its seeds.',
+        'NCAA: the 48-team bracket, picked on 16 November. Seeds 1–16 have a bye to the second round; the College Cup (the semifinals and final, at a neutral ground) is in mid-December. Click a played match for its report, or a club for its page.',
+        'Draft pool: after the College Cup, the seniors and a few underclassmen signed by Generation adidas (GA) who are up for the SuperDraft, with their college, class, position and overall.',
+      ],
+    ],
+  },
+  {
     id: 'clubs',
     title: 'Other clubs and club history',
     summary: 'Club search, club pages and your club’s history.',
@@ -270,7 +300,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: 'The phone layout, tapping instead of dragging, and Add to Home Screen.',
     blocks: [
       [
-        'On a phone, a bar at the bottom has Home, Squad, Tactics and Transfers; More opens the rest (League, Fixtures, Calendar, Cups, Europe, Finances, your club, Save / Load) with the club search and the version. The header has your club’s name and the date, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to…. The bar steps aside while you watch a match.',
+        'On a phone, a bar at the bottom has Home, Squad, Tactics and Transfers; More opens the rest (League, Fixtures, Calendar, Cups, Europe, MLS roster for an MLS club, College, Finances, your club, Save / Load) with the club search and the version. The header has your club’s name and the date, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to…. The bar steps aside while you watch a match.',
         'Tables keep their key columns and put the rest in a small line under the name. The Transfers filters are behind a Filters button.',
         'There is no dragging on a touch screen. On Tactics and in the live match, tap a player and then tap where he should go.',
         'The live match draws the pitch upright. Half-time is a full-screen sheet; Tactics and substitutions puts it aside so you can make changes, with a bar at the bottom to bring it back or start the second half.',

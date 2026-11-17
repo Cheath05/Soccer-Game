@@ -179,3 +179,30 @@ body { -webkit-font-smoothing: antialiased; }
 }
 .fs-club:active { background: var(--fs-border); }
 .fs-club[data-picked] { border-color: var(--fs-accent); background: rgba(47, 140, 255, 0.16); }
+
+/* A tournament bracket (components/CollegeBracket.tsx): rounds side by side, each match centred
+   on the two it comes from. */
+.fs-bracket { display: grid; column-gap: 14px; row-gap: 6px; min-width: max-content; padding-bottom: 4px; }
+.fs-bracket-head { padding: 0 2px 4px; border-bottom: 1px solid var(--fs-border); }
+.fs-bracket-cell { display: flex; flex-direction: column; justify-content: center; }
+.fs-match {
+  background: var(--fs-surface);
+  border: 1px solid var(--fs-border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-width: 0;
+}
+.fs-match[data-played] { cursor: pointer; }
+.fs-match[data-played]:hover { border-color: var(--fs-accent); }
+.fs-match[data-bye] { background: transparent; border-style: dashed; }
+.fs-match-line { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; line-height: 1.6; }
+.fs-match-line[data-won] { font-weight: 700; }
+.fs-match-line[data-lost] { color: var(--fs-dim); }
+.fs-match-seed { width: 16px; flex-shrink: 0; text-align: right; font-size: 0.7rem; color: var(--fs-dim); font-weight: 600; }
+.fs-match-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-match-score { font-family: var(--fs-heading); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.fs-match-score small { font-size: 0.75rem; color: var(--fs-dim); }
+.fs-match-note { padding-left: 24px; font-size: 0.7rem; color: var(--fs-dim); }
+
+/* A table's places that go on (a conference tournament's field): a bar at the row's start. */
+.fs-qualify td:first-child { box-shadow: inset 3px 0 0 var(--fs-accent); }

@@ -31,8 +31,10 @@ from footsim.api.schemas import (
     EuropePlaceOut,
     FixtureOut,
     FormationOut,
+    GroupTableOut,
     InstructionOut,
     LeagueOption,
+    LeaguePlayoffOut,
     MatchEventOut,
     MatchOut,
     PlayerDetailOut,
@@ -50,8 +52,12 @@ from footsim.api.schemas import (
     SquadPlayerOut,
     TableOut,
     TableRowOut,
+    TableViewOut,
     TacticsOut,
+    TitleOut,
 )
+from footsim.competitions.scheduling import playoff_dates
+from footsim.competitions.standings import TableRow
 from footsim.core.text import ordinal
 from footsim.defs.competitions import LeagueDef, MovementKind
 from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES
@@ -82,6 +88,7 @@ from footsim.persistence.schema import (
     player_position,
     player_season_overall,
     player_trait,
+    playoff_tie,
     season,
     tactic,
 )
@@ -102,7 +109,15 @@ from footsim.world.europe.places import CountryPlace, country_places
 from footsim.world.europe.qualifying import Node, node_of, round_name
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
-from footsim.world.season import active_leagues, season_calendar, standings
+from footsim.world.season import (
+    active_leagues,
+    group_table,
+    league_calendar,
+    league_groups,
+    phase_rounds,
+    season_calendar,
+    standings,
+)
 from footsim.world.squads import display_name, load_squad, short_name, team_sheet
 from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
 
@@ -355,31 +370,64 @@ def competitions(conn: Connection, world: World) -> list[CompetitionOut]:
             for a in active_leagues(conn, world)]
 
 
-def table(conn: Connection, world: World, key: str, season_id: int | None = None) -> TableOut:
+SEASON_VIEW = "season"  # a phased league's whole-season (annual) table
+
+
+def _current_phase(conn: Connection, league: LeagueDef, competition_id: int,
+                   season_id: int) -> str:
+    """The phase to show by default: the first whose league matches aren't all played, else
+    the last."""
+    for phase in league.phases:
+        first, last = phase_rounds(conn, league, competition_id, season_id, phase.key)
+        left = conn.execute(select(func.count()).select_from(fixture).where(
+            fixture.c.competition_id == competition_id, fixture.c.season_id == season_id,
+            fixture.c.stage == "league", fixture.c.status == "scheduled",
+            fixture.c.round.between(first, last))).scalar_one()
+        if left:
+            return phase.key
+    return league.phases[-1].key
+
+
+def table(conn: Connection, world: World, key: str, season_id: int | None = None,
+          phase: str | None = None) -> TableOut:
+    """A league's table: the season's, or (a league of phases) a phase's, by default the one
+    under way. A league of conferences or zones also gets each group's table."""
     meta = read_meta(conn)
     season_id = season_id or meta.season_id
     comp = conn.execute(select(competition).where(competition.c.key == key)).one()
     league = world.defs.leagues[key]
-    zones: dict[int, str] = {}
+    if league.phases and phase is None:
+        phase = _current_phase(conn, league, comp.id, season_id)
+    shown = None if phase in (None, SEASON_VIEW) or not league.phases else phase
+    if shown is not None and shown not in {p.key for p in league.phases}:
+        shown = league.phases[0].key
+    zones: dict[int, str] = {}  # by league position
+    group_zones: dict[tuple[str, int], str] = {}
     for mv in league.movements:
         zone = "promotion" if mv.kind is MovementKind.PROMOTION else "relegation"
         for pos in range(mv.ranks[0], mv.ranks[1] + 1):
             zones[pos] = zone
     for playoff in league.playoffs:
+        if playoff.phase != shown:
+            continue
         for pos in playoff.entrant_ranks():
             zones[pos] = "playoff"
-    if league.tier == 1:
+        for group_rank in playoff.group_ranks():
+            group_zones[group_rank] = "playoff"
+    if league.tier == 1 and not league.phases and league.title_playoff is None:
         zones.setdefault(1, "champion")
     names = _club_names(conn)
     form = _form(conn, comp.id, season_id)
-    ordered = standings(conn, world, meta, comp.id, season_id)
+    ordered = standings(conn, world, meta, comp.id, season_id, shown)
     if not any(r.played for r in ordered):  # pre-season: alphabetical, like the real thing
         ordered.sort(key=lambda r: names[r.club_id])
         for position, r in enumerate(ordered, start=1):
             r.position = position
-    outcomes = {r.club_id: r.outcome for r in conn.execute(select(league_final).where(
-        league_final.c.season_id == season_id, league_final.c.competition_id == comp.id))}
-    places = _europe_places(conn, world, league, season_id) if league.tier == 1 else []
+    outcomes = {} if shown is not None else {
+        r.club_id: r.outcome for r in conn.execute(select(league_final).where(
+            league_final.c.season_id == season_id, league_final.c.competition_id == comp.id))}
+    places = (_europe_places(conn, world, league, season_id)
+              if league.tier == 1 and shown is None else [])
     by_rank = {rank: (p.competition, "league_phase" if p.round == "LP" else "qualifying")
                for p in places if p.positions
                for rank in range(p.positions[0], p.positions[1] + 1)}
@@ -391,21 +439,51 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
             return went.get(club_id, (None, None))
         return by_rank.get(position, (None, None))
 
-    rows = [TableRowOut(
-        position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
-        played=r.played, won=r.won, drawn=r.drawn, lost=r.lost, goals_for=r.goals_for,
-        goals_against=r.goals_against, goal_difference=r.goal_difference, points=r.points,
-        zone=zones.get(r.position), form=form.get(r.club_id, []),
-        outcome=outcomes.get(r.club_id),
-        europe=europe_mark(r.club_id, r.position)[0],
-        europe_stage=europe_mark(r.club_id, r.position)[1],
-    ) for r in ordered]
+    def row_out(r: TableRow, zone: str | None) -> TableRowOut:
+        return TableRowOut(
+            position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
+            played=r.played, won=r.won, drawn=r.drawn, lost=r.lost, goals_for=r.goals_for,
+            goals_against=r.goals_against, goal_difference=r.goal_difference, points=r.points,
+            zone=zone, form=form.get(r.club_id, []),
+            outcome=outcomes.get(r.club_id),
+            europe=europe_mark(r.club_id, r.position)[0],
+            europe_stage=europe_mark(r.club_id, r.position)[1],
+        )
+
+    rows = [row_out(r, zones.get(r.position)) for r in ordered]
+    groups: list[GroupTableOut] = []
+    if league.groups and any(r.played for r in ordered):
+        members = league_groups(conn, league, [r.club_id for r in ordered])
+        for g in league.groups:
+            groups.append(GroupTableOut(key=g.key, name=g.name, rows=[
+                row_out(r, group_zones.get((g.key, r.position)))
+                for r in group_table(ordered, members[g.key])]))
+    elif league.groups:  # pre-season: each group alphabetical
+        members = league_groups(conn, league, [r.club_id for r in ordered])
+        for g in league.groups:
+            mine = sorted(members[g.key], key=lambda c: names[c])
+            by_club = {r.club_id: r for r in ordered}
+            groups.append(GroupTableOut(key=g.key, name=g.name, rows=[
+                row_out(TableRow(**{**vars(by_club[c]), "position": k}), None)
+                for k, c in enumerate(mine, start=1)]))
+    titles = [TitleOut(title=t.title, club=ClubRef(id=t.club_id, name=names[t.club_id]),
+                       kind=t.kind, phase=t.phase)
+              for t in conn.execute(select(league_title).where(
+                  league_title.c.season_id == season_id,
+                  league_title.c.competition_id == comp.id).order_by(league_title.c.won_on))]
     first_match = conn.execute(select(func.min(fixture.c.date)).where(
         fixture.c.competition_id == comp.id, fixture.c.season_id == season_id,
         fixture.c.stage == "league")).scalar()
     return TableOut(competition=key, name=comp.name, season=_season_label(conn, season_id),
-                    final=bool(outcomes), started=any(r.played for r in ordered),
+                    final=bool(outcomes) if shown is None else _phase_done(
+                        conn, league, comp.id, season_id, shown),
+                    started=any(r.played for r in ordered),
                     first_match=first_match, rows=rows,
+                    phases=([TableViewOut(key=p.key, name=p.name) for p in league.phases]
+                            + [TableViewOut(key=SEASON_VIEW, name="Season")]
+                            if league.phases else []),
+                    phase=(shown or SEASON_VIEW) if league.phases else None,
+                    groups=groups, titles=titles,
                     europe_places=[EuropePlaceOut(
                         competition=p.competition,
                         name=world.defs.continental[p.competition].short_name,
@@ -413,6 +491,61 @@ def table(conn: Connection, world: World, key: str, season_id: int | None = None
                         how=_place_how(world, p), round=p.round,
                         round_name=_round_words(world, p)) for p in places],
                     europe_actual=bool(went))
+
+
+def _phase_done(conn: Connection, league: LeagueDef, competition_id: int, season_id: int,
+                phase: str) -> bool:
+    first, last = phase_rounds(conn, league, competition_id, season_id, phase)
+    rows = conn.execute(select(fixture.c.status).where(
+        fixture.c.competition_id == competition_id, fixture.c.season_id == season_id,
+        fixture.c.stage == "league", fixture.c.round.between(first, last))).all()
+    return bool(rows) and all(r.status == "played" for r in rows)
+
+
+def league_playoffs(conn: Connection, world: World, key: str, season_id: int | None = None
+                    ) -> list[LeaguePlayoffOut]:
+    """A league's play-offs for a season, as cup rounds: drawn rounds with their ties and
+    matches (a series' games as one tie), rounds to come with their dates."""
+    meta = read_meta(conn)
+    season_id = season_id or meta.season_id
+    league = world.defs.leagues[key]
+    if not league.playoffs:
+        return []
+    names = _club_names(conn)
+    comps = _competitions(conn)
+    comp_id = next(cid for cid, r in comps.items() if r.key == key)
+    calendar = league_calendar(world, league, season_id)
+
+    def ref(club_id: int | None) -> ClubRef | None:
+        return ClubRef(id=club_id, name=names[club_id]) if club_id else None
+
+    out = []
+    for playoff in league.playoffs:
+        dated = calendar.competitions[league.calendar_key(playoff.phase)]
+        days = playoff_dates(dated.end, dated.playoffs_end, playoff.rounds)
+        ties = conn.execute(select(playoff_tie).where(
+            playoff_tie.c.season_id == season_id, playoff_tie.c.playoff_key == playoff.key)
+            .order_by(playoff_tie.c.round, playoff_tie.c.id)).all()
+        rows = conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.competition_id == comp_id,
+            fixture.c.stage == playoff.key).order_by(fixture.c.date, fixture.c.leg)).all()
+        games: dict[tuple[int, str], list[FixtureOut]] = defaultdict(list)
+        for row, f in zip(rows, fixtures_out(conn, rows, names, comps), strict=True):
+            games[(row.round, (row.tie or "").split(":")[0])].append(f)
+        rounds = []
+        for index, rnd in enumerate(playoff.rounds):
+            in_round = [t for t in ties if t.round == index]
+            rounds.append(CupRoundOut(
+                index=index, name=rnd.name, dates=[d.isoformat() for d in days[index]],
+                legs=rnd.legs, games=rnd.games, drawn=bool(in_round),
+                ties=[CupTieOut(tie=t.tie, home=ClubRef(id=t.club_a_id, name=names[t.club_a_id]),
+                                away=ref(t.club_b_id), fixtures=games.get((index, t.tie), []),
+                                winner=ref(t.winner_club_id)) for t in in_round]))
+        final = [t for t in ties if t.round == len(playoff.rounds) - 1]
+        out.append(LeaguePlayoffOut(key=playoff.key, name=playoff.name, phase=playoff.phase,
+                                    title=playoff.title, rounds=rounds,
+                                    winner=ref(final[0].winner_club_id) if final else None))
+    return out
 
 
 def _europe_places(conn: Connection, world: World, league: LeagueDef, season_id: int

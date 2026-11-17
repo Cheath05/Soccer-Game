@@ -390,3 +390,34 @@ def test_the_season_rolls_over(season: Path) -> None:
             assert conn.execute(select(fixture.c.id).where(
                 fixture.c.season_id == 2, fixture.c.competition_id == _league(conn, key))
             ).first() is not None
+
+
+def test_the_tables_and_play_offs_the_screens_read(season: Path, world: World) -> None:
+    from footsim.api import queries
+
+    with _conn(season) as conn:
+        mls = queries.table(conn, world, "USA1", 1)
+        assert len(mls.rows) == 30 and [g.key for g in mls.groups] == ["E", "W"]
+        assert all(len(g.rows) == 15 for g in mls.groups)
+        assert [r.position for r in mls.groups[0].rows] == list(range(1, 16))
+        assert {r.zone for g in mls.groups for r in g.rows[:9]} == {"playoff"}
+        assert {r.zone for g in mls.groups for r in g.rows[9:]} == {None}
+        assert {t.title for t in mls.titles} == {"Supporters' Shield", "MLS Cup"}
+        assert mls.phases == [] and mls.phase is None
+        playoff = queries.league_playoffs(conn, world, "USA1", 1)[0]
+        assert [len(r.ties) for r in playoff.rounds] == [2, 8, 4, 2, 1]
+        assert {len(t.fixtures) for t in playoff.rounds[1].ties} <= {2, 3}
+        assert playoff.winner is not None and playoff.title
+
+        mex = queries.table(conn, world, "MEX1", 1)
+        assert mex.phase == "CL"  # a finished season shows its last phase
+        assert [p.key for p in mex.phases] == ["AP", "CL", "season"]
+        assert all(r.played == 17 for r in mex.rows)
+        assert sum(r.zone == "playoff" for r in mex.rows) == 8
+        whole = queries.table(conn, world, "MEX1", 1, "season")
+        assert whole.phase == "season" and all(r.played == 34 for r in whole.rows)
+        assert {p.phase for p in queries.league_playoffs(conn, world, "MEX1", 1)} == {"AP", "CL"}
+
+        arg = queries.table(conn, world, "ARG1", 1, "AP")
+        assert [len(g.rows) for g in arg.groups] == [15, 15]
+        assert sum(r.zone == "playoff" for g in arg.groups for r in g.rows) == 16

@@ -1,9 +1,10 @@
-import { Badge, Group, Select, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Card, Group, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
 
-import { useCareer, useClubHistory, useCompetitions, useSeasons, useTable } from '../api/hooks'
-import type { TableRow } from '../api/types'
+import { useCareer, useClubHistory, useCompetitions, usePlayoffs, useSeasons, useTable } from '../api/hooks'
+import type { LeaguePlayoff, TableRow } from '../api/types'
 import ClubLink from '../components/ClubLink'
 import LeaguePicker from '../components/LeaguePicker'
+import RoundCard from '../components/RoundCard'
 import { EUROPE_COLOR } from '../lib/competitionColors'
 import { OUTCOMES, competitionNation, longDate } from '../lib/format'
 import { useDevice } from '../lib/device'
@@ -26,6 +27,10 @@ export default function LeaguePage() {
   const competitions = useCompetitions()
   const [key, setKey] = useUrlState<string | null>('league', null)
   const [seasonIdRaw, setSeasonId] = useUrlState<string | null>('season', null)
+  // A league of phases (Apertura, Clausura): the one picked (null: the one under way).
+  const [phase, setPhase] = useUrlState<string | null>('phase', null)
+  // A league of conferences or zones: their tables, or the whole league's.
+  const [view, setView] = useUrlState<string>('view', 'groups')
   const seasonId = seasonIdRaw === null ? null : String(seasonIdRaw)
   const seasons = useSeasons().data ?? []
   const history = useClubHistory(career?.club.id).data
@@ -40,10 +45,19 @@ export default function LeaguePage() {
   const lastLeague = history?.seasons.find((s) => s.season_id === previous?.id)?.competition.key
   const active = key ?? (waiting && !seasonId && lastLeague ? lastLeague : homeKey)
   const shownId = seasonId ? Number(seasonId) : waiting ? previous.id : current?.id
-  const table = useTable(active, shownId === undefined || shownId === current?.id ? null : shownId)
+  const pastId = shownId === undefined || shownId === current?.id ? null : shownId
+  const table = useTable(active, pastId, phase)
+  const playoffs = usePlayoffs(active, pastId).data ?? []
+  const shownPhase = table.data?.phase ?? null
+  const groups = table.data?.groups ?? []
+  const byGroup = groups.length > 0 && view === 'groups' && shownPhase !== 'season'
+  const titles = table.data?.titles ?? []
+  // The play-offs of the table shown: a phase's own, or the season's.
+  const brackets = playoffs.filter((p) => (shownPhase && shownPhase !== 'season' ? p.phase === shownPhase : p.phase === null))
 
   const rows = table.data?.rows ?? []
-  const zones = ['promotion', 'playoff', 'relegation'].filter((z) => rows.some((r) => r.zone === z))
+  const shownRows = byGroup ? groups.flatMap((g) => g.rows) : rows
+  const zones = ['promotion', 'playoff', 'relegation'].filter((z) => shownRows.some((r) => r.zone === z))
   const places = table.data?.europe_places ?? []
   // A European mark beats the zone colour. A qualifying round gets the stripe only.
   const mark = (r: TableRow) => {
@@ -88,9 +102,44 @@ export default function LeaguePage() {
         <LeaguePicker
           leagues={competitions.data}
           value={active}
-          onChange={setKey}
+          onChange={(k) => {
+            setKey(k)
+            setPhase(null)
+          }}
           home={career?.competition ? competitionNation(career.competition) : undefined}
         />
+      )}
+      {((table.data?.phases?.length ?? 0) > 0 || groups.length > 0) && (
+        <Group gap="sm">
+          {(table.data?.phases?.length ?? 0) > 0 && (
+            <SegmentedControl
+              aria-label="Tournament"
+              value={shownPhase ?? ''}
+              onChange={setPhase}
+              data={table.data!.phases!.map((p) => ({ value: p.key, label: p.name }))}
+            />
+          )}
+          {groups.length > 0 && shownPhase !== 'season' && (
+            <SegmentedControl
+              aria-label="Tables"
+              value={view}
+              onChange={setView}
+              data={[
+                { value: 'groups', label: groups[0]!.name.includes('Conference') ? 'Conferences' : 'Zones' },
+                { value: 'overall', label: 'Overall' },
+              ]}
+            />
+          )}
+        </Group>
+      )}
+      {titles.length > 0 && (
+        <Group gap="xs">
+          {titles.map((t) => (
+            <Badge key={t.title} variant="light" color={t.kind === 'champion' ? 'yellow' : 'blue'} size="lg" tt="none">
+              {t.title}: {t.club.name}
+            </Badge>
+          ))}
+        </Group>
       )}
       {waiting && shownId === previous.id && (
         <Text size="sm" c="dimmed">
@@ -98,63 +147,16 @@ export default function LeaguePage() {
           {unstarted.data?.first_match ? `: the ${unstarted.data.season} season starts on ${longDate(unstarted.data.first_match)}.` : '.'}
         </Text>
       )}
-      <Table.ScrollContainer minWidth={phone ? 0 : 640}>
-        <Table highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>#</Table.Th>
-              <Table.Th>Club</Table.Th>
-              <Table.Th ta="right">P</Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">W</Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">D</Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">L</Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">GF</Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">GA</Table.Th>
-              <Table.Th ta="right">GD</Table.Th>
-              <Table.Th ta="right">Pts</Table.Th>
-              <Table.Th visibleFrom="sm">Form</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.map((r) => (
-              <Table.Tr key={r.club.id} bg={mark(r).bg} fw={r.club.id === career?.club.id ? 700 : undefined}>
-                <Table.Td style={{ boxShadow: mark(r).stripe }} title={mark(r).title}>
-                  {r.position}
-                </Table.Td>
-                <Table.Td>
-                  <Group gap="xs" wrap="nowrap">
-                    <ClubLink club={r.club} />
-                    {r.outcome && OUTCOMES[r.outcome] && (
-                      <Badge size="xs" variant="light" color={OUTCOMES[r.outcome]!.color}>
-                        {OUTCOMES[r.outcome]!.label}
-                      </Badge>
-                    )}
-                  </Group>
-                </Table.Td>
-                <Table.Td ta="right">{r.played}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{r.won}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{r.drawn}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{r.lost}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{r.goals_for}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{r.goals_against}</Table.Td>
-                <Table.Td ta="right">{r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}</Table.Td>
-                <Table.Td ta="right" fw={700}>
-                  {r.points}
-                </Table.Td>
-                <Table.Td visibleFrom="sm">
-                  <Group gap={2} wrap="nowrap">
-                    {r.form.map((f, i) => (
-                      <Badge key={i} size="xs" w={18} px={0} color={f === 'W' ? 'green' : f === 'L' ? 'red' : 'gray'}>
-                        {f}
-                      </Badge>
-                    ))}
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+      {byGroup ? (
+        groups.map((g) => (
+          <Stack key={g.key} gap={4}>
+            <Title order={4}>{g.name}</Title>
+            <LeagueTable rows={g.rows} phone={phone} userId={career?.club.id} mark={mark} />
+          </Stack>
+        ))
+      ) : (
+        <LeagueTable rows={rows} phone={phone} userId={career?.club.id} mark={mark} />
+      )}
       {zones.length > 0 && (
         <Group gap="md">
           {zones.map((z) => (
@@ -197,6 +199,9 @@ export default function LeaguePage() {
           </Text>
         </Stack>
       )}
+      {brackets.map((p) => (
+        <Playoff key={p.key} playoff={p} userId={career?.club.id} />
+      ))}
     </Stack>
   )
 }
@@ -207,5 +212,102 @@ function Legend({ color, label }: { color: string; label: string }) {
       <div style={{ width: 14, height: 14, background: color, borderRadius: 3 }} />
       <Text size="xs">{label}</Text>
     </Group>
+  )
+}
+
+type Mark = (r: TableRow) => { bg: string | undefined; stripe: string | undefined; title: string | undefined }
+
+function LeagueTable({ rows, phone, userId, mark }: { rows: TableRow[]; phone: boolean; userId: number | undefined; mark: Mark }) {
+  return (
+    <Table.ScrollContainer minWidth={phone ? 0 : 640}>
+      <Table highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>#</Table.Th>
+            <Table.Th>Club</Table.Th>
+            <Table.Th ta="right">P</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">W</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">D</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">L</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">GF</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">GA</Table.Th>
+            <Table.Th ta="right">GD</Table.Th>
+            <Table.Th ta="right">Pts</Table.Th>
+            <Table.Th visibleFrom="sm">Form</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map((r) => (
+            <Table.Tr key={r.club.id} bg={mark(r).bg} fw={r.club.id === userId ? 700 : undefined}>
+              <Table.Td style={{ boxShadow: mark(r).stripe }} title={mark(r).title}>
+                {r.position}
+              </Table.Td>
+              <Table.Td>
+                <Group gap="xs" wrap="nowrap">
+                  <ClubLink club={r.club} />
+                  {r.outcome && OUTCOMES[r.outcome] && (
+                    <Badge size="xs" variant="light" color={OUTCOMES[r.outcome]!.color}>
+                      {OUTCOMES[r.outcome]!.label}
+                    </Badge>
+                  )}
+                </Group>
+              </Table.Td>
+              <Table.Td ta="right">{r.played}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{r.won}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{r.drawn}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{r.lost}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{r.goals_for}</Table.Td>
+              <Table.Td ta="right" visibleFrom="sm">{r.goals_against}</Table.Td>
+              <Table.Td ta="right">{r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}</Table.Td>
+              <Table.Td ta="right" fw={700}>
+                {r.points}
+              </Table.Td>
+              <Table.Td visibleFrom="sm">
+                <Group gap={2} wrap="nowrap">
+                  {r.form.map((f, i) => (
+                    <Badge key={i} size="xs" w={18} px={0} color={f === 'W' ? 'green' : f === 'L' ? 'red' : 'gray'}>
+                      {f}
+                    </Badge>
+                  ))}
+                </Group>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
+  )
+}
+
+/** A league's play-off: its drawn rounds as cards, the rounds to come by date. */
+function Playoff({ playoff, userId }: { playoff: LeaguePlayoff; userId: number | undefined }) {
+  const drawn = playoff.rounds.filter((r) => r.drawn)
+  const toCome = playoff.rounds.filter((r) => !r.drawn)
+  return (
+    <Stack gap="xs">
+      <Group justify="space-between">
+        <Title order={3}>{playoff.name}</Title>
+        {playoff.winner && (
+          <Badge variant="light" color="yellow" size="lg" tt="none">
+            Winners: {playoff.winner.name}
+          </Badge>
+        )}
+      </Group>
+      {drawn.map((round) => (
+        <RoundCard key={round.index} round={round} userId={userId} series={(round.games ?? 1) > 1 ? round.games : undefined} />
+      ))}
+      {toCome.length > 0 && (
+        <Card withBorder padding="sm">
+          <Text size="sm" fw={600} mb={4}>
+            {drawn.length ? 'Still to come' : 'After the regular season'}
+          </Text>
+          {toCome.map((r) => (
+            <Text key={r.index} size="sm" c="dimmed">
+              {r.name} · {r.dates.map(longDate).join(', ')}
+            </Text>
+          ))}
+        </Card>
+      )}
+    </Stack>
   )
 }

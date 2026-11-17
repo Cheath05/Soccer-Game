@@ -30,6 +30,7 @@ import type {
   SimStatus,
   SimTarget,
   SquadPlayer,
+  LeaguePlayoff,
   Table,
   Tactics,
   TacticsUpdate,
@@ -70,10 +71,23 @@ export const useNations = () =>
 export const useCompetitions = () =>
   useQuery({ queryKey: ['competitions'], queryFn: () => api.get<Competition[]>('/competitions') })
 
-export const useTable = (key: string | undefined, season?: number | null) =>
+export const useTable = (key: string | undefined, season?: number | null, phase?: string | null) =>
   useQuery({
-    queryKey: ['table', key, season ?? null],
-    queryFn: () => api.get<Table>(`/competitions/${key}/table${season ? `?season=${season}` : ''}`),
+    queryKey: ['table', key, season ?? null, phase ?? null],
+    queryFn: () => {
+      const query = new URLSearchParams()
+      if (season) query.set('season', String(season))
+      if (phase) query.set('phase', phase)
+      const qs = query.toString()
+      return api.get<Table>(`/competitions/${key}/table${qs ? `?${qs}` : ''}`)
+    },
+    enabled: !!key,
+  })
+
+export const usePlayoffs = (key: string | undefined, season?: number | null) =>
+  useQuery({
+    queryKey: ['playoffs', key, season ?? null],
+    queryFn: () => api.get<LeaguePlayoff[]>(`/competitions/${key}/playoffs${season ? `?season=${season}` : ''}`),
     enabled: !!key,
   })
 

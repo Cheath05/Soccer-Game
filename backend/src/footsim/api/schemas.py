@@ -101,6 +101,7 @@ class CupRoundOut(BaseModel):
     ties: list[CupTieOut]
     round: str | None = None  # a European qualifying round: Q1, Q2, Q3 or PO
     path: str | None = None  # and its path: champions, league or main
+    games: int = 1  # a league play-off's series: best of this many games
 
 
 class CupOut(BaseModel):
@@ -108,6 +109,17 @@ class CupOut(BaseModel):
     name: str
     nation: str
     season: str
+    rounds: list[CupRoundOut]
+    winner: ClubRef | None
+
+
+class LeaguePlayoffOut(BaseModel):
+    """A league's play-off for a season (MLS Cup, a Liguilla, the Championship's), as a cup's
+    rounds: each tie's better seed first ("home"), its matches (a series' games too)."""
+    key: str
+    name: str
+    phase: str | None = None
+    title: bool = False  # its winners are the champions
     rounds: list[CupRoundOut]
     winner: ClubRef | None
 
@@ -181,6 +193,28 @@ class EuropePlaceOut(BaseModel):
     round_name: str = "League phase"  # "Second qualifying round (Champions Path)"
 
 
+class TableViewOut(BaseModel):
+    """A table a league can show: a phase's (Apertura), or the whole season's (key "season")."""
+    key: str
+    name: str
+
+
+class GroupTableOut(BaseModel):
+    """A conference's or zone's table: the league table's rows of its clubs, renumbered."""
+    key: str
+    name: str
+    rows: list[TableRowOut]
+
+
+class TitleOut(BaseModel):
+    """A league title won this season: the champions, a phase's champions, a title play-off's
+    winners (MLS Cup) or the table's own title (the Supporters' Shield)."""
+    title: str
+    club: ClubRef
+    kind: str  # champion | award
+    phase: str | None = None
+
+
 class TableOut(BaseModel):
     competition: str
     name: str
@@ -189,6 +223,12 @@ class TableOut(BaseModel):
     started: bool = True  # at least one match has been played
     first_match: str | None = None  # the date of its first league match
     rows: list[TableRowOut]
+    # A league of phases (Apertura, Clausura): the tables it can show and the one shown.
+    phases: list[TableViewOut] = []
+    phase: str | None = None
+    # A league of conferences or zones: each one's table (``rows`` is the whole league's).
+    groups: list[GroupTableOut] = []
+    titles: list[TitleOut] = []
     # A top league's European places (empty for other leagues, or a game without Europe), and
     # whether the rows' marks are where its clubs actually went (a finished season, next
     # season's entries made) rather than the places by position.

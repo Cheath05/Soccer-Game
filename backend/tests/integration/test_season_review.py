@@ -15,7 +15,7 @@ from footsim.api.app import create_app
 from footsim.api.season_review import season_final
 from footsim.api.session import CareerSession
 from footsim.core.paths import data_dir
-from footsim.persistence.schema import league_final
+from footsim.persistence.schema import league_final, league_title
 from footsim.world.context import get_world
 from footsim.world.meta import read_meta, write_meta
 from footsim.world.season import active_leagues, develop_players, members, rollover
@@ -46,6 +46,9 @@ def test_the_summary_after_a_rollover(tmp_path: Path) -> None:
                  "outcome": "champion" if n == 1 else
                  "playoff_winner" if entrants and n == entrants[0] else None}
                 for n, c in enumerate(clubs, start=1)])
+            conn.execute(league_title.insert().values(  # and its title (W9a: titles table)
+                season_id=1, competition_id=active.competition_id, title=active.league.name,
+                club_id=clubs[0], kind="champion"))
         news = rollover(conn, world, meta)
         write_meta(conn, meta)
     with session.read() as conn:

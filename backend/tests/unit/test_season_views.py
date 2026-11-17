@@ -23,6 +23,7 @@ from footsim.persistence.schema import (
     fixture,
     game_meta,
     league_final,
+    league_title,
     nation,
     person,
     player,
@@ -118,6 +119,11 @@ def _build(conn: Connection) -> None:
         _final(1, ENG1, B, 1, "champion"), _final(1, ENG1, A, 2, "relegated"),
         _final(1, ENG2, C, 1, "champion"), _final(1, ENG2, D, 2, None),
         _final(1, ENG2, E, 3, "playoff_winner")])
+    conn.execute(league_title.insert(), [  # the titles (W9a: honours read them here)
+        {"season_id": 1, "competition_id": ENG1, "title": "Premier League", "club_id": B,
+         "kind": "champion"},
+        {"season_id": 1, "competition_id": ENG2, "title": "EFL Championship", "club_id": C,
+         "kind": "champion"}])
     conn.execute(playoff_tie.insert().values(
         season_id=1, competition_id=ENG2, playoff_key="ENG2_PO", tie="F", round=2, club_a_id=E,
         club_b_id=D, rank_a=3, rank_b=2, winner_club_id=E))

@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.90"
+  date: "2026-11-16"
+  title: "League play-offs on the League page"
+  changes:
+    - "The League page now shows a league's play-offs under its table: every round's ties and results as they're played, and the rounds still to come with their dates (the Championship, League One and League Two play-offs, and more)."
+    - "Groundwork for the Americas (MLS, Liga MX, Argentina and Brazil, coming next): leagues can now have conferences or zones, two tournaments a season with their own tables and champions, best-of-three play-off series and play-offs that crown the champion. Titles are counted per trophy in your club's honours."
+
 - version: "1.88"
   date: "2026-11-16"
   title: "Blue, and a new start screen"

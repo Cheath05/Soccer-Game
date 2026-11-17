@@ -19,6 +19,7 @@ from footsim.persistence.schema import (
     continental_entry,
     cup_tie,
     league_final,
+    league_title,
     season,
 )
 from footsim.world import career
@@ -71,6 +72,11 @@ def career_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[Engine, World, 
             _final(1, eng1, a, 1, "champion"), _final(1, eng1, b, 2, None),
             _final(2, eng1, a, 5, None), _final(2, eng1, b, 1, "champion"),
             _final(3, eng1, a, 1, "champion"), _final(3, eng1, b, 2, None)])
+        name = conn.execute(text("SELECT name FROM competition WHERE id = :i"),
+                            {"i": eng1}).scalar_one()
+        conn.execute(league_title.insert(), [  # titles live here (W9a): the same champions
+            {"season_id": s, "competition_id": eng1, "title": name, "club_id": c,
+             "kind": "champion"} for s, c in ((1, a), (2, b), (3, a))])
         conn.execute(cup_tie.insert(), [
             _tie(1, fa_cup, final_round, a, b, a),
             _tie(1, ucl, ucl_final, a, b, a),

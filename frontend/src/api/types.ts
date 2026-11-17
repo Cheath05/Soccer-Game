@@ -289,9 +289,42 @@ export interface Table {
   rows: TableRow[]
   europe_places?: EuropePlace[] // empty below the top tier and without Europe
   europe_actual?: boolean // the marks show where clubs actually went the next season
+  phases?: TableView[] // a league of phases (Apertura, Clausura, and "season")
+  phase?: string | null // the one shown
+  groups?: GroupTable[] // a league of conferences or zones: each one's table
+  titles?: LeagueTitle[] // this season's titles won so far
 }
 
-export type Outcome = 'champion' | 'promoted' | 'playoff_winner' | 'playoffs' | 'relegated'
+export interface TableView {
+  key: string
+  name: string
+}
+
+export interface GroupTable {
+  key: string
+  name: string
+  rows: TableRow[]
+}
+
+export interface LeagueTitle {
+  title: string
+  club: ClubRef
+  kind: 'champion' | 'award'
+  phase: string | null
+}
+
+/** A league's play-off (MLS Cup, a Liguilla, the Championship's) in a cup's shape: each tie's
+ * better seed is "home"; a series' games are its fixtures. */
+export interface LeaguePlayoff {
+  key: string
+  name: string
+  phase: string | null
+  title: boolean
+  rounds: CupRound[]
+  winner: ClubRef | null
+}
+
+export type Outcome = 'champion' | 'promoted' | 'playoff_winner' | 'playoffs' | 'relegated' | 'table_title'
 
 export interface Season {
   id: number
@@ -593,6 +626,7 @@ export interface CupRound {
   ties: CupTie[]
   round?: QualifyingRound | null // a European qualifying round
   path?: QualifyingPath | null // and its path
+  games?: number // a league play-off's series: best of this many
 }
 
 export interface Cup {

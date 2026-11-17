@@ -28,6 +28,7 @@ from footsim.api.schemas import (
     FinancesOut,
     FixtureOut,
     LeagueOption,
+    LeaguePlayoffOut,
     MatchOut,
     NewCareerIn,
     PlayerDetailOut,
@@ -224,9 +225,22 @@ def competitions(session: Session) -> list[CompetitionOut]:
 
 
 @router.get("/competitions/{key}/table")
-def competition_table(key: str, session: Session, season: int | None = None) -> TableOut:
+def competition_table(key: str, session: Session, season: int | None = None,
+                      phase: str | None = None) -> TableOut:
+    """``phase``: a league of phases' table to show (a phase key, or "season" for the whole
+    season's); by default the phase under way."""
     with session.read() as conn:
-        return queries.table(conn, get_world(), key, season)
+        return queries.table(conn, get_world(), key, season, phase)
+
+
+@router.get("/competitions/{key}/playoffs")
+def competition_playoffs(key: str, session: Session,
+                         season: int | None = None) -> list[LeaguePlayoffOut]:
+    """A league's play-offs for a season (MLS Cup, a Liguilla, the Championship's)."""
+    if key not in get_world().defs.leagues:
+        raise HTTPException(404, f"no league {key}")
+    with session.read() as conn:
+        return queries.league_playoffs(conn, get_world(), key, season)
 
 
 @router.get("/seasons")

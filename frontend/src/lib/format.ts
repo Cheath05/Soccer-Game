@@ -195,6 +195,7 @@ export const OUTCOMES: Record<string, { label: string; color: string }> = {
   playoff_winner: { label: 'Play-off winners', color: 'teal' },
   playoffs: { label: 'Play-offs', color: 'blue' },
   relegated: { label: 'Relegated', color: 'red' },
+  table_title: { label: 'Top of the table', color: 'yellow' },
 }
 
 export function ordinal(n: number): string {

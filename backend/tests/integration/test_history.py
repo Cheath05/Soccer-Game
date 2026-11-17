@@ -10,7 +10,7 @@ from sqlalchemy import select, text
 from footsim.api.app import create_app
 from footsim.api.session import CareerSession
 from footsim.core.paths import data_dir
-from footsim.persistence.schema import competition, league_final
+from footsim.persistence.schema import competition, league_final, league_title
 
 BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
 pytestmark = pytest.mark.skipif(not BASE_WORLD.exists(), reason="base world not built")
@@ -41,6 +41,9 @@ def test_history_shows_the_season_so_far_then_final_positions(tmp_path: Path) ->
              "goals_against": 50, "points": 3 * won + 10, "outcome": outcome}
             for club, pos, won, outcome in ((GRIMSBY, 1, 28, "champion"),
                                             (other, 24, 5, "relegated"))])
+        conn.execute(league_title.insert().values(  # titles live here too (W9a)
+            season_id=1, competition_id=eng4, title="EFL League Two", club_id=GRIMSBY,
+            kind="champion"))
     history = client.get(f"/api/clubs/{GRIMSBY}/history").json()
     (final,) = history["seasons"]
     assert final["final"] is True and final["position"] == 1 and final["outcome"] == "champion"

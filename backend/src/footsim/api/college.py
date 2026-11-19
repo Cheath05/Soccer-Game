@@ -15,15 +15,35 @@ from footsim.persistence.schema import club, college_entry, college_team, league
 from footsim.world.college.common import NCAA, conference_event
 from footsim.world.college.draft import draft_pool
 from footsim.world.college.season import (
+    Record,
     bracket,
     college_competition,
     conference_tables,
+    overall_records,
     rankings,
 )
 from footsim.world.context import World, get_world
 from footsim.world.meta import CareerMeta, read_meta
 
 router = APIRouter(prefix="/api/college")
+
+
+class RecordOut(BaseModel):
+    """A team's record over every college game this season: conference, non-conference and
+    tournaments (a shoot-out counts as a draw)."""
+
+    played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+
+
+def _record(rec: Record | None) -> RecordOut:
+    rec = rec or Record()
+    return RecordOut(played=rec.played, won=rec.won, drawn=rec.drawn, lost=rec.lost,
+                     goals_for=rec.goals_for, goals_against=rec.goals_against)
 
 
 class ConferenceRowOut(BaseModel):
@@ -37,6 +57,7 @@ class ConferenceRowOut(BaseModel):
     goals_against: int
     points: int
     in_tournament: bool  # places in its conference tournament (or, with none, the title)
+    overall: RecordOut  # every college game this season, not only the conference's
 
 
 class ConferenceOut(BaseModel):
@@ -54,6 +75,7 @@ class RankingOut(BaseModel):
     club: ClubRef
     conference: str
     rpi: float
+    overall: RecordOut
 
 
 class BracketSideOut(BaseModel):
@@ -148,6 +170,7 @@ def conferences(session: Session, season_id: int | None = None) -> list[Conferen
         titles = {(str(r.phase), str(r.kind)): int(r.club_id) for r in conn.execute(
             select(league_title).where(league_title.c.season_id == sid,
                                        league_title.c.competition_id == comp))}
+        records = overall_records(conn, world, sid)
         out = []
         for key, table in conference_tables(conn, world, meta, sid).items():
             conf = world.defs.college.conferences[key]
@@ -164,7 +187,8 @@ def conferences(session: Session, season_id: int | None = None) -> list[Conferen
                     position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
                     played=r.played, won=r.won, drawn=r.drawn, lost=r.lost,
                     goals_for=r.goals_for, goals_against=r.goals_against, points=r.points,
-                    in_tournament=r.position <= places) for r in table]))
+                    in_tournament=r.position <= places, overall=_record(records.get(r.club_id)))
+                    for r in table]))
         return out
 
 
@@ -179,10 +203,11 @@ def college_rankings(session: Session, limit: int = 50) -> list[RankingOut]:
         conference = {int(r.club_id): str(r.conference)
                       for r in conn.execute(select(college_team))}
         ratings = rankings(conn, world, meta.season_id)
+        records = overall_records(conn, world, meta.season_id)
         order = sorted(ratings, key=lambda c: (-ratings[c], c))[:max(1, limit)]
         return [RankingOut(rank=k, club=ClubRef(id=c, name=names[c]),
                            conference=world.defs.college.conferences[conference[c]].short_name,
-                           rpi=round(ratings[c], 4))
+                           rpi=round(ratings[c], 4), overall=_record(records.get(c)))
                 for k, c in enumerate(order, start=1)]
 
 

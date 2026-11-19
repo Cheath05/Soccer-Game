@@ -1,7 +1,7 @@
 import { Badge, Button, Card, Grid, Group, Stack, Table, Text } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
-import { useConferences } from '../api/americas'
+import { useConferences, wdl } from '../api/americas'
 import { useRecruiting } from '../api/recruiting'
 import { useCareer, useFinances, useSquad, useTable } from '../api/hooks'
 import { tierStars } from '../lib/college'
@@ -205,9 +205,10 @@ export default function DashboardPage() {
                 </Badge>
               </Group>
               <Group mt="sm" grow align="flex-start">
-                <Figure label="Prestige" value={`${college.prestige}`} />
-                <Figure label="RPI rank" value={college.rpi_rank ? `${college.rpi_rank}` : '–'} />
+                <Figure label="Overall" value={wdl(conference?.rows.find((r) => r.club.id === career.club.id)?.overall)} />
                 <Figure label="Conference" value={career.position ? ordinal(career.position) : '–'} />
+                <Figure label="RPI rank" value={college.rpi_rank ? `${college.rpi_rank}` : '–'} />
+                <Figure label="Prestige" value={`${college.prestige}`} />
               </Group>
             </Card>
           </Grid.Col>

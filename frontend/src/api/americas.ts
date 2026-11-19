@@ -112,6 +112,16 @@ export const useBuySlot = () => useRosterAction<{ from_club_id: number }>('post'
 
 // --- college ----------------------------------------------------------------------------------
 
+// A team's record over every college game this season: conference, non-conference and tournaments.
+export interface CollegeRecord {
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+}
+
 export interface ConferenceRow {
   position: number
   club: ClubRef
@@ -123,6 +133,7 @@ export interface ConferenceRow {
   goals_against: number
   points: number
   in_tournament: boolean
+  overall?: CollegeRecord // every college game, not only the conference's
 }
 
 export interface Conference {
@@ -140,7 +151,11 @@ export interface Ranking {
   club: ClubRef
   conference: string
   rpi: number
+  overall?: CollegeRecord
 }
+
+/** A record as W-D-L. */
+export const wdl = (r?: CollegeRecord) => (r ? `${r.won}-${r.drawn}-${r.lost}` : '–')
 
 export interface BracketSide {
   seed: number

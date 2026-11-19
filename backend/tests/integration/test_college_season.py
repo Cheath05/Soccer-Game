@@ -274,8 +274,15 @@ def test_the_read_api(played: _Season) -> None:
     assert len(acc.rows) == 15 and acc.rows[0].position == 1
     assert acc.regular_season_champion == acc.rows[0].club and acc.tournament_champion
     assert sum(r.in_tournament for r in acc.rows) == acc.tournament
+    # The overall record counts every college game: the conference's, the rest and tournaments.
+    for r in acc.rows:
+        assert r.overall.played > r.played
+        assert r.overall.won >= r.won and r.overall.lost >= r.lost
+    champion = next(r for r in acc.rows if r.club == acc.tournament_champion)
+    assert champion.overall.won >= champion.won + 2  # it won its tournament's games too
     ranks = api.college_rankings(session, limit=10)
     assert [r.rank for r in ranks] == list(range(1, 11)) and ranks[0].rpi >= ranks[-1].rpi
+    assert all(r.overall.played >= 15 for r in ranks)
     ncaa = api.college_bracket(session)
     assert len(ncaa.entrants) == 48 and ncaa.seeded == 16 and ncaa.champion is not None
     assert [len(r.matches) for r in ncaa.rounds] == [32, 16, 8, 4, 2, 1]

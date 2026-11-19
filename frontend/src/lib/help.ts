@@ -264,8 +264,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     blocks: [
       'College in the menu (under More on a phone) follows NCAA Division I men’s soccer, whose players feed MLS’s SuperDraft. A career started before college soccer joined the game gets it from its next season.',
       [
-        'Conferences: pick a conference for its table (conference games only; the marked places go to its tournament), or Tournament for its bracket in November. Its winner takes an automatic bid to the NCAA tournament.',
-        'RPI: the Rating Percentage Index, which picks the NCAA’s 25 at-large teams and its seeds.',
+        'Conferences: pick a conference for its table (ranked on conference games only; the marked places go to its tournament), or Tournament for its bracket in November. Its winner takes an automatic bid to the NCAA tournament. Switch Conference games to All games to see each team’s record over every college game this season (non-conference games and the tournaments too; a shoot-out counts as a draw), in the same order.',
+        'RPI: the Rating Percentage Index, which picks the NCAA’s 25 at-large teams and its seeds, with each team’s overall record (W-D-L).',
         'NCAA: the 48-team bracket, picked on 16 November. Seeds 1–16 have a bye to the second round; the College Cup (the semifinals and final, at a neutral ground) is in mid-December. Click a played match for its report, or a club for its page.',
         'Draft pool: after the College Cup, the seniors and a few underclassmen signed by Generation adidas (GA) who are up for the SuperDraft, with their college, class, position and overall.',
       ],
@@ -280,7 +280,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       [
         'Your matches: the regular season from late August, your conference’s tournament in November, then the NCAA tournament if you make the field. Continue, Match day and the live match work as for any club. The whole NCAA is your league, so it is always fully simulated.',
         'Squad: each player’s class (Fr, So, Jr, Sr), his scholarship (Full, a percentage, or Walk-on) and the season he leaves after. A Draft mark means he has declared for the MLS SuperDraft.',
-        'Dashboard: your conference’s table, and your program’s prestige, RPI rank and place in the conference.',
+        'Dashboard: your conference’s table, and your program’s overall record (every game this season), place in the conference, RPI rank and prestige.',
         'Players leave by graduating after their senior season, by declaring for the SuperDraft (seniors, and the best underclassmen after the College Cup), or when you let one go (Release on his page): he turns pro as a free agent. A program can’t sign professionals.',
         'Prestige (0–100) starts from the program’s tier and moves at each season’s end with your last three seasons: your RPI rank, NCAA tournament wins and titles. The higher it is, the better the recruits who want you.',
         'The menu leaves out Transfers, Finances, the professional League, Cups and Europe. On a phone the bar has Home, Squad, Tactics and Recruiting; College is under More.',

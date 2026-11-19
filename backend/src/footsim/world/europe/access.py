@@ -12,10 +12,12 @@ from footsim.core.rng import derive_rng
 from footsim.persistence.schema import (
     club,
     club_league_membership,
+    college_team,
     competition,
     cup_tie,
     league_final,
     nation,
+    national_team,
 )
 from footsim.world.context import World
 from footsim.world.europe.common import KNOCKOUT
@@ -74,12 +76,16 @@ def _before_table(conn: Connection, world: World, season_id: int, nation_code: s
 def _lottery(conn: Connection, world: World, meta: CareerMeta, season_id: int,
              nation_code: str) -> list[int]:
     """A country without a league: its clubs (those in no league this season) in a weighted
-    lottery order, each draw's chances weighted by reputation ** lottery_power."""
+    lottery order, each draw's chances weighted by reputation ** lottery_power. National teams
+    (W8) and college programs (W9a) are clubs in no league too, but never a country's
+    representatives."""
     in_league = select(club_league_membership.c.club_id).where(
         club_league_membership.c.season_id == season_id)
     rows = conn.execute(select(club.c.id, club.c.reputation).join(
         nation, nation.c.id == club.c.nation_id).where(
-        nation.c.code == nation_code, club.c.id.not_in(in_league)).order_by(club.c.id)).all()
+        nation.c.code == nation_code, club.c.id.not_in(in_league),
+        club.c.id.not_in(select(national_team.c.club_id)),
+        club.c.id.not_in(select(college_team.c.club_id))).order_by(club.c.id)).all()
     if not rows:
         return []
     top = max(max(r.reputation for r in rows), 1)

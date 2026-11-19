@@ -119,6 +119,43 @@ def _results(conn: Connection, comp: int, season_id: int, stage: str | None = No
     return list(conn.execute(query.order_by(fixture.c.id)))
 
 
+@dataclass
+class Record:
+    """A team's record over every college game of a season (regular season, conference
+    tournament and NCAA tournament). A game settled on penalties counts as a draw."""
+
+    won: int = 0
+    drawn: int = 0
+    lost: int = 0
+    goals_for: int = 0
+    goals_against: int = 0
+
+    @property
+    def played(self) -> int:
+        return self.won + self.drawn + self.lost
+
+
+def overall_records(conn: Connection, world: World, season_id: int) -> dict[int, Record]:
+    """Every team's overall record this season so far."""
+    comp = college_competition(conn, world)
+    found: dict[int, Record] = defaultdict(Record)
+    if comp is None:
+        return found
+    for r in _results(conn, comp, season_id):
+        for club, scored, conceded in ((r.home_club_id, r.home_goals, r.away_goals),
+                                       (r.away_club_id, r.away_goals, r.home_goals)):
+            rec = found[int(club)]
+            rec.goals_for += int(scored)
+            rec.goals_against += int(conceded)
+            if scored > conceded:
+                rec.won += 1
+            elif scored < conceded:
+                rec.lost += 1
+            else:
+                rec.drawn += 1
+    return found
+
+
 def conference_tables(conn: Connection, world: World, meta: CareerMeta, season_id: int
                       ) -> dict[str, list[TableRow]]:
     """Every conference's table this season: its conference games only."""

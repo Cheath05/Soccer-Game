@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.118"
+  date: "2026-11-19"
+  title: "College: overall records"
+  changes:
+    - "College → Conferences: switch Conference games to All games to see each team's record over every college game this season (non-conference games and the tournaments too), not only its conference games. The RPI rankings show each team's overall W-D-L, and a college coach's dashboard shows their program's."
+
 - version: "1.116"
   date: "2026-11-19"
   title: "Coach a college program, and recruit high-school players"

@@ -892,3 +892,12 @@ export interface SimulationSettings {
   fast: string[]
   user_league: string | null
 }
+
+// GET/PUT /api/settings/offers (api/simulation.py OfferRulesOut): bids for your players while the game moves on.
+export type OfferMode = 'stop' | 'wait' | 'auto'
+export interface OfferRules {
+  mode: OfferMode
+  value_pct: number | null // "auto": sell a player without an asking price at this % of his value; null: not for sale
+  loans: 'accept' | 'reject'
+  asking_prices: Record<string, number> // by player id, in EUR
+}

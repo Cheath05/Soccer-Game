@@ -73,7 +73,8 @@ class FastResults:
         pushing and the leading side catching it on the break. Rates only change at a goal or at
         a boundary (half time, the chasing minute), so only those are stepped through."""
         q, p = self.q, self.p
-        cuts = sorted({start, end, *(m for m in (45.0, float(q.chasing_minute)) if start < m < end)})
+        inside = (m for m in (45.0, float(q.chasing_minute)) if start < m < end)
+        cuts = sorted({start, end, *inside})
         totals = list(score)
         found: list[tuple[int, int]] = []
         t = start

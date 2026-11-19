@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.110"
+  date: "2026-11-19"
+  title: "Sims that don't stop for every bid: asking prices"
+  changes:
+    - "Settings → Transfer offers: bids for your players can stop the game (as before), wait under Transfers without stopping it, or be answered for you. Answered for you, a bid at or above the player's asking price sells him, and a lower one is countered at that price (the club pays it or walks away). Players without a price can be not for sale, or sold at a share of their value you choose. Loan requests are agreed to or turned down, as you choose."
+    - "Asking prices: set one on any of your players' pages, under Up for sale."
+
 - version: "1.109"
   date: "2026-11-17"
   title: "Faster sims: choose which leagues are fully simulated"

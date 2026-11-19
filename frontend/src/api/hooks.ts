@@ -9,6 +9,7 @@ import type {
   Changelog,
   Draft,
   SimLeague,
+  OfferRules,
   SimulationSettings,
   ClubHistory,
   Finances,
@@ -81,6 +82,26 @@ export function useSetSimulation() {
   return useMutation({
     mutationFn: (fast: string[]) => api.put<SimulationSettings>('/settings/simulation', { fast }),
     onSuccess: (data) => client.setQueryData(['simulation'], data),
+  })
+}
+
+/** Settings → Transfer offers: whether bids for your players stop the game, wait, or are answered by your prices. */
+export const useOfferRules = () => useQuery({ queryKey: ['offer-rules'], queryFn: () => api.get<OfferRules>('/settings/offers') })
+
+export function useSetOfferRules() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { mode: string; value_pct: number | null; loans: string }) => api.put<OfferRules>('/settings/offers', body),
+    onSuccess: (data) => client.setQueryData(['offer-rules'], data),
+  })
+}
+
+/** Your asking price for one of your players, in EUR (null: none). */
+export function useSetAskingPrice() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { playerId: number; feeEur: number | null }) => api.put<OfferRules>(`/settings/asking-price/${args.playerId}`, { fee_eur: args.feeEur }),
+    onSuccess: (data) => client.setQueryData(['offer-rules'], data),
   })
 }
 

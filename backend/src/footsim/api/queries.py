@@ -108,6 +108,7 @@ from footsim.world.europe.common import competitions_by_rank, stage_name
 from footsim.world.europe.places import CountryPlace, country_places
 from footsim.world.europe.qualifying import Node, node_of, round_name
 from footsim.world.fast_sim import SIM as FAST_SIM
+from footsim.world.international.common import is_national
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
 from footsim.world.season import (
@@ -912,7 +913,10 @@ def _squad_entry(world: World, r: Row[Any], attrs: np.ndarray, fams: dict[str, i
 
 def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
     meta = read_meta(conn)
-    rows = _player_rows(conn, "k.club_id = :club", {"club": club_id})
+    # A national team's players are its called-up squad (world/international).
+    where = ("p.id IN (SELECT player_id FROM national_squad WHERE club_id = :club)"
+             if is_national(conn, club_id) else "k.club_id = :club")
+    rows = _player_rows(conn, where, {"club": club_id})
     ids = [r.id for r in rows]
     attrs, positions = _attributes(conn, ids), _positions(conn, ids)
     stats = _season_stats(conn, ids, meta.season_id)

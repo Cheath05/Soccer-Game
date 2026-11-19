@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.112"
+  date: "2026-11-19"
+  title: "National teams (the first step towards the World Cup)"
+  changes:
+    - "Every FIFA member has a national team, with a 26-man squad picked from its players in the game. Search for a country (Spain, Egypt, Japan...) to see its squad."
+    - "Countries whose players mostly play at home, in leagues the game doesn't have, are filled out with made-up home-based players at their real strength, so every nation can field a proper team. These players don't appear in the transfer market."
+    - "International matches, qualifiers and the World Cup come next."
+
 - version: "1.110"
   date: "2026-11-19"
   title: "Sims that don't stop for every bid: asking prices"

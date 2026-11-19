@@ -16,6 +16,7 @@ from footsim.persistence.schema import fixture, game_meta, metadata, player, pla
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
+from footsim.world.international import ensure_international
 from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
 from footsim.world.mls import charge_dp_fees, start_mls
@@ -71,6 +72,7 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     ))
     refresh_ai_tactics(conn, world, meta, start)
     create_season_fixtures(conn, world, meta, 1)
+    ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).
     start_mls(conn, world, meta, start)

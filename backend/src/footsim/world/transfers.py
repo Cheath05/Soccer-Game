@@ -33,6 +33,7 @@ from footsim.transfers.valuation import plain_values, values_eur, years_old
 from footsim.world.college.common import in_college
 from footsim.world.context import World
 from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
+from footsim.world.international.common import in_pool
 from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.mls import sync_clubs
 from footsim.world.mls_market import FeeSplit, addition_problem, apply_fee_gam, fee_split
@@ -112,6 +113,8 @@ def validate_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
         raise MoveRefused("No such player.")
     if in_college(conn, move.player_id):
         raise MoveRefused("He plays college soccer: he can sign once he turns pro.")
+    if in_pool(conn, move.player_id):
+        raise MoveRefused("He plays at home, outside the leagues in the game.")
     owner = owner_contract(conn, move.player_id)
     if on_loan(conn, move.player_id):
         raise MoveRefused("He's out on loan: he can move when he's back.")

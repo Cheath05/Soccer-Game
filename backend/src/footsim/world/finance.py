@@ -30,6 +30,7 @@ from footsim.persistence.schema import club, club_finance, finance_ledger
 from footsim.persistence.schema import season as season_table
 from footsim.world.college.common import college_club_ids
 from footsim.world.context import World
+from footsim.world.international.common import national_club_ids
 from footsim.world.meta import CareerMeta, write_meta
 from footsim.world.overall_history import player_overalls
 
@@ -159,6 +160,7 @@ def initialize_finances(conn: Connection, world: World, meta: CareerMeta, day: d
     bills = wage_bills(conn)
     leagues = club_leagues(conn, meta.season_id)
     existing |= college_club_ids(conn)  # college programs have no ledger (world/college)
+    existing |= national_club_ids(conn)  # nor national teams (world/international)
     new_rows, opening = [], []
     for (club_id,) in conn.execute(select(club.c.id).order_by(club.c.id)):
         if club_id in existing:

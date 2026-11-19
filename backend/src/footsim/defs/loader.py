@@ -29,6 +29,7 @@ from footsim.defs.europe import (
 )
 from footsim.defs.finance import FinanceDef, WageLevelsFile
 from footsim.defs.formations import FormationDef
+from footsim.defs.international import InternationalDef, TeamsFile
 from footsim.defs.lifecycle import LifecycleDef
 from footsim.defs.market import MarketDef
 from footsim.defs.match import (
@@ -104,6 +105,7 @@ class GameDefinitions:
     season_before: SeasonBeforeFile  # how the season before the career really finished
     college: CollegeDef  # US college soccer: the NCAA season and its programs (W9a)
     mls: MlsRulesDef  # MLS's roster rules (world/mls.py)
+    international: InternationalDef  # national teams (W8, world/international)
 
     def roles_for(self, group: PositionGroup) -> list[RoleDef]:
         return [r for r in self.roles.values() if r.group is group]
@@ -143,6 +145,16 @@ def load_server(root: Path | None = None) -> ServerDef:
     """The server's own settings (data/config/server.yaml), apart from the game's definitions:
     the accounts command and the API read them without loading the whole game."""
     return _parse(ServerDef, (root or config_dir()) / "server.yaml")
+
+
+def load_international(root: Path) -> InternationalDef:
+    base = root / "international"
+    teams = _parse(TeamsFile, base / "teams.yaml").teams
+    return _validate(InternationalDef, {
+        "teams": {t.code: t for t in teams},
+        "names": _read_yaml(base / "names.yaml"),
+        "rules": _read_yaml(base / "rules.yaml"),
+    }, base)
 
 
 def load_college(root: Path) -> CollegeDef:
@@ -197,6 +209,7 @@ def load_definitions(root: Path | None = None) -> GameDefinitions:
                                         root / "europe" / "association_coefficients.yaml"),
         season_before=_parse(SeasonBeforeFile, root / "europe" / "season_before.yaml"),
         college=load_college(root),
+        international=load_international(root),
         mls=_parse(MlsRulesDef, root / "rules" / "mls.yaml"),
     )
     _cross_validate(defs)

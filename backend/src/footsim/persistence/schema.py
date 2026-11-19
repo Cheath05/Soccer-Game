@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 25  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 26  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -686,4 +686,32 @@ draft_board = Table(
     Column("player_id", ForeignKey("person.id"), nullable=False),
     Column("rank", Integer, nullable=False),
     PrimaryKeyConstraint("season_id", "club_id", "player_id"),
+)
+
+# --- International football (W8, world/international) ------------------------------------
+
+national_team = Table(
+    "national_team",  # a FIFA member's national team: its club row, and its Elo as it moves
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("code", Text, nullable=False, unique=True),  # FIFA's code (international/teams.yaml)
+    Column("confederation", Text, nullable=False),
+    Column("elo", Float, nullable=False),
+)
+
+national_pool = Table(
+    "national_pool",  # made-up home-based players: no club in the game; their nation's to call up
+    metadata,
+    Column("player_id", ForeignKey("person.id"), primary_key=True),
+    Column("code", Text, nullable=False),
+    Index("ix_national_pool_code", "code"),
+)
+
+national_squad = Table(
+    "national_squad",  # each national team's current squad (called up before each window)
+    metadata,
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("player_id", ForeignKey("person.id"), nullable=False),
+    PrimaryKeyConstraint("club_id", "player_id"),
+    Index("ix_national_squad_player", "player_id"),
 )

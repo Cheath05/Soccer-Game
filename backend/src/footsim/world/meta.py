@@ -37,6 +37,9 @@ class CareerMeta:
     offer_loans: str = "reject"  # "auto": loan requests are "accept"ed or "reject"ed
     # The user's asking prices (EUR), by player: "auto" sells at or above it, counters below.
     asking_prices: dict[int, int] = field(default_factory=dict)
+    # The national team the user manages (its club id; world/international), alongside the club
+    # or on its own. None: none.
+    user_nation_id: int | None = None
 
     @property
     def seed(self) -> int:
@@ -59,6 +62,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         offer_value_pct=values.get("offer_value_pct"),
         offer_loans=str(values.get("offer_loans", "reject")),
         asking_prices={int(k): int(v) for k, v in values.get("asking_prices", {}).items()},
+        user_nation_id=values.get("user_nation_id"),
     )
 
 
@@ -77,6 +81,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "offer_value_pct": meta.offer_value_pct,
         "offer_loans": meta.offer_loans,
         "asking_prices": {str(k): v for k, v in meta.asking_prices.items()},
+        "user_nation_id": meta.user_nation_id,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

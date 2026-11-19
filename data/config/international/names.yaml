@@ -1,0 +1,77 @@
+# Names for made-up home-based players (world/international/pools.py). A nation with at least
+# `own_names_min` people in the save uses its own people's names. A nation with fewer uses
+# its naming region: the names of the region's `donors` (nations with plenty of people in the
+# game), its own few, and the region's own lists below. A nation not listed uses the whole save's
+# names.
+own_names_min: 40
+
+regions:
+  arabic_north_africa:
+    donors: [MAR, ALG, TUN, KSA]
+    nations: [EGY, LBY, MTN, SDN, DJI, COM]
+  gulf_levant:
+    donors: [KSA, MAR, ALG]
+    nations: [UAE, QAT, OMA, BHR, KUW, YEM, IRQ, JOR, SYR, LBN, PLE]
+  persian:
+    donors: []
+    nations: [IRN, AFG, TJK]
+    first: [Ali, Mehdi, Reza, Hossein, Saeid, Mohammad, Ahmad, Amir, Sardar, Alireza, Milad, Saman,
+            Omid, Karim, Morteza, Majid, Hamed, Payam, Ehsan, Arash, Vahid, Masoud, Farshad,
+            Rouzbeh, Shoja, Mohammadreza, Allahyar, Ramin, Siavash, Javad]
+    last: [Taremi, Azmoun, Jahanbakhsh, Ghoddos, Rezaeian, Karimi, Hosseini, Mohammadi, Ahmadi,
+           Ezatolahi, Nourollahi, Beiranvand, Kanaani, Cheshmi, Moharrami, Mohebi, Gholizadeh,
+           Torabi, Amiri, Rahimi, Hajsafi, Khalilzadeh, Shojaei, Ansarifard, Dejagah, Ebrahimi,
+           Niazmand, Sayadmanesh, Hardani, Nematollahi]
+  central_asian:
+    donors: [KAZ]
+    nations: [UZB, KGZ, TKM, MNG]
+    first: [Eldor, Jaloliddin, Abbosbek, Otabek, Oston, Khojimat, Rustam, Jamshid, Sherzod,
+            Azizbek, Ulugbek, Dostonbek, Akmal, Bakhtiyor, Farrukh, Islom]
+    last: [Shomurodov, Masharipov, Fayzullaev, Shukurov, Urunov, Erkinov, Ashurmatov, Khusanov,
+           Nasrullaev, Abdikholikov, Alikulov, Yusupov, Turgunboev, Hamrobekov, Sayfiev]
+  east_asian:
+    donors: [CHN, KOR, JPN]
+    nations: [PRK, HKG, TPE, MAC]
+  southeast_asian:
+    donors: []
+    nations: [THA, VIE, IDN, MAS, PHI, SIN, MYA, CAM, LAO, TLS, BRU]
+    first: [Nguyen, Quang, Van, Tuan, Chanathip, Supachok, Teerasil, Theerathon, Ekanit, Muhammad,
+            Ahmad, Asnawi, Pratama, Egy, Witan, Safawi, Faisal, Arif, Shahrel, Ikhsan, Aung, Kyaw,
+            Sok, Chan, Phonsak, Rizky, Ramadhan, Dimas, Hakim, Syahmi]
+    last: [Hai, Hoang, Tran, Le, Pham, Dang, Do, Bui, Songkrasin, Dangda, Sarachat, Muangngam,
+           Bunmathan, Mangkusu, Witanto, Arhan, Hubner, Rasid, Saad, Mahmud, Ismail, Latif,
+           Kurniawan, Maulana, Hidayat, Sanchez, Reyes, Kyaw, Vanna, Pinto]
+  south_asian:
+    donors: [IND]
+    nations: [PAK, BAN, NEP, SRI, MDV, BHU]
+  hispanic_central_america:
+    donors: [MEX, COL, VEN]
+    nations: [PAN, CRC, HON, GUA, SLV, NCA, CUB, DOM, PUR, EQG]
+  english_caribbean:
+    donors: [JAM, ENG]
+    nations: [TRI, VIN, LCA, SKN, GRN, MSR, BER, BLZ, BRB, ATG, DMA, CAY, VIR, TCA, VGB, BAH,
+              AIA, GUY]
+  dutch_caribbean:
+    donors: [CUW, NED]
+    nations: [SUR, ARU]
+  francophone_caribbean:
+    donors: [FRA, SEN, CIV]
+    nations: [HAI]
+  francophone_africa:
+    donors: [SEN, CIV, CMR, MLI, COD, GUI]
+    nations: [BEN, TOG, GAB, NIG, BFA, CTA, CHA, CGO, MAD, RWA, BDI, MRI, SEY]
+  anglophone_west_africa:
+    donors: [NGA, GHA, GAM]
+    nations: [SLE, LBR]
+  east_southern_africa:
+    donors: [NGA, GHA, RSA, ZIM, ZAM, KEN, UGA]
+    nations: [RSA, ZIM, ZAM, KEN, UGA, TAN, ETH, ERI, SSD, SOM, MWI, BOT, NAM, LES, SWZ]
+  lusophone_africa:
+    donors: [ANG, GNB, CPV, MOZ, POR]
+    nations: [ANG, MOZ, GNB, STP]
+  oceania:
+    donors: [NZL, AUS]
+    nations: [FIJ, PNG, SOL, VAN, TAH, NCL, SAM, TGA, COK, ASA]
+  alpine:
+    donors: [SUI, AUT]
+    nations: [LIE]

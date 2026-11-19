@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.118"
+- version: "1.120"
   date: "2026-11-19"
   title: "College: overall records"
   changes:
@@ -41,6 +41,14 @@
     - "Recruiting (for a college coach): each season a national class of 2,200 high-school seniors is ranked by stars, nationally, by position and by home state. Put recruits on your target list (Top, High or Watch) and your staff spread their week over them, building interest and narrowing their estimate of each one's ability. Offer full or partial scholarships or walk-on places from 1 August; recruits weigh the money, your prestige, playing time, the distance from home and your attention against the other programs' offers, commit through the autumn and sign on signing day in February."
     - "The 2025 rules: at most 28 players and no scholarship limit, each program giving what its money allows (counted in full scholarships, more for the powers). A program's prestige now moves with its results, so winning recruits better."
     - "Every NCAA program now recruits its freshmen from the national class, in every career, instead of getting made-up classes."
+
+- version: "1.114"
+  date: "2026-11-19"
+  title: "International windows: call-ups, friendlies and the world ranking"
+  changes:
+    - "International football: in each of FIFA's international windows (September-October, November, March and June), every national team calls up its squad, and the players are away from their clubs until the window ends. The news tells you which of your players are away."
+    - "National teams play friendlies against nations of a similar strength. They count as caps and goals, and move each team's Elo rating, but carry no injuries or cards."
+    - "International (in the menu): every national team ranked by Elo, by confederation or by name, with the latest results. A player's page shows his national team, caps and goals, and whether he's in its squad."
 
 - version: "1.112"
   date: "2026-11-19"

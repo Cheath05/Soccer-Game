@@ -469,6 +469,7 @@ export interface ClubOverview {
   recent: Fixture[]
   upcoming: Fixture[]
   recent_transfers: string[]
+  national?: NationalTeam | null // a national team's page
 }
 
 export type FamiliarityBand = 'natural' | 'accomplished' | 'competent' | 'awkward' | 'unconvincing'
@@ -501,6 +502,7 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   traits: string[]
   own_player: boolean
   retired?: boolean
+  international?: InternationalCareer | null // his national team (W8)
 }
 
 /** A player's season in one competition (or, on a total row, in all of them). */
@@ -934,4 +936,33 @@ export interface OfferRules {
   value_pct: number | null // "auto": sell a player without an asking price at this % of his value; null: not for sale
   loans: 'accept' | 'reject'
   asking_prices: Record<string, number> // by player id, in EUR
+}
+
+// GET /api/international (api/international.py): the national teams by Elo and the latest results.
+export interface RankedTeam {
+  rank: number
+  team: ClubRef
+  code: string // FIFA's code
+  confederation: string // UEFA, CONMEBOL, CONCACAF, AFC, CAF, OFC
+  elo: number
+  change: number // since the career began
+}
+export interface InternationalOverview {
+  teams: RankedTeam[]
+  results: Fixture[]
+}
+// A player's national team (PlayerDetail.international).
+// ClubOverview.national: a national team's page (W8).
+export interface NationalTeam {
+  code: string
+  confederation: string
+  elo: number
+  rank: number
+}
+export interface InternationalCareer {
+  team: ClubRef
+  caps: number
+  goals: number
+  in_squad: boolean
+  home_based: boolean // a made-up player whose club is outside the game's leagues
 }

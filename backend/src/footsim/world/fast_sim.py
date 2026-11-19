@@ -29,6 +29,8 @@ from footsim.match.report import MatchReport
 from footsim.match.teams import TeamSheet
 from footsim.world.college.common import is_college_club
 from footsim.world.context import World
+from footsim.world.international.common import away_players, national_club_ids
+from footsim.world.international.windows import FRIENDLY
 from footsim.world.meta import CareerMeta, players_epoch
 from footsim.world.season import decider_for
 from footsim.world.squads import team_sheet
@@ -84,16 +86,22 @@ def split_day(conn: Connection, world: World, meta: CareerMeta, games: list[Row[
               ) -> tuple[list[Row[Any]], list[Row[Any]]]:
     """The day's AI fixtures as (fully simulated, fast), each in fixture-id order."""
     fast = effective_fast(conn, meta) if meta.fast_leagues else set()
-    if not fast or not games:
+    if not games:
         return games, []
     comps = {int(r.id): (str(r.key), str(r.type))
              for r in conn.execute(text("SELECT id, key, type FROM competition"))}
+    # International friendlies always get fast results, unless the user's national team plays.
+    friendly = {cid for cid, (key, _) in comps.items() if key == FRIENDLY}
+    if not fast and not any(fx.competition_id in friendly for fx in games):
+        return games, []
     leagues: dict[int, str] | None = None
     real: list[Row[Any]] = []
     quick: list[Row[Any]] = []
     for fx in games:
         key, kind = comps[fx.competition_id]
-        if kind in ("league", "college"):
+        if key == FRIENDLY:
+            is_fast = meta.user_nation_id not in (fx.home_club_id, fx.away_club_id)
+        elif kind in ("league", "college"):
             is_fast = key in fast
         elif kind == "cup" and key in world.defs.cups:
             if leagues is None:
@@ -131,13 +139,18 @@ def _sheet_keys(conn: Connection, clubs: list[int], day: date) -> dict[int, tupl
     params = {f"c{k}": c for k, c in enumerate(clubs)}
     marks = ", ".join(f":{k}" for k in params)
     members: dict[int, list[tuple[Any, ...]]] = defaultdict(list)
+    away = away_players(conn, day)
+    national = national_club_ids(conn)
     for r in conn.execute(text(f"""
             SELECT k.club_id, k.person_id, s.condition, s.injured_until, s.suspended_matches
-            FROM playing k LEFT JOIN player_state s ON s.player_id = k.person_id
+            FROM (SELECT club_id, person_id FROM playing
+                  UNION ALL SELECT club_id, player_id FROM national_squad) k
+            LEFT JOIN player_state s ON s.player_id = k.person_id
             WHERE k.club_id IN ({marks}) ORDER BY k.club_id, k.person_id"""), params):
         injured = r.injured_until is not None and date.fromisoformat(r.injured_until) > day
+        gone = r.club_id not in national and r.person_id in away
         members[r.club_id].append((r.person_id, r.condition,
-                                   not injured and not (r.suspended_matches or 0)))
+                                   not injured and not (r.suspended_matches or 0) and not gone))
     tactics = {r.club_id: tuple(r) for r in conn.execute(text(
         f"SELECT club_id, formation, roles, lineup, instructions FROM tactic "
         f"WHERE club_id IN ({marks})"), params)}

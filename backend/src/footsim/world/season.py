@@ -64,6 +64,8 @@ from footsim.world.draft import draft_day
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.international import ensure_international
+from footsim.world.international.common import SUMMER_TYPES
+from footsim.world.international.windows import FRIENDLY, international_day
 from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
 from footsim.world.market import run_market
@@ -307,6 +309,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
                 messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
     messages += progress_college(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
+    messages += international_day(conn, world, meta, day)
     messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
@@ -577,7 +580,7 @@ def _progress_playoff(conn: Connection, world: World, meta: CareerMeta, competit
 
 def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
     """Knockout rules for a play-off or cup fixture; None for league games and first legs."""
-    if fx.stage == "league":
+    if fx.stage in ("league", FRIENDLY):
         return None
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)
@@ -603,8 +606,12 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
 
 
 def season_complete(conn: Connection, season_id: int) -> bool:
+    """Whether every fixture of the season is played. International football (and the Club
+    World Cup) runs into July, so it doesn't hold the rollover up (world/international)."""
+    summer = select(competition.c.id).where(competition.c.type.in_(SUMMER_TYPES))
     return conn.execute(select(func.count()).select_from(fixture).where(
         fixture.c.season_id == season_id, fixture.c.status == "scheduled",
+        fixture.c.competition_id.not_in(summer),
     )).scalar_one() == 0
 
 

@@ -154,6 +154,7 @@ def load_international(root: Path) -> InternationalDef:
         "teams": {t.code: t for t in teams},
         "names": _read_yaml(base / "names.yaml"),
         "rules": _read_yaml(base / "rules.yaml"),
+        "qualifiers": _read_yaml(base / "qualifiers_2030.yaml"),
     }, base)
 
 

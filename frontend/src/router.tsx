@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage'
 import EuropePage from './pages/EuropePage'
 import FinancesPage from './pages/FinancesPage'
 import FixturesPage from './pages/FixturesPage'
+import InternationalPage from './pages/InternationalPage'
 import LeaguePage from './pages/LeaguePage'
 import LivePage from './pages/LivePage'
 import MatchdayPage from './pages/MatchdayPage'
@@ -43,6 +44,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/college', component: CollegePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/recruiting', component: RecruitingPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/international', component: InternationalPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/match/$fixtureId', component: MatchReportPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/live/$fixtureId', component: LivePage }),

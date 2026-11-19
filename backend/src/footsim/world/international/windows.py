@@ -18,12 +18,11 @@ from footsim.core.rng import derive_rng
 from footsim.defs.calendar import DateRange
 from footsim.persistence.schema import competition, fixture
 from footsim.world.context import World
+from footsim.world.international.common import AWAY_KEY, TYPE
 from footsim.world.international.teams import ensure_international, pick_squads
 from footsim.world.meta import CareerMeta
 
-TYPE = "international"  # competition.type of every national-team competition
 FRIENDLY = "INTL_FRIENDLY"  # the friendlies' competition key, and their fixtures' stage
-AWAY_KEY = "intl_away"  # game_meta: the window the called-up players are away for
 ELO_KEY = "intl_elo_day"  # game_meta: the last day whose results moved Elo
 
 
@@ -36,14 +35,6 @@ def _meta_set(conn: Connection, key: str, value: object) -> None:
     conn.execute(text("INSERT INTO game_meta (key, value) VALUES (:k, :v) "
                       "ON CONFLICT(key) DO UPDATE SET value = excluded.value"),
                  {"k": key, "v": json.dumps(value)})
-
-
-def away_players(conn: Connection, day: date) -> set[int]:
-    """The players away with their national teams on ``day`` (none outside a window)."""
-    window = _meta_get(conn, AWAY_KEY)
-    if not isinstance(window, dict) or not (window["start"] <= day.isoformat() <= window["end"]):
-        return set()
-    return {int(r[0]) for r in conn.execute(text("SELECT player_id FROM national_squad"))}
 
 
 def windows(world: World, meta: CareerMeta) -> list[DateRange]:

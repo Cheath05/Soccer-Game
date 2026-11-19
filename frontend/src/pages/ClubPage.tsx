@@ -97,6 +97,14 @@ export default function ClubPage() {
         )}
       </Group>
 
+      {c.national ? (
+        <SimpleGrid cols={{ base: 2, sm: 4 }}>
+          <Fact label="World ranking" value={ordinal(c.national.rank)} note={`Elo ${c.national.elo}`} />
+          <Fact label="Confederation" value={c.national.confederation} />
+          <Fact label="Squad" value={`${c.squad_size} players`} note={`Average age ${c.average_age.toFixed(1)} · OVR ${c.average_overall.toFixed(1)}`} />
+          <Fact label="Best player" value={c.top_players[0]?.name ?? '–'} note={c.top_players[0] ? `${c.top_players[0].position} · ${c.top_players[0].overall} OVR` : undefined} />
+        </SimpleGrid>
+      ) : (
       <SimpleGrid cols={{ base: 2, sm: 4 }}>
         <Fact label="League position" value={c.position ? ordinal(c.position) : '–'} note={c.position ? `${c.points} pts from ${c.played} ${c.played === 1 ? 'game' : 'games'}` : 'Season not started'} />
         <Fact label="Squad" value={`${c.squad_size} players`} note={`Average age ${c.average_age.toFixed(1)} · OVR ${c.average_overall.toFixed(1)}`} />
@@ -112,6 +120,7 @@ export default function ClubPage() {
           note={c.recent_transfers.length > 1 ? c.recent_transfers.slice(1).join(' · ') : undefined}
         />
       </SimpleGrid>
+      )}
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }}>

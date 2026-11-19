@@ -247,6 +247,23 @@ export default function PlayerPage() {
 
       {p.own_player && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} />}
       {p.own_player && !p.college && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
+      {p.international && (
+        <Card withBorder padding="sm" aria-label="International">
+          <Title order={4} mb={4}>
+            International
+          </Title>
+          <Text size="sm">
+            <ClubLink club={p.international.team} />: {p.international.caps} {p.international.caps === 1 ? 'cap' : 'caps'}, {p.international.goals}{' '}
+            {p.international.goals === 1 ? 'goal' : 'goals'}
+            {p.international.in_squad ? ' · in the current squad' : ''}
+          </Text>
+          {p.international.home_based && (
+            <Text size="xs" c="dimmed" mt={4}>
+              He plays at home, for a club outside the leagues in the game, so he can’t be signed.
+            </Text>
+          )}
+        </Card>
+      )}
 
       <SeasonRecord playerId={p.id} />
     </Stack>

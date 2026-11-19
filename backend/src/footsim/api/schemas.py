@@ -476,6 +476,14 @@ class ClubOverviewOut(BaseModel):
     recent: list[FixtureOut]  # latest first
     upcoming: list[FixtureOut]
     recent_transfers: list[str]  # its latest moves in and out, newest first, in words
+    national: "NationalTeamOut | None" = None  # a national team's (W8): its page differs
+
+
+class NationalTeamOut(BaseModel):
+    code: str
+    confederation: str
+    elo: int
+    rank: int  # by Elo, worldwide
 
 
 class AttributeOut(BaseModel):
@@ -617,6 +625,14 @@ class PlayerSeasonOut(BaseModel):
     total: PlayerSeasonLineOut
 
 
+class InternationalCareerOut(BaseModel):
+    team: ClubRef  # his national team
+    caps: int  # international matches played
+    goals: int
+    in_squad: bool  # in its current squad
+    home_based: bool  # a made-up home-based player: his club is outside the game's leagues
+
+
 class PlayerDetailOut(SquadPlayerOut):
     # Only a player's own club knows his fitness and wage: None for everyone else's.
     condition: int | None  # type: ignore[assignment]
@@ -635,6 +651,7 @@ class PlayerDetailOut(SquadPlayerOut):
     traits: list[str]
     own_player: bool
     retired: bool = False
+    international: InternationalCareerOut | None = None  # his national team (W8), if any
 
 
 class MatchEventOut(BaseModel):

@@ -98,10 +98,56 @@ class InternationalRulesDef(DefModel):
         return sum(a + b for a, b in self.places.values())
 
 
+class EntrantSourceDef(DefModel):
+    """Places in an earlier stage that enter a stage (qualifiers_2030.yaml)."""
+
+    stage: str
+    ranks: tuple[int, int] | None = None  # those ranks in every group
+    best: int | None = None  # the best ``best`` teams at ``rank`` across the groups
+    rank: int | None = None
+    winners: bool = False  # its paths' winners
+    losers: bool = False  # its paths' finals' losers
+
+
+class EntrantsDef(DefModel):
+    confederation: str | None = None  # its best ``top`` teams by Elo, hosts aside
+    top: int | None = None
+    from_: list[EntrantSourceDef] = Field(default=[], alias="from")
+
+
+class QualifierStageDef(DefModel):
+    key: str
+    name: str
+    confederation: str
+    format: str  # groups | paths
+    groups: int = 1
+    paths: int = 1
+    legs: int = Field(default=2, ge=1, le=2)
+    neutral: bool = False
+    windows: list[str]  # "YYYY-MM": the windows its matches are played in, in order
+    entrants: EntrantsDef
+    qualified_ranks: tuple[int, int] | None = None  # groups: these ranks qualify
+    qualified_winners: bool = False  # paths: the winners qualify
+
+    @model_validator(mode="after")
+    def _format(self) -> "QualifierStageDef":
+        if self.format not in ("groups", "paths"):
+            raise ValueError(f"{self.key}: unknown format {self.format}")
+        return self
+
+
+class QualifiersDef(DefModel):
+    cycle: int  # the World Cup's year
+    hosts: list[str]
+    draw_days_before: int = Field(ge=1)
+    stages: list[QualifierStageDef]
+
+
 class InternationalDef(DefModel):
     teams: dict[str, TeamDef]  # by FIFA code
     names: NamesDef
     rules: InternationalRulesDef
+    qualifiers: QualifiersDef  # the next World Cup's (W8 I3)
 
     @model_validator(mode="after")
     def _regions(self) -> "InternationalDef":
@@ -109,4 +155,13 @@ class InternationalDef(DefModel):
             unknown = sorted(set(region.donors + region.nations) - set(self.teams))
             if unknown:
                 raise ValueError(f"names region {key}: unknown teams {unknown}")
+        stages = [s.key for s in self.qualifiers.stages]
+        for k, stage in enumerate(self.qualifiers.stages):
+            for source in stage.entrants.from_:
+                if source.stage not in stages[:k]:
+                    raise ValueError(f"{stage.key}: enters from {source.stage}, not an earlier "
+                                     "stage")
+        unknown = sorted(set(self.qualifiers.hosts) - set(self.teams))
+        if unknown:
+            raise ValueError(f"unknown hosts {unknown}")
         return self

@@ -12,6 +12,7 @@ from footsim.importers.generate import age_on
 from footsim.match.teams import SquadPlayer, TeamSheet
 from footsim.persistence.schema import club, player_attr, player_position, tactic
 from footsim.world.context import World, default_instructions
+from footsim.world.international.common import away_players
 
 # In a fixed order: who's picked when ratings tie, and so every match, mustn't depend on how
 # SQLite happens to walk the playing view (player-id order is what the squads came in before it).
@@ -57,6 +58,8 @@ def load_squad(conn: Connection, club_id: int, day: date) -> list[SquadPlayer]:
                             {"c": club_id}).first() is not None
     rows = conn.execute(_NATIONAL_SQUAD_SQL if national else _SQUAD_SQL,
                         {"club": club_id}).all()
+    # A club's players away with their national teams can't play for it (world/international).
+    away = set() if national else away_players(conn, day)
     ids = [r.id for r in rows]
     if not ids:
         return []
@@ -79,7 +82,7 @@ def load_squad(conn: Connection, club_id: int, day: date) -> list[SquadPlayer]:
             positions=fams,
             attrs=attrs[r.id],
             condition=float(r.condition if r.condition is not None else 100.0),
-            available=not injured and not (r.suspended_matches or 0),
+            available=not injured and not (r.suspended_matches or 0) and r.id not in away,
             height_cm=r.height_cm or 180,
             preferred_foot=r.preferred_foot,
             weak_foot=r.weak_foot,

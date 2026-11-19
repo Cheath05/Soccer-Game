@@ -1,0 +1,173 @@
+# World Cup 2030 qualifiers, realistic-lite (W8 I3, world/international/qualifiers.py).
+# 48 places: the 3 hosts, UEFA 14, CONMEBOL 6, CAF 8, AFC 8, CONCACAF 6, OFC 1, and 2 from the
+# intercontinental play-off (FIFA's 2026 allocation, the hosts counted in their confederations':
+# UEFA 16, CAF 9). The formats follow the 2026 qualifiers, played in the game's international
+# windows (each named by its start's year and month: "2028-09"; two matchdays each, four in the
+# September-October one).
+#
+# A stage:
+#   format: groups (each group a round robin; legs 2 is home and away, 1 once each, neutral
+#           at no one's home) or paths (knockouts: each path's teams seeded 1, 2, ...; a path of
+#           4 is semi-finals 1 v 4 and 2 v 3, then a final; of 3, seed 1 waits in the final; of
+#           2, a single tie; legs 2 for two-legged ties).
+#   windows: the windows its matches are played in, in order (a group stage's rounds take the
+#           matchdays one after another; a path's rounds a matchday each, two if two-legged).
+#   entrants: {confederation, top}: the confederation's best `top` teams by Elo when the stage is
+#           drawn, hosts and suspended teams aside (the rest went out in early rounds, settled on
+#           paper by Elo); or {from}: places in earlier stages: {stage, ranks: [a, b]} (those
+#           ranks in every group), {stage, best, rank} (the best `best` teams at that rank across
+#           the groups, by points, goal difference, goals), {stage, winners} / {stage, losers}
+#           (of its paths' finals). Groups are drawn from Elo pots; paths are seeded by the
+#           entrants' order (a stage's own ranking first, then Elo).
+#   outcomes: who goes where: qualified, or a later stage (that stage's entrants say so).
+
+cycle: 2030
+hosts: [ESP, POR, MAR]
+draw_days_before: 1  # a stage is drawn this many days before its first window
+
+stages:
+  # UEFA: 52 teams, 12 groups (4 of 5, 8 of 4), the winners qualify; the 8 best runners-up play
+  # two paths of four for the last two places.
+  - key: UEFA_G
+    name: UEFA qualifiers
+    confederation: UEFA
+    format: groups
+    groups: 12
+    legs: 2
+    windows: ["2029-03", "2029-05", "2029-09", "2029-11"]
+    entrants: {confederation: UEFA, top: 52}
+    qualified_ranks: [1, 1]
+  - key: UEFA_PO
+    name: UEFA play-offs
+    confederation: UEFA
+    format: paths
+    paths: 2
+    legs: 1
+    windows: ["2030-03"]
+    entrants: {from: [{stage: UEFA_G, best: 8, rank: 2}]}
+    qualified_winners: true
+
+  # CONMEBOL: one round robin of ten, home and away; the top six qualify, the seventh goes to the
+  # intercontinental play-off.
+  - key: CONMEBOL
+    name: CONMEBOL qualifiers
+    confederation: CONMEBOL
+    format: groups
+    groups: 1
+    legs: 2
+    windows: ["2027-09", "2027-11", "2028-03", "2028-05", "2028-09", "2028-11", "2029-03"]
+    entrants: {confederation: CONMEBOL, top: 10}
+    qualified_ranks: [1, 6]
+
+  # CAF: the best 48 in 8 groups of 6; the winners qualify; the 4 best runners-up play off for
+  # the intercontinental play-off.
+  - key: CAF_G
+    name: CAF qualifiers
+    confederation: CAF
+    format: groups
+    groups: 8
+    legs: 2
+    windows: ["2027-11", "2028-03", "2028-05", "2028-09"]
+    entrants: {confederation: CAF, top: 48}
+    qualified_ranks: [1, 1]
+  - key: CAF_PO
+    name: CAF play-off
+    confederation: CAF
+    format: paths
+    paths: 1
+    legs: 1
+    neutral: true
+    windows: ["2028-11"]
+    entrants: {from: [{stage: CAF_G, best: 4, rank: 2}]}
+
+  # AFC: the best 18 (the earlier rounds settled on paper) in 3 groups of 6; the top two qualify;
+  # third and fourth go to two groups of three at neutral venues, whose winners qualify and
+  # runners-up meet over two legs for the intercontinental play-off.
+  - key: AFC_R3
+    name: AFC qualifiers, third round
+    confederation: AFC
+    format: groups
+    groups: 3
+    legs: 2
+    windows: ["2028-09", "2028-11", "2029-03", "2029-05"]
+    entrants: {confederation: AFC, top: 18}
+    qualified_ranks: [1, 2]
+  - key: AFC_R4
+    name: AFC qualifiers, fourth round
+    confederation: AFC
+    format: groups
+    groups: 2
+    legs: 1
+    neutral: true
+    windows: ["2029-09"]
+    entrants: {from: [{stage: AFC_R3, ranks: [3, 4]}]}
+    qualified_ranks: [1, 1]
+  - key: AFC_R5
+    name: AFC qualifiers, fifth round
+    confederation: AFC
+    format: paths
+    paths: 1
+    legs: 2
+    windows: ["2029-11"]
+    entrants: {from: [{stage: AFC_R4, ranks: [2, 2]}]}
+
+  # CONCACAF: the best 24 in 6 groups of 4; the top two go to 3 groups of 4, whose top two
+  # qualify and the two best third-placed teams go to the intercontinental play-off.
+  - key: CONCACAF_R2
+    name: CONCACAF qualifiers, second round
+    confederation: CONCACAF
+    format: groups
+    groups: 6
+    legs: 2
+    windows: ["2028-09", "2028-11"]
+    entrants: {confederation: CONCACAF, top: 24}
+  - key: CONCACAF_R3
+    name: CONCACAF qualifiers, third round
+    confederation: CONCACAF
+    format: groups
+    groups: 3
+    legs: 2
+    windows: ["2029-09", "2029-11"]
+    entrants: {from: [{stage: CONCACAF_R2, ranks: [1, 2]}]}
+    qualified_ranks: [1, 2]
+
+  # OFC: the best 8 in 2 groups of 4 at neutral venues; the top two of each to semi-finals and a
+  # final; the winner qualifies, the runner-up goes to the intercontinental play-off.
+  - key: OFC_G
+    name: OFC qualifiers
+    confederation: OFC
+    format: groups
+    groups: 2
+    legs: 1
+    neutral: true
+    windows: ["2028-09"]
+    entrants: {confederation: OFC, top: 8}
+  - key: OFC_KO
+    name: OFC qualifiers, final stage
+    confederation: OFC
+    format: paths
+    paths: 1
+    legs: 1
+    neutral: true
+    windows: ["2028-11"]
+    entrants: {from: [{stage: OFC_G, ranks: [1, 2]}]}
+    qualified_winners: true
+
+  # The intercontinental play-off: six teams in two paths of three at neutral venues; the two
+  # best by Elo wait in the finals; both winners qualify.
+  - key: IC_PO
+    name: Intercontinental play-off
+    confederation: FIFA
+    format: paths
+    paths: 2
+    legs: 1
+    neutral: true
+    windows: ["2030-03"]
+    entrants:
+      from:
+        - {stage: CONMEBOL, ranks: [7, 7]}
+        - {stage: CAF_PO, winners: true}
+        - {stage: AFC_R5, winners: true}
+        - {stage: CONCACAF_R3, best: 2, rank: 3}
+        - {stage: OFC_KO, losers: true}
+    qualified_winners: true

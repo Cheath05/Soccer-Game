@@ -10,6 +10,7 @@ import type {
   Draft,
   SimLeague,
   OfferRules,
+  InternationalOverview,
   SimulationSettings,
   ClubHistory,
   Finances,
@@ -104,6 +105,10 @@ export function useSetAskingPrice() {
     onSuccess: (data) => client.setQueryData(['offer-rules'], data),
   })
 }
+
+/** International football: the national teams by Elo and the latest results. */
+export const useInternational = () =>
+  useQuery({ queryKey: ['international'], queryFn: () => api.get<InternationalOverview>('/international') })
 
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })

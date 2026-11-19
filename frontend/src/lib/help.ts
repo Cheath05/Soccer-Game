@@ -297,6 +297,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'international',
+    title: 'International football',
+    summary: 'National teams, call-ups in the international windows, friendlies and the Elo ranking.',
+    blocks: [
+      'Every FIFA member has a national team (Russia is suspended). Its squad of 26 is picked from players of its nationality. Countries whose players mostly play at home, in leagues the game doesn’t have, are filled out with made-up home-based players at the country’s real strength; they can’t be signed.',
+      [
+        'International windows: September–October, November, March and June. The day before one starts, every national team calls up its squad, and those players are away from their clubs until it ends (most leagues pause; those that play on, like League One and Two, are without them). The news says which of your players are away.',
+        'Friendlies: in each window every team plays nations of a similar strength. They count as caps and goals and move the ranking, but are quick results: no cards or injuries.',
+        'The ranking (International in the menu) is World Football Elo: it starts from the real ratings of November 2026 and moves with every international result, more for an upset. Filter by confederation, or find a country by name. A player’s page shows his national team, caps and goals.',
+        'Coming: qualifiers for the 2030 World Cup, the 2029 Club World Cup, the 2030 finals, and managing a national team.',
+      ],
+    ],
+  },
+  {
     id: 'simulation',
     title: 'Simulation settings: faster sims',
     summary: 'Choosing which leagues are fully simulated and which get fast results.',

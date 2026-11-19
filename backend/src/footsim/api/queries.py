@@ -33,10 +33,12 @@ from footsim.api.schemas import (
     FormationOut,
     GroupTableOut,
     InstructionOut,
+    InternationalCareerOut,
     LeagueOption,
     LeaguePlayoffOut,
     MatchEventOut,
     MatchOut,
+    NationalTeamOut,
     PlayerDetailOut,
     PlayerLineOut,
     PlayerSeasonLineOut,
@@ -108,7 +110,8 @@ from footsim.world.europe.common import competitions_by_rank, stage_name
 from footsim.world.europe.places import CountryPlace, country_places
 from footsim.world.europe.qualifying import Node, node_of, round_name
 from footsim.world.fast_sim import SIM as FAST_SIM
-from footsim.world.international.common import is_national
+from footsim.world.international.common import TYPE as INTERNATIONAL
+from footsim.world.international.common import is_national, nation_ids
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
 from footsim.world.season import (
@@ -1004,7 +1007,12 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
     if not own:  # what another club's accounts reveal from the outside
         wage_bill, budget = _rough(wage_bill), _rough(budget)
         balance = _rough(balance) if balance >= 0 else -_rough(-balance)
+    team = conn.execute(text("SELECT code, confederation, elo, (SELECT COUNT(*) FROM "
+                             "national_team o WHERE o.elo > t.elo) + 1 AS rank FROM "
+                             "national_team t WHERE club_id = :c"), {"c": club_id}).first()
     return ClubOverviewOut(
+        national=NationalTeamOut(code=team.code, confederation=team.confederation,
+                                 elo=round(team.elo), rank=team.rank) if team else None,
         club=ClubRef(id=club_id, name=row.name), own_club=own, nation=row.nation_name,
         competition=_competition_out(world, comp) if comp else None,
         position=position, points=points, played=played, reputation=row.reputation,
@@ -1099,7 +1107,44 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
         position_ratings=_position_ratings(world, attrs, fams, entry.position),
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
         traits=traits, own_player=own, retired=r.retired_on is not None,
+        international=_international_career(conn, world, player_id),
     )
+
+
+def _international_career(conn: Connection, world: World, player_id: int
+                          ) -> InternationalCareerOut | None:
+    """His national team (the one he has played for or is called up by, else his
+    nationality's), with his caps and goals for it (world/international)."""
+    played = conn.execute(text(
+        "SELECT pm.club_id, COUNT(*) AS caps, SUM(pm.goals) AS goals FROM player_match pm "
+        "JOIN fixture f ON f.id = pm.fixture_id JOIN competition c ON c.id = f.competition_id "
+        "WHERE pm.player_id = :p AND c.type = :t GROUP BY pm.club_id ORDER BY caps DESC"),
+        {"p": player_id, "t": INTERNATIONAL}).first()
+    squad = conn.execute(text("SELECT club_id FROM national_squad WHERE player_id = :p"),
+                         {"p": player_id}).scalar()
+    pooled = conn.execute(text("SELECT code FROM national_pool WHERE player_id = :p"),
+                          {"p": player_id}).scalar()
+    team_id = played.club_id if played is not None else squad
+    if team_id is None:
+        code = pooled
+        if code is None:
+            nation_id = conn.execute(text("SELECT nation_id FROM person WHERE id = :p"),
+                                     {"p": player_id}).scalar()
+            code = next((c for c, ids in nation_ids(conn, world).items() if nation_id in ids),
+                        None)
+        if code is None:
+            return None
+        team_id = conn.execute(text("SELECT club_id FROM national_team WHERE code = :c"),
+                               {"c": code}).scalar()
+        if team_id is None:
+            return None
+    name = str(conn.execute(text("SELECT name FROM club WHERE id = :c"),
+                            {"c": team_id}).scalar_one())
+    return InternationalCareerOut(
+        team=ClubRef(id=int(team_id), name=name),
+        caps=int(played.caps) if played is not None and played.club_id == team_id else 0,
+        goals=int(played.goals or 0) if played is not None and played.club_id == team_id else 0,
+        in_squad=squad == team_id, home_based=pooled is not None)
 
 
 _BANDS = ((18, "natural"), (15, "accomplished"), (11, "competent"), (6, "awkward"),

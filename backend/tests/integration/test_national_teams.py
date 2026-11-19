@@ -129,3 +129,14 @@ def test_a_national_teams_club_page(tmp_path: Path) -> None:
     names = {p["name"] for p in squad}
     hits = client.get("/api/transfers/search", params={"min_overall": 40}).json()
     assert not names & {p["name"] for p in hits if p.get("club") is None}
+    # The International page ranks every team; no results before the first window.
+    overview = client.get("/api/international").json()
+    assert len(overview["teams"]) == 210 and overview["results"] == []
+    assert [t["rank"] for t in overview["teams"][:3]] == [1, 2, 3]
+    assert overview["teams"][0]["elo"] >= overview["teams"][-1]["elo"]
+    # A squad player's page names his national team; a made-up one says he plays at home.
+    detail = client.get(f"/api/players/{squad[0]['id']}").json()
+    assert detail["international"]["team"]["name"] == "Egypt"
+    assert detail["international"]["in_squad"] is True and detail["international"]["caps"] == 0
+    assert any(client.get(f"/api/players/{p['id']}").json()["international"]["home_based"]
+               for p in squad)

@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.114"
+  date: "2026-11-19"
+  title: "International windows: call-ups, friendlies and the world ranking"
+  changes:
+    - "International football: in each of FIFA's international windows (September-October, November, March and June), every national team calls up its squad, and the players are away from their clubs until the window ends. The news tells you which of your players are away."
+    - "National teams play friendlies against nations of a similar strength. They count as caps and goals, and move each team's Elo rating, but carry no injuries or cards."
+    - "International (in the menu): every national team ranked by Elo, by confederation or by name, with the latest results. A player's page shows his national team, caps and goals, and whether he's in its squad."
+
 - version: "1.112"
   date: "2026-11-19"
   title: "National teams (the first step towards the World Cup)"

@@ -28,6 +28,20 @@ _SQUAD_SQL = text("""
 """)
 
 
+# A national team's players are its current squad (world/international), not a club's contracts.
+_NATIONAL_SQUAD_SQL = text("""
+    SELECT p.id, p.first_name, p.last_name, p.known_as, p.birth_date,
+           pl.height_cm, pl.preferred_foot, pl.weak_foot,
+           s.condition, s.injured_until, s.suspended_matches
+    FROM national_squad k
+    JOIN person p ON p.id = k.player_id
+    JOIN player pl ON pl.person_id = p.id
+    LEFT JOIN player_state s ON s.player_id = p.id
+    WHERE k.club_id = :club
+    ORDER BY p.id
+""")
+
+
 def display_name(first: str, last: str, known_as: str | None) -> str:
     return known_as or f"{first} {last}".strip()
 
@@ -39,7 +53,10 @@ def short_name(first: str, last: str, known_as: str | None) -> str:
 
 
 def load_squad(conn: Connection, club_id: int, day: date) -> list[SquadPlayer]:
-    rows = conn.execute(_SQUAD_SQL, {"club": club_id}).all()
+    national = conn.execute(text("SELECT 1 FROM national_team WHERE club_id = :c"),
+                            {"c": club_id}).first() is not None
+    rows = conn.execute(_NATIONAL_SQUAD_SQL if national else _SQUAD_SQL,
+                        {"club": club_id}).all()
     ids = [r.id for r in rows]
     if not ids:
         return []

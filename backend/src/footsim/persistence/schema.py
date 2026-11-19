@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 26  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 27  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -552,7 +552,7 @@ college_team = Table(
     Column("conference", Text, nullable=False),  # its key in data/config/college/ncaa_d1.yaml
     Column("tier", Integer, nullable=False),  # 1 (a national power) to 5
     Column("level", Float, nullable=False),
-    # Its standing with recruits, 0-100 (W9c, v26): from its tier, then moved by its results.
+    # Its standing with recruits, 0-100 (W9c, v27): from its tier, then moved by its results.
     Column("prestige", Float),
 )
 
@@ -571,7 +571,7 @@ college_player = Table(
     Column("entered_season", Integer, nullable=False),
     Column("declared_season", Integer),  # the season whose draft pool he is in
     Column("left_on", Text),  # the day he left college (turned pro or went undrafted)
-    # His scholarship, as a share of a full one (W9c, v26): 0 for a walk-on.
+    # His scholarship, as a share of a full one (W9c, v27): 0 for a walk-on.
     Column("scholarship", Float, nullable=False, server_default="0"),
     Index("ix_college_player_status", "status"),
 )
@@ -592,7 +592,7 @@ college_entry = Table(
     PrimaryKeyConstraint("season_id", "event", "club_id"),
 )
 
-# High-school recruiting (W9c, world/college/recruiting.py, v26). A recruit is a high-school
+# High-school recruiting (W9c, world/college/recruiting.py, v27). A recruit is a high-school
 # senior of the class that enrolls at ``class_season``'s start; he becomes a player only when he
 # enrolls (``player_id``). ``overall`` and ``potential`` are the truth (hidden), ``grade`` the
 # recruiting services' (public), which sets the ranks and stars. ``state`` is his home state (a US
@@ -758,4 +758,32 @@ draft_board = Table(
     Column("player_id", ForeignKey("person.id"), nullable=False),
     Column("rank", Integer, nullable=False),
     PrimaryKeyConstraint("season_id", "club_id", "player_id"),
+)
+
+# --- International football (W8, world/international) ------------------------------------
+
+national_team = Table(
+    "national_team",  # a FIFA member's national team: its club row, and its Elo as it moves
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("code", Text, nullable=False, unique=True),  # FIFA's code (international/teams.yaml)
+    Column("confederation", Text, nullable=False),
+    Column("elo", Float, nullable=False),
+)
+
+national_pool = Table(
+    "national_pool",  # made-up home-based players: no club in the game; their nation's to call up
+    metadata,
+    Column("player_id", ForeignKey("person.id"), primary_key=True),
+    Column("code", Text, nullable=False),
+    Index("ix_national_pool_code", "code"),
+)
+
+national_squad = Table(
+    "national_squad",  # each national team's current squad (called up before each window)
+    metadata,
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("player_id", ForeignKey("person.id"), nullable=False),
+    PrimaryKeyConstraint("club_id", "player_id"),
+    Index("ix_national_squad_player", "player_id"),
 )

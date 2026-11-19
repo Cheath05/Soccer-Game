@@ -17,9 +17,11 @@ from footsim.world.college.common import college_club_id
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
+from footsim.world.international import ensure_international
 from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
 from footsim.world.mls import charge_dp_fees, start_mls
+from footsim.world.offers import auto_answer, stops_for_offers
 from footsim.world.overall_history import record_season_start
 from footsim.world.results import daily_recovery, record_result
 from footsim.world.season import (
@@ -78,6 +80,7 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
         meta.user_club_id = college_club_id(conn, college_program)
         meta.board_enabled = False  # a college program has no ledger, so no board
         write_meta(conn, meta)
+    ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).
     start_mls(conn, world, meta, start)
@@ -178,11 +181,13 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
             meta.current_date = day
             write_meta(conn, meta)
             return AdvanceResult(day, "season_end", None, messages)
+        # Bids for the user's players: answered by their rules, or a stop (world/offers.py).
+        messages += auto_answer(conn, world, meta, day)
         day += timedelta(days=1)
         daily_recovery(conn, day)
         meta.current_date = day
         write_meta(conn, meta)
-        if bid_arrived(conn, meta, day - timedelta(days=1)):
+        if stops_for_offers(meta) and bid_arrived(conn, meta, day - timedelta(days=1)):
             return AdvanceResult(day, "offer", None, messages)
     return AdvanceResult(day, "limit", None, messages)
 

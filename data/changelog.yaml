@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.111"
+- version: "1.116"
   date: "2026-11-19"
   title: "Coach a college program, and recruit high-school players"
   changes:
@@ -35,6 +35,21 @@
     - "Recruiting (for a college coach): each season a national class of 2,200 high-school seniors is ranked by stars, nationally, by position and by home state. Put recruits on your target list (Top, High or Watch) and your staff spread their week over them, building interest and narrowing their estimate of each one's ability. Offer full or partial scholarships or walk-on places from 1 August; recruits weigh the money, your prestige, playing time, the distance from home and your attention against the other programs' offers, commit through the autumn and sign on signing day in February."
     - "The 2025 rules: at most 28 players and no scholarship limit, each program giving what its money allows (counted in full scholarships, more for the powers). A program's prestige now moves with its results, so winning recruits better."
     - "Every NCAA program now recruits its freshmen from the national class, in every career, instead of getting made-up classes."
+
+- version: "1.112"
+  date: "2026-11-19"
+  title: "National teams (the first step towards the World Cup)"
+  changes:
+    - "Every FIFA member has a national team, with a 26-man squad picked from its players in the game. Search for a country (Spain, Egypt, Japan...) to see its squad."
+    - "Countries whose players mostly play at home, in leagues the game doesn't have, are filled out with made-up home-based players at their real strength, so every nation can field a proper team. These players don't appear in the transfer market."
+    - "International matches, qualifiers and the World Cup come next."
+
+- version: "1.110"
+  date: "2026-11-19"
+  title: "Sims that don't stop for every bid: asking prices"
+  changes:
+    - "Settings → Transfer offers: bids for your players can stop the game (as before), wait under Transfers without stopping it, or be answered for you. Answered for you, a bid at or above the player's asking price sells him, and a lower one is countered at that price (the club pays it or walks away). Players without a price can be not for sale, or sold at a share of their value you choose. Loan requests are agreed to or turned down, as you choose."
+    - "Asking prices: set one on any of your players' pages, under Up for sale."
 
 - version: "1.109"
   date: "2026-11-17"

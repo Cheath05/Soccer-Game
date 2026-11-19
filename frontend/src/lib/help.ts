@@ -317,6 +317,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'offers',
+    title: 'Transfer offers while simming: asking prices',
+    summary: 'Stop for bids, let them wait, or have them answered by your asking prices.',
+    blocks: [
+      'Settings → Transfer offers chooses what a club’s bid (or loan request) for one of your players does while the game moves on:',
+      [
+        'Stop the game (the default): Continue and Sim to stop on the day it arrives, so you can answer it under Transfers.',
+        'Let them wait: the game carries on; bids wait under Transfers, in Offers for your players, until they expire after a few days.',
+        'Answer for me: each bid is answered as it arrives. At or above the player’s asking price he’s sold; below it the club is asked for the price, and either pays it or walks away. A player with no asking price is sold at the share of his value you choose for everyone else (his value, 125%, 150%, twice or three times), or is not for sale. Loan requests are agreed to or turned down, as you choose. The news after a sim says what happened to each bid.',
+        'Asking prices: set one on a player’s page, under Up for sale (in the money you play in, in millions); Clear removes it.',
+      ],
+    ],
+  },
+  {
     id: 'simulation',
     title: 'Simulation settings: faster sims',
     summary: 'Choosing which leagues are fully simulated and which get fast results.',

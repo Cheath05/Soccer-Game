@@ -22,6 +22,7 @@ from sqlalchemy import Connection, text
 from footsim.world.college.common import in_college, is_college_club
 from footsim.world.context import World
 from footsim.world.finance import signing_cost_cents, weeks_left
+from footsim.world.international.common import in_pool
 from footsim.world.meta import CareerMeta
 from footsim.world.mls import sync_clubs
 from footsim.world.mls_market import addition_problem
@@ -58,6 +59,8 @@ def validate_loan(conn: Connection, world: World, meta: CareerMeta, loan: Loan,
         raise MoveRefused("He plays college soccer: he can't be loaned.")
     if is_college_club(conn, loan.borrower_id):
         raise MoveRefused("College programs don't take players on loan.")
+    if in_pool(conn, loan.player_id):
+        raise MoveRefused("He plays at home, outside the leagues in the game.")
     owner = owner_contract(conn, loan.player_id)
     if owner is None:
         raise MoveRefused("A free agent can't be loaned: sign him instead.")

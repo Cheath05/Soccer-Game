@@ -63,6 +63,7 @@ from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_
 from footsim.world.draft import draft_day
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
+from footsim.world.international import ensure_international
 from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
 from footsim.world.market import run_market
@@ -284,6 +285,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     AI clubs trade (world/market.py). Returns news messages."""
     messages: list[str] = []
     if day.day == 1:
+        messages += ensure_international(conn, world, meta, day)  # a save from before W8
         messages += develop_players(conn, world, meta, day, DEVELOPMENT_SHARE)
         settle_month(conn, world, meta, day, _league_positions(conn, world, meta))
         messages += train_positions(conn, world, meta, day)

@@ -1,8 +1,8 @@
-import { Badge, Button, Card, Grid, Group, Loader, Modal, Progress, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Grid, Group, Loader, Modal, NumberInput, Progress, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { useClubPlayers, usePlayer, usePlayerSeasons, useReleasePlayer } from '../api/hooks'
+import { useClubPlayers, useOfferRules, usePlayer, usePlayerSeasons, useReleasePlayer, useSetAskingPrice } from '../api/hooks'
 import { type Training, useSetTraining, useTraining } from '../api/training'
 import { type AvailabilityStatus, useAvailability, useSetAvailability } from '../api/transfers'
 import BackButton from '../components/BackButton'
@@ -12,7 +12,7 @@ import { SeasonChange } from '../components/SeasonChange'
 import { useDevice } from '../lib/device'
 import { recallPlayerList } from '../lib/playerList'
 import { CLASS_NAMES, scholarshipLabel } from '../lib/college'
-import { attributeLabel, matchRatingColor, money, positionColor, ratingColor, wage } from '../lib/format'
+import { CURRENCIES, attributeLabel, matchRatingColor, money, positionColor, ratingColor, toEuros, useCurrency, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
   technical: 'Technical',
@@ -246,7 +246,7 @@ export default function PlayerPage() {
       <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player} />
 
       {p.own_player && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} />}
-      {p.own_player && !p.college && <AvailabilityCard playerId={p.id} />}
+      {p.own_player && !p.college && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
 
       <SeasonRecord playerId={p.id} />
     </Stack>
@@ -507,7 +507,7 @@ function TrainingCard({ playerId, familiarity, ratings }: { playerId: number; fa
 }
 
 /** Not for sale, on the transfer list (clubs bid to buy him) or on the loan list (clubs ask to borrow him). */
-function AvailabilityCard({ playerId }: { playerId: number }) {
+function AvailabilityCard({ playerId, value }: { playerId: number; value: number }) {
   const availability = useAvailability().data
   const set = useSetAvailability()
   const status: AvailabilityStatus = availability?.transfer.includes(playerId) ? 'transfer' : availability?.loan.includes(playerId) ? 'loan' : 'none'
@@ -534,12 +534,62 @@ function AvailabilityCard({ playerId }: { playerId: number }) {
       <Text size="xs" c="dimmed" mt={6}>
         {hint[status]}
       </Text>
+      <AskingPrice playerId={playerId} value={value} />
       {set.error && (
         <Text c="red" size="sm">
           {set.error.message}
         </Text>
       )}
     </Card>
+  )
+}
+
+/** The price you want for him: when transfer offers are answered for you (Settings), a bid at or
+ * above it sells him and a lower one is countered at it. */
+function AskingPrice({ playerId, value }: { playerId: number; value: number }) {
+  const rules = useOfferRules().data
+  const save = useSetAskingPrice()
+  const current = rules?.asking_prices[String(playerId)] ?? null
+  const [typed, setTyped] = useState<number | string>('')
+  const { symbol, perEuro } = CURRENCIES[useCurrency()]
+  const millions = (eur: number) => Math.round((eur * perEuro) / 100_000) / 10
+  return (
+    <Stack gap={4} mt="sm">
+      <Text size="sm" fw={600}>
+        Asking price: {current === null ? 'none' : money(current)}
+      </Text>
+      <Group gap="xs" align="flex-end" wrap="nowrap">
+        <NumberInput
+          aria-label="Asking price"
+          size="xs"
+          w={150}
+          min={0.1}
+          step={0.5}
+          decimalScale={1}
+          prefix={symbol}
+          suffix="M"
+          placeholder={`${symbol}${millions(value * 1.25)}M`}
+          value={typed}
+          onChange={setTyped}
+        />
+        <Button size="compact-sm" disabled={typed === '' || Number(typed) <= 0} loading={save.isPending} onClick={() => save.mutate({ playerId, feeEur: toEuros(Number(typed) * 1_000_000) }, { onSuccess: () => setTyped('') })}>
+          Set
+        </Button>
+        {current !== null && (
+          <Button size="compact-sm" variant="subtle" color="gray" disabled={save.isPending} onClick={() => save.mutate({ playerId, feeEur: null })}>
+            Clear
+          </Button>
+        )}
+      </Group>
+      <Text size="xs" c="dimmed">
+        His value is {money(value)}. {rules?.mode === 'auto' ? 'Offers are answered for you (Settings): a bid at or above this price sells him; a lower one is countered at it.' : 'Used when transfer offers are answered for you (Settings → Transfer offers).'}
+      </Text>
+      {save.error && (
+        <Text c="red" size="sm">
+          {save.error.message}
+        </Text>
+      )}
+    </Stack>
   )
 }
 

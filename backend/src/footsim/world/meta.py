@@ -27,6 +27,19 @@ class CareerMeta:
     # The leagues the user has switched off full simulation (world/fast_sim.py): their matches
     # get fast results. Empty, as in saves from before it: every league fully simulated.
     fast_leagues: list[str] = field(default_factory=list)
+    # Bids and loan requests for the user's players while the game moves on (world/offers.py):
+    # "stop" (Continue and Sim to stop for each, as before), "wait" (they wait on the Transfers
+    # page without stopping), "auto" (answered by the rules below as they arrive).
+    offer_mode: str = "stop"
+    # "auto": a player without an asking price is sold for a bid of at least this percentage of
+    # his value (countered at it below); None turns such bids down.
+    offer_value_pct: int | None = None
+    offer_loans: str = "reject"  # "auto": loan requests are "accept"ed or "reject"ed
+    # The user's asking prices (EUR), by player: "auto" sells at or above it, counters below.
+    asking_prices: dict[int, int] = field(default_factory=dict)
+    # The national team the user manages (its club id; world/international), alongside the club
+    # or on its own. None: none.
+    user_nation_id: int | None = None
 
     @property
     def seed(self) -> int:
@@ -45,6 +58,11 @@ def read_meta(conn: Connection) -> CareerMeta:
         board_enabled=bool(values.get("board_enabled", True)),
         currency=str(values.get("currency", "USD")),
         fast_leagues=[str(k) for k in values.get("fast_leagues", [])],
+        offer_mode=str(values.get("offer_mode", "stop")),
+        offer_value_pct=values.get("offer_value_pct"),
+        offer_loans=str(values.get("offer_loans", "reject")),
+        asking_prices={int(k): int(v) for k, v in values.get("asking_prices", {}).items()},
+        user_nation_id=values.get("user_nation_id"),
     )
 
 
@@ -59,6 +77,11 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "board_enabled": meta.board_enabled,
         "currency": meta.currency,
         "fast_leagues": meta.fast_leagues,
+        "offer_mode": meta.offer_mode,
+        "offer_value_pct": meta.offer_value_pct,
+        "offer_loans": meta.offer_loans,
+        "asking_prices": {str(k): v for k, v in meta.asking_prices.items()},
+        "user_nation_id": meta.user_nation_id,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

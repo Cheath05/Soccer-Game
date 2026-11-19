@@ -1,0 +1,71 @@
+# National teams (W8, docs/plans/w8-w10-international.md): squads and the made-up home-based
+# players who fill them (world/international/).
+
+# A nation's level, as its best XI's average overall, from its Elo. Fitted on the 70 nations with
+# 150+ players in the base world (19 Nov): their top 11 by overall = 81.27 + 0.0206 x (Elo - 1900),
+# residual sd 2.3. A real nation's line-up rates about 1.8 lower than its top 11 (players out of
+# position, weaker full-backs or wingers: ESP 0.7, ENG 1.1, FRA 1.6, BEL 1.8, BRA 2.0, POR 2.2,
+# ARG 2.9), while made-up players are natural in their places, so they are wanted 1.8 lower:
+# at_1900 79.5. Bounded to [min, max].
+level:
+  at_1900: 79.5
+  per_elo_point: 0.0206
+  min: 45.0
+  max: 90.0
+
+# A squad's places, [starters, reserves] by position: a 4-3-3 and its cover, 26 players. An AI
+# manager fills each with the best players whose main position it is.
+# Made-up home-based players fill each place a nation's own players in the game can't. A starter is wanted
+# at the nation's level, a reserve at the level less `depth_drop`. Where the nation's own players
+# whose main position it is fall short (its k-th best is weaker than the place's level less
+# `margin`, or it has fewer than k), a made-up player is added at the place's level, with noise.
+places:
+  GK: [1, 2]
+  CB: [2, 2]
+  LB: [1, 1]
+  RB: [1, 1]
+  DM: [1, 1]
+  CM: [2, 2]
+  AM: [0, 2]
+  LW: [1, 1]
+  RW: [1, 1]
+  ST: [1, 2]
+depth_drop: 3.0
+margin: 1.0
+quality_sd: 1.5
+ages: [20, 33]  # made-up players' ages when made
+potential_room: 2  # their potential: at least this above their overall
+
+# A national team's club reputation, from its Elo (for players' reputations and the screens):
+# at_1500 + per_elo_point x (Elo - 1500), within 1-99.
+reputation:
+  at_1500: 50.0
+  per_elo_point: 0.06
+
+# The international windows (FIFA's, from the career's calendar): squads are called up the day
+# before one starts and the players are away from their clubs until it ends. Matchdays fall
+# `first_after_days` after its start, then every `spacing_days`, at most `max_matchdays`, within
+# it: two in a 9-day window, four in the long September-October one.
+windows:
+  first_after_days: 3
+  spacing_days: 3
+  max_matchdays: 4
+
+# Friendlies fill each matchday a team has no other match on: teams are paired with others of a
+# similar Elo (sorted by Elo plus noise, then neighbours), within their confederation, or across
+# confederations with `cross_confederation` chance per matchday. Fast results (world/fast_sim.py):
+# they move Elo and add caps, but carry no cards, injuries or fatigue.
+friendlies:
+  elo_noise: 80.0
+  cross_confederation: 0.2
+
+# World Football Elo (eloratings.net's method): Elo moves by K x G x (W - We), where We is the
+# expected result from the rating gap (the home side +home_advantage, none at a neutral venue),
+# W is 1, 0.5 or 0 (a shoot-out counts as a draw), G grows with the goal difference (1, 1.5, then
+# (11 + N) / 8), and K by the match: friendlies 20, qualifiers 40, the World Cup finals 60.
+elo:
+  home_advantage: 100.0
+  k:
+    friendly: 20
+    qualifier: 40
+    finals: 60

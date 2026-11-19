@@ -2,15 +2,18 @@ import { Alert, Card, Stack, Text, Title } from '@mantine/core'
 
 import { ApiError } from '../api/client'
 import { useSetSimulation, useSimulation } from '../api/hooks'
+import OfferRulesCard from '../components/OfferRulesCard'
 import SimulationPicker from '../components/SimulationPicker'
 
-/** The career's settings: which leagues are fully simulated (the rest get fast results). */
+/** The career's settings: what bids for your players do while the game moves on, and which leagues
+ * are fully simulated (the rest get fast results). */
 export default function SettingsPage() {
   const sim = useSimulation()
   const save = useSetSimulation()
   return (
     <Stack>
       <Title order={2}>Settings</Title>
+      <OfferRulesCard />
       <Card withBorder padding="md">
         <Title order={4} mb={4}>
           Simulation

@@ -1,0 +1,221 @@
+# Every FIFA member's national team (Russia is suspended: left out, as in W7), by confederation.
+# elo: World Football Elo Ratings (eloratings.net, World.tsv, 19 Nov 2026, after the 2026 World Cup).
+# It seeds draws and the made-up home-based players' level, and moves with results (world/international).
+# names: the spellings the game's player data uses for the nationality, where they differ from `name`.
+teams:
+  # UEFA: 54
+  - {code: ESP, name: Spain, confederation: UEFA, elo: 2258}
+  - {code: ENG, name: England, confederation: UEFA, elo: 2182}
+  - {code: FRA, name: France, confederation: UEFA, elo: 2069}
+  - {code: POR, name: Portugal, confederation: UEFA, elo: 2005}
+  - {code: BEL, name: Belgium, confederation: UEFA, elo: 1994}
+  - {code: SUI, name: Switzerland, confederation: UEFA, elo: 1976}
+  - {code: NED, name: Netherlands, confederation: UEFA, elo: 1953, names: [Holland, Netherlands]}
+  - {code: GER, name: Germany, confederation: UEFA, elo: 1953}
+  - {code: NOR, name: Norway, confederation: UEFA, elo: 1935}
+  - {code: ITA, name: Italy, confederation: UEFA, elo: 1925}
+  - {code: DEN, name: Denmark, confederation: UEFA, elo: 1894}
+  - {code: CRO, name: Croatia, confederation: UEFA, elo: 1858}
+  - {code: AUT, name: Austria, confederation: UEFA, elo: 1838}
+  - {code: GRE, name: Greece, confederation: UEFA, elo: 1797}
+  - {code: SWE, name: Sweden, confederation: UEFA, elo: 1783}
+  - {code: SVN, name: Slovenia, confederation: UEFA, elo: 1751}
+  - {code: TUR, name: Turkey, confederation: UEFA, elo: 1750, names: [Turkey, Türkiye]}
+  - {code: HUN, name: Hungary, confederation: UEFA, elo: 1746}
+  - {code: IRL, name: Republic of Ireland, confederation: UEFA, elo: 1728, names: [Republic of Ireland, Ireland]}
+  - {code: UKR, name: Ukraine, confederation: UEFA, elo: 1721}
+  - {code: SCO, name: Scotland, confederation: UEFA, elo: 1715}
+  - {code: NIR, name: Northern Ireland, confederation: UEFA, elo: 1699}
+  - {code: KOS, name: Kosovo, confederation: UEFA, elo: 1675}
+  - {code: BIH, name: Bosnia and Herzegovina, confederation: UEFA, elo: 1672, names: [Bosnia and Herzegovina, Bosnia-Herzegovina]}
+  - {code: POL, name: Poland, confederation: UEFA, elo: 1664}
+  - {code: WAL, name: Wales, confederation: UEFA, elo: 1664}
+  - {code: SRB, name: Serbia, confederation: UEFA, elo: 1653}
+  - {code: SVK, name: Slovakia, confederation: UEFA, elo: 1652}
+  - {code: ALB, name: Albania, confederation: UEFA, elo: 1650}
+  - {code: CZE, name: Czechia, confederation: UEFA, elo: 1647, names: [Czech Republic, Czechia]}
+  - {code: ISR, name: Israel, confederation: UEFA, elo: 1640}
+  - {code: ISL, name: Iceland, confederation: UEFA, elo: 1639}
+  - {code: GEO, name: Georgia, confederation: UEFA, elo: 1584}
+  - {code: ROU, name: Romania, confederation: UEFA, elo: 1566}
+  - {code: MNE, name: Montenegro, confederation: UEFA, elo: 1525}
+  - {code: BLR, name: Belarus, confederation: UEFA, elo: 1517}
+  - {code: FIN, name: Finland, confederation: UEFA, elo: 1515}
+  - {code: MKD, name: North Macedonia, confederation: UEFA, elo: 1502, names: [North Macedonia]}
+  - {code: EST, name: Estonia, confederation: UEFA, elo: 1444}
+  - {code: FRO, name: Faroe Islands, confederation: UEFA, elo: 1422}
+  - {code: BUL, name: Bulgaria, confederation: UEFA, elo: 1401}
+  - {code: KAZ, name: Kazakhstan, confederation: UEFA, elo: 1377}
+  - {code: LUX, name: Luxembourg, confederation: UEFA, elo: 1352}
+  - {code: ARM, name: Armenia, confederation: UEFA, elo: 1348}
+  - {code: AZE, name: Azerbaijan, confederation: UEFA, elo: 1340}
+  - {code: CYP, name: Cyprus, confederation: UEFA, elo: 1321}
+  - {code: MDA, name: Moldova, confederation: UEFA, elo: 1299}
+  - {code: LTU, name: Lithuania, confederation: UEFA, elo: 1282}
+  - {code: MLT, name: Malta, confederation: UEFA, elo: 1250}
+  - {code: LVA, name: Latvia, confederation: UEFA, elo: 1241}
+  - {code: AND, name: Andorra, confederation: UEFA, elo: 1067}
+  - {code: GIB, name: Gibraltar, confederation: UEFA, elo: 1024}
+  - {code: LIE, name: Liechtenstein, confederation: UEFA, elo: 880}
+  - {code: SMR, name: San Marino, confederation: UEFA, elo: 817}
+  # CONMEBOL: 10
+  - {code: ARG, name: Argentina, confederation: CONMEBOL, elo: 2158}
+  - {code: COL, name: Colombia, confederation: CONMEBOL, elo: 1987}
+  - {code: BRA, name: Brazil, confederation: CONMEBOL, elo: 1983}
+  - {code: URU, name: Uruguay, confederation: CONMEBOL, elo: 1870}
+  - {code: PAR, name: Paraguay, confederation: CONMEBOL, elo: 1856}
+  - {code: ECU, name: Ecuador, confederation: CONMEBOL, elo: 1856}
+  - {code: CHI, name: Chile, confederation: CONMEBOL, elo: 1726}
+  - {code: VEN, name: Venezuela, confederation: CONMEBOL, elo: 1723}
+  - {code: PER, name: Peru, confederation: CONMEBOL, elo: 1689}
+  - {code: BOL, name: Bolivia, confederation: CONMEBOL, elo: 1601}
+  # CONCACAF: 35
+  - {code: MEX, name: Mexico, confederation: CONCACAF, elo: 1841}
+  - {code: USA, name: United States, confederation: CONCACAF, elo: 1810, names: [United States]}
+  - {code: CAN, name: Canada, confederation: CONCACAF, elo: 1762}
+  - {code: PAN, name: Panama, confederation: CONCACAF, elo: 1661}
+  - {code: CRC, name: Costa Rica, confederation: CONCACAF, elo: 1583}
+  - {code: JAM, name: Jamaica, confederation: CONCACAF, elo: 1570}
+  - {code: HAI, name: Haiti, confederation: CONCACAF, elo: 1545}
+  - {code: HON, name: Honduras, confederation: CONCACAF, elo: 1530}
+  - {code: GUA, name: Guatemala, confederation: CONCACAF, elo: 1501}
+  - {code: CUW, name: Curaçao, confederation: CONCACAF, elo: 1484, names: [Curacao, Curaçao]}
+  - {code: SUR, name: Suriname, confederation: CONCACAF, elo: 1459}
+  - {code: SLV, name: El Salvador, confederation: CONCACAF, elo: 1338}
+  - {code: GUY, name: Guyana, confederation: CONCACAF, elo: 1338}
+  - {code: DOM, name: Dominican Republic, confederation: CONCACAF, elo: 1330}
+  - {code: TRI, name: Trinidad and Tobago, confederation: CONCACAF, elo: 1326}
+  - {code: NCA, name: Nicaragua, confederation: CONCACAF, elo: 1270}
+  - {code: CUB, name: Cuba, confederation: CONCACAF, elo: 1263}
+  - {code: VIN, name: Saint Vincent and the Grenadines, confederation: CONCACAF, elo: 1197, names: [St. Vincent and the Grenadines, Saint Vincent and the Grenadines]}
+  - {code: PUR, name: Puerto Rico, confederation: CONCACAF, elo: 1157}
+  - {code: LCA, name: Saint Lucia, confederation: CONCACAF, elo: 1127, names: [St. Lucia, Saint Lucia]}
+  - {code: SKN, name: Saint Kitts and Nevis, confederation: CONCACAF, elo: 1069, names: [St. Kitts and Nevis, Saint Kitts and Nevis]}
+  - {code: ARU, name: Aruba, confederation: CONCACAF, elo: 1017}
+  - {code: GRN, name: Grenada, confederation: CONCACAF, elo: 1010}
+  - {code: MSR, name: Montserrat, confederation: CONCACAF, elo: 1009}
+  - {code: BER, name: Bermuda, confederation: CONCACAF, elo: 992}
+  - {code: BLZ, name: Belize, confederation: CONCACAF, elo: 990}
+  - {code: BRB, name: Barbados, confederation: CONCACAF, elo: 982}
+  - {code: ATG, name: Antigua and Barbuda, confederation: CONCACAF, elo: 926}
+  - {code: DMA, name: Dominica, confederation: CONCACAF, elo: 906}
+  - {code: CAY, name: Cayman Islands, confederation: CONCACAF, elo: 765}
+  - {code: VIR, name: US Virgin Islands, confederation: CONCACAF, elo: 694}
+  - {code: TCA, name: Turks and Caicos Islands, confederation: CONCACAF, elo: 687}
+  - {code: VGB, name: British Virgin Islands, confederation: CONCACAF, elo: 661}
+  - {code: BAH, name: Bahamas, confederation: CONCACAF, elo: 631}
+  - {code: AIA, name: Anguilla, confederation: CONCACAF, elo: 612}
+  # AFC: 46
+  - {code: JPN, name: Japan, confederation: AFC, elo: 1898}
+  - {code: AUS, name: Australia, confederation: AFC, elo: 1772}
+  - {code: IRN, name: Iran, confederation: AFC, elo: 1743}
+  - {code: KOR, name: South Korea, confederation: AFC, elo: 1723, names: [Korea Republic, South Korea]}
+  - {code: UZB, name: Uzbekistan, confederation: AFC, elo: 1646}
+  - {code: JOR, name: Jordan, confederation: AFC, elo: 1644}
+  - {code: KSA, name: Saudi Arabia, confederation: AFC, elo: 1642, names: [Saudi Arabia]}
+  - {code: UAE, name: United Arab Emirates, confederation: AFC, elo: 1577, names: [United Arab Emirates]}
+  - {code: IRQ, name: Iraq, confederation: AFC, elo: 1539}
+  - {code: PLE, name: Palestine, confederation: AFC, elo: 1493, names: [Palestine]}
+  - {code: QAT, name: Qatar, confederation: AFC, elo: 1455}
+  - {code: SYR, name: Syria, confederation: AFC, elo: 1450}
+  - {code: OMA, name: Oman, confederation: AFC, elo: 1447}
+  - {code: THA, name: Thailand, confederation: AFC, elo: 1394}
+  - {code: VIE, name: Vietnam, confederation: AFC, elo: 1378}
+  - {code: PRK, name: North Korea, confederation: AFC, elo: 1375, names: [Korea DPR, North Korea]}
+  - {code: CHN, name: China, confederation: AFC, elo: 1354, names: [China PR, China]}
+  - {code: KGZ, name: Kyrgyzstan, confederation: AFC, elo: 1338}
+  - {code: BHR, name: Bahrain, confederation: AFC, elo: 1337}
+  - {code: IDN, name: Indonesia, confederation: AFC, elo: 1328}
+  - {code: MAS, name: Malaysia, confederation: AFC, elo: 1327}
+  - {code: KUW, name: Kuwait, confederation: AFC, elo: 1301}
+  - {code: TJK, name: Tajikistan, confederation: AFC, elo: 1297}
+  - {code: LBN, name: Lebanon, confederation: AFC, elo: 1296}
+  - {code: YEM, name: Yemen, confederation: AFC, elo: 1213}
+  - {code: TKM, name: Turkmenistan, confederation: AFC, elo: 1209}
+  - {code: IND, name: India, confederation: AFC, elo: 1156}
+  - {code: SIN, name: Singapore, confederation: AFC, elo: 1146}
+  - {code: PHI, name: Philippines, confederation: AFC, elo: 1131}
+  - {code: HKG, name: Hong Kong, confederation: AFC, elo: 1114}
+  - {code: MYA, name: Myanmar, confederation: AFC, elo: 1014}
+  - {code: AFG, name: Afghanistan, confederation: AFC, elo: 961}
+  - {code: PAK, name: Pakistan, confederation: AFC, elo: 944}
+  - {code: BAN, name: Bangladesh, confederation: AFC, elo: 919}
+  - {code: NEP, name: Nepal, confederation: AFC, elo: 893}
+  - {code: CAM, name: Cambodia, confederation: AFC, elo: 882}
+  - {code: SRI, name: Sri Lanka, confederation: AFC, elo: 853}
+  - {code: TPE, name: Chinese Taipei, confederation: AFC, elo: 817, names: [Chinese Taipei, Taiwan]}
+  - {code: MDV, name: Maldives, confederation: AFC, elo: 765}
+  - {code: MNG, name: Mongolia, confederation: AFC, elo: 726}
+  - {code: LAO, name: Laos, confederation: AFC, elo: 725}
+  - {code: TLS, name: Timor-Leste, confederation: AFC, elo: 713, names: [Timor-Leste, East Timor]}
+  - {code: GUM, name: Guam, confederation: AFC, elo: 705}
+  - {code: BHU, name: Bhutan, confederation: AFC, elo: 629}
+  - {code: MAC, name: Macao, confederation: AFC, elo: 588}
+  - {code: BRU, name: Brunei, confederation: AFC, elo: 552}
+  # CAF: 54
+  - {code: MAR, name: Morocco, confederation: CAF, elo: 1899}
+  - {code: SEN, name: Senegal, confederation: CAF, elo: 1812}
+  - {code: CIV, name: Ivory Coast, confederation: CAF, elo: 1719, names: ["Cote d'Ivoire", "Côte d'Ivoire", Ivory Coast]}
+  - {code: EGY, name: Egypt, confederation: CAF, elo: 1703}
+  - {code: NGA, name: Nigeria, confederation: CAF, elo: 1699}
+  - {code: ALG, name: Algeria, confederation: CAF, elo: 1688}
+  - {code: COD, name: DR Congo, confederation: CAF, elo: 1675, names: [DR Congo, Congo DR]}
+  - {code: MLI, name: Mali, confederation: CAF, elo: 1652}
+  - {code: CMR, name: Cameroon, confederation: CAF, elo: 1636}
+  - {code: RSA, name: South Africa, confederation: CAF, elo: 1593}
+  - {code: ANG, name: Angola, confederation: CAF, elo: 1567}
+  - {code: BFA, name: Burkina Faso, confederation: CAF, elo: 1551}
+  - {code: CPV, name: Cape Verde, confederation: CAF, elo: 1521, names: [Cape Verde, Cape Verde Islands]}
+  - {code: GHA, name: Ghana, confederation: CAF, elo: 1515}
+  - {code: TUN, name: Tunisia, confederation: CAF, elo: 1488}
+  - {code: GUI, name: Guinea, confederation: CAF, elo: 1479}
+  - {code: GAM, name: Gambia, confederation: CAF, elo: 1473, names: [Gambia, The Gambia]}
+  - {code: BEN, name: Benin, confederation: CAF, elo: 1455}
+  - {code: LBY, name: Libya, confederation: CAF, elo: 1439}
+  - {code: UGA, name: Uganda, confederation: CAF, elo: 1438}
+  - {code: TOG, name: Togo, confederation: CAF, elo: 1422}
+  - {code: ZIM, name: Zimbabwe, confederation: CAF, elo: 1408}
+  - {code: GAB, name: Gabon, confederation: CAF, elo: 1397}
+  - {code: ZAM, name: Zambia, confederation: CAF, elo: 1382}
+  - {code: COM, name: Comoros, confederation: CAF, elo: 1381}
+  - {code: GNB, name: Guinea-Bissau, confederation: CAF, elo: 1378}
+  - {code: MOZ, name: Mozambique, confederation: CAF, elo: 1376}
+  - {code: NIG, name: Niger, confederation: CAF, elo: 1367}
+  - {code: EQG, name: Equatorial Guinea, confederation: CAF, elo: 1365}
+  - {code: RWA, name: Rwanda, confederation: CAF, elo: 1364}
+  - {code: MAD, name: Madagascar, confederation: CAF, elo: 1348}
+  - {code: KEN, name: Kenya, confederation: CAF, elo: 1347}
+  - {code: SDN, name: Sudan, confederation: CAF, elo: 1333}
+  - {code: SLE, name: Sierra Leone, confederation: CAF, elo: 1319}
+  - {code: LBR, name: Liberia, confederation: CAF, elo: 1315}
+  - {code: BOT, name: Botswana, confederation: CAF, elo: 1310}
+  - {code: MTN, name: Mauritania, confederation: CAF, elo: 1307}
+  - {code: BDI, name: Burundi, confederation: CAF, elo: 1301}
+  - {code: NAM, name: Namibia, confederation: CAF, elo: 1291}
+  - {code: TAN, name: Tanzania, confederation: CAF, elo: 1288}
+  - {code: ETH, name: Ethiopia, confederation: CAF, elo: 1276}
+  - {code: MWI, name: Malawi, confederation: CAF, elo: 1255}
+  - {code: LES, name: Lesotho, confederation: CAF, elo: 1211}
+  - {code: CGO, name: Congo, confederation: CAF, elo: 1203}
+  - {code: ERI, name: Eritrea, confederation: CAF, elo: 1190}
+  - {code: CTA, name: Central African Republic, confederation: CAF, elo: 1186}
+  - {code: SWZ, name: Eswatini, confederation: CAF, elo: 1148, names: [Eswatini, Swaziland]}
+  - {code: SSD, name: South Sudan, confederation: CAF, elo: 1091}
+  - {code: CHA, name: Chad, confederation: CAF, elo: 1073}
+  - {code: MRI, name: Mauritius, confederation: CAF, elo: 1061}
+  - {code: STP, name: Sao Tome and Principe, confederation: CAF, elo: 1037, names: [São Tomé e Príncipe, Sao Tome and Principe]}
+  - {code: SOM, name: Somalia, confederation: CAF, elo: 973}
+  - {code: DJI, name: Djibouti, confederation: CAF, elo: 941}
+  - {code: SEY, name: Seychelles, confederation: CAF, elo: 812}
+  # OFC: 11
+  - {code: NZL, name: New Zealand, confederation: OFC, elo: 1563}
+  - {code: NCL, name: New Caledonia, confederation: OFC, elo: 1186}
+  - {code: VAN, name: Vanuatu, confederation: OFC, elo: 1153}
+  - {code: TAH, name: Tahiti, confederation: OFC, elo: 1152}
+  - {code: FIJ, name: Fiji, confederation: OFC, elo: 1135}
+  - {code: PNG, name: Papua New Guinea, confederation: OFC, elo: 1112}
+  - {code: SOL, name: Solomon Islands, confederation: OFC, elo: 1110}
+  - {code: SAM, name: Samoa, confederation: OFC, elo: 728}
+  - {code: COK, name: Cook Islands, confederation: OFC, elo: 647}
+  - {code: TGA, name: Tonga, confederation: OFC, elo: 520}
+  - {code: ASA, name: American Samoa, confederation: OFC, elo: 370, names: [American Samoa]}

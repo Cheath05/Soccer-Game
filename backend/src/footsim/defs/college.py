@@ -1,6 +1,7 @@
 """US college soccer (W9a, the NCAA Division I men's season): the programs and conferences
-(data/config/college/ncaa_d1.yaml) and the rules of the season, its rosters, recruiting and the
-draft pool (data/config/college/rules.yaml)."""
+(data/config/college/ncaa_d1.yaml), the rules of the season, its rosters, recruiting and the
+draft pool (data/config/college/rules.yaml), and high-school recruiting (W9c,
+data/config/college/recruiting.yaml)."""
 
 import re
 from datetime import date
@@ -197,9 +198,187 @@ class CollegeRulesDef(DefModel):
     draft: DraftDef
 
 
+class AbilityDef(DefModel):
+    """A recruit's overall when he enrolls and his room to grow."""
+
+    overall: float
+    overall_sd: float = Field(ge=0)
+    overall_range: tuple[float, float]
+    room: float
+    room_sd: float = Field(ge=0)
+    min_room: float = Field(ge=0)
+    star_share: float = Field(ge=0, le=1)
+    star_bonus: tuple[float, float]
+    max_potential: int = Field(ge=1, le=99)
+
+
+class GradeDef(DefModel):
+    """The recruiting services' grade, rankings and stars."""
+
+    potential_weight: float = Field(ge=0, le=1)
+    error_sd: float = Field(ge=0)
+    stars: dict[int, int]  # stars -> the last national rank with them (5, 4, 3; the rest 2)
+
+    @model_validator(mode="after")
+    def _order(self) -> "GradeDef":
+        if sorted(self.stars) != [3, 4, 5]:
+            raise ValueError("stars: give the last rank of 5, 4 and 3 stars")
+        if not self.stars[5] < self.stars[4] < self.stars[3]:
+            raise ValueError("stars: the ranks must grow from 5 stars to 3")
+        return self
+
+
+Curve = list[tuple[float, float]]  # (national rank, value), linear between the points
+
+
+def _curve(points: Curve) -> Curve:
+    if len(points) < 2 or any(b[0] <= a[0] for a, b in zip(points, points[1:], strict=False)):
+        raise ValueError("a curve needs two or more points with growing ranks")
+    return points
+
+
+class ExpectationsDef(DefModel):
+    prestige: Curve  # the program prestige a recruit of a rank expects
+    share: Curve  # the scholarship he hopes for
+
+    @field_validator("prestige", "share")
+    @classmethod
+    def _points(cls, value: Curve) -> Curve:
+        return _curve(value)
+
+
+DECISION_PARTS = ("money", "prestige", "playing_time", "home", "attention")
+
+
+class DecisionDef(DefModel):
+    weights: dict[str, float]
+    priority_shape: float = Field(gt=0)
+    local_share: float = Field(ge=0, le=1)
+    local_home: float = Field(ge=1)
+    fit_sd: float = Field(ge=0)
+    prestige_scale: float = Field(gt=0)
+    home_miles: float = Field(gt=0)
+    returning_growth: float
+    bench_decay: float = Field(gt=0, le=1)
+    readiness: dict[int, float]  # by stars, a week's growth
+    readiness_sd: float = Field(ge=0)
+    late_pace: float = Field(ge=1)
+    waiting: dict[str, float]  # base, weight
+    margin: float = Field(ge=0)
+    flip_margin: float = Field(ge=0)
+    flip_chance: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _parts(self) -> "DecisionDef":
+        if set(self.weights) != set(DECISION_PARTS):
+            raise ValueError(f"decision weights: give exactly {', '.join(DECISION_PARTS)}")
+        if set(self.waiting) != {"base", "weight"}:
+            raise ValueError("decision waiting: give base and weight")
+        if set(self.readiness) != {2, 3, 4, 5}:
+            raise ValueError("decision readiness: give 2 to 5 stars")
+        return self
+
+
+class RecruitingCalendarDef(DefModel):
+    start: str
+    signing_day: str  # the first Wednesday on or after this day
+    close: str
+
+    @field_validator("start", "signing_day", "close")
+    @classmethod
+    def _dates(cls, value: str) -> str:
+        return _month_day(value)
+
+
+PRIORITIES = ("top", "high", "watch")
+
+
+class ProgramRulesDef(DefModel):
+    roster_max: int = Field(ge=11)
+    roster_target: int = Field(ge=11)
+    funding_by_tier: dict[int, float]
+    prestige_by_tier: dict[int, float]
+    prestige_sd: float = Field(ge=0)
+    prestige_rate: float = Field(ge=0, le=1)
+    results_weight: float = Field(ge=0, le=1)
+    results_seasons: int = Field(ge=1)
+    ncaa_win_points: float = Field(ge=0)
+    title_points: float = Field(ge=0)
+    effort_by_tier: dict[int, float]
+    priority_weight: dict[str, float]
+    effort_cap: float = Field(gt=0)
+    interest_gain: float = Field(ge=0)
+    offer_boost: float = Field(ge=0)
+    interest_decay: float = Field(ge=0, le=1)
+    scouting_gain: float = Field(ge=0)
+    official_visits: int = Field(ge=0)
+    visit_interest: float = Field(ge=0, le=100)
+    visit_boost: float = Field(ge=0)
+    offer_overcommit: float = Field(ge=1)
+    ai_error_by_tier: dict[int, float]
+    ai_reach: float = Field(ge=0)
+    ai_floor: float = Field(ge=0)
+    need_bonus: float = Field(ge=0)
+    crowd_penalty: float = Field(ge=0)
+    ai_top_targets: int = Field(ge=0)
+    share_step: float = Field(gt=0, le=1)
+
+    @model_validator(mode="after")
+    def _tiers(self) -> "ProgramRulesDef":
+        for name in ("funding_by_tier", "prestige_by_tier", "effort_by_tier",
+                     "ai_error_by_tier"):
+            if set(getattr(self, name)) != {1, 2, 3, 4, 5}:
+                raise ValueError(f"{name}: give tiers 1 to 5")
+        if set(self.priority_weight) != set(PRIORITIES):
+            raise ValueError(f"priority_weight: give {', '.join(PRIORITIES)}")
+        if self.roster_target > self.roster_max:
+            raise ValueError("roster_target is above roster_max")
+        return self
+
+
+class UserRecruitingDef(DefModel):
+    """A college coach's view of recruits and the rules of their offers."""
+
+    overall_error_sd: float = Field(ge=0)
+    overall_width: float = Field(ge=0)
+    potential_error_sd: float = Field(ge=0)
+    potential_width: float = Field(ge=0)
+    width_floor: float = Field(ge=0)
+    leader_knowledge: float = Field(ge=0, le=1)
+    leader_rank: int = Field(ge=0)
+    decommit_penalty: float = Field(ge=0)
+    min_roster: int = Field(ge=11)
+    class_points: dict[int, float]
+
+
+class StateDef(DefModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    weight: float = Field(ge=0)
+
+
+class HsRecruitingDef(DefModel):
+    """High-school recruiting (W9c, data/config/college/recruiting.yaml)."""
+
+    class_size: int = Field(ge=1)
+    international_share: float = Field(ge=0, le=1)
+    age: float
+    age_sd: float = Field(ge=0)
+    positions: dict[str, float]
+    ability: AbilityDef
+    grade: GradeDef
+    expectations: ExpectationsDef
+    decision: DecisionDef
+    calendar: RecruitingCalendarDef
+    programs: ProgramRulesDef
+    user: UserRecruitingDef
+    states: dict[str, StateDef]
+
+
 class CollegeDef(DefModel):
     rules: CollegeRulesDef
     conferences: dict[str, ConferenceDef]
+    recruiting: HsRecruitingDef
 
     @model_validator(mode="after")
     def _field(self) -> "CollegeDef":
@@ -218,6 +397,11 @@ class CollegeDef(DefModel):
         largest = max((c.tournament for c in self.conferences.values()), default=0)
         if largest and (largest - 1).bit_length() > len(self.rules.conference_tournament.rounds):
             raise ValueError(f"a conference tournament of {largest} needs more round dates")
+        states = self.recruiting.states
+        missing = sorted({t.state for c in self.conferences.values() for t in c.teams
+                          if t.state not in states})
+        if missing:
+            raise ValueError(f"recruiting.yaml states: no centre for {missing}")
         return self
 
     def program_conference(self) -> dict[str, str]:

@@ -1,0 +1,195 @@
+# High-school recruiting for US college soccer (W9c; world/college/recruiting.py). Each season, on
+# its first day, the game makes the national class of high-school seniors who enroll at the next
+# season's rollover. Programs offer them scholarships through the year; recruits weigh the offers,
+# commit, and sign on signing day; the class closes in the spring.
+#
+# The roster and scholarship rules are the 2025 ones (the House settlement, for the D-I programs
+# that opted in): at most 28 players and no scholarship cap, each program giving what its money
+# allows. Money is counted in full scholarships ("full rides").
+#
+# Dates are MM-DD in the game's July-June season (defs/college.py ``on``).
+
+class_size: 2200  # about 213 programs x 7, and the rest go to D-II, NAIA or junior college
+international_share: 0.15  # recruits from abroad; their home is their country
+age: 18.3  # on the first day of the season they enroll
+age_sd: 0.35
+# Positions, by share of the class (those of the college roster shape).
+positions: {GK: 0.09, CB: 0.17, LB: 0.07, RB: 0.07, DM: 0.08, CM: 0.15, AM: 0.08, LW: 0.07,
+            RW: 0.07, ST: 0.15}
+
+ability:
+  # A recruit's overall when he enrolls, and how far above it he can still grow. The class is
+  # sized so the best programs' freshmen land about where W9a's generated ones did (rules.yaml
+  # roster: a program's level less 3).
+  overall: 39.5
+  overall_sd: 5.5
+  overall_range: [26.0, 60.0]
+  room: 14.0  # mean potential above the overall
+  room_sd: 5.0
+  min_room: 2.0
+  star_share: 0.03  # a few with far more to come
+  star_bonus: [6.0, 14.0]
+  max_potential: 86
+
+grade:
+  # The recruiting services' grade, which sets the rankings and stars: the overall plus this share
+  # of the room to grow, plus their error. Rankings are good, not perfect.
+  potential_weight: 0.5
+  error_sd: 2.5
+  # Stars by national rank: the top 25 are five-star, the next 150 four-star, and so on.
+  stars: {5: 25, 4: 175, 3: 775}
+
+# What a recruit wants, by national rank (linear between the points): the prestige of the program
+# he expects (0-100) and the scholarship he hopes for (1 = a full ride).
+expectations:
+  prestige: [[1, 90], [25, 82], [175, 66], [775, 46], [2200, 22]]
+  share: [[1, 1.0], [25, 0.9], [175, 0.65], [775, 0.4], [2200, 0.1]]
+
+decision:
+  # A recruit scores each offering program on five things, each 0-1, weighted by his own
+  # priorities (each drawn about 1, from a gamma of this shape) and these base weights; plus a
+  # personal fit to each program (a normal draw).
+  weights: {money: 1.0, prestige: 2.0, playing_time: 1.0, home: 0.7, attention: 0.9}
+  priority_shape: 2.5
+  local_share: 0.12  # recruits who care most about staying near home...
+  local_home: 2.5  # ...whose home priority is this much stronger
+  fit_sd: 0.25
+  prestige_scale: 10.0  # a program this far above what he expects scores about 0.73 on prestige
+  home_miles: 450.0  # the home score halves about every 0.7 x this many miles
+  # Playing time: where he'd stand at his position group next season among the program's players
+  # (who grow this much a season), against the starters the roster shape has there.
+  returning_growth: 2.0
+  bench_decay: 0.7  # each place below the starters keeps this much of the score
+  # Readiness to decide grows each week (faster for the lower-ranked); he commits once it reaches
+  # 1, if his best offer beats the next by the margin. After signing day it grows this much faster.
+  readiness: {5: 0.055, 4: 0.07, 3: 0.09, 2: 0.12}
+  readiness_sd: 0.2  # each recruit's own pace, as a share
+  late_pace: 3.0
+  # He waits longer while his best offer's program is below what he expects: readiness grows at
+  # this base share plus the best offer's prestige score (0-1, a half when it meets his hopes)
+  # times the weight. So an offer at his level keeps his pace; a weak one about halves it.
+  waiting: {base: 0.4, weight: 1.2}
+  margin: 0.08
+  flip_margin: 0.35  # a committed recruit may flip before signing day for an offer this much better
+  flip_chance: 0.15  # ...in a week, at most
+
+calendar:
+  start: "08-01"  # programs start offering (weekly steps on Mondays)
+  signing_day: "02-04"  # the first Wednesday of February on or after this day
+  close: "05-01"  # the class closes: the last places fill, the rest leave the game
+
+programs:
+  roster_max: 28  # the 2025 roster limit
+  roster_target: 27  # AI programs recruit to this, leaving a place spare
+  funding_by_tier: {1: 18.0, 2: 15.0, 3: 12.0, 4: 9.5, 5: 6.5}  # full scholarships
+  # Program prestige (0-100): a tier's starting prestige; each rollover it moves this share of the
+  # way towards a target that weighs the tier's and the last seasons' success.
+  prestige_by_tier: {1: 85, 2: 70, 3: 55, 4: 40, 5: 28}
+  prestige_sd: 3.0
+  prestige_rate: 0.3
+  results_weight: 0.5  # the target's share from results (the rest from the tier)
+  results_seasons: 3
+  ncaa_win_points: 6.0  # each NCAA tournament win adds this to a season's success (0-100 scale)
+  title_points: 10.0  # the national title adds this more
+  # Each week's recruiting effort, by tier (a power's staff is bigger), spread over the program's
+  # targets by priority, no more than the cap on one.
+  effort_by_tier: {1: 36.0, 2: 32.0, 3: 28.0, 4: 24.0, 5: 20.0}
+  priority_weight: {top: 3.0, high: 2.0, watch: 1.0}
+  effort_cap: 8.0
+  interest_gain: 1.6  # interest a point of effort adds (out of 100)...
+  offer_boost: 0.5  # ...this much more with an offer out
+  interest_decay: 0.06  # a week without effort loses this share
+  scouting_gain: 0.015  # the user's knowledge a point of effort adds (out of 1)
+  official_visits: 12  # campus visits a program hosts a season
+  visit_interest: 60.0  # a Top target with an offer and this much interest visits...
+  visit_boost: 18.0  # ...and gains this much
+  offer_overcommit: 2.0  # open offers worth at most this many times the places
+  # AI programs' scouting error on the grade, by tier (weaker programs see less well), their reach
+  # (how far above their prestige they offer), the floor (how far below they'd still bother, until
+  # the spring), and a bonus to a recruit at a position the roster needs.
+  ai_error_by_tier: {1: 1.5, 2: 2.0, 3: 2.5, 4: 3.0, 5: 3.5}
+  ai_reach: 10.0
+  ai_floor: 30.0
+  need_bonus: 2.0
+  crowd_penalty: 3.0  # grade points off a recruit for each program as strong already offering
+  ai_top_targets: 3  # Top priority for its best few; High for the rest it offered
+  share_step: 0.05
+
+# The user's program (a college coach's): what their staff can see of a recruit, and the rules of
+# their offers.
+user:
+  # The estimate of a recruit's overall and potential: centred on the truth plus a fixed error
+  # that shrinks as the staff get to know him (knowledge 0-1), as wide as this at no knowledge,
+  # and never narrower than the floor.
+  overall_error_sd: 4.0
+  overall_width: 7.0
+  potential_error_sd: 6.0
+  potential_width: 10.0
+  width_floor: 1.0
+  # Who a recruit leans towards is known once the staff know him this well, or for the best
+  # recruits (the press follows them).
+  leader_knowledge: 0.25
+  leader_rank: 100
+  # Pulling an offer a recruit committed to costs the program this much interest with every
+  # recruit it's targeting.
+  decommit_penalty: 10.0
+  # At the rollover, generated walk-ons fill the user's roster only to this many (AI programs
+  # fill to programs.roster_target).
+  min_roster: 22
+  # A program's class points (the class rankings), by a recruit's stars.
+  class_points: {5: 30, 4: 18, 3: 9, 2: 4}
+
+# Where recruits come from, and where every program is: a state's population centre and its share
+# of the high-school class (roughly where US youth soccer players are). DC is a program's state.
+states:
+  AL: {lat: 33.0, lon: -86.8, weight: 0.8}
+  AK: {lat: 61.4, lon: -150.0, weight: 0.15}
+  AZ: {lat: 33.4, lon: -111.9, weight: 2.0}
+  AR: {lat: 34.9, lon: -92.4, weight: 0.5}
+  CA: {lat: 35.5, lon: -119.4, weight: 14.0}
+  CO: {lat: 39.5, lon: -105.0, weight: 2.4}
+  CT: {lat: 41.5, lon: -72.9, weight: 1.4}
+  DE: {lat: 39.4, lon: -75.6, weight: 0.3}
+  DC: {lat: 38.9, lon: -77.0, weight: 0.2}
+  FL: {lat: 27.8, lon: -81.6, weight: 6.5}
+  GA: {lat: 33.6, lon: -84.2, weight: 3.4}
+  HI: {lat: 21.3, lon: -157.9, weight: 0.3}
+  ID: {lat: 43.6, lon: -115.9, weight: 0.5}
+  IL: {lat: 41.3, lon: -88.4, weight: 4.4}
+  IN: {lat: 39.9, lon: -86.3, weight: 1.6}
+  IA: {lat: 41.9, lon: -93.0, weight: 0.7}
+  KS: {lat: 38.5, lon: -96.6, weight: 0.8}
+  KY: {lat: 37.8, lon: -85.4, weight: 0.8}
+  LA: {lat: 30.7, lon: -91.4, weight: 0.6}
+  ME: {lat: 44.2, lon: -69.8, weight: 0.3}
+  MD: {lat: 39.1, lon: -76.8, weight: 2.4}
+  MA: {lat: 42.3, lon: -71.4, weight: 2.6}
+  MI: {lat: 42.9, lon: -84.2, weight: 2.4}
+  MN: {lat: 45.2, lon: -93.5, weight: 1.4}
+  MS: {lat: 32.6, lon: -89.6, weight: 0.4}
+  MO: {lat: 38.4, lon: -92.2, weight: 1.6}
+  MT: {lat: 46.4, lon: -111.0, weight: 0.2}
+  NE: {lat: 41.0, lon: -96.9, weight: 0.5}
+  NV: {lat: 36.6, lon: -115.6, weight: 0.8}
+  NH: {lat: 43.0, lon: -71.5, weight: 0.4}
+  NJ: {lat: 40.4, lon: -74.4, weight: 4.0}
+  NM: {lat: 34.8, lon: -106.5, weight: 0.5}
+  NY: {lat: 41.5, lon: -74.6, weight: 5.6}
+  NC: {lat: 35.6, lon: -79.4, weight: 3.0}
+  ND: {lat: 47.4, lon: -99.0, weight: 0.15}
+  OH: {lat: 40.5, lon: -82.7, weight: 3.0}
+  OK: {lat: 35.6, lon: -97.0, weight: 0.8}
+  OR: {lat: 44.7, lon: -122.6, weight: 1.2}
+  PA: {lat: 40.5, lon: -77.0, weight: 3.6}
+  RI: {lat: 41.8, lon: -71.4, weight: 0.3}
+  SC: {lat: 34.0, lon: -80.9, weight: 1.2}
+  SD: {lat: 43.9, lon: -97.6, weight: 0.15}
+  TN: {lat: 35.8, lon: -86.4, weight: 1.4}
+  TX: {lat: 30.9, lon: -97.4, weight: 9.0}
+  UT: {lat: 40.4, lon: -111.9, weight: 1.4}
+  VT: {lat: 44.1, lon: -72.8, weight: 0.15}
+  VA: {lat: 38.0, lon: -77.8, weight: 3.0}
+  WA: {lat: 47.3, lon: -121.6, weight: 2.8}
+  WV: {lat: 38.8, lon: -80.9, weight: 0.3}
+  WI: {lat: 43.7, lon: -89.0, weight: 1.4}
+  WY: {lat: 42.6, lon: -106.7, weight: 0.1}

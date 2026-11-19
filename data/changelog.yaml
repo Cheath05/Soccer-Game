@@ -27,6 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.111"
+  date: "2026-11-19"
+  title: "Coach a college program, and recruit high-school players"
+  changes:
+    - "New career → NCAA program: coach one of the 213 NCAA Division I programs. Your matches play like any club's; the whole NCAA is your league, so it is always fully simulated. There is no board, budget, wages or transfers: Squad shows each player's class, scholarship and the season he leaves after, and the dashboard your conference table, prestige and RPI rank. Players leave by graduating, declaring for the MLS SuperDraft or turning pro."
+    - "Recruiting (for a college coach): each season a national class of 2,200 high-school seniors is ranked by stars, nationally, by position and by home state. Put recruits on your target list (Top, High or Watch) and your staff spread their week over them, building interest and narrowing their estimate of each one's ability. Offer full or partial scholarships or walk-on places from 1 August; recruits weigh the money, your prestige, playing time, the distance from home and your attention against the other programs' offers, commit through the autumn and sign on signing day in February."
+    - "The 2025 rules: at most 28 players and no scholarship limit, each program giving what its money allows (counted in full scholarships, more for the powers). A program's prestige now moves with its results, so winning recruits better."
+    - "Every NCAA program now recruits its freshmen from the national class, in every career, instead of getting made-up classes."
+
 - version: "1.109"
   date: "2026-11-17"
   title: "Faster sims: choose which leagues are fully simulated"

@@ -27,6 +27,7 @@ from sqlalchemy import Connection, Engine, Row, text
 from footsim.core.rng import derive_rng
 from footsim.match.report import MatchReport
 from footsim.match.teams import TeamSheet
+from footsim.world.college.common import is_college_club
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta, players_epoch
 from footsim.world.season import decider_for
@@ -50,6 +51,9 @@ def user_league(conn: Connection, meta: CareerMeta) -> str | None:
     """The key of the user's club's league this season (always fully simulated)."""
     if meta.user_club_id is None:
         return None
+    if is_college_club(conn, meta.user_club_id):  # a college coach: the NCAA (W9c)
+        return str(conn.execute(text("SELECT key FROM competition WHERE type = 'college'"))
+                   .scalar_one())
     value = conn.execute(text(
         "SELECT c.key FROM club_league_membership m JOIN competition c ON c.id = m.competition_id "
         "WHERE m.club_id = :club AND m.season_id = :s"),

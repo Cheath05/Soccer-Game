@@ -99,6 +99,39 @@ export interface Career {
   next_fixture: Fixture | null
   recent: Fixture[]
   currency?: string // the currency money is shown and quoted in, kept with the career
+  college?: CollegeCareer | null // a college coach's program (W9c); null for a club
+}
+
+// A college coach's program (api/schemas.py CollegeCareerOut). The career's `position` is then its
+// place in its conference's table.
+export interface CollegeCareer {
+  conference: string
+  conference_name: string
+  tier: number // 1 (a national power) to 5
+  prestige: number // 0-100
+  rpi_rank: number | null
+}
+
+// GET /api/world/college-programs: the NCAA programs a new career can coach, by conference.
+export interface CollegeProgramOption {
+  name: string
+  school: string
+  state: string
+  tier: number
+}
+export interface CollegeConferenceOption {
+  key: string
+  name: string
+  short_name: string
+  programs: CollegeProgramOption[]
+}
+
+// A college player's place on his program (SquadPlayerOut.college).
+export interface CollegePlayerInfo {
+  class_year: 'Fr' | 'So' | 'Jr' | 'Sr'
+  scholarship: number // a share of a full scholarship; 0 for a walk-on
+  declared: boolean // declared for the MLS SuperDraft
+  leaves: string // the season he leaves after, as a senior
 }
 
 // Sim to date (api/sim.py): the career moving on to a chosen day in the background.
@@ -391,6 +424,7 @@ export interface SquadPlayer {
   goals: number
   assists: number
   average_rating: number | null
+  college?: CollegePlayerInfo | null // a college player (W9c)
 }
 
 /** Another club's player, seen from outside: no fitness or wage detail. */

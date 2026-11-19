@@ -41,3 +41,17 @@ def in_college(conn: Connection, player_id: int) -> bool:
 
 def college_club_ids(conn: Connection) -> set[int]:
     return {int(r.club_id) for r in conn.execute(text(COLLEGE_CLUBS_SQL))}
+
+
+def college_club_id(conn: Connection, program: str) -> int:
+    """The club of the NCAA program named ``program`` ("Indiana Hoosiers"). Raises KeyError."""
+    found = conn.execute(text(f"SELECT c.id FROM club c WHERE c.name = :n AND c.id IN "
+                              f"({COLLEGE_CLUBS_SQL})"), {"n": program}).scalar()
+    if found is None:
+        raise KeyError(program)
+    return int(found)
+
+
+def is_college_club(conn: Connection, club_id: int | None) -> bool:
+    return club_id is not None and conn.execute(text(
+        "SELECT 1 FROM college_team WHERE club_id = :c"), {"c": club_id}).first() is not None

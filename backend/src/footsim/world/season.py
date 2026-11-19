@@ -52,6 +52,7 @@ from footsim.persistence.schema import (
 from footsim.world.club_names import apply_club_names, apply_club_nations
 from footsim.world.college.common import is_college_stage
 from footsim.world.college.draft import college_turnover
+from footsim.world.college.recruiting import progress_recruiting
 from footsim.world.college.season import (
     college_decider,
     create_college_fixtures,
@@ -303,6 +304,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
             if playoff.phase is None:
                 messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
     messages += progress_college(conn, world, meta, day)
+    messages += progress_recruiting(conn, world, meta, day)
     messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,

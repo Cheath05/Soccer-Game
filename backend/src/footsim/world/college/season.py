@@ -40,6 +40,7 @@ from footsim.persistence.schema import (
 )
 from footsim.world.college.common import NCAA, REGULAR, conference_event
 from footsim.world.college.draft import declare_prospects, release_undrafted
+from footsim.world.college.recruiting import ensure_recruiting
 from footsim.world.college.roster import ensure_college
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta
@@ -73,6 +74,7 @@ def create_college_fixtures(conn: Connection, world: World, meta: CareerMeta, se
     """The season's regular-season fixtures (the college world first, if the save lacks it).
     Returns news."""
     news = ensure_college(conn, world, meta, season_id, start)
+    news += ensure_recruiting(conn, world, meta, season_id, start)
     comp = college_competition(conn, world)
     if comp is None or conn.execute(select(fixture.c.id).where(
             fixture.c.season_id == season_id, fixture.c.competition_id == comp)).first():

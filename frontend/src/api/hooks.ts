@@ -22,6 +22,7 @@ import type {
   EuropeRankings,
   Fixture,
   Health,
+  CollegeConferenceOption,
   LeagueOption,
   MatchReport,
   Nation,
@@ -62,6 +63,10 @@ export function useChooseCurrency() {
 }
 
 export const useSaves = () => useQuery({ queryKey: ['saves'], queryFn: () => api.get<SaveSlot[]>('/saves') })
+
+/** The NCAA programs a new career can coach (W9c), by conference (no career needed). */
+export const useCollegePrograms = () =>
+  useQuery({ queryKey: ['college-programs'], queryFn: () => api.get<CollegeConferenceOption[]>('/world/college-programs'), staleTime: Infinity })
 
 export const useWorldLeagues = () =>
   useQuery({ queryKey: ['world-leagues'], queryFn: () => api.get<LeagueOption[]>('/world/leagues'), staleTime: Infinity })
@@ -249,9 +254,10 @@ export function useSaveTactics() {
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
+    mutationFn: (args: { slot: number; clubId: number | null; collegeProgram?: string | null; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
       api.post<Career>(`/saves/${args.slot}/new`, {
         club_id: args.clubId,
+        college_program: args.collegeProgram ?? null,
         manager_name: args.manager,
         budget_eur: args.budget ?? null,
         board_enabled: args.boardEnabled ?? true,

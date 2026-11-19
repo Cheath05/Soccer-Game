@@ -151,7 +151,9 @@ def load_college(root: Path) -> CollegeDef:
     programs_path = root / "college" / "ncaa_d1.yaml"
     programs = _parse(ProgramsFile, programs_path)
     return _validate(CollegeDef, {"rules": _read_yaml(rules_path),
-                                  "conferences": programs.conferences}, rules_path)
+                                  "conferences": programs.conferences,
+                                  "recruiting": _read_yaml(root / "college" / "recruiting.yaml")},
+                     rules_path)
 
 
 def load_definitions(root: Path | None = None) -> GameDefinitions:
@@ -316,6 +318,10 @@ def _cross_validate(defs: GameDefinitions) -> None:
         errors.append(f"college/rules.yaml: unknown nation {college.nation}")
     if college.key in defs.leagues or college.key in defs.cups:
         errors.append(f"college/rules.yaml: key {college.key} is a league's or a cup's")
+    hs = defs.college.recruiting
+    if set(hs.positions) - set(defs.positions):
+        errors.append("college/recruiting.yaml positions: unknown "
+                      f"{sorted(set(hs.positions) - set(defs.positions))}")
     if len(college.roster.shape) < college.roster.size[1]:
         errors.append("college/rules.yaml: the roster shape is shorter than a roster")
 

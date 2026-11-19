@@ -26,6 +26,7 @@ const ICONS = {
   saves: icon(<><path d="M5 4.500h11l3 3V19.500H5z" /><path d="M8 4.500v5h7v-5M8 19.500v-6h8v6" /></>),
   roster: icon(<><rect x="5" y="4.500" width="14" height="16" rx="2" /><path d="M9 4.500V3h6v1.5" /><path d="M8.500 10h7M8.500 13.500h7M8.500 17h4" /></>),
   college: icon(<><path d="m3 9.500 9-4.500 9 4.500-9 4.500z" /><path d="M7 11.500V16c1.5 1.500 3 2 5 2s3.5-.5 5-2v-4.500" /><path d="M21 9.500V14" /></>),
+  recruiting: icon(<><circle cx="10" cy="8" r="3.2" /><path d="M4 19c.6-3.4 3-5 6-5 1.6 0 3 .5 4 1.300" /><path d="M18 13v6M15 16h6" /></>),
   settings: icon(<><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12M20 17h0" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="17" r="2" /></>),
   matchday: icon(<><circle cx="12" cy="12" r="8" /><path d="m12 8 3.2 2.3-1.2 3.700h-4l-1.2-3.700z" /></>),
 } as const

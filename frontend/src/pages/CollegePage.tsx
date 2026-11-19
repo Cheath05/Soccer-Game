@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 
 import { type Conference, useBracket, useConferences, useDraftPool, useRankings } from '../api/americas'
 import { ApiError } from '../api/client'
+import { useCareer } from '../api/hooks'
 import CollegeBracket from '../components/CollegeBracket'
 import ClubLink from '../components/ClubLink'
 import PlayerLink from '../components/PlayerLink'
@@ -68,7 +69,9 @@ function Conferences({ list }: { list: Conference[] }) {
   const { phone } = useDevice()
   const [key, setKey] = useUrlState<string | null>('conf', null)
   const [view, setView] = useUrlState('view', 'table')
-  const conf = list.find((c) => c.key === key) ?? list[0]
+  // A college coach (W9c) opens on their own conference.
+  const own = useCareer().data?.college?.conference
+  const conf = list.find((c) => c.key === key) ?? list.find((c) => c.key === own) ?? list[0]
   const hasTournament = (conf?.tournament ?? 0) >= 2
   const showBracket = view === 'tournament' && hasTournament
   const bracket = useBracket(`CT:${conf?.key}`, !!conf && showBracket)

@@ -222,6 +222,16 @@ def test_the_rollover_graduates_and_recruits(played: _Season) -> None:
                                 ).scalar_one()
         assert freshmen > 1000
         assert status[("enrolled", 1)] == freshmen  # last season's freshmen moved up
+        # The freshmen are the class the programs recruited (W9c), all but a few; the next
+        # class is ranked, and prestige has moved with the season's results.
+        enrolled = conn.execute(text("SELECT COUNT(*) FROM recruit WHERE class_season = 2 "
+                                     "AND status = 'enrolled'")).scalar_one()
+        assert enrolled > 0.9 * freshmen
+        assert conn.execute(text("SELECT COUNT(*) FROM recruit WHERE class_season = 3")
+                            ).scalar_one() == world.defs.college.recruiting.class_size
+        tiers = world.defs.college.recruiting.programs.prestige_by_tier
+        moved = conn.execute(text("SELECT tier, prestige FROM college_team")).all()
+        assert any(abs(r.prestige - tiers[r.tier]) > 4 for r in moved)
         assert not any(c > 4 for s, c in status if s == "enrolled")
         rosters = [r[0] for r in conn.execute(text(
             "SELECT COUNT(*) FROM college_player WHERE status = 'enrolled' GROUP BY club_id"))]
@@ -297,5 +307,7 @@ def test_college_stays_out_of_the_professional_game(played: _Season) -> None:
                                  f"IN ({college})")).scalar_one() == 0
         reputations = {r[0] for r in conn.execute(text(
             f"SELECT reputation FROM club WHERE id IN ({college})"))}
-        assert reputations <= set(get_world().defs.college.rules.roster.reputation_by_tier
-                                  .values())  # no drift
+        # No professional drift: a program's reputation follows its prestige (W9c), between
+        # the tiers' reputations.
+        tiers = get_world().defs.college.rules.roster.reputation_by_tier.values()
+        assert min(tiers) <= min(reputations) and max(reputations) <= max(tiers)

@@ -22,6 +22,8 @@ from footsim.api.schemas import (
     ClubRef,
     ClubSearchOut,
     ClubSeasonOut,
+    CollegeCareerOut,
+    CollegePlayerOut,
     CompetitionOut,
     CupOut,
     CupRoundOut,
@@ -59,6 +61,7 @@ from footsim.api.schemas import (
 from footsim.competitions.scheduling import playoff_dates
 from footsim.competitions.standings import TableRow
 from footsim.core.text import ordinal
+from footsim.defs.college import CLASS_NAMES
 from footsim.defs.competitions import LeagueDef, MovementKind
 from footsim.domain.attributes import ATTRIBUTE_GROUP, ATTRIBUTES
 from footsim.importers.generate import age_on
@@ -76,6 +79,8 @@ from footsim.persistence.schema import (
     club,
     club_finance,
     club_league_membership,
+    college_player,
+    college_team,
     competition,
     continental_entry,
     cup_tie,
@@ -102,6 +107,10 @@ from footsim.scouting.estimates import (
 )
 from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
+from footsim.world.college.common import CONFERENCE_PREFIX, in_college
+from footsim.world.college.common import REGULAR as REGULAR_SEASON
+from footsim.world.college.draft import leave_program
+from footsim.world.college.season import conference_tables, rankings
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
 from footsim.world.europe.common import competitions_by_rank, stage_name
@@ -170,6 +179,19 @@ def _first_leg_goals(row: Row[Any], firsts: FirstLegs) -> tuple[int, int] | None
     return first.away_goals, first.home_goals
 
 
+def _college_stage(stage: str, round_: int) -> str:
+    """A college fixture's stage (W9a): the regular season, a conference's tournament, or the
+    NCAA tournament's round (its bracket rounds count from 0)."""
+    college = get_world().defs.college
+    if stage == REGULAR_SEASON:
+        return "Regular season"
+    if stage.startswith(CONFERENCE_PREFIX):
+        conference = college.conferences.get(stage[len(CONFERENCE_PREFIX):])
+        return f"{conference.short_name if conference else 'Conference'} Tournament"
+    names = college.rules.ncaa.round_names
+    return f"NCAA {names[round_]}" if 0 <= round_ < len(names) else "NCAA tournament"
+
+
 def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]],
                 firsts: FirstLegs | None = None) -> FixtureOut:
     comp = comps[row.competition_id]
@@ -177,7 +199,8 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
     cup = defs.cups.get(comp.key)
     continental = defs.continental.get(comp.key)
     named = (cup.rounds[row.round].name if cup
-             else stage_name(continental, row.round) if continental else None)
+             else stage_name(continental, row.round) if continental
+             else _college_stage(row.stage, row.round) if comp.type == "college" else None)
     prior = _first_leg_goals(row, firsts or {})
     played = row.status == "played" and row.home_goals is not None and row.away_goals is not None
     agg = ((prior[0] + row.home_goals, prior[1] + row.away_goals)
@@ -353,6 +376,9 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         fixture.c.status == "played",
         or_(fixture.c.home_club_id == user, fixture.c.away_club_id == user),
     ).order_by(fixture.c.date.desc()).limit(5)).all()
+    college = _college_career(conn, world, meta)
+    if college is not None:
+        position = college[1]
     return CareerOut(
         slot=slot, date=meta.current_date.isoformat(), season=_season_label(conn, meta.season_id),
         season_end=season_calendar(world, meta, meta.season_id).season_end.isoformat(),
@@ -362,7 +388,31 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         next_fixture=fixtures_out(conn, [upcoming], names, comps)[0] if upcoming else None,
         recent=fixtures_out(conn, recent, names, comps),
         currency=meta.currency,
+        college=college[0] if college else None,
     )
+
+
+def _college_career(conn: Connection, world: World, meta: CareerMeta
+                    ) -> tuple[CollegeCareerOut, int | None] | None:
+    """A college coach's program, and its place in its conference's table (once played)."""
+    row = conn.execute(select(college_team).where(
+        college_team.c.club_id == meta.user_club_id)).first()
+    if row is None:
+        return None
+    conference = world.defs.college.conferences[str(row.conference)]
+    table = conference_tables(conn, world, meta, meta.season_id).get(str(row.conference), [])
+    position = None
+    if any(r.played for r in table):
+        position = next((r.position for r in table if r.club_id == meta.user_club_id), None)
+    rpi = rankings(conn, world, meta.season_id)
+    rank = None
+    if meta.user_club_id in rpi:
+        order = sorted(rpi, key=lambda c: (-rpi[c], c))
+        rank = order.index(meta.user_club_id) + 1
+    prestige = float(row.prestige) if row.prestige is not None else float(
+        world.defs.college.recruiting.programs.prestige_by_tier[int(row.tier)])
+    return CollegeCareerOut(conference=str(row.conference), conference_name=conference.name,
+                            tier=int(row.tier), prestige=round(prestige), rpi_rank=rank), position
 
 
 def competitions(conn: Connection, world: World) -> list[CompetitionOut]:
@@ -921,7 +971,29 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
     entries = [_squad_entry(world, r, attrs[r.id], positions[r.id], stats.get(r.id),
                             meta.current_date, started.get(r.id), currency=meta.currency)
                for r in rows]
+    college = _college_players(conn, meta, ids)
+    for e in entries:
+        e.college = college.get(e.id)
     return sorted(entries, key=lambda e: (order.index(e.position), -e.overall))
+
+
+def _college_players(conn: Connection, meta: CareerMeta, ids: list[int]
+                     ) -> dict[int, CollegePlayerOut]:
+    """Each college player among ``ids``: his class, scholarship and draft status."""
+    if not ids:
+        return {}
+    start = int(conn.execute(select(season.c.start_date).where(
+        season.c.id == meta.season_id)).scalar_one()[:4])
+    found = {}
+    for r in conn.execute(select(college_player).where(
+            college_player.c.player_id.in_(ids),
+            college_player.c.status.in_(("enrolled", "prospect")))):
+        year = min(4, int(r.class_year))
+        last = start + (4 - year)  # the autumn of his last season
+        found[int(r.player_id)] = CollegePlayerOut(
+            class_year=CLASS_NAMES[year], scholarship=round(float(r.scholarship), 2),
+            declared=r.status == "prospect", leaves=f"{last}-{str(last + 1)[2:]}")
+    return found
 
 
 # --- other clubs ----------------------------------------------------------------------
@@ -1064,6 +1136,7 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
     started = _season_start_overalls(conn, [player_id], meta.season_id)
     entry = _squad_entry(world, r, attrs, fams, stats, meta.current_date,
                          started.get(player_id), currency=meta.currency)
+    entry.college = _college_players(conn, meta, [player_id]).get(player_id)
     values = {a: int(v) for a, v in zip(ATTRIBUTES, attrs, strict=True)}
     grouped: dict[str, list[AttributeOut]] = defaultdict(list)
     for a in ATTRIBUTES:
@@ -1190,6 +1263,12 @@ def release_player(conn: Connection, world: World, player_id: int, day: date) ->
     owner = owner_contract(conn, player_id)
     if owner is None or owner.club_id != meta.user_club_id:
         raise KeyError(player_id)
+    if in_college(conn, player_id):  # a college coach's player leaves the program (W9c)
+        try:
+            leave_program(conn, world, player_id, day)
+        except ValueError as exc:
+            raise SquadTooSmall(str(exc)) from exc
+        return
     try:
         complete_move(conn, world, meta, Move(player_id, None, by_user=True), day)
     except MoveRefused as exc:

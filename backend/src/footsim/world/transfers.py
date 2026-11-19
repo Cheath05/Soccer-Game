@@ -30,7 +30,7 @@ from sqlalchemy import Connection, Row, bindparam, select, text, update
 
 from footsim.persistence.schema import club_finance, contract, tactic, transfer
 from footsim.transfers.valuation import plain_values, values_eur, years_old
-from footsim.world.college.common import in_college
+from footsim.world.college.common import in_college, is_college_club
 from footsim.world.context import World
 from footsim.world.finance import Entry, post, signing_cost_cents, weeks_left
 from footsim.world.international.common import in_pool
@@ -113,6 +113,8 @@ def validate_move(conn: Connection, world: World, meta: CareerMeta, move: Move,
         raise MoveRefused("No such player.")
     if in_college(conn, move.player_id):
         raise MoveRefused("He plays college soccer: he can sign once he turns pro.")
+    if move.to_club_id is not None and is_college_club(conn, move.to_club_id):
+        raise MoveRefused("College programs sign high-school recruits, not professionals.")
     if in_pool(conn, move.player_id):
         raise MoveRefused("He plays at home, outside the leagues in the game.")
     owner = owner_contract(conn, move.player_id)

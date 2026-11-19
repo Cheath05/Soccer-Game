@@ -269,11 +269,24 @@ def _to_v26(conn: Connection) -> None:
         table.create(conn, checkfirst=True)
 
 
+def _to_v27(conn: Connection) -> None:
+    """High-school recruiting (W9c): recruits, offers and interest; players' scholarships and
+    programs' prestige (both set by world/college/recruiting.py when the save's first recruiting
+    class is made)."""
+    from footsim.persistence.schema import recruit, recruit_interest, recruit_offer
+
+    _add_column(conn, "college_player", "scholarship", "FLOAT NOT NULL DEFAULT 0")
+    _add_column(conn, "college_team", "prestige", "FLOAT")
+    for table in (recruit, recruit_offer, recruit_interest):
+        table.create(conn, checkfirst=True)
+
+
 STEPS: dict[int, Callable[[Connection], None]] = {
     3: _to_v3, 4: _to_v4, 5: _to_v5, 6: _to_v6, 7: _to_v7, 8: _to_v8, 9: _to_v9, 10: _to_v10,
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
     16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20,
-    21: _to_v21, 22: _to_v22, 23: _to_v23, 24: _to_v24, 25: _to_v25, 26: _to_v26}
+    21: _to_v21, 22: _to_v22, 23: _to_v23, 24: _to_v24, 25: _to_v25, 26: _to_v26,
+    27: _to_v27}
 
 
 def migrate(engine: Engine) -> int:

@@ -6,12 +6,13 @@ import { MLS_LEAGUE } from '../api/americas'
 import { useCareer, useSquad, useTactics } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
 import { SeasonChange } from '../components/SeasonChange'
+import { CLASS_NAMES, scholarshipLabel } from '../lib/college'
 import { money, positionColor, ratingColor, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
 import { useDevice } from '../lib/device'
 import { useUrlState } from '../lib/urlState'
 
-type SortKey = 'position' | 'selection' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur'
+type SortKey = 'position' | 'selection' | 'name' | 'age' | 'overall' | 'condition' | 'form' | 'appearances' | 'goals' | 'value_eur' | 'wage_weekly_eur' | 'class_year' | 'scholarship'
 
 const GROUPS: Record<string, string[]> = {
   All: [],
@@ -35,7 +36,14 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: 'wage_weekly_eur', label: 'Wage', numeric: true },
 ]
 
-const PHONE_HIDDEN: SortKey[] = ['selection', 'age', 'form', 'appearances', 'goals', 'wage_weekly_eur']
+// A college coach's squad (W9c) has no values or wages: each player's class and scholarship.
+const COLLEGE_COLUMNS = COLUMNS.map((c) =>
+  c.key === 'value_eur' ? { key: 'class_year' as SortKey, label: 'Class', numeric: true } : c.key === 'wage_weekly_eur' ? { key: 'scholarship' as SortKey, label: 'Scholarship', numeric: true } : c,
+)
+
+const PHONE_HIDDEN: SortKey[] = ['selection', 'age', 'form', 'appearances', 'goals', 'wage_weekly_eur', 'scholarship']
+
+const CLASS_ORDER = ['Fr', 'So', 'Jr', 'Sr']
 
 export default function SquadPage() {
   const { phone } = useDevice()
@@ -59,6 +67,10 @@ export default function SquadPage() {
     </Button>
   )
   const [sort, setSort] = useUrlState<{ key: SortKey; desc: boolean }>('sort', { key: 'position', desc: false })
+  const isCollege = !!career?.college
+  const columns = isCollege ? COLLEGE_COLUMNS : COLUMNS
+  // A player's money, or for a college player his class and scholarship.
+  const worth = (p: SquadPlayer) => (p.college ? `${p.college.class_year} · ${scholarshipLabel(p.college.scholarship)}` : money(p.value_eur))
 
   const rows = useMemo(() => {
     const list = (squad.data ?? []).filter((p) => group === 'All' || GROUPS[group].includes(p.position))
@@ -86,9 +98,9 @@ export default function SquadPage() {
             value={sort.key}
             onChange={(e) => {
               const key = e.currentTarget.value as SortKey
-              setSort({ key, desc: !!COLUMNS.find((c) => c.key === key)?.numeric })
+              setSort({ key, desc: !!columns.find((c) => c.key === key)?.numeric })
             }}
-            data={COLUMNS.map((c) => ({ value: c.key, label: `Sort: ${c.label === 'Pos' ? 'Position' : c.label === 'Ovr' ? 'Overall' : c.label}` }))}
+            data={columns.map((c) => ({ value: c.key, label: `Sort: ${c.label === 'Pos' ? 'Position' : c.label === 'Ovr' ? 'Overall' : c.label}` }))}
           />
         </Group>
         <SegmentedControl fullWidth value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
@@ -118,7 +130,7 @@ export default function SquadPage() {
                       )}
                     </Group>
                     <Text size="xs" c="dimmed" truncate>
-                      {p.age}y{role !== undefined ? ` · ${['XI', 'Bench', 'Reserve'][role]}` : ''} · {money(p.value_eur)}
+                      {p.age}y{role !== undefined ? ` · ${['XI', 'Bench', 'Reserve'][role]}` : ''} · {worth(p)}
                       {p.appearances > 0 ? ` · ${p.goals}/${p.assists} G/A` : ''}
                     </Text>
                     <Progress mt={6} value={p.condition} color={p.condition >= 90 ? 'teal' : p.condition >= 75 ? 'yellow' : 'red'} size={4} aria-label={`Condition ${p.condition}%`} />
@@ -151,7 +163,7 @@ export default function SquadPage() {
         <Table highlightOnHover striped>
           <Table.Thead>
             <Table.Tr>
-              {COLUMNS.map((c) => (
+              {columns.map((c) => (
                 <Table.Th key={c.key} ta={c.numeric ? 'right' : undefined} visibleFrom={PHONE_HIDDEN.includes(c.key) ? 'sm' : undefined}>
                   <UnstyledButton
                     fw={600}
@@ -163,7 +175,7 @@ export default function SquadPage() {
                   </UnstyledButton>
                 </Table.Th>
               ))}
-              <Table.Th visibleFrom="sm">Contract</Table.Th>
+              <Table.Th visibleFrom="sm">{isCollege ? 'Leaves' : 'Contract'}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -222,9 +234,26 @@ export default function SquadPage() {
                 <Table.Td ta="right" visibleFrom="sm">
                   {p.goals}/{p.assists}
                 </Table.Td>
-                <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
-                <Table.Td ta="right" visibleFrom="sm">{wage(p.wage_weekly_eur)}</Table.Td>
-                <Table.Td visibleFrom="sm">{p.contract_end.slice(0, 4)}</Table.Td>
+                {p.college ? (
+                  <>
+                    <Table.Td ta="right" title={CLASS_NAMES[p.college.class_year]}>
+                      {p.college.class_year}
+                      {p.college.declared && (
+                        <Badge ml={6} size="xs" color="grape" title="Declared for the MLS SuperDraft">
+                          Draft
+                        </Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td ta="right" visibleFrom="sm">{scholarshipLabel(p.college.scholarship)}</Table.Td>
+                    <Table.Td visibleFrom="sm">{p.college.leaves}</Table.Td>
+                  </>
+                ) : (
+                  <>
+                    <Table.Td ta="right">{money(p.value_eur)}</Table.Td>
+                    <Table.Td ta="right" visibleFrom="sm">{wage(p.wage_weekly_eur)}</Table.Td>
+                    <Table.Td visibleFrom="sm">{p.contract_end.slice(0, 4)}</Table.Td>
+                  </>
+                )}
               </Table.Tr>
             ))}
           </Table.Tbody>
@@ -235,6 +264,8 @@ export default function SquadPage() {
 }
 
 function compare(a: SquadPlayer, b: SquadPlayer, key: Exclude<SortKey, 'selection'>): number {
+  if (key === 'class_year') return CLASS_ORDER.indexOf(a.college?.class_year ?? '') - CLASS_ORDER.indexOf(b.college?.class_year ?? '')
+  if (key === 'scholarship') return (a.college?.scholarship ?? 0) - (b.college?.scholarship ?? 0)
   const x = a[key]
   const y = b[key]
   if (typeof x === 'number' && typeof y === 'number') return x - y

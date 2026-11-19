@@ -11,6 +11,7 @@ import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
 import { useDevice } from '../lib/device'
 import { recallPlayerList } from '../lib/playerList'
+import { CLASS_NAMES, scholarshipLabel } from '../lib/college'
 import { CURRENCIES, attributeLabel, matchRatingColor, money, positionColor, ratingColor, toEuros, useCurrency, wage } from '../lib/format'
 
 const GROUP_TITLES: Record<string, string> = {
@@ -95,7 +96,7 @@ export default function PlayerPage() {
           </Group>
         </div>
         <Group>
-          {p.own_player && <ReleaseButton playerId={p.id} name={p.name} />}
+          {p.own_player && <ReleaseButton playerId={p.id} name={p.name} college={!!p.college} />}
           <Card withBorder padding="sm" ta="center" miw={90}>
             <Text size="xs" c="dimmed">
               Overall
@@ -205,9 +206,19 @@ export default function PlayerPage() {
                   <Row label="Weight" value={p.weight_kg ? `${p.weight_kg} kg` : '–'} />
                   <Row label="Foot" value={`${p.preferred_foot} (weak foot ${p.weak_foot}★)`} />
                   <Row label="Skill moves" value={`${p.skill_moves}★`} />
-                  <Row label="Value" value={money(p.value_eur)} />
-                  {p.wage_weekly_eur !== null && <Row label="Wage" value={wage(p.wage_weekly_eur)} />}
-                  <Row label="Contract" value={`until ${p.contract_end}`} />
+                  {p.college ? (
+                    <>
+                      <Row label="Class" value={`${CLASS_NAMES[p.college.class_year]}${p.college.declared ? ' · declared for the MLS SuperDraft' : ''}`} />
+                      <Row label="Scholarship" value={scholarshipLabel(p.college.scholarship)} />
+                      <Row label="Leaves" value={`after ${p.college.leaves}`} />
+                    </>
+                  ) : (
+                    <>
+                      <Row label="Value" value={money(p.value_eur)} />
+                      {p.wage_weekly_eur !== null && <Row label="Wage" value={wage(p.wage_weekly_eur)} />}
+                      <Row label="Contract" value={`until ${p.contract_end}`} />
+                    </>
+                  )}
                   {p.condition !== null && <Row label="Condition" value={`${p.condition}%`} />}
                   <Row label="Season" value={`${p.appearances} apps · ${p.goals} goals · ${p.assists} assists`} />
                   {p.average_rating !== null && <Row label="Avg rating" value={p.average_rating.toFixed(2)} />}
@@ -235,7 +246,7 @@ export default function PlayerPage() {
       <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player} />
 
       {p.own_player && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} />}
-      {p.own_player && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
+      {p.own_player && !p.college && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
       {p.international && (
         <Card withBorder padding="sm" aria-label="International">
           <Title order={4} mb={4}>
@@ -608,7 +619,7 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-function ReleaseButton({ playerId, name }: { playerId: number; name: string }) {
+function ReleaseButton({ playerId, name, college }: { playerId: number; name: string; college: boolean }) {
   const [opened, setOpened] = useState(false)
   const release = useReleasePlayer()
   return (
@@ -618,7 +629,11 @@ function ReleaseButton({ playerId, name }: { playerId: number; name: string }) {
       </Button>
       <Modal opened={opened} onClose={() => setOpened(false)} title={`Release ${name}?`} centered>
         <Stack>
-          <Text size="sm">His contract ends today and he leaves as a free agent: any club can sign him from the transfer market without a fee, yours included. Free agents nobody signs leave the professional game.</Text>
+          <Text size="sm">
+            {college
+              ? 'He leaves your program today and turns pro as a free agent. His scholarship comes free for next season.'
+              : 'His contract ends today and he leaves as a free agent: any club can sign him from the transfer market without a fee, yours included. Free agents nobody signs leave the professional game.'}
+          </Text>
           {release.error && (
             <Text c="red" size="sm">
               {release.error.message}

@@ -13,6 +13,7 @@ from footsim.match.engine.engine import MatchEngine
 from footsim.match.report import MatchReport
 from footsim.match.teams import BENCH_SIZE, sub_order
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
+from footsim.world.college.common import college_club_id
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
@@ -49,8 +50,11 @@ class AdvanceResult:
 
 def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name: str | None, seed: int | None = None,
-                      board_enabled: bool = True, fast_leagues: list[str] | None = None) -> None:
-    """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only).
+                      board_enabled: bool = True, fast_leagues: list[str] | None = None,
+                      college_program: str | None = None) -> None:
+    """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only), or
+    for the NCAA program named ``college_program`` (W9c: a college coach's career; its club is
+    made with the college world, so it has no id in the base world).
 
     Each career gets its own random seed (unless one is given), so two careers from the
     same world play out differently; within a career everything stays reproducible. The user
@@ -73,6 +77,10 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     ))
     refresh_ai_tactics(conn, world, meta, start)
     create_season_fixtures(conn, world, meta, 1)
+    if college_program is not None:
+        meta.user_club_id = college_club_id(conn, college_program)
+        meta.board_enabled = False  # a college program has no ledger, so no board
+        write_meta(conn, meta)
     ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).

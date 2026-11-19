@@ -3,6 +3,7 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import Layout from './components/Layout'
 import CalendarPage from './pages/CalendarPage'
 import CollegePage from './pages/CollegePage'
+import RecruitingPage from './pages/RecruitingPage'
 import ClubPage from './pages/ClubPage'
 import CupsPage from './pages/CupsPage'
 import DraftPage from './pages/DraftPage'
@@ -41,6 +42,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/europe', component: EuropePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/mls-roster', component: MlsRosterPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/college', component: CollegePage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/recruiting', component: RecruitingPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/international', component: InternationalPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),

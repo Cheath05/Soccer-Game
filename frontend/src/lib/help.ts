@@ -20,7 +20,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Starting a career',
     summary: 'Choosing a club, the sandbox budget, the board and the currency.',
     blocks: [
-      'The start page appears when no career is loaded, and from Save / Load in the menu. Saved careers are at the top under Continue: Load opens your last manual save, Autosave the game’s own. Under New career: 1, type a manager name and pick a save slot (the first free one is chosen for you); 2, choose a country and a league, then tap a club (each shows its squad’s average rating and its reputation, so you can see how big a job it is); 3, Options holds the board, the currency and a sandbox budget. Then press Start.',
+      'The start page appears when no career is loaded, and from Save / Load in the menu. Saved careers are at the top under Continue: Load opens your last manual save, Autosave the game’s own. Under New career: 1, type a manager name and pick a save slot (the first free one is chosen for you); 2, choose a country and a league, then tap a club (each shows its squad’s average rating and its reputation, so you can see how big a job it is), or switch to NCAA program to coach a US college team (see Coaching a college program); 3, Options holds the board, the currency and a sandbox budget. Then press Start.',
       [
         'Leagues: 62 leagues in 54 countries: every country with clubs in UEFA’s competitions (Russia aside, and Liechtenstein, which has no league of its own). England has four divisions; Spain, Italy, Germany and France have their lower divisions too; every other country has its top flight, each with its cup. The country picker lists the big leagues first; type to find any country, or filter by continent. Sweden, Norway, Finland, Iceland, Ireland, the Baltic countries and a few more really play spring to autumn; like every league here, they play August to May.',
         'Squads in the smaller leagues: where FC 27 has no club, its squad is built from real data: the players who really played for it (with ratings from their market values, so a club’s best player stays its best), filled out with made-up players. Each league’s strength comes from its country’s UEFA coefficient, and each club’s from its real results (its Elo), so the champions are stronger than the bottom side.',
@@ -264,10 +264,44 @@ export const HELP_TOPICS: HelpTopic[] = [
     blocks: [
       'College in the menu (under More on a phone) follows NCAA Division I men’s soccer, whose players feed MLS’s SuperDraft. A career started before college soccer joined the game gets it from its next season.',
       [
-        'Conferences: pick a conference for its table (conference games only; the marked places go to its tournament), or Tournament for its bracket in November. Its winner takes an automatic bid to the NCAA tournament.',
-        'RPI: the Rating Percentage Index, which picks the NCAA’s 25 at-large teams and its seeds.',
+        'Conferences: pick a conference for its table (ranked on conference games only; the marked places go to its tournament), or Tournament for its bracket in November. Its winner takes an automatic bid to the NCAA tournament. Switch Conference games to All games to see each team’s record over every college game this season (non-conference games and the tournaments too; a shoot-out counts as a draw), in the same order.',
+        'RPI: the Rating Percentage Index, which picks the NCAA’s 25 at-large teams and its seeds, with each team’s overall record (W-D-L).',
         'NCAA: the 48-team bracket, picked on 16 November. Seeds 1–16 have a bye to the second round; the College Cup (the semifinals and final, at a neutral ground) is in mid-December. Click a played match for its report, or a club for its page.',
         'Draft pool: after the College Cup, the seniors and a few underclassmen signed by Generation adidas (GA) who are up for the SuperDraft, with their college, class, position and overall.',
+      ],
+    ],
+  },
+  {
+    id: 'college-coach',
+    title: 'Coaching a college program',
+    summary: 'An NCAA program as your club: what a college coach sees, and how players come and go.',
+    blocks: [
+      'On the start page, under Your club, choose NCAA program, pick a conference and tap a program. Each shows its tier as stars (five for a national power) and its state. A college program has no board, budget, wages or transfers: your players come from high-school recruiting.',
+      [
+        'Your matches: the regular season from late August, your conference’s tournament in November, then the NCAA tournament if you make the field. Continue, Match day and the live match work as for any club. The whole NCAA is your league, so it is always fully simulated.',
+        'Squad: each player’s class (Fr, So, Jr, Sr), his scholarship (Full, a percentage, or Walk-on) and the season he leaves after. A Draft mark means he has declared for the MLS SuperDraft.',
+        'Dashboard: your conference’s table, and your program’s overall record (every game this season), place in the conference, RPI rank and prestige.',
+        'Players leave by graduating after their senior season, by declaring for the SuperDraft (seniors, and the best underclassmen after the College Cup), or when you let one go (Release on his page): he turns pro as a free agent. A program can’t sign professionals.',
+        'Prestige (0–100) starts from the program’s tier and moves at each season’s end with your last three seasons: your RPI rank, NCAA tournament wins and titles. The higher it is, the better the recruits who want you.',
+        'The menu leaves out Transfers, Finances, the professional League, Cups and Europe. On a phone the bar has Home, Squad, Tactics and Recruiting; College is under More.',
+      ],
+    ],
+  },
+  {
+    id: 'recruiting',
+    title: 'Recruiting high-school players',
+    summary: 'The national class, your targets, scholarship offers, commitments and signing day.',
+    blocks: [
+      'Every season a national class of about 2,200 high-school seniors is ranked: stars (five-star for the top 25, then four, three and two), a national rank, and ranks by position and by home state (some come from abroad). Recruiting (in the menu, in the bar on a phone) is where you bring the best of them to your program. They join as freshmen at next season’s start.',
+      [
+        'Board: the class by national rank, with filters for position, home state, stars and the uncommitted. Overall and potential are your staff’s estimates, as ranges: they narrow as your staff get to know a recruit. Where shows who he committed to, or who he leans towards once your staff know him (the press follows the top 100).',
+        'Targets: open a recruit and give him a priority, Top, High or Watch. Your staff spread their week of effort over your targets (a Top target gets three times a watched one’s share, up to a limit), so a long list means less for each. Effort builds his interest in you, faster with your offer out, and your staff’s knowledge of him. Interest fades when you stop recruiting him. Keen Top targets with your offer visit your campus (a big boost; 12 visits a season).',
+        'Offers: from 1 August, offer a full scholarship, a percentage in 5% steps, or a walk-on place. Your money is counted in full scholarships (a tier-1 program has 18, a tier-5 program about 6): what next season’s returning players don’t hold is yours for recruits. Next season’s roster has at most 28 players. You may have offers out worth more than you have (up to one and a half times your money and places), but a recruit can only commit while you still have the money and a place: if not, he goes to his next choice and the news tells you.',
+        'How recruits decide: each weighs the scholarship against what he hopes for, your program’s prestige against his level (a five-star wants a power; a two-star is glad of any offer), his playing time at his position next season, the distance from home, and the attention he got. His card says what he cares about most. The best recruits take longest to decide, and a recruit whose offers are below his hopes waits for better.',
+        'Commitments and signing day: recruits commit through the autumn. A committed recruit can still flip to a much better offer until signing day (early February), when every commitment becomes a signing. Those still open sign as they decide until the class closes on 1 May; the rest go to other levels of college soccer.',
+        'Pulling an offer: Pull offer withdraws it. Pulling the scholarship of a recruit who committed to you frees his place and money, but your other targets trust you a little less.',
+        'Class: your commitments and signings. Rankings: every program’s class by points (more for more stars).',
+        'The AI programs recruit the same way, so the powers land most of the five-stars, and a program that wins climbs in prestige and recruits better. If your roster is still short at the season’s start, walk-ons fill it to 22.',
       ],
     ],
   },
@@ -346,7 +380,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: 'The phone layout, tapping instead of dragging, and Add to Home Screen.',
     blocks: [
       [
-        'On a phone, a bar at the bottom has Home, Squad, Tactics and Transfers; More opens the rest (League, Fixtures, Calendar, Cups, Europe, MLS roster for an MLS club, College, Finances, your club, Save / Load) with the club search and the version. The header has your club’s name and the date, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to…. The bar steps aside while you watch a match.',
+        'On a phone, a bar at the bottom has Home, Squad, Tactics and Transfers (Recruiting for a college coach); More opens the rest (League, Fixtures, Calendar, Cups, Europe, MLS roster for an MLS club, College, Finances, your club, Save / Load) with the club search and the version. The header has your club’s name and the date, one main button (Continue, or Match day), and a ⋯ menu with Save and Sim to…. The bar steps aside while you watch a match.',
         'Tables keep their key columns and put the rest in a small line under the name. The Transfers filters are behind a Filters button.',
         'There is no dragging on a touch screen. On Tactics and in the live match, tap a player and then tap where he should go.',
         'The live match draws the pitch upright. Half-time is a full-screen sheet; Tactics and substitutions puts it aside so you can make changes, with a bar at the bottom to bring it back or start the second half.',

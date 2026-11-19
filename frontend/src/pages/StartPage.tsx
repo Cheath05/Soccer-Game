@@ -1,9 +1,10 @@
-import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, NumberInput, SegmentedControl, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
+import { useCollegePrograms, useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
+import { tierStars } from '../lib/college'
 import SimulationPicker from '../components/SimulationPicker'
 import { Crest } from '../components/PhoneNav'
 import VersionTag from '../components/VersionTag'
@@ -26,6 +27,12 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const [boardTouched, setBoardTouched] = useState(false)
   const [league, setLeague] = useState('ENG1')
   const [clubId, setClubId] = useState<number | null>(null)
+  // A professional club, or an NCAA program to coach (W9c).
+  const [kind, setKind] = useState<'club' | 'college'>('club')
+  const colleges = useCollegePrograms()
+  const [conference, setConference] = useState('ACC')
+  const [program, setProgram] = useState<string | null>(null)
+  const college = kind === 'college'
   // The slot to start in: the first free one, until the player picks.
   const [slotChoice, setSlot] = useState<string | null>(null)
   const [options, setOptions] = useState(false)
@@ -45,16 +52,20 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
 
   const taken = (saves.data ?? []).filter((s) => s.has_save || s.has_autosave)
   const free = (saves.data ?? []).filter((s) => !s.has_save && !s.has_autosave).map((s) => s.slot)
+  const picked = college ? program : clubId !== null ? (selectedLeague?.clubs.find((c) => c.id === clubId)?.name ?? 'this club') : null
+  const userLeague = college ? 'NCAA' : league
+  const programs = colleges.data?.find((c) => c.key === conference)?.programs ?? []
   const start = () =>
-    clubId !== null &&
+    picked !== null &&
     void newCareer
       .mutateAsync({
         slot: Number(slot),
-        clubId,
-        manager: manager || 'Manager',
-        budget: budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
-        boardEnabled: board,
-        fastLeagues: fast.filter((k) => k !== league),
+        clubId: college ? null : clubId,
+        collegeProgram: college ? program : null,
+        manager: manager || (college ? 'Coach' : 'Manager'),
+        budget: college || budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
+        boardEnabled: board && !college,
+        fastLeagues: fast.filter((k) => k !== userLeague),
       })
       .then(goHome, ignore)
 
@@ -158,11 +169,56 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           </Card>
 
           <Card withBorder padding="md">
-            <Step n={2} title="Your club" />
+            <Step n={2} title={college ? 'Your program' : 'Your club'} />
             <Stack gap="sm" mt="sm">
-              {leagues.isPending && <Loader />}
-              {leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
-              {leagues.data && (
+              <SegmentedControl
+                fullWidth
+                value={kind}
+                onChange={(v) => setKind(v as 'club' | 'college')}
+                data={[
+                  { value: 'club', label: 'Professional club' },
+                  { value: 'college', label: 'NCAA program' },
+                ]}
+              />
+              {college && (
+                <>
+                  <Text size="sm" c="dimmed">
+                    Coach a US college soccer program: recruit high-school players with scholarship offers, play the conference season and chase the College Cup. Your best players go on to the MLS SuperDraft.
+                  </Text>
+                  {colleges.error && <Alert color="red">{colleges.error.message}</Alert>}
+                  {colleges.data && (
+                    <Select
+                      label="Conference"
+                      searchable
+                      allowDeselect={false}
+                      value={conference}
+                      onChange={(v) => {
+                        if (v) setConference(v)
+                        setProgram(null)
+                      }}
+                      data={colleges.data.map((c) => ({ value: c.key, label: `${c.short_name} (${c.programs.length})` }))}
+                    />
+                  )}
+                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
+                    {programs.map((p) => (
+                      <UnstyledButton key={p.name} onClick={() => setProgram(p.name)} className="fs-club" data-picked={program === p.name || undefined}>
+                        <Crest name={p.name} size={34} mine={program === p.name} />
+                        <div style={{ minWidth: 0 }}>
+                          <Text fw={600} size="sm" truncate>
+                            {p.school}
+                          </Text>
+                          <Text size="xs" c="dimmed" truncate title={`Program tier ${p.tier} of 5`}>
+                            {tierStars(p.tier)} · {p.state}
+                          </Text>
+                        </div>
+                      </UnstyledButton>
+                    ))}
+                  </SimpleGrid>
+                </>
+              )}
+              {!college && leagues.isPending && <Loader />}
+              {!college && leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
+              {!college && leagues.data && (
                 <>
                   <LeaguePicker
                     leagues={leagues.data}
@@ -197,23 +253,29 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               <Group justify="space-between" wrap="nowrap">
                 <Step n={3} title="Options" />
                 <Text size="sm" c="dimmed">
-                  {board ? 'Board on' : 'No board'} · {CURRENCIES[currency].label}
-                  {budgetMillions === '' ? '' : ' · sandbox'}
-                  {fast.filter((k) => k !== league).length > 0 ? ' · fast leagues' : ''} {options ? '▴' : '▾'}
+                  {college ? 'College' : board ? 'Board on' : 'No board'} · {CURRENCIES[currency].label}
+                  {!college && budgetMillions !== '' ? ' · sandbox' : ''}
+                  {fast.filter((k) => k !== userLeague).length > 0 ? ' · fast leagues' : ''} {options ? '▴' : '▾'}
                 </Text>
               </Group>
             </UnstyledButton>
             <Collapse expanded={options}>
               <Stack gap="md" mt="md">
-                <Switch
-                  label="Board expectations"
-                  description="Off means no targets and no sacking, and your budget is all your cash."
-                  checked={board}
-                  onChange={(e) => {
-                    setBoardTouched(true)
-                    setBoard(e.currentTarget.checked)
-                  }}
-                />
+                {college ? (
+                  <Text size="sm" c="dimmed">
+                    A college program has no board, budget or transfers: your players come from recruiting.
+                  </Text>
+                ) : (
+                  <Switch
+                    label="Board expectations"
+                    description="Off means no targets and no sacking, and your budget is all your cash."
+                    checked={board}
+                    onChange={(e) => {
+                      setBoardTouched(true)
+                      setBoard(e.currentTarget.checked)
+                    }}
+                  />
+                )}
                 <div>
                   <Text size="sm" fw={500} mb={4}>
                     Currency
@@ -224,7 +286,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     data={(Object.keys(CURRENCIES) as Currency[]).map((c) => ({ value: c, label: CURRENCIES[c].label }))}
                   />
                 </div>
-                <NumberInput
+                {!college && <NumberInput
                   label={`Sandbox: budget (${CURRENCIES[currency].symbol}M)`}
                   description="Optional. To spend on transfer fees and wages. Leave empty for the board's budget"
                   placeholder="Board's budget"
@@ -237,21 +299,21 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     // A sandbox is for fun: no board unless asked for (it would trim the budget each season).
                     if (!boardTouched) setBoard(v === '')
                   }}
-                />
+                />}
                 <div>
                   <Text size="sm" fw={500} mb={4}>
                     Simulation
                   </Text>
-                  <SimulationPicker fast={fast} onChange={setFast} userLeague={league} />
+                  <SimulationPicker fast={fast} onChange={setFast} userLeague={userLeague} />
                 </div>
               </Stack>
             </Collapse>
           </Card>
 
           {newCareer.error && <Alert color="red">{newCareer.error.message}</Alert>}
-          <Group style={clubId !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
-            <Button size="lg" fullWidth disabled={clubId === null} loading={newCareer.isPending} onClick={start}>
-              {clubId === null ? 'Pick a club to start' : `Start with ${selectedLeague?.clubs.find((c) => c.id === clubId)?.name ?? 'this club'}`}
+          <Group style={picked !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
+            <Button size="lg" fullWidth disabled={picked === null} loading={newCareer.isPending} onClick={start}>
+              {picked === null ? (college ? 'Pick a program to start' : 'Pick a club to start') : `Start with ${picked}`}
             </Button>
           </Group>
         </Stack>

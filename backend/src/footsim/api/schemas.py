@@ -30,6 +30,22 @@ class LeagueOption(BaseModel):
     nation: str = ""  # the league's country code (ENG, ESP...)
 
 
+class CollegeProgramOption(BaseModel):
+    """An NCAA program a new career can coach (W9c)."""
+
+    name: str  # the club's name in the game: "Indiana Hoosiers"
+    school: str
+    state: str
+    tier: int  # 1 (a national power) to 5
+
+
+class CollegeConferenceOption(BaseModel):
+    key: str
+    name: str
+    short_name: str
+    programs: list[CollegeProgramOption]
+
+
 class SaveSlotOut(BaseModel):
     slot: int
     has_save: bool
@@ -42,7 +58,8 @@ class SaveSlotOut(BaseModel):
 
 
 class NewCareerIn(BaseModel):
-    club_id: int
+    club_id: int | None = None  # the club to manage...
+    college_program: str | None = None  # ...or an NCAA program, by name (W9c)
     manager_name: str
     # The sandbox: the club's budget for transfer fees and wages to start with, up to EUR 10bn
     # (the owner puts in the cash to back it). None: the board's own budget. (Called
@@ -286,6 +303,16 @@ class CompetitionOut(BaseModel):
     nation: str = ""  # the league's country code (ENG, ESP...); empty for a cup
 
 
+class CollegeCareerOut(BaseModel):
+    """A college coach's program (W9c): its conference, tier and standing with recruits."""
+
+    conference: str  # its key
+    conference_name: str
+    tier: int  # 1 (a national power) to 5
+    prestige: int  # 0-100
+    rpi_rank: int | None  # this season's, once games are played
+
+
 class CareerOut(BaseModel):
     slot: int
     date: str
@@ -298,6 +325,7 @@ class CareerOut(BaseModel):
     next_fixture: FixtureOut | None
     recent: list[FixtureOut]
     currency: str = "USD"  # money is shown and quoted in it
+    college: CollegeCareerOut | None = None  # a college coach's program (W9c)
 
 
 class AdvanceOut(BaseModel):
@@ -391,6 +419,16 @@ class SquadPlayerOut(BaseModel):
     goals: int
     assists: int
     average_rating: float | None
+    college: "CollegePlayerOut | None" = None  # a college player (W9c)
+
+
+class CollegePlayerOut(BaseModel):
+    """A college player's place on his program."""
+
+    class_year: str  # Fr, So, Jr, Sr
+    scholarship: float  # a share of a full scholarship; 0 for a walk-on
+    declared: bool  # declared for the MLS SuperDraft
+    leaves: str  # the season label he leaves after, as a senior
 
 
 class ClubPlayerOut(BaseModel):

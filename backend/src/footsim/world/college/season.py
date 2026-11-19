@@ -40,6 +40,7 @@ from footsim.persistence.schema import (
 )
 from footsim.world.college.common import NCAA, REGULAR, conference_event
 from footsim.world.college.draft import declare_prospects, release_undrafted
+from footsim.world.college.recruiting import ensure_recruiting
 from footsim.world.college.roster import ensure_college
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta
@@ -73,6 +74,7 @@ def create_college_fixtures(conn: Connection, world: World, meta: CareerMeta, se
     """The season's regular-season fixtures (the college world first, if the save lacks it).
     Returns news."""
     news = ensure_college(conn, world, meta, season_id, start)
+    news += ensure_recruiting(conn, world, meta, season_id, start)
     comp = college_competition(conn, world)
     if comp is None or conn.execute(select(fixture.c.id).where(
             fixture.c.season_id == season_id, fixture.c.competition_id == comp)).first():
@@ -115,6 +117,43 @@ def _results(conn: Connection, comp: int, season_id: int, stage: str | None = No
     if stage is not None:
         query = query.where(fixture.c.stage == stage)
     return list(conn.execute(query.order_by(fixture.c.id)))
+
+
+@dataclass
+class Record:
+    """A team's record over every college game of a season (regular season, conference
+    tournament and NCAA tournament). A game settled on penalties counts as a draw."""
+
+    won: int = 0
+    drawn: int = 0
+    lost: int = 0
+    goals_for: int = 0
+    goals_against: int = 0
+
+    @property
+    def played(self) -> int:
+        return self.won + self.drawn + self.lost
+
+
+def overall_records(conn: Connection, world: World, season_id: int) -> dict[int, Record]:
+    """Every team's overall record this season so far."""
+    comp = college_competition(conn, world)
+    found: dict[int, Record] = defaultdict(Record)
+    if comp is None:
+        return found
+    for r in _results(conn, comp, season_id):
+        for club, scored, conceded in ((r.home_club_id, r.home_goals, r.away_goals),
+                                       (r.away_club_id, r.away_goals, r.home_goals)):
+            rec = found[int(club)]
+            rec.goals_for += int(scored)
+            rec.goals_against += int(conceded)
+            if scored > conceded:
+                rec.won += 1
+            elif scored < conceded:
+                rec.lost += 1
+            else:
+                rec.drawn += 1
+    return found
 
 
 def conference_tables(conn: Connection, world: World, meta: CareerMeta, season_id: int

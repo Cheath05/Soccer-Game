@@ -27,13 +27,28 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.115"
+- version: "1.122"
   date: "2026-11-19"
   title: "World Cup 2030 qualifiers"
   changes:
     - "The qualifiers for the 2030 World Cup (Spain, Portugal and Morocco) are played in the international windows, in each confederation's format: CONMEBOL's round robin of ten from September 2027, CAF's and AFC's groups from late 2027 and 2028, CONCACAF's and OFC's from 2028, UEFA's twelve groups in 2029, then the play-offs and the intercontinental play-off in March 2030. 48 teams qualify."
     - "International → World Cup 2030: who has qualified so far, and every confederation's groups, tables and play-off ties."
     - "Qualifiers are fully simulated, with fatigue and injuries that players bring back to their clubs. Cards in internationals don't count towards club bans."
+
+- version: "1.120"
+  date: "2026-11-19"
+  title: "College: overall records"
+  changes:
+    - "College → Conferences: switch Conference games to All games to see each team's record over every college game this season (non-conference games and the tournaments too), not only its conference games. The RPI rankings show each team's overall W-D-L, and a college coach's dashboard shows their program's."
+
+- version: "1.116"
+  date: "2026-11-19"
+  title: "Coach a college program, and recruit high-school players"
+  changes:
+    - "New career → NCAA program: coach one of the 213 NCAA Division I programs. Your matches play like any club's; the whole NCAA is your league, so it is always fully simulated. There is no board, budget, wages or transfers: Squad shows each player's class, scholarship and the season he leaves after, and the dashboard your conference table, prestige and RPI rank. Players leave by graduating, declaring for the MLS SuperDraft or turning pro."
+    - "Recruiting (for a college coach): each season a national class of 2,200 high-school seniors is ranked by stars, nationally, by position and by home state. Put recruits on your target list (Top, High or Watch) and your staff spread their week over them, building interest and narrowing their estimate of each one's ability. Offer full or partial scholarships or walk-on places from 1 August; recruits weigh the money, your prestige, playing time, the distance from home and your attention against the other programs' offers, commit through the autumn and sign on signing day in February."
+    - "The 2025 rules: at most 28 players and no scholarship limit, each program giving what its money allows (counted in full scholarships, more for the powers). A program's prestige now moves with its results, so winning recruits better."
+    - "Every NCAA program now recruits its freshmen from the national class, in every career, instead of getting made-up classes."
 
 - version: "1.114"
   date: "2026-11-19"

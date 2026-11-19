@@ -25,7 +25,9 @@ from footsim.world.college.common import (
     PRO,
     PROSPECT,
     UNDRAFTED,
+    is_college_club,
 )
+from footsim.world.college.recruiting import enroll_class, had_class, update_prestige
 from footsim.world.college.roster import recruit
 from footsim.world.context import World
 from footsim.world.meta import CareerMeta, bump_players_epoch
@@ -135,6 +137,29 @@ def turn_pro(conn: Connection, meta: CareerMeta, player_id: int, day: date) -> N
     _leave(conn, [player_id], PRO, day)
 
 
+def leave_program(conn: Connection, world: World, player_id: int, day: date) -> None:
+    """A college coach lets a player go (W9c): he leaves college as a free agent. Refused
+    (ValueError) when it would leave the program fewer players or keepers than the squad rules'
+    floor, or he isn't in college."""
+    from footsim.world.overall_history import primary_positions
+
+    club_id = conn.execute(text("SELECT club_id FROM college_player WHERE player_id = :p AND "
+                                "status IN ('enrolled', 'prospect')"), {"p": player_id}).scalar()
+    if club_id is None:
+        raise ValueError(f"player {player_id} isn't a college player")
+    rules = world.defs.lifecycle.squads
+    roster = [int(r[0]) for r in conn.execute(text(
+        "SELECT player_id FROM college_player WHERE club_id = :c AND status IN "
+        "('enrolled', 'prospect')"), {"c": club_id})]
+    if len(roster) - 1 < rules.user_min_players:
+        raise ValueError(f"You need at least {rules.user_min_players} players.")
+    positions = primary_positions(conn, roster)
+    if positions.get(player_id) == "GK" and sum(
+            1 for p in roster if positions.get(p) == "GK") - 1 < rules.user_min_keepers:
+        raise ValueError(f"You need at least {rules.user_min_keepers} keepers.")
+    _leave(conn, [player_id], UNDRAFTED, day)
+
+
 def release_undrafted(conn: Connection, meta: CareerMeta, day: date) -> list[str]:
     """Prospects nobody drafted leave college as free agents. Returns news."""
     ids = [int(r.player_id) for r in conn.execute(text(
@@ -168,7 +193,21 @@ def college_turnover(conn: Connection, world: World, meta: CareerMeta, new_seaso
         bump_players_epoch(conn)
     conn.execute(text("UPDATE college_player SET class_year = class_year + 1 "
                       "WHERE status = :e"), {"e": ENROLLED})
-    arrived = recruit(conn, world, meta, new_season, day)
-    if arrived:
-        news.append(f"College soccer: {arrived} freshmen join the NCAA's programs.")
+    # Programs' prestige moves with their results; the class they recruited (W9c) enrolls, and
+    # generated freshmen fill any program still short (all of them, in a save's first season
+    # with the college game, before it had a recruiting class).
+    update_prestige(conn, world, meta, new_season - 1)
+    recruited = had_class(conn, new_season)
+    signed = enroll_class(conn, world, meta, new_season, day)
+    # A college coach's program gets generated walk-ons only to a playable roster.
+    coach = ({meta.user_club_id: world.defs.college.recruiting.user.min_roster}
+             if recruited and meta.user_club_id is not None
+             and is_college_club(conn, meta.user_club_id) else None)
+    filled = recruit(conn, world, meta, new_season, day, minimum=0 if recruited else None,
+                     targets=coach)
+    if signed:
+        news.append(f"College soccer: {signed} recruits enroll as freshmen at the NCAA's "
+                    "programs.")
+    if filled:
+        news.append(f"College soccer: {filled} more freshmen join the NCAA's programs.")
     return news

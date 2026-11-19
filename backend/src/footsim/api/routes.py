@@ -21,6 +21,8 @@ from footsim.api.schemas import (
     ClubOverviewOut,
     ClubPlayerOut,
     ClubSearchOut,
+    CollegeConferenceOption,
+    CollegeProgramOption,
     CompetitionOut,
     CupOut,
     CupSummaryOut,
@@ -96,6 +98,17 @@ def world_leagues(session: Session) -> list[LeagueOption]:
     return _leagues(session.base_world)
 
 
+@router.get("/world/college-programs")
+def college_programs() -> list[CollegeConferenceOption]:
+    """The NCAA programs a new career can coach, by conference, strongest first (W9c)."""
+    return [CollegeConferenceOption(
+        key=key, name=c.name, short_name=c.short_name,
+        programs=[CollegeProgramOption(name=t.name, school=t.school, state=t.state, tier=t.tier)
+                  for t in sorted(c.teams, key=lambda t: (t.tier, t.school))])
+        for key, c in sorted(get_world().defs.college.conferences.items(),
+                             key=lambda kv: kv[1].short_name)]
+
+
 @router.get("/saves")
 def saves(session: Session) -> list[SaveSlotOut]:
     result = []
@@ -128,11 +141,18 @@ def _record_club_name(session: CareerSession) -> None:
 def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     if not session.base_world.exists():
         raise HTTPException(503, "No base world built yet: run `just build-world`.")
+    if (body.club_id is None) == (body.college_program is None):
+        raise HTTPException(422, "pick a club or a college program")
+    if body.college_program is not None and body.college_program not in \
+            get_world().defs.college.program_conference():
+        raise HTTPException(404, "no such college program")
     session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
-                       body.budget_eur, body.board_enabled,
+                       body.budget_eur if body.club_id is not None else None,
+                       body.board_enabled and body.club_id is not None,
                        body.currency if body.currency in get_world().defs.finance.currencies
                        else "USD",
-                       [k for k in body.fast_leagues if k in fast_sim.selectable(get_world())])
+                       [k for k in body.fast_leagues if k in fast_sim.selectable(get_world())],
+                       college_program=body.college_program)
     _record_club_name(session)
     session.save()
     return _career(session)

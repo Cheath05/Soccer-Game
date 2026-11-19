@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 26  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 27  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -552,6 +552,8 @@ college_team = Table(
     Column("conference", Text, nullable=False),  # its key in data/config/college/ncaa_d1.yaml
     Column("tier", Integer, nullable=False),  # 1 (a national power) to 5
     Column("level", Float, nullable=False),
+    # Its standing with recruits, 0-100 (W9c, v27): from its tier, then moved by its results.
+    Column("prestige", Float),
 )
 
 # Every college player, past and present. ``status``: enrolled (on a college roster) | prospect
@@ -569,6 +571,8 @@ college_player = Table(
     Column("entered_season", Integer, nullable=False),
     Column("declared_season", Integer),  # the season whose draft pool he is in
     Column("left_on", Text),  # the day he left college (turned pro or went undrafted)
+    # His scholarship, as a share of a full one (W9c, v27): 0 for a walk-on.
+    Column("scholarship", Float, nullable=False, server_default="0"),
     Index("ix_college_player_status", "status"),
 )
 
@@ -586,6 +590,74 @@ college_entry = Table(
     Column("rank", Integer),
     Column("rating", Float),
     PrimaryKeyConstraint("season_id", "event", "club_id"),
+)
+
+# High-school recruiting (W9c, world/college/recruiting.py, v27). A recruit is a high-school
+# senior of the class that enrolls at ``class_season``'s start; he becomes a player only when he
+# enrolls (``player_id``). ``overall`` and ``potential`` are the truth (hidden), ``grade`` the
+# recruiting services' (public), which sets the ranks and stars. ``state`` is his home state (a US
+# state code), or NULL for a recruit from abroad. ``status``: open | committed | signed |
+# enrolled | gone (went elsewhere: D-II, NAIA, junior college). ``club_id`` and ``share``: the
+# program he committed or signed to, and his scholarship there.
+recruit = Table(
+    "recruit",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("class_season", Integer, nullable=False),
+    Column("first_name", Text, nullable=False),
+    Column("last_name", Text, nullable=False),
+    Column("nation_id", ForeignKey("nation.id"), nullable=False),
+    Column("state", Text),
+    Column("position", Text, nullable=False),
+    Column("birth_date", Text, nullable=False),
+    Column("overall", Float, nullable=False),
+    Column("potential", Integer, nullable=False),
+    Column("grade", Float, nullable=False),
+    Column("stars", Integer, nullable=False),
+    Column("national_rank", Integer, nullable=False),
+    Column("position_rank", Integer, nullable=False),
+    Column("state_rank", Integer),
+    Column("priorities", Text, nullable=False),  # JSON: each decision part's weight, about 1
+    Column("readiness", Float, nullable=False, server_default="0"),
+    Column("status", Text, nullable=False),
+    Column("club_id", ForeignKey("club.id")),
+    Column("share", Float),
+    Column("committed_on", Text),
+    Column("signed_on", Text),
+    Column("player_id", ForeignKey("person.id")),
+    Index("ix_recruit_class", "class_season", "status"),
+)
+
+# A program's scholarship offer to a recruit: one per program, changed in place. ``status``:
+# open | pulled | accepted | declined.
+recruit_offer = Table(
+    "recruit_offer",
+    metadata,
+    Column("recruit_id", ForeignKey("recruit.id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("share", Float, nullable=False),
+    Column("made_on", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    PrimaryKeyConstraint("recruit_id", "club_id"),
+)
+
+# A program recruiting a recruit: his interest in it (0-100), its priority on him (top | high |
+# watch; NULL once it stops), what the user's staff know of him (0-1; the user's program only),
+# the last week it put effort in, the day he visited the campus, and his personal fit to the
+# program (a seeded draw, part of how he scores its offer).
+recruit_interest = Table(
+    "recruit_interest",
+    metadata,
+    Column("recruit_id", ForeignKey("recruit.id"), nullable=False),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("interest", Float, nullable=False, server_default="0"),
+    Column("priority", Text),
+    Column("knowledge", Float, nullable=False, server_default="0"),
+    Column("effort_on", Text),
+    Column("visited_on", Text),
+    Column("fit", Float, nullable=False, server_default="0"),
+    PrimaryKeyConstraint("recruit_id", "club_id"),
+    Index("ix_recruit_interest_club", "club_id"),
 )
 
 # MLS's roster rules (world/mls.py, data/config/rules/mls.yaml; v23). Money in euro cents, as

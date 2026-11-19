@@ -1,8 +1,9 @@
 import { Badge, Button, Card, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 
-import { type Conference, useBracket, useConferences, useDraftPool, useRankings } from '../api/americas'
+import { type Conference, useBracket, useConferences, useDraftPool, useRankings, wdl } from '../api/americas'
 import { ApiError } from '../api/client'
+import { useCareer } from '../api/hooks'
 import CollegeBracket from '../components/CollegeBracket'
 import ClubLink from '../components/ClubLink'
 import PlayerLink from '../components/PlayerLink'
@@ -68,7 +69,13 @@ function Conferences({ list }: { list: Conference[] }) {
   const { phone } = useDevice()
   const [key, setKey] = useUrlState<string | null>('conf', null)
   const [view, setView] = useUrlState('view', 'table')
-  const conf = list.find((c) => c.key === key) ?? list[0]
+  // A college coach (W9c) opens on their own conference.
+  const career = useCareer().data
+  const own = career?.college?.conference
+  const mine = career?.club.id
+  const [record, setRecord] = useUrlState('record', 'conference')
+  const overall = record === 'overall'
+  const conf = list.find((c) => c.key === key) ?? list.find((c) => c.key === own) ?? list[0]
   const hasTournament = (conf?.tournament ?? 0) >= 2
   const showBracket = view === 'tournament' && hasTournament
   const bracket = useBracket(`CT:${conf?.key}`, !!conf && showBracket)
@@ -123,6 +130,17 @@ function Conferences({ list }: { list: Conference[] }) {
           <Text fw={600} mb={4} px={4}>
             {conf.name}
           </Text>
+          <SegmentedControl
+            size="xs"
+            mb={6}
+            value={record}
+            onChange={setRecord}
+            data={[
+              { value: 'conference', label: 'Conference games' },
+              { value: 'overall', label: 'All games' },
+            ]}
+            aria-label="Record"
+          />
           <Table highlightOnHover verticalSpacing={5}>
             <Table.Thead>
               <Table.Tr>
@@ -135,14 +153,17 @@ function Conferences({ list }: { list: Conference[] }) {
                 <Table.Th ta="right" visibleFrom="sm">GF</Table.Th>
                 <Table.Th ta="right" visibleFrom="sm">GA</Table.Th>
                 <Table.Th ta="right">GD</Table.Th>
-                <Table.Th ta="right">Pts</Table.Th>
+                <Table.Th ta="right">{overall ? 'W-D-L' : 'Pts'}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {conf.rows.map((r) => {
+              {conf.rows.map((row) => {
+                // The order is always the conference table's; the numbers are its games or all of them.
+                const r = overall && row.overall ? { ...row, ...row.overall } : row
                 const gd = r.goals_for - r.goals_against
+                const me = row.club.id === mine
                 return (
-                  <Table.Tr key={r.club.id} className={r.in_tournament ? 'fs-qualify' : undefined}>
+                  <Table.Tr key={r.club.id} className={r.in_tournament ? 'fs-qualify' : undefined} bg={me ? 'var(--fs-surface-2)' : undefined} fw={me ? 700 : undefined}>
                     <Table.Td c="dimmed" className="fs-num">
                       {r.position}
                     </Table.Td>
@@ -159,7 +180,7 @@ function Conferences({ list }: { list: Conference[] }) {
                     <Table.Td ta="right" visibleFrom="sm">{r.goals_against}</Table.Td>
                     <Table.Td ta="right" c="dimmed">{gd > 0 ? `+${gd}` : gd}</Table.Td>
                     <Table.Td ta="right" className="fs-num" fz={16}>
-                      {r.points}
+                      {overall ? wdl(row.overall) : r.points}
                     </Table.Td>
                   </Table.Tr>
                 )
@@ -197,6 +218,7 @@ function Rankings() {
             <Table.Th w={40}>#</Table.Th>
             <Table.Th>Club</Table.Th>
             <Table.Th>Conference</Table.Th>
+            <Table.Th ta="right" title="Every game this season: wins, draws, losses">W-D-L</Table.Th>
             <Table.Th ta="right">RPI</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -215,6 +237,9 @@ function Rankings() {
                 <Text size="sm" c="dimmed" component="span">
                   {r.conference}
                 </Text>
+              </Table.Td>
+              <Table.Td ta="right" c="dimmed">
+                {wdl(r.overall)}
               </Table.Td>
               <Table.Td ta="right" className="fs-num">
                 {r.rpi.toFixed(4)}

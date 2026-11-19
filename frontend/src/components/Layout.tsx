@@ -20,6 +20,7 @@ import StartPage from '../pages/StartPage'
 const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/squad', label: 'Squad' },
+  { to: '/recruiting', label: 'Recruiting' },
   { to: '/mls-roster', label: 'MLS roster' },
   { to: '/tactics', label: 'Tactics' },
   { to: '/transfers', label: 'Transfers' },
@@ -35,6 +36,10 @@ const NAV = [
   { to: '/settings', label: 'Settings' },
   { to: '/start', label: 'Save / Load' },
 ] as const
+
+// What a college coach's menu leaves out: a program has no transfers, money, professional league
+// or cups.
+const COLLEGE_HIDES = ['/transfers', '/finances', '/league', '/cups']
 
 export default function Layout() {
   const [opened, { toggle, close }] = useDisclosure()
@@ -76,6 +81,14 @@ export default function Layout() {
   const data = career.data
   // MLS's roster rules are on a page of their own for a club in MLS.
   const isMls = data.competition?.key === MLS_LEAGUE
+  // A college coach (W9c) has no transfers, money, professional league, cups or Europe.
+  const isCollege = !!data.college
+  const shown = (to: string) =>
+    (to !== '/europe' || (hasEurope && !isCollege)) &&
+    (to !== '/draft' || inMls) &&
+    (to !== '/mls-roster' || isMls) &&
+    (to !== '/recruiting' || isCollege) &&
+    !(isCollege && COLLEGE_HIDES.includes(to))
   const matchToday = data.next_fixture?.date === data.date
 
   const onContinue = () => {
@@ -105,9 +118,11 @@ export default function Layout() {
     { to: '/', label: 'Home', icon: 'home', active: at('/') },
     { to: '/squad', label: 'Squad', icon: 'squad', active: at('/squad') },
     { to: '/tactics', label: 'Tactics', icon: 'tactics', active: at('/tactics') },
-    { to: '/transfers', label: 'Transfers', icon: 'transfers', active: at('/transfers') },
+    isCollege
+      ? { to: '/recruiting', label: 'Recruiting', icon: 'recruiting', active: at('/recruiting') }
+      : { to: '/transfers', label: 'Transfers', icon: 'transfers', active: at('/transfers') },
   ]
-  const more: NavItem[] = [
+  const allMore: NavItem[] = [
     { to: '/league', label: 'League', icon: 'league', active: at('/league') },
     { to: '/fixtures', label: 'Fixtures', icon: 'fixtures', active: at('/fixtures') },
     { to: '/calendar', label: 'Calendar', icon: 'calendar', active: at('/calendar') },
@@ -122,6 +137,8 @@ export default function Layout() {
     { to: '/settings', label: 'Settings', icon: 'settings', active: at('/settings') },
     { to: '/start', label: 'Save / Load', icon: 'saves', active: false },
   ]
+  // The tab bar's own pages aren't repeated under More.
+  const more = allMore.filter((m) => shown(m.to) && !tabs.some((t) => t.to === m.to))
 
   const onSave = () => saveGame.mutate(undefined, { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 1500) } })
 
@@ -201,7 +218,7 @@ export default function Layout() {
         <Box hiddenFrom="md" mb="xs">
           <ClubSearch onPick={close} />
         </Box>
-        {NAV.filter((item) => (item.to !== '/europe' || hasEurope) && (item.to !== '/draft' || inMls) && (item.to !== '/mls-roster' || isMls)).map((item) => (
+        {NAV.filter((item) => shown(item.to)).map((item) => (
           <div key={item.to}>
             {item.to === '/start' && data && (
               <NavLink

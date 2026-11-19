@@ -52,6 +52,17 @@ from footsim.world.meta import CareerMeta, bump_players_epoch
 
 
 @dataclass(frozen=True)
+class RecruitPerson:
+    """Who a signed high-school recruit is, for the player he becomes."""
+
+    first_name: str
+    last_name: str
+    nation_id: int
+    born: date
+    potential: int
+
+
+@dataclass(frozen=True)
 class _Template:
     overall: float
     attrs: dict[str, int]
@@ -141,8 +152,10 @@ class _Maker:
         return first, str(lasts[int(rng.integers(len(lasts)))])
 
     def make(self, club_id: int, club_rep: int, position: str, class_year: int, age: float,
-             overall: float, season_id: int) -> int:
-        """A player of ``class_year`` aged ``age`` on the day, about ``overall``; his id."""
+             overall: float, season_id: int, signed: "RecruitPerson | None" = None,
+             scholarship: float = 0.0) -> int:
+        """A player of ``class_year`` aged ``age`` on the day, about ``overall``; his id. A
+        signed high-school recruit (W9c) brings his own name, nation, birth date and potential."""
         pid = self.next_id
         self.next_id += 1
         rng = derive_rng(self.meta.seed, "college-player", pid)
@@ -163,6 +176,10 @@ class _Maker:
             room += float(rng.uniform(*potential.star_bonus))
         pa = int(min(potential.max_potential, max(round(own + potential.min_room),
                                                   round(own + room))))
+        if signed is not None:
+            first, last, nation_id, born = (signed.first_name, signed.last_name,
+                                            signed.nation_id, signed.born)
+            pa = max(round(own + potential.min_room), signed.potential)
         build = self.world.defs.world_build
         height = estimate_height(position, values, build.physique, rng)
         fams = dict(template.positions)
@@ -190,7 +207,7 @@ class _Maker:
             "start_date": self.day.isoformat(), "end_date": graduates.isoformat(),
             "wage_weekly_cents": 0, "release_clause_cents": None, "is_active": 1})
         rows["college"].append({"player_id": pid, "club_id": club_id, "class_year": class_year,
-                                "status": ENROLLED, "ga": 0,
+                                "status": ENROLLED, "ga": 0, "scholarship": scholarship,
                                 "entered_season": season_id - class_year + 1,
                                 "declared_season": None, "left_on": None})
         rows["state"].append({"player_id": pid, "condition": 100.0, "form": 6.5,
@@ -263,9 +280,12 @@ def ensure_college(conn: Connection, world: World, meta: CareerMeta, season_id: 
 
 
 def recruit(conn: Connection, world: World, meta: CareerMeta, season_id: int,
-            day: date) -> int:
-    """Every program's freshman class: enough to get its roster back to the target, the
-    positions it lacks first. Returns how many arrived."""
+            day: date, minimum: int | None = None, targets: dict[int, int] | None = None) -> int:
+    """Every program's generated freshmen: enough to get its roster back to the target, the
+    positions it lacks first, at least ``minimum`` (rules.yaml's least class by default; 0
+    once programs recruit their classes, W9c). Their scholarships share what the program's
+    money leaves. ``targets``: a roster size for some programs instead of the rules' (a college
+    coach's program fills only to a playable roster). Returns how many arrived."""
     rules = world.defs.college.rules
     shape = rules.roster.shape[:rules.recruiting.roster_target]
     wanted = Counter(shape)
@@ -277,15 +297,23 @@ def recruit(conn: Connection, world: World, meta: CareerMeta, season_id: int,
             FROM college_player cp WHERE cp.player_id IN ({IN_COLLEGE_SQL})
             AND cp.status = '{ENROLLED}'""")):
         have[int(r.club_id)][str(r.position)] += 1
-    teams = conn.execute(select(college_team.c.club_id, college_team.c.level, club.c.reputation)
+    teams = conn.execute(select(college_team.c.club_id, college_team.c.level, club.c.reputation,
+                                college_team.c.tier, college_team.c.prestige)
                          .join(club, club.c.id == college_team.c.club_id)
                          .order_by(college_team.c.club_id)).all()
+    held = {int(r.club_id): float(r.held) for r in conn.execute(text(
+        f"SELECT club_id, SUM(scholarship) AS held FROM college_player "
+        f"WHERE status = '{ENROLLED}' GROUP BY club_id"))}
+    hs = world.defs.college.recruiting.programs
     maker = _Maker(conn, world, meta, day)
     low, high = rules.recruiting.recruits
+    if minimum is not None:
+        low = minimum
     for t in teams:
         rng = derive_rng(meta.seed, "college-recruit", season_id, int(t.club_id))
         count = sum(have[int(t.club_id)].values())
-        size = int(min(high, max(low, rules.recruiting.roster_target - count)))
+        target = (targets or {}).get(int(t.club_id), rules.recruiting.roster_target)
+        size = int(min(high, max(low, target - count)))
         short = Counter({p: n - have[int(t.club_id)][p] for p, n in wanted.items()
                          if n > have[int(t.club_id)][p]})
         positions = []
@@ -295,10 +323,16 @@ def recruit(conn: Connection, world: World, meta: CareerMeta, season_id: int,
                 short[p] -= 1
         while len(positions) < size:
             positions.append(shape[int(rng.integers(len(shape)))])
+        share = 0.0
+        if t.prestige is not None and size > 0:  # a save that recruits: the money left
+            money = hs.funding_by_tier[int(t.tier)] - held.get(int(t.club_id), 0.0)
+            share = max(0.0, min(1.0, money / size))
+            share = round(int(share / hs.share_step + 1e-9) * hs.share_step, 2)
         for position in positions[:size]:
             maker.make(int(t.club_id), int(t.reputation), position, 1,
                        _age(rules, rules.recruiting.age, rules.recruiting.age_sd, rng),
-                       _player_overall(rules, float(t.level), 1, rng), season_id)
+                       _player_overall(rules, float(t.level), 1, rng), season_id,
+                       scholarship=share)
     maker.rows.write(conn, with_state=True)
     if maker.rows.count:
         bump_players_epoch(conn)

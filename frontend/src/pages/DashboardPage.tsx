@@ -1,7 +1,10 @@
 import { Badge, Button, Card, Grid, Group, Stack, Table, Text } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
+import { useConferences, wdl } from '../api/americas'
+import { useRecruiting } from '../api/recruiting'
 import { useCareer, useFinances, useSquad, useTable } from '../api/hooks'
+import { tierStars } from '../lib/college'
 import type { Fixture } from '../api/types'
 import { Crest } from '../components/PhoneNav'
 import ResultBadge from '../components/ResultBadge'
@@ -11,13 +14,20 @@ export default function DashboardPage() {
   const career = useCareer().data
   const table = useTable(career?.competition?.key)
   const squad = useSquad(career?.club.id)
-  const finances = useFinances(!!career).data
+  // A college coach (W9c): the conference's table instead of a league's, and no money.
+  const college = career?.college ?? null
+  const conferences = useConferences(!!college)
+  const finances = useFinances(!!career && !college).data
+  const recruiting = useRecruiting(!!college).data
   const navigate = useNavigate()
   if (!career) return null
 
   const next = career.next_fixture
   const today = next?.date === career.date
-  const rows = table.data?.rows ?? []
+  const conference = college ? conferences.data?.find((c) => c.key === college.conference) : undefined
+  const rows = conference
+    ? conference.rows.map((r) => ({ position: r.position, club: r.club, played: r.played, goal_difference: r.goals_for - r.goals_against, points: r.points }))
+    : (table.data?.rows ?? [])
   const mine = rows.findIndex((r) => r.club.id === career.club.id)
   const window = rows.slice(Math.max(0, mine - 3), Math.max(0, mine - 3) + 7)
   const unavailable = (squad.data ?? []).filter((p) => p.injury || p.suspended)
@@ -65,9 +75,9 @@ export default function DashboardPage() {
 
       <Grid gap="sm">
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/league' })}>
+          <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: college ? '/college' : '/league' })}>
             <Group justify="space-between" align="center">
-              <span className="fs-label">{career.competition?.name}</span>
+              <span className="fs-label">{college ? college.conference_name : career.competition?.name}</span>
               {career.position && (
                 <Text className="fs-num fs-accent" fz={22} lh={1}>
                   {ordinal(career.position)}
@@ -185,6 +195,41 @@ export default function DashboardPage() {
             </Stack>
           </Card>
         </Grid.Col>
+        {college && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/college' })}>
+              <Group justify="space-between">
+                <span className="fs-label">Your program</span>
+                <Badge variant="light" title={`Program tier ${college.tier} of 5`}>
+                  {tierStars(college.tier)}
+                </Badge>
+              </Group>
+              <Group mt="sm" grow align="flex-start">
+                <Figure label="Overall" value={wdl(conference?.rows.find((r) => r.club.id === career.club.id)?.overall)} />
+                <Figure label="Conference" value={career.position ? ordinal(career.position) : '–'} />
+                <Figure label="RPI rank" value={college.rpi_rank ? `${college.rpi_rank}` : '–'} />
+                <Figure label="Prestige" value={`${college.prestige}`} />
+              </Group>
+            </Card>
+          </Grid.Col>
+        )}
+        {recruiting && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/recruiting' })}>
+              <Group justify="space-between">
+                <span className="fs-label">Recruiting</span>
+                <Text size="xs" c="dimmed">
+                  {{ before: `Offers open ${shortDate(recruiting.start)}`, open: `Signing day ${shortDate(recruiting.signing_day)}`, late: `Class closes ${shortDate(recruiting.close)}`, closed: 'Class closed' }[recruiting.phase]}
+                </Text>
+              </Group>
+              <Group mt="sm" grow align="flex-start">
+                <Figure label="Class" value={`${recruiting.class_count}`} />
+                <Figure label="Targets" value={`${recruiting.targets}`} />
+                <Figure label="Scholarships left" value={Math.max(0, recruiting.funding - recruiting.returning_money - recruiting.class_money).toFixed(1)} />
+              </Group>
+            </Card>
+          </Grid.Col>
+        )}
         {finances && (
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/finances' })}>

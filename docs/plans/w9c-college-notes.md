@@ -89,10 +89,10 @@ It was built on branch `w9c-college-coach` (worktree `.worktrees/college`) from 
   - a table on desktop, cards on a phone;
   - the recruit card as a right drawer, or a bottom sheet on a phone.
 
-## Schema v26
+## Schema v27 (v26 before the merge with W8, whose national teams took v26)
 - Tables: `recruit`, `recruit_offer`, `recruit_interest` (with `fit`).
 - Columns: `college_player.scholarship`, `college_team.prestige`.
-- `_to_v26` adds the columns if they're missing (W9a's v24 step makes the college tables from the current metadata, so they may already have them).
+- `_to_v27` adds the columns if they're missing (W9a's v24 step makes the college tables from the current metadata, so they may already have them).
 
 ## Measured
 - **A recruiting year without the matches** (seed 11, from the career's start to the close): 2.2 s of recruiting a season (the first week, with the overalls cache, about 0.2 s).
@@ -106,6 +106,15 @@ It was built on branch `w9c-college-coach` (worktree `.worktrees/college`) from 
   - the AI floor 18 → 30 and overcommit 1.5 → 2.0 (powers ran out of four-stars before signing day);
   - waiting for better offers;
   - the class's overall 41 → 39.5.
+
+## A season played through (R5, at :8765, 787e4c3)
+- **The run:** a new Wake Forest career, every professional league on fast results, from 1 August to the next season.
+  - 1 Aug–1 Nov took 175 s (16 matches), Nov–signing day 57 s, and to the rollover 48 s.
+  - Signing day: 3 signed with Wake Forest, 1,312 nationally. The close sent 855 elsewhere. The rollover enrolled 1,345 freshmen, Wake Forest's three on its roster at their scholarships, and prestige moved 80 → 76.
+- **Balance:** recruits ranked 41–54, picked blindly by a tier-1 program offering 75%, went to tier-2 programs that offered 85%, gave them more attention or were nearer home.
+  - Between programs of 70–85 prestige the prestige gap (0.1–0.2 of a score) counts for less than home or attention.
+  - Re-targeting local recruits who want playing time won three commitments.
+  - The knobs, if it's too hard: `decision.weights.prestige`, `prestige_scale`.
 
 ## Tests
 - `tests/unit/test_recruiting_decisions.py`: each factor moves the choice; readiness and the margin; a program without money loses him; signing day; dates and curves.

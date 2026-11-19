@@ -19,10 +19,12 @@ from footsim.defs.calendar import DateRange
 from footsim.persistence.schema import competition, fixture
 from footsim.world.context import World
 from footsim.world.international.common import AWAY_KEY, TYPE
+from footsim.world.international.qualifiers import qualifiers_day
 from footsim.world.international.teams import ensure_international, pick_squads
 from footsim.world.meta import CareerMeta
 
 FRIENDLY = "INTL_FRIENDLY"  # the friendlies' competition key, and their fixtures' stage
+FINALS = "WCF:"  # the World Cup finals' fixtures' stages (I4)
 ELO_KEY = "intl_elo_day"  # game_meta: the last day whose results moved Elo
 
 
@@ -71,6 +73,7 @@ def international_day(conn: Connection, world: World, meta: CareerMeta, day: dat
     window = _meta_get(conn, AWAY_KEY)
     if isinstance(window, dict) and window["end"] <= day.isoformat():
         conn.execute(text("DELETE FROM game_meta WHERE key = :k"), {"k": AWAY_KEY})
+    news += qualifiers_day(conn, world, meta, day)  # before the friendlies fill the gaps
     tomorrow = day + timedelta(days=1)
     for w in windows(world, meta):
         if w.start == tomorrow:
@@ -159,7 +162,7 @@ def match_kind(stage: str) -> str:
     """Which K a national-team fixture's stage moves Elo by."""
     if stage == FRIENDLY:
         return "friendly"
-    return "finals" if stage.startswith("WC") else "qualifier"
+    return "finals" if stage.startswith(FINALS) else "qualifier"
 
 
 def update_elo(conn: Connection, world: World, day: date) -> None:

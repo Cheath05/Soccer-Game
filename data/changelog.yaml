@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.115"
+  date: "2026-11-19"
+  title: "World Cup 2030 qualifiers"
+  changes:
+    - "The qualifiers for the 2030 World Cup (Spain, Portugal and Morocco) are played in the international windows, in each confederation's format: CONMEBOL's round robin of ten from September 2027, CAF's and AFC's groups from late 2027 and 2028, CONCACAF's and OFC's from 2028, UEFA's twelve groups in 2029, then the play-offs and the intercontinental play-off in March 2030. 48 teams qualify."
+    - "International → World Cup 2030: who has qualified so far, and every confederation's groups, tables and play-off ties."
+    - "Qualifiers are fully simulated, with fatigue and injuries that players bring back to their clubs. Cards in internationals don't count towards club bans."
+
 - version: "1.114"
   date: "2026-11-19"
   title: "International windows: call-ups, friendlies and the world ranking"

@@ -19,7 +19,9 @@ FORM_WEIGHT = 0.3  # weight of the latest match in the rolling form rating
 
 
 def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: date,
-                  sim: str) -> None:
+                  sim: str, discipline: bool = True) -> None:
+    """``discipline`` False (an international match, world/international): bookings and
+    sendings-off don't count towards club bans; fitness, form and injuries still do."""
     conn.execute(update(fixture).where(fixture.c.id == fixture_id).values(
         status="played", home_goals=report.home_goals, away_goals=report.away_goals,
         extra_time=int(report.extra_time), home_pens=report.home_pens,
@@ -63,9 +65,11 @@ def record_result(conn: Connection, fixture_id: int, report: MatchReport, day: d
         state = states.get(ln.player_id)
         if state is None:
             continue
-        season_yellows = state.season_yellows + ln.yellow
+        season_yellows = state.season_yellows + (ln.yellow if discipline else 0)
         ban = state.suspended_matches
-        if ln.red:
+        if not discipline:
+            pass
+        elif ln.red:
             reason = reds.get(ln.player_id)
             ban += (SECOND_YELLOW_BAN if reason == RED_SECOND_YELLOW else
                     DOGSO_BAN if reason == RED_DOGSO else STRAIGHT_RED_BAN)

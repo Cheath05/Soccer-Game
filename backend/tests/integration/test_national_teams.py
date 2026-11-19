@@ -19,6 +19,7 @@ from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
 from footsim.world.career import initialize_career
 from footsim.world.context import World, get_world
+from footsim.world.europe.access import _lottery
 from footsim.world.international import ensure_international
 from footsim.world.international.common import nation_ids
 from footsim.world.meta import read_meta
@@ -140,3 +141,15 @@ def test_a_national_teams_club_page(tmp_path: Path) -> None:
     assert detail["international"]["in_squad"] is True and detail["international"]["caps"] == 0
     assert any(client.get(f"/api/players/{p['id']}").json()["international"]["home_based"]
                for p in squad)
+
+
+def test_a_country_without_a_league_enters_europe_with_its_clubs(
+        career: tuple[Engine, World]) -> None:
+    """Liechtenstein has no league: its European places go by lottery to its clubs outside any
+    league (none in the game), never to its national team, a club row of the same country (it
+    crashed the July 2027 draw)."""
+    engine, world = career
+    with engine.connect() as conn:
+        meta = read_meta(conn)
+        drawn = _lottery(conn, world, meta, meta.season_id, "LIE")
+        assert _club(engine, "LIE") not in drawn

@@ -63,7 +63,7 @@ def _session(request: Request) -> CareerSession:
     return session_for(request)
 
 
-def _result(session: CareerSession, fixture_id: int, user: int) -> SimResultOut:
+def _result(session: CareerSession, fixture_id: int, user: tuple[int, ...]) -> SimResultOut:
     with session.read() as conn:
         fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).one()
         names: dict[int, str] = {row.id: row.name for row in conn.execute(
@@ -71,7 +71,7 @@ def _result(session: CareerSession, fixture_id: int, user: int) -> SimResultOut:
                                                                  fx.away_club_id])))}
         comp_name: str = conn.execute(select(competition.c.name).where(
             competition.c.id == fx.competition_id)).scalar_one()
-    home = fx.home_club_id == user
+    home = fx.home_club_id in user
     ours, theirs = ((fx.home_goals, fx.away_goals) if home else (fx.away_goals, fx.home_goals))
     outcome = "W" if ours > theirs else "L" if ours < theirs else "D"
     if ours == theirs and fx.home_pens is not None and fx.away_pens is not None:
@@ -82,7 +82,7 @@ def _result(session: CareerSession, fixture_id: int, user: int) -> SimResultOut:
                         away_goals=fx.away_goals, outcome=outcome, competition=comp_name)
 
 
-def sim_targets(conn: Connection, user: int, today: date) -> list[SimTargetOut]:
+def sim_targets(conn: Connection, user: tuple[int, ...], today: date) -> list[SimTargetOut]:
     """The "Sim to…" choices that depend on the fixture list: "Next cup match" (the user's
     next match in any competition that isn't a league), and, when he has upcoming matches in
     more than one such competition, one "Next <competition> match" each. A continental
@@ -93,14 +93,14 @@ def sim_targets(conn: Connection, user: int, today: date) -> list[SimTargetOut]:
         .join(competition, competition.c.id == fixture.c.competition_id)
         .where(fixture.c.status == "scheduled", competition.c.type != "league",
                fixture.c.date > today.isoformat(),
-               or_(fixture.c.home_club_id == user, fixture.c.away_club_id == user))
+               or_(fixture.c.home_club_id.in_(user), fixture.c.away_club_id.in_(user)))
         .order_by(fixture.c.date, fixture.c.id)).all()
     if not rows:
         return []
     opponents = {r.id: r.name for r in conn.execute(select(club.c.id, club.c.name))}
 
     def target(key: str, label: str, comp: str, row: Row[Any]) -> SimTargetOut:
-        other = row.away_club_id if row.home_club_id == user else row.home_club_id
+        other = row.away_club_id if row.home_club_id in user else row.home_club_id
         return SimTargetOut(key=key, label=label, competition=comp, date=row.date,
                             fixture_id=row.id, opponent=opponents[other])
 
@@ -114,7 +114,7 @@ def sim_targets(conn: Connection, user: int, today: date) -> list[SimTargetOut]:
     return targets
 
 
-def _run(session: CareerSession, job: SimJob, user: int) -> None:
+def _run(session: CareerSession, job: SimJob, user: tuple[int, ...]) -> None:
     world = get_world()
     try:
         while not job.cancel.is_set():
@@ -131,7 +131,7 @@ def _run(session: CareerSession, job: SimJob, user: int) -> None:
             if step.stop is not None:
                 if step.stop == "season_end":
                     with session.read() as conn:
-                        job.season_final = season_final(conn, world, user, job.messages)
+                        job.season_final = season_final(conn, world, user[0], job.messages)
                 job.stop = step.stop
                 break
         else:
@@ -160,7 +160,7 @@ def start(body: SimIn, request: Request) -> SimStatusOut:
         until = body.until
         if body.target is not None:
             with session.read() as conn:
-                found = next((t for t in sim_targets(conn, meta.user_club_id, today)
+                found = next((t for t in sim_targets(conn, meta.user_teams, today)
                               if t.key == body.target), None)
             if found is None:
                 raise HTTPException(400, "no such match to sim to: your next match in that "
@@ -173,7 +173,7 @@ def start(body: SimIn, request: Request) -> SimStatusOut:
                                      f"{MAX_DAYS} days")
         job = SimJob(today, until, session.generation, today)
         session.sim = job
-        threading.Thread(target=_run, args=(session, job, meta.user_club_id), daemon=True,
+        threading.Thread(target=_run, args=(session, job, meta.user_teams), daemon=True,
                          name="sim-to-date").start()
         return job.status()
 
@@ -186,7 +186,7 @@ def targets(request: Request) -> list[SimTargetOut]:
         meta = read_meta(conn)
         if meta.user_club_id is None:
             return []
-        return sim_targets(conn, meta.user_club_id, meta.current_date)
+        return sim_targets(conn, meta.user_teams, meta.current_date)
 
 
 @router.get("/career/sim")

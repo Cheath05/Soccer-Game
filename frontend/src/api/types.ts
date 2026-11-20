@@ -100,6 +100,7 @@ export interface Career {
   recent: Fixture[]
   currency?: string // the currency money is shown and quoted in, kept with the career
   college?: CollegeCareer | null // a college coach's program (W9c); null for a club
+  nation?: ClubRef | null // the national team he also manages (W8 I5)
 }
 
 // A college coach's program (api/schemas.py CollegeCareerOut). The career's `position` is then its
@@ -1009,4 +1010,24 @@ export interface WorldCupFinals {
   groups: { name: string; rows: QualifierGroupRow[] }[]
   rounds: { name: string; fixtures: Fixture[] }[]
   champion: ClubRef | null
+}
+
+// The user as a national team's manager (W8 I5, api/international.py MyNationOut).
+export type TacticsTeam = 'club' | 'nation'
+export interface CallUp {
+  id: number
+  name: string
+  position: string
+  age: number
+  overall: number
+  club: ClubRef | null // null: a made-up home-based player
+  injured: boolean
+  selected: boolean
+}
+export interface MyNation {
+  team: ClubRef | null // null: no national team job
+  code: string | null
+  squad_size: number // the most he can call up
+  players: CallUp[] // the eligible players, the best first
+  fixtures: Fixture[] // the team's next matches
 }

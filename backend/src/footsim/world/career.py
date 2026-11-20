@@ -97,23 +97,24 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
 
 
 def _user_fixture(conn: Connection, meta: CareerMeta, day: date) -> Row[Any] | None:
-    if meta.user_club_id is None:
+    """The user's match on ``day``: his club's or his national team's (one at a time)."""
+    teams = meta.user_teams
+    if not teams:
         return None
     return conn.execute(select(fixture).where(
         fixture.c.date == day.isoformat(), fixture.c.status == "scheduled",
-        or_(fixture.c.home_club_id == meta.user_club_id,
-            fixture.c.away_club_id == meta.user_club_id),
-    )).first()
+        or_(fixture.c.home_club_id.in_(teams), fixture.c.away_club_id.in_(teams)),
+    ).order_by(fixture.c.id)).first()
 
 
 def next_user_fixture(conn: Connection, meta: CareerMeta) -> Row[Any] | None:
-    if meta.user_club_id is None:
+    teams = meta.user_teams
+    if not teams:
         return None
     return conn.execute(select(fixture).where(
         fixture.c.status == "scheduled",
-        or_(fixture.c.home_club_id == meta.user_club_id,
-            fixture.c.away_club_id == meta.user_club_id),
-    ).order_by(fixture.c.date)).first()
+        or_(fixture.c.home_club_id.in_(teams), fixture.c.away_club_id.in_(teams)),
+    ).order_by(fixture.c.date, fixture.c.id)).first()
 
 
 def play_fixture(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], day: date,
@@ -142,7 +143,7 @@ def agent_match(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], 
     rng = derive_rng(meta.seed, "live-match", fx.id)
     # Computer-controlled sides adjust their tactics during the match; the user's side is
     # the user's to manage (he can hand it to the assistant while watching).
-    ai_manager = (fx.home_club_id != meta.user_club_id, fx.away_club_id != meta.user_club_id)
+    ai_manager = (fx.home_club_id not in meta.user_teams, fx.away_club_id not in meta.user_teams)
     return MatchEngine(world.defs, home, away, rng, neutral=bool(fx.neutral),
                        decider=decider_for(conn, world, fx), record=record,
                        ai_manager=ai_manager,
@@ -164,7 +165,7 @@ def _play_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> No
     games = [fx for fx in conn.execute(select(fixture).where(
         fixture.c.date == day.isoformat(), fixture.c.status == "scheduled",
     ).order_by(fixture.c.id)).all()
-        if meta.user_club_id not in (fx.home_club_id, fx.away_club_id)]
+        if fx.home_club_id not in meta.user_teams and fx.away_club_id not in meta.user_teams]
     # The leagues the user switched off full simulation get fast results (world/fast_sim.py),
     # after the fully simulated matches; with none switched off, every match is played here.
     real, fast = split_day(conn, world, meta, games)
@@ -234,7 +235,9 @@ def sim_step(conn: Connection, world: World, until: date) -> SimStep:
 
 
 def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[str, str],
-                    lineup: dict[str, int] | None, instructions: dict[str, str]) -> None:
+                    lineup: dict[str, int] | None, instructions: dict[str, str],
+                    club_id: int | None = None) -> None:
+    """The tactic of the user's club, or of ``club_id`` (his national team, I5)."""
     meta = read_meta(conn)
     if formation not in world.defs.formations:
         raise ValueError(f"unknown formation {formation}")
@@ -255,7 +258,8 @@ def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[
         VALUES (:club, :formation, :roles, :lineup, :instructions)
         ON CONFLICT(club_id) DO UPDATE SET formation = excluded.formation,
             roles = excluded.roles, lineup = excluded.lineup, instructions = excluded.instructions
-    """), {"club": meta.user_club_id, "formation": formation, "roles": json.dumps(roles),
+    """), {"club": club_id or meta.user_club_id, "formation": formation,
+           "roles": json.dumps(roles),
            "lineup": json.dumps(lineup) if lineup else None,
            "instructions": json.dumps(instructions)})
 

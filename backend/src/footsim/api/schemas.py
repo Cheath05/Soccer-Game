@@ -328,6 +328,7 @@ class CareerOut(BaseModel):
     recent: list[FixtureOut]
     currency: str = "USD"  # money is shown and quoted in it
     college: CollegeCareerOut | None = None  # a college coach's program (W9c)
+    nation: ClubRef | None = None  # the national team he also manages (W8 I5)
 
 
 class AdvanceOut(BaseModel):

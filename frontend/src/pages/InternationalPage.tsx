@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useInternational } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import ClubWorldCup from '../components/ClubWorldCup'
+import NationManager from '../components/NationManager'
 import WorldCupQualifiers from '../components/WorldCupQualifiers'
 import { foldText, longDate } from '../lib/format'
 
@@ -36,7 +37,11 @@ export default function InternationalPage() {
           <Tabs.Tab value="ranking">Ranking</Tabs.Tab>
           <Tabs.Tab value="wc">World Cup 2030</Tabs.Tab>
           <Tabs.Tab value="cwc">Club World Cup</Tabs.Tab>
+          <Tabs.Tab value="mine">My country</Tabs.Tab>
         </Tabs.List>
+        <Tabs.Panel value="mine">
+          <NationManager />
+        </Tabs.Panel>
         <Tabs.Panel value="cwc">
           <ClubWorldCup />
         </Tabs.Panel>

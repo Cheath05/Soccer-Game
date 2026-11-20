@@ -372,10 +372,11 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         if any(r.played for r in table):
             position = next(r.position for r in table if r.club_id == meta.user_club_id)
     user = meta.user_club_id
+    teams = meta.user_teams  # his national team's matches are his too (W8 I5)
     upcoming = conn.execute(select(fixture).where(
         fixture.c.status == "scheduled",
-        or_(fixture.c.home_club_id == user, fixture.c.away_club_id == user),
-    ).order_by(fixture.c.date)).first()
+        or_(fixture.c.home_club_id.in_(teams), fixture.c.away_club_id.in_(teams)),
+    ).order_by(fixture.c.date, fixture.c.id)).first()
     recent = conn.execute(select(fixture).where(
         fixture.c.status == "played",
         or_(fixture.c.home_club_id == user, fixture.c.away_club_id == user),
@@ -393,6 +394,8 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         recent=fixtures_out(conn, recent, names, comps),
         currency=meta.currency,
         college=college[0] if college else None,
+        nation=(ClubRef(id=meta.user_nation_id, name=names[meta.user_nation_id])
+                if meta.user_nation_id is not None else None),
     )
 
 
@@ -1428,12 +1431,15 @@ def _sheet_entries(world: World, sheet: TeamSheet) -> list[SheetEntryOut]:
     return [_slot_entry(world, sp) for sp in sheet.starters]
 
 
-def tactics(conn: Connection, world: World, meta: CareerMeta | None = None) -> TacticsOut:
+def tactics(conn: Connection, world: World, meta: CareerMeta | None = None,
+            club_id: int | None = None) -> TacticsOut:
+    """The user's club's tactic, or ``club_id``'s (his national team, I5)."""
     meta = meta or read_meta(conn)
-    assert meta.user_club_id is not None
-    row = conn.execute(select(tactic).where(tactic.c.club_id == meta.user_club_id)).first()
-    sheet = team_sheet(conn, world, meta.user_club_id, meta.current_date)
-    squad_players = load_squad(conn, meta.user_club_id, meta.current_date)
+    team = club_id or meta.user_club_id
+    assert team is not None
+    row = conn.execute(select(tactic).where(tactic.c.club_id == team)).first()
+    sheet = team_sheet(conn, world, team, meta.current_date)
+    squad_players = load_squad(conn, team, meta.current_date)
     defs = world.defs
     lineup = {k: int(v) for k, v in json.loads(row.lineup).items()} if row and row.lineup else None
     used = {sp.player_id for sp in (*sheet.starters, *sheet.bench)}

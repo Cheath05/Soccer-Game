@@ -1,19 +1,21 @@
 """International football's page (W8, world/international): the national teams ranked by Elo,
 with their confederations, and the latest international results."""
 
+import json
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 
 from footsim.api import queries
-from footsim.api.routes import Session
+from footsim.api.routes import Session, _not_simulating
 from footsim.api.schemas import ClubRef, FixtureOut
 from footsim.world.context import get_world
 from footsim.world.international import club_world_cup as cwc
 from footsim.world.international import finals as wcf
+from footsim.world.international import manager
 from footsim.world.international import qualifiers as q
 from footsim.world.international.common import TYPE
 from footsim.world.meta import read_meta
@@ -245,3 +247,129 @@ def world_cup_view(session: Session) -> WorldCupOut:
         champion = state.get("champion")
     return WorldCupOut(year=spec.year, draw=spec.draw, groups=groups, rounds=rounds,
                        champion=ClubRef(id=champion, name=names[champion]) if champion else None)
+
+
+# --- the user's national team (W8 I5) ----------------------------------------------------
+
+
+class CallUpOut(BaseModel):
+    id: int
+    name: str
+    position: str
+    age: int
+    overall: int
+    club: ClubRef | None  # None: a made-up home-based player
+    injured: bool
+    selected: bool
+
+
+class MyNationOut(BaseModel):
+    team: ClubRef | None  # None: no national team job
+    code: str | None
+    squad_size: int  # the most he can call up
+    players: list[CallUpOut]  # the eligible players, the best first
+    fixtures: list[FixtureOut]  # the team's next matches
+
+
+class JobIn(BaseModel):
+    code: str  # FIFA code
+
+
+class SquadIn(BaseModel):
+    player_ids: list[int]
+
+
+def _my_nation(conn: Any) -> MyNationOut:
+    world = get_world()
+    meta = read_meta(conn)
+    size = manager.squad_size(world)
+    if meta.user_nation_id is None:
+        return MyNationOut(team=None, code=None, squad_size=size, players=[], fixtures=[])
+    names = queries._club_names(conn)
+    found = manager.candidates(conn, world, meta)
+    ids = json.dumps([c.player_id for c in found])
+    people = {int(r.id): r for r in conn.execute(text(
+        "SELECT id, COALESCE(NULLIF(known_as, ''), first_name || ' ' || last_name) AS name, "
+        "birth_date FROM person WHERE id IN (SELECT value FROM json_each(:i))"), {"i": ids})}
+    clubs: dict[int, int] = {}
+    for r in conn.execute(text(
+            "SELECT person_id, club_id, kind FROM contract WHERE is_active = 1 "
+            "AND kind != 'staff' AND person_id IN (SELECT value FROM json_each(:i)) "
+            "ORDER BY kind = 'loan'"), {"i": ids}):
+        clubs[int(r.person_id)] = int(r.club_id)  # a loan (sorted last) wins
+    for r in conn.execute(text("SELECT player_id, club_id FROM guest_player")):
+        clubs.setdefault(int(r.player_id), int(r.club_id))
+    today = meta.current_date
+    injured = {int(r[0]) for r in conn.execute(text(
+        "SELECT player_id FROM player_state WHERE injured_until > :d"), {"d": today.isoformat()})}
+
+    def age(birth: str) -> int:
+        b = date.fromisoformat(birth)
+        return today.year - b.year - ((today.month, today.day) < (b.month, b.day))
+
+    players = [CallUpOut(id=c.player_id, name=people[c.player_id].name, position=c.position,
+                         age=age(people[c.player_id].birth_date), overall=round(c.overall),
+                         club=(ClubRef(id=clubs[c.player_id], name=names[clubs[c.player_id]])
+                               if c.player_id in clubs else None),
+                         injured=c.player_id in injured, selected=c.selected)
+               for c in found if c.player_id in people]
+    team = meta.user_nation_id
+    upcoming = conn.execute(text(
+        "SELECT * FROM fixture WHERE status = 'scheduled' AND (home_club_id = :t OR "
+        "away_club_id = :t) ORDER BY date, id LIMIT 6"), {"t": team}).all()
+    return MyNationOut(team=ClubRef(id=team, name=names[team]),
+                       code=manager.nation_code(conn, team), squad_size=size, players=players,
+                       fixtures=queries.fixtures_out(conn, upcoming, names,
+                                                     queries._competitions(conn)))
+
+
+@router.get("/my-team")
+def my_team(session: Session) -> MyNationOut:
+    """The national team the user manages (if any): the players he can call up, his squad and
+    the team's next matches."""
+    with session.read() as conn:
+        return _my_nation(conn)
+
+
+@router.post("/job")
+def take_job(body: JobIn, session: Session) -> MyNationOut:
+    """Take a national team's job, alongside the club (any nation, for now)."""
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        if meta.user_club_id is None:
+            raise HTTPException(409, "a national team's job goes with a club, for now")
+        try:
+            manager.take_job(conn, get_world(), meta, body.code, meta.current_date)
+        except manager.JobRefused as exc:
+            raise HTTPException(404, str(exc)) from exc
+    session.autosave()
+    with session.read() as conn:
+        return _my_nation(conn)
+
+
+@router.delete("/job")
+def leave_job(session: Session) -> MyNationOut:
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        if session.live_matches:
+            raise HTTPException(409, "finish the match being watched first")
+        manager.leave_job(conn, meta)
+    session.autosave()
+    with session.read() as conn:
+        return _my_nation(conn)
+
+
+@router.put("/my-team/squad")
+def put_squad(body: SquadIn, session: Session) -> MyNationOut:
+    """The user's call-ups for his national team."""
+    _not_simulating(session)
+    with session.write() as conn:
+        try:
+            manager.set_squad(conn, get_world(), read_meta(conn), body.player_ids)
+        except manager.JobRefused as exc:
+            raise HTTPException(400, str(exc)) from exc
+    session.autosave()
+    with session.read() as conn:
+        return _my_nation(conn)

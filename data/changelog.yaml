@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.130"
+  date: "2026-11-20"
+  title: "Manage a country"
+  changes:
+    - "International → My country: take any national team's job alongside your club. Pick its squad from every player eligible for it (those of its nationality and its home-based players), up to 26; it stays as you pick it, and is picked for you if it's empty at a call-up."
+    - "Its matches are yours too: Continue stops for them like your club's, and you watch them or take an Instant result. Set its tactics on the Tactics page (switch between your club and your country at the top)."
+
 - version: "1.129"
   date: "2026-11-19"
   title: "The 2030 World Cup finals"

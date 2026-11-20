@@ -2,7 +2,7 @@ import { Alert, Badge, Button, Card, Group, Loader, ScrollArea, SegmentedControl
 import { useEffect, useState } from 'react'
 
 import { useCareer, useSaveTactics, useSquad, useTactics } from '../api/hooks'
-import type { SheetEntry, TacticsUpdate } from '../api/types'
+import type { SheetEntry, TacticsTeam, TacticsUpdate } from '../api/types'
 import PitchBoard from '../components/PitchBoard'
 import SavedTactics from '../components/SavedTactics'
 import { SlotBreakdown } from '../components/SlotBreakdown'
@@ -20,9 +20,12 @@ const GROUP_OF: Record<string, string> = {
 export default function TacticsPage() {
   const { phone, touch } = useDevice()
   const career = useCareer().data
-  const tactics = useTactics()
-  const squad = useSquad(career?.club.id)
-  const save = useSaveTactics()
+  // The national team the user also manages (W8 I5) has its own tactic: ?team=nation opens it.
+  const [team, setTeam] = useState<TacticsTeam>(() => (new URLSearchParams(window.location.search).get('team') === 'nation' ? 'nation' : 'club'))
+  const country = team === 'nation' && !!career?.nation
+  const tactics = useTactics(country ? 'nation' : 'club')
+  const squad = useSquad(country ? undefined : career?.club.id)
+  const save = useSaveTactics(country ? 'nation' : 'club')
   const [selected, setSelected] = useState<string | null>(null)
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null) // a list row or list a drag is over
@@ -142,11 +145,17 @@ export default function TacticsPage() {
     setPicked(e.available ? e.player_id : null)
   }
 
-  const players = (squad.data ?? []).map((p) => ({
-    value: String(p.id),
-    label: `${p.name} · ${p.position} · ${p.overall}${p.injury ? ' (injured)' : p.suspended ? ' (suspended)' : ''}`,
-    disabled: !!p.injury || p.suspended > 0,
-  }))
+  const players = country
+    ? [...t.starters, ...t.bench, ...t.reserves].map((p) => ({
+        value: String(p.player_id),
+        label: `${p.name} · ${p.best_position} · ${p.overall}${p.available ? '' : ' (unavailable)'}`,
+        disabled: !p.available,
+      }))
+    : (squad.data ?? []).map((p) => ({
+        value: String(p.id),
+        label: `${p.name} · ${p.position} · ${p.overall}${p.injury ? ' (injured)' : p.suspended ? ' (suspended)' : ''}`,
+        disabled: !!p.injury || p.suspended > 0,
+      }))
 
   const row = (e: SheetEntry, kind: 'xi' | 'bench' | 'reserve') => {
     const draggable = e.available
@@ -262,7 +271,21 @@ export default function TacticsPage() {
   return (
     <Stack>
       <Group justify="space-between">
-        <Title order={2}>Tactics</Title>
+        <Group gap="sm">
+          <Title order={2}>Tactics</Title>
+          {career?.nation && (
+            <SegmentedControl
+              size="xs"
+              value={country ? 'nation' : 'club'}
+              onChange={(v) => setTeam(v as TacticsTeam)}
+              data={[
+                { value: 'club', label: career.club.name },
+                { value: 'nation', label: career.nation.name },
+              ]}
+              aria-label="Team"
+            />
+          )}
+        </Group>
         <Group w={phone ? '100%' : undefined} wrap={phone ? 'wrap' : 'nowrap'}>
           <Select
             data={t.formations.map((f) => ({ value: f.key, label: f.name }))}
@@ -274,7 +297,7 @@ export default function TacticsPage() {
           <Button variant="default" onClick={() => update({ lineup: null })}>
             Pick best XI and bench
           </Button>
-          <SavedTactics />
+          {!country && <SavedTactics />}
         </Group>
       </Group>
       {save.error && <Alert color="red">{save.error.message}</Alert>}

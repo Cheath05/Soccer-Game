@@ -20,6 +20,7 @@ from footsim.persistence.schema import competition, fixture
 from footsim.world.context import World
 from footsim.world.international.common import AWAY_KEY, TYPE
 from footsim.world.international.finals import finals_day
+from footsim.world.international.manager import ensure_squad
 from footsim.world.international.pools import top_up_pools
 from footsim.world.international.qualifiers import qualifiers_day
 from footsim.world.international.teams import ensure_international, pick_squads
@@ -91,6 +92,7 @@ def start_window(conn: Connection, world: World, meta: CareerMeta, window: DateR
     ensure_international(conn, world, meta, day)
     _top_up(conn, world, meta, day)
     pick_squads(conn, world, meta, day)
+    ensure_squad(conn, world, meta, day)  # the user's own, when he hasn't picked one
     _meta_set(conn, AWAY_KEY, {"start": window.start.isoformat(), "end": window.end.isoformat()})
     _schedule_friendlies(conn, world, meta, window)
     return _called_up_news(conn, meta)

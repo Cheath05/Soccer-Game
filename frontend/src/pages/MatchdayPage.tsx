@@ -8,7 +8,10 @@ import { longDate, positionColor, stageLabel } from '../lib/format'
 
 export default function MatchdayPage() {
   const career = useCareer().data
-  const tactics = useTactics()
+  // The national team the user also manages (W8 I5): its matches are his too.
+  const nationId = career?.nation?.id
+  const nationMatch = !!career?.next_fixture && nationId !== undefined && (career.next_fixture.home.id === nationId || career.next_fixture.away.id === nationId)
+  const tactics = useTactics(nationMatch ? 'nation' : 'club')
   const play = usePlayInstant()
   const navigate = useNavigate()
   if (!career) return null
@@ -16,7 +19,8 @@ export default function MatchdayPage() {
   if (!fixture || fixture.date !== career.date) {
     return <Text>No match today. Press Continue to advance to the next match day.</Text>
   }
-  const home = fixture.home.id === career.club.id
+  const mineId = nationMatch && nationId !== undefined ? nationId : career.club.id
+  const home = fixture.home.id === mineId
   const opponent = home ? fixture.away : fixture.home
 
   return (
@@ -26,11 +30,11 @@ export default function MatchdayPage() {
           {fixture.competition_name} · {stageLabel(fixture.stage, fixture.round, fixture.tie, fixture.leg, fixture.stage_name)}
         </Text>
         <Group mt="md" justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-          <Side club={fixture.home} mine={fixture.home.id === career.club.id} />
+          <Side club={fixture.home} mine={fixture.home.id === mineId} />
           <Text className="fs-num" fz={26} c="dimmed" pt={16}>
             V
           </Text>
-          <Side club={fixture.away} mine={fixture.away.id === career.club.id} />
+          <Side club={fixture.away} mine={fixture.away.id === mineId} />
         </Group>
         <Text size="sm" c="dimmed" ta="center" mt="md">
           {longDate(fixture.date)} · {fixture.neutral ? 'Neutral venue' : home ? 'Home' : `Away at ${opponent.name}`}
@@ -57,7 +61,7 @@ export default function MatchdayPage() {
             >
               Instant result
             </Button>
-            <Button size="md" variant="default" onClick={() => void navigate({ to: '/tactics' })}>
+            <Button size="md" variant="default" onClick={() => void navigate({ to: '/tactics', search: nationMatch ? { team: 'nation' } : {} })}>
               Tactics
             </Button>
           </Group>

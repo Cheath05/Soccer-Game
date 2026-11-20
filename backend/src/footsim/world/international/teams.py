@@ -56,30 +56,40 @@ def _guests(conn: Connection, world: World, meta: CareerMeta, day: date) -> None
     _formations(conn, world, day, sorted(guest_club_ids(conn)))
 
 
+def nation_candidates(conn: Connection, world: World, codes: set[str]
+                      ) -> dict[str, list[tuple[int, str, float]]]:
+    """Each nation's eligible players as (id, main position, overall there): its national pool
+    (made-up home-based players) and the players of its nationality."""
+    ids = nation_ids(conn, world)
+    code_of_nation = {nid: code for code, s in ids.items() for nid in s}
+    pooled = {int(r.player_id): str(r.code) for r in conn.execute(text(
+        "SELECT player_id, code FROM national_pool"))}
+    found: dict[str, list[tuple[int, str, float]]] = {code: [] for code in codes}
+    for pid, nid, position, overall in pool_players(conn, world):
+        code = pooled.get(pid) or (code_of_nation.get(nid) if nid is not None else None)
+        if code in found:
+            found[code].append((pid, position, overall))
+    return found
+
+
 def pick_squads(conn: Connection, world: World, meta: CareerMeta, day: date,
-                codes: set[str] | None = None) -> None:
+                codes: set[str] | None = None, include_user: bool = False) -> None:
     """Each national team's squad, as an AI manager picks it from the nation's players available
     on ``day`` (not injured): for each place of rules.yaml ``places`` (a 4-3-3 and its cover),
     the best players whose main position it is, by their rating there; a place nobody fills goes
     to the best left in the same group of positions, then to the best left at all. Then the
     team's formation is the one its squad suits best, as AI clubs choose theirs."""
     rules = world.defs.international.rules
-    ids = nation_ids(conn, world)
     teams = {str(r.code): int(r.club_id) for r in conn.execute(text(
         "SELECT code, club_id FROM national_team ORDER BY code"))}
     if codes is not None:
         teams = {c: v for c, v in teams.items() if c in codes}
-    teams = {c: v for c, v in teams.items() if v != meta.user_nation_id}  # the user picks theirs
-    code_of_nation = {nid: code for code, s in ids.items() for nid in s}
-    pooled = {int(r.player_id): str(r.code) for r in conn.execute(text(
-        "SELECT player_id, code FROM national_pool"))}
+    if not include_user:  # the user picks his own (international/manager.py)
+        teams = {c: v for c, v in teams.items() if v != meta.user_nation_id}
     injured = {int(r.player_id) for r in conn.execute(text(
         "SELECT player_id FROM player_state WHERE injured_until > :d"), {"d": day.isoformat()})}
-    candidates: dict[str, list[tuple[int, str, float]]] = {code: [] for code in teams}
-    for pid, nid, position, overall in pool_players(conn, world):
-        code = pooled.get(pid) or (code_of_nation.get(nid) if nid is not None else None)
-        if code in candidates and pid not in injured:
-            candidates[code].append((pid, position, overall))
+    candidates = {code: [c for c in found if c[0] not in injured]
+                  for code, found in nation_candidates(conn, world, set(teams)).items()}
     positions = world.defs.positions
     picks: list[dict[str, int]] = []
     chosen: dict[int, list[int]] = {}

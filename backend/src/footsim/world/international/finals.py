@@ -293,6 +293,10 @@ def finals_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> l
         conn.execute(text("DELETE FROM national_squad WHERE club_id NOT IN "
                           "(SELECT value FROM json_each(:c))"), {"c": json.dumps(clubs)})
         pick_squads(conn, world, meta, day, codes)
+        if meta.user_nation_id in clubs:
+            from footsim.world.international.manager import ensure_squad
+
+            ensure_squad(conn, world, meta, day)
         _set(conn, {"start": first.isoformat(), "end": spec.final}, AWAY_KEY)
         state["called"] = True
         _set(conn, state)

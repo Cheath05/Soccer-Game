@@ -7,42 +7,44 @@ import type {
   CalendarData,
   Career,
   Changelog,
-  Draft,
-  SimLeague,
-  OfferRules,
-  InternationalOverview,
-  Qualifiers,
-  ClubWorldCupView,
-  WorldCupFinals,
-  SimulationSettings,
   ClubHistory,
-  Finances,
   ClubOverview,
   ClubPlayer,
+  ClubSearchResult,
+  ClubWorldCupView,
+  CollegeConferenceOption,
   Competition,
   Cup,
   CupSummary,
+  Draft,
   Europe,
   EuropeList,
   EuropeRankings,
+  Finances,
   Fixture,
   Health,
-  CollegeConferenceOption,
+  InternationalOverview,
   LeagueOption,
+  LeaguePlayoff,
   MatchReport,
+  MyNation,
   Nation,
+  OfferRules,
   PlayerDetail,
   PlayerSeason,
+  Qualifiers,
   SaveSlot,
   Season,
-  ClubSearchResult,
+  SimLeague,
   SimStatus,
   SimTarget,
+  SimulationSettings,
   SquadPlayer,
-  LeaguePlayoff,
   Table,
   Tactics,
+  TacticsTeam,
   TacticsUpdate,
+  WorldCupFinals,
 } from './types'
 
 // Refetched on focus once stale, so a tab left open across an update notices the new server.
@@ -214,7 +216,9 @@ export const useMatch = (id: number) =>
 export const useFinances = (enabled = true) =>
   useQuery({ queryKey: ['finances'], queryFn: () => api.get<Finances>('/finances'), enabled })
 
-export const useTactics = () => useQuery({ queryKey: ['tactics'], queryFn: () => api.get<Tactics>('/tactics') })
+/** `team` 'nation': the national team the user manages (W8 I5); else his club. */
+export const useTactics = (team: TacticsTeam = 'club') =>
+  useQuery({ queryKey: ['tactics', team], queryFn: () => api.get<Tactics>(team === 'nation' ? '/tactics?team=nation' : '/tactics') })
 
 /** Anything that moves the game on invalidates every cached view of it. */
 function useInvalidateAll() {
@@ -282,11 +286,30 @@ export function usePlayInstant() {
   })
 }
 
-export function useSaveTactics() {
+export function useSaveTactics(team: TacticsTeam = 'club') {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (body: TacticsUpdate) => api.put<Tactics>('/tactics', body),
-    onSuccess: (data) => client.setQueryData(['tactics'], data),
+    mutationFn: (body: TacticsUpdate) => api.put<Tactics>(team === 'nation' ? '/tactics?team=nation' : '/tactics', body),
+    onSuccess: (data) => client.setQueryData(['tactics', team], data),
+  })
+}
+
+/** The national team the user manages (W8 I5): the players he can call up and its matches. */
+export const useMyNation = () => useQuery({ queryKey: ['my-nation'], queryFn: () => api.get<MyNation>('/international/my-team') })
+
+export function useNationJob() {
+  const invalidate = useInvalidateAll()
+  return useMutation({
+    mutationFn: (code: string | null) => (code ? api.post<MyNation>('/international/job', { code }) : api.delete<MyNation>('/international/job')),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSaveNationSquad() {
+  const invalidate = useInvalidateAll()
+  return useMutation({
+    mutationFn: (playerIds: number[]) => api.put<MyNation>('/international/my-team/squad', { player_ids: playerIds }),
+    onSuccess: invalidate,
   })
 }
 
@@ -374,7 +397,7 @@ export function useLoadTacticPreset() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => api.post<Tactics>(`/tactics/presets/${id}/load`, {}),
-    onSuccess: (data) => client.setQueryData(['tactics'], data),
+    onSuccess: (data) => client.setQueryData(['tactics', 'club'], data),
   })
 }
 

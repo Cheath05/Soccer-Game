@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import Connection, select
 
 from footsim import __version__
 from footsim.api import calendar as calendar_view
@@ -413,7 +413,7 @@ def play_now(fixture_id: int, session: Session) -> MatchOut:
             fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
         if fx is None or fx.status != "scheduled":
             raise HTTPException(400, "fixture is not waiting to be played")
-        if meta.user_club_id not in (fx.home_club_id, fx.away_club_id):
+        if fx.home_club_id not in meta.user_teams and fx.away_club_id not in meta.user_teams:
             raise HTTPException(400, "not your match")
         if fx.date != meta.current_date.isoformat():
             raise HTTPException(400, "this match isn't today")
@@ -483,20 +483,31 @@ def delete_preset(preset_id: int, session: Session) -> list[PresetOut]:
     return _presets(session)
 
 
+def _tactic_team(conn: Connection, team: str) -> int | None:
+    """``team`` "nation": the national team the user manages (I5); else his club (None)."""
+    if team != "nation":
+        return None
+    nation = read_meta(conn).user_nation_id
+    if nation is None:
+        raise HTTPException(404, "you don't manage a national team")
+    return nation
+
+
 @router.get("/tactics")
-def get_tactics(session: Session) -> TacticsOut:
+def get_tactics(session: Session, team: str = "club") -> TacticsOut:
     with session.read() as conn:
-        return queries.tactics(conn, get_world())
+        return queries.tactics(conn, get_world(), club_id=_tactic_team(conn, team))
 
 
 @router.put("/tactics")
-def put_tactics(body: TacticsIn, session: Session) -> TacticsOut:
+def put_tactics(body: TacticsIn, session: Session, team: str = "club") -> TacticsOut:
     world = get_world()
     try:
         with session.write() as conn:
+            club_id = _tactic_team(conn, team)
             set_user_tactic(conn, world, body.formation, body.roles, body.lineup,
-                            body.instructions)
+                            body.instructions, club_id=club_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     with session.read() as conn:
-        return queries.tactics(conn, world)
+        return queries.tactics(conn, world, club_id=club_id)

@@ -48,6 +48,11 @@ class CareerMeta:
     def seed(self) -> int:
         return self.world_seed
 
+    @property
+    def user_teams(self) -> tuple[int, ...]:
+        """The teams the user manages: the club and the national team (I5), when there are."""
+        return tuple(t for t in (self.user_club_id, self.user_nation_id) if t is not None)
+
 
 def read_meta(conn: Connection) -> CareerMeta:
     values = {k: json.loads(v) for k, v in conn.execute(select(game_meta.c.key, game_meta.c.value))}

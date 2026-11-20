@@ -88,14 +88,14 @@ def _open(session: CareerSession, fixture_id: int) -> LiveMatch:
         fx = conn.execute(select(fixture).where(fixture.c.id == fixture_id)).first()
         if fx is None or fx.status != "scheduled":
             raise ValueError("this match isn't waiting to be played")
-        if meta.user_club_id not in (fx.home_club_id, fx.away_club_id):
+        if fx.home_club_id not in meta.user_teams and fx.away_club_id not in meta.user_teams:
             raise ValueError("not your match")
         if fx.date != meta.current_date.isoformat():
             raise ValueError("this match isn't today")
         engine = agent_match(conn, world, meta, fx, meta.current_date, record=True)
         names = {r.id: r.name for r in conn.execute(select(club.c.id, club.c.name).where(
             club.c.id.in_([fx.home_club_id, fx.away_club_id])))}
-    user_team = 0 if fx.home_club_id == meta.user_club_id else 1
+    user_team = 0 if fx.home_club_id in meta.user_teams else 1
     playback = LiveSession(engine, world, world.defs.presentation, user_team)
     live = LiveMatch(playback, fixture_id, meta.current_date,
                      (names[fx.home_club_id], names[fx.away_club_id]), generation)

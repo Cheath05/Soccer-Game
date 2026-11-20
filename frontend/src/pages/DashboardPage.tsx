@@ -51,11 +51,11 @@ export default function DashboardPage() {
         {next ? (
           <>
             <Group mt="md" justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-              <Side name={next.home.name} mine={next.home.id === career.club.id} />
+              <Side name={next.home.name} mine={next.home.id === career.club.id || next.home.id === career.nation?.id} />
               <Text className="fs-num" fz={26} c="dimmed" pt={14}>
                 V
               </Text>
-              <Side name={next.away.name} mine={next.away.id === career.club.id} />
+              <Side name={next.away.name} mine={next.away.id === career.club.id || next.away.id === career.nation?.id} />
             </Group>
             <Text size="sm" c="dimmed" ta="center" mt="md">
               {longDate(next.date)} · {next.competition_name} · {stageLabel(next.stage, next.round, next.tie, next.leg, next.stage_name)}

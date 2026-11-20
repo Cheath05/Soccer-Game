@@ -99,10 +99,10 @@ def test_next_cup_match_is_the_next_non_league_fixture(tmp_path: Path) -> None:
             {**base, "competition_id": 2, "date": "2026-08-01", "home_club_id": 4,
              "away_club_id": 5}])  # today: not a target
     with engine.connect() as conn:
-        found = sim_targets(conn, 4, date(2026, 8, 1))
+        found = sim_targets(conn, (4,), date(2026, 8, 1))
         assert [(t.key, t.date) for t in found] == [
             ("next_cup", "2026-09-10"), ("next:ESP_CUP", "2026-09-10"),
             ("next:ESP_SUPER", "2026-09-20")]
         assert found[0].label == "Next cup match" and found[0].opponent == "Milano FC"
-        assert sim_targets(conn, 1, date(2026, 8, 1)) == []  # no cup fixtures
+        assert sim_targets(conn, (1,), date(2026, 8, 1)) == []  # no cup fixtures
     engine.dispose()

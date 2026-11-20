@@ -32,7 +32,13 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/squad', component: SquadPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/players/$playerId', component: PlayerPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/clubs/$clubId', component: ClubPage }),
-  createRoute({ getParentRoute: () => rootRoute, path: '/tactics', component: TacticsPage }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/tactics',
+    component: TacticsPage,
+    // ?team=nation opens the national team's tactic (W8 I5)
+    validateSearch: (search: Record<string, unknown>): { team?: 'nation' } => (search.team === 'nation' ? { team: 'nation' } : {}),
+  }),
   createRoute({ getParentRoute: () => rootRoute, path: '/finances', component: FinancesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/transfers', component: TransfersPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarPage }),

@@ -13,6 +13,7 @@ import type {
   InternationalOverview,
   Qualifiers,
   ClubWorldCupView,
+  WorldCupFinals,
   SimulationSettings,
   ClubHistory,
   Finances,
@@ -124,6 +125,10 @@ export const useQualifiers = () =>
 /** The next (or current) FIFA Club World Cup. */
 export const useClubWorldCup = () =>
   useQuery({ queryKey: ['club-world-cup'], queryFn: () => api.get<ClubWorldCupView>('/international/club-world-cup') })
+
+/** The World Cup finals: groups and knockout rounds once drawn. */
+export const useWorldCupFinals = () =>
+  useQuery({ queryKey: ['wc-finals'], queryFn: () => api.get<WorldCupFinals>('/international/world-cup') })
 
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })

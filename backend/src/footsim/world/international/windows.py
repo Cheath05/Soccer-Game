@@ -19,6 +19,7 @@ from footsim.defs.calendar import DateRange
 from footsim.persistence.schema import competition, fixture
 from footsim.world.context import World
 from footsim.world.international.common import AWAY_KEY, TYPE
+from footsim.world.international.finals import finals_day
 from footsim.world.international.pools import top_up_pools
 from footsim.world.international.qualifiers import qualifiers_day
 from footsim.world.international.teams import ensure_international, pick_squads
@@ -75,6 +76,7 @@ def international_day(conn: Connection, world: World, meta: CareerMeta, day: dat
     if isinstance(window, dict) and window["end"] <= day.isoformat():
         conn.execute(text("DELETE FROM game_meta WHERE key = :k"), {"k": AWAY_KEY})
     news += qualifiers_day(conn, world, meta, day)  # before the friendlies fill the gaps
+    news += finals_day(conn, world, meta, day)
     tomorrow = day + timedelta(days=1)
     for w in windows(world, meta):
         if w.start == tomorrow:

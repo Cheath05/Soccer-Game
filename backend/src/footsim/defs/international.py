@@ -194,12 +194,26 @@ class ClubWorldCupDef(DefModel):
         return self
 
 
+class WorldCupDef(DefModel):
+    """The World Cup finals (W8 I4, world_cup.yaml): ISO dates of the draw and each round."""
+    year: int
+    draw: str
+    groups: list[str] = Field(min_length=3, max_length=3)
+    round_of_32: str
+    round_of_16: str
+    quarter_finals: str
+    semi_finals: str
+    third_place: str
+    final: str
+
+
 class InternationalDef(DefModel):
     teams: dict[str, TeamDef]  # by FIFA code
     names: NamesDef
     rules: InternationalRulesDef
     qualifiers: QualifiersDef  # the next World Cup's (W8 I3)
     club_world_cup: ClubWorldCupDef  # W10
+    world_cup: WorldCupDef  # the finals (W8 I4)
 
     @model_validator(mode="after")
     def _regions(self) -> "InternationalDef":

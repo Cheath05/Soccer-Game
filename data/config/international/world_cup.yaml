@@ -1,0 +1,19 @@
+# The World Cup finals (W8 I4, world/international/finals.py): 48 teams, FIFA's 2026 format.
+# The 2030 edition (Spain, Portugal and Morocco): the teams through the qualifiers
+# (qualifiers_2030.yaml) are drawn once qualifying is over, into 12 groups of 4 from 4 pots
+# (the hosts and the best by Elo in pot 1), no group with two teams of one confederation
+# (UEFA's, at most two). The top two of each group and the 8 best third-placed teams play a
+# round of 32, seeded by their group results (group winners first, then runners-up, then thirds;
+# no rematch of a group), then single matches with extra time and penalties to the final.
+# Hosts play their group games at home; everything else is at neutral venues. The squads are
+# called up the day before the first match, the players away from their clubs until the final.
+
+year: 2030
+draw: "2030-04-05"
+groups: ["2030-06-13", "2030-06-18", "2030-06-23"]
+round_of_32: "2030-06-29"
+round_of_16: "2030-07-04"
+quarter_finals: "2030-07-09"
+semi_finals: "2030-07-14"
+third_place: "2030-07-18"
+final: "2030-07-19"

@@ -13,6 +13,7 @@ from footsim.api.routes import Session
 from footsim.api.schemas import ClubRef, FixtureOut
 from footsim.world.context import get_world
 from footsim.world.international import club_world_cup as cwc
+from footsim.world.international import finals as wcf
 from footsim.world.international import qualifiers as q
 from footsim.world.international.common import TYPE
 from footsim.world.meta import read_meta
@@ -202,3 +203,45 @@ def _played(conn: Any, club_id: int) -> int:
     return int(conn.execute(text(
         "SELECT COUNT(*) FROM fixture WHERE stage = 'CWC:G' AND status = 'played' "
         "AND (home_club_id = :c OR away_club_id = :c)"), {"c": club_id}).scalar_one())
+
+
+# --- the World Cup finals (W8 I4) --------------------------------------------------------
+
+
+class WorldCupOut(BaseModel):
+    year: int
+    draw: str  # ISO date, once qualifying is over
+    groups: list[GroupOut]  # empty before the draw
+    rounds: list[CwcRoundOut]  # the knockouts so far
+    champion: ClubRef | None
+
+
+@router.get("/world-cup")
+def world_cup_view(session: Session) -> WorldCupOut:
+    """The World Cup finals: the groups once drawn, the knockouts so far and the champion."""
+    spec = get_world().defs.international.world_cup
+    with session.read() as conn:
+        state = wcf._get(conn) or {}
+        names = queries._club_names(conn)
+        comps = queries._competitions(conn)
+        elo = {int(r.club_id): float(r.elo) for r in conn.execute(text(
+            "SELECT club_id, elo FROM national_team"))}
+        played: dict[int, int] = {}
+        for f in conn.execute(text("SELECT home_club_id, away_club_id FROM fixture "
+                                   "WHERE stage = :s AND status = 'played'"), {"s": wcf.GROUPS}):
+            for c in (f.home_club_id, f.away_club_id):
+                played[c] = played.get(c, 0) + 1
+        groups = [GroupOut(name=f"Group {letter}", rows=[GroupRowOut(
+            team=ClubRef(id=r.club_id, name=names[r.club_id]), played=played.get(r.club_id, 0),
+            points=r.points, gd=r.gd, gf=r.gf) for r in table])
+            for letter, table in wcf.group_tables(conn, elo).items()]
+        rounds = []
+        for rnd in ("R32", "R16", "QF", "SF", "3P", "F"):
+            rows = conn.execute(text("SELECT * FROM fixture WHERE stage = :s "
+                                     "ORDER BY CAST(tie AS INTEGER)"), {"s": f"WCF:{rnd}"}).all()
+            if rows:
+                rounds.append(CwcRoundOut(name=wcf.ROUND_NAMES[rnd],
+                                          fixtures=queries.fixtures_out(conn, rows, names, comps)))
+        champion = state.get("champion")
+    return WorldCupOut(year=spec.year, draw=spec.draw, groups=groups, rounds=rounds,
+                       champion=ClubRef(id=champion, name=names[champion]) if champion else None)

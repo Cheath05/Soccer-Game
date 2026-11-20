@@ -2,8 +2,8 @@ import { Badge, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, T
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useQualifiers } from '../api/hooks'
-import type { QualifierStage } from '../api/types'
+import { useQualifiers, useWorldCupFinals } from '../api/hooks'
+import type { QualifierStage, WorldCupFinals } from '../api/types'
 import ClubLink from './ClubLink'
 
 const REGIONS = [
@@ -23,8 +23,10 @@ const month = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(
  * group tables and play-off ties. */
 export default function WorldCupQualifiers() {
   const data = useQualifiers().data
+  const finals = useWorldCupFinals().data
   const [region, setRegion] = useState('UEFA')
   if (!data) return null
+  if (finals && finals.groups.length > 0) return <Finals data={finals} />
   const stages = data.stages.filter((s) => s.confederation === region)
   return (
     <Stack>
@@ -135,5 +137,49 @@ function StageCard({ stage }: { stage: QualifierStage }) {
         </Stack>
       )}
     </Card>
+  )
+}
+
+/** The finals, once drawn: the champion, the knockout rounds (latest first) and the groups. */
+function Finals({ data }: { data: WorldCupFinals }) {
+  return (
+    <Stack>
+      {data.champion && (
+        <Card withBorder padding="sm" className="fs-hero">
+          <Title order={3}>
+            {data.champion.name}, {data.year} world champions
+          </Title>
+        </Card>
+      )}
+      {[...data.rounds].reverse().map((r) => (
+        <Card key={r.name} withBorder padding="sm">
+          <Title order={5} mb={4}>
+            {r.name}
+          </Title>
+          {r.fixtures.map((f) => (
+            <Group key={f.id} justify="space-between" wrap="nowrap" className="fs-row">
+              <Text size="sm" truncate>
+                <ClubLink club={f.home} /> v <ClubLink club={f.away} />
+              </Text>
+              {f.status === 'played' ? (
+                <Link to="/match/$fixtureId" params={{ fixtureId: String(f.id) }}>
+                  <Text className="fs-num" fw={600}>
+                    {f.home_goals}–{f.away_goals}
+                    {f.home_pens !== null ? ` (${f.home_pens}–${f.away_pens} pens)` : ''}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  {f.date}
+                </Text>
+              )}
+            </Group>
+          ))}
+        </Card>
+      ))}
+      <StageCard
+        stage={{ key: 'WCF', name: `World Cup ${data.year}: groups`, confederation: 'FIFA', starts: data.draw.slice(0, 7), drawn: true, qualified_ranks: [1, 2], groups: data.groups, ties: [] }}
+      />
+    </Stack>
   )
 }

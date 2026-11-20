@@ -47,7 +47,7 @@ from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
 from footsim.world import fast_sim, tactic_presets
-from footsim.world.career import advance, set_user_tactic
+from footsim.world.career import advance, pick_best_xi, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
 from footsim.world.meta import read_meta
@@ -487,6 +487,19 @@ def delete_preset(preset_id: int, session: Session) -> list[PresetOut]:
 def get_tactics(session: Session) -> TacticsOut:
     with session.read() as conn:
         return queries.tactics(conn, get_world())
+
+
+@router.post("/tactics/best")
+def best_tactics(session: Session) -> TacticsOut:
+    """Pick the best XI and bench, each player in the role he rates highest in."""
+    world = get_world()
+    try:
+        with session.write() as conn:
+            pick_best_xi(conn, world)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    with session.read() as conn:
+        return queries.tactics(conn, world)
 
 
 @router.put("/tactics")

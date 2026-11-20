@@ -12,7 +12,14 @@ from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
 from footsim.match.report import MatchReport
 from footsim.match.teams import BENCH_SIZE, sub_order
-from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
+from footsim.persistence.schema import (
+    fixture,
+    game_meta,
+    metadata,
+    player,
+    player_state,
+    tactic,
+)
 from footsim.world.college.common import college_club_id
 from footsim.world.college.program import crowd, crowd_scale
 from footsim.world.context import World
@@ -35,7 +42,7 @@ from footsim.world.season import (
     season_calendar,
     season_complete,
 )
-from footsim.world.squads import team_sheet
+from footsim.world.squads import load_squad, team_sheet
 from footsim.world.transfers import initialize_value_premiums
 
 MAX_ADVANCE_DAYS = 400
@@ -258,6 +265,21 @@ def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[
     """), {"club": meta.user_club_id, "formation": formation, "roles": json.dumps(roles),
            "lineup": json.dumps(lineup) if lineup else None,
            "instructions": json.dumps(instructions)})
+
+
+def pick_best_xi(conn: Connection, world: World) -> None:
+    """"Pick best XI and bench": the line-up goes back to the automatic pick, and every slot's
+    role becomes the one its best player rates highest in (the formation and instructions
+    stay)."""
+    meta = read_meta(conn)
+    if meta.user_club_id is None:
+        raise ValueError("no club to manage")
+    row = conn.execute(select(tactic).where(tactic.c.club_id == meta.user_club_id)).first()
+    formation = row.formation if row is not None else "4-3-3"
+    instructions = json.loads(row.instructions) if row is not None else {}
+    squad = load_squad(conn, meta.user_club_id, meta.current_date)
+    roles = world.picker.best_roles(squad, world.defs.formations[formation])
+    set_user_tactic(conn, world, formation, roles, None, instructions)
 
 
 def scheduled_count(conn: Connection, season_id: int) -> int:

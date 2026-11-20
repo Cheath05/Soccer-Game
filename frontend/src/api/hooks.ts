@@ -285,6 +285,15 @@ export function useSaveTactics() {
   })
 }
 
+/** "Pick best XI and bench": the automatic line-up, each player in the role he rates highest in. */
+export function usePickBestXi() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<Tactics>('/tactics/best', {}),
+    onSuccess: (data) => client.setQueryData(['tactics'], data),
+  })
+}
+
 /** `budget` is the sandbox: euros for fees and wages to start with (null: the board's own).
  * `boardEnabled` false plays without a board. */
 export function useNewCareer() {

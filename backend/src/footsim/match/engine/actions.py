@@ -39,6 +39,8 @@ from footsim.match.engine.pitch import (
 from footsim.match.engine.state import MAX_SUBS, PassInfo, ShotInfo
 from footsim.match.penalties import penalty_probability
 from footsim.match.ratings import match_rating
+from footsim.match.teams import SheetPlayer
+from footsim.ratings.overall import familiarity_factor
 
 if TYPE_CHECKING:
     from footsim.match.engine.engine import MatchEngine
@@ -1571,13 +1573,27 @@ def ai_substitutions(eng: "MatchEngine", team: int) -> None:
         if eng.subs_used[team] >= MAX_SUBS or not eng.bench[team]:
             return
         bench = [sp for sp in eng.bench[team] if sp.player_id not in coming]
-        same = [sp for sp in bench if sp.group is eng.group[i]]
-        pool = same or [sp for sp in bench if sp.group is not PositionGroup.GK]
+        pool = [sp for sp in bench if sp.group is not PositionGroup.GK]
         if not pool:
             return
-        incoming = max(pool, key=lambda sp: sp.rating)
+        # Whoever rates highest in the tired player's position, in his best role there.
+        fits = [(_sub_fit(eng, sp, i), sp) for sp in pool]
+        (_value, role), incoming = max(fits, key=lambda f: (f[0][0], -f[1].number))
         coming.add(incoming.player_id)
-        eng.substitute(team, eng.players[i].player_id, incoming.player_id)
+        eng.substitute(team, eng.players[i].player_id, incoming.player_id, role)
+
+
+def _sub_fit(eng: "MatchEngine", sp: SheetPlayer, i: int) -> tuple[float, str | None]:
+    """How a substitute would rate in player ``i``'s position, and the role he'd rate highest
+    in there (None, keeping the slot's role, when his role ratings aren't known)."""
+    position = eng.position[i]
+    familiarity = familiarity_factor(sp.player.positions.get(position, 0))
+    if not sp.role_overalls:
+        same = sp.group is eng.group[i]
+        return sp.rating * (1.0 if same else familiarity), None
+    roles = [r.key for r in eng.defs.roles_for(eng.group[i]) if r.key in sp.role_overalls]
+    best = max(roles, key=lambda k: (sp.role_overalls[k], k == eng.role[i].key))
+    return sp.role_overalls[best] * familiarity, best
 
 
 def rate_players(eng: "MatchEngine") -> None:

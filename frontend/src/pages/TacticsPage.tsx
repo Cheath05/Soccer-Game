@@ -1,7 +1,7 @@
 import { Alert, Badge, Button, Card, Group, Loader, ScrollArea, SegmentedControl, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useEffect, useState } from 'react'
 
-import { useCareer, useSaveTactics, useSquad, useTactics } from '../api/hooks'
+import { useCareer, usePickBestXi, useSaveTactics, useSquad, useTactics } from '../api/hooks'
 import type { SheetEntry, TacticsUpdate } from '../api/types'
 import PitchBoard from '../components/PitchBoard'
 import SavedTactics from '../components/SavedTactics'
@@ -23,6 +23,7 @@ export default function TacticsPage() {
   const tactics = useTactics()
   const squad = useSquad(career?.club.id)
   const save = useSaveTactics()
+  const best = usePickBestXi()
   const [selected, setSelected] = useState<string | null>(null)
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null) // a list row or list a drag is over
@@ -271,13 +272,14 @@ export default function TacticsPage() {
             allowDeselect={false}
             w={phone ? '100%' : 220}
           />
-          <Button variant="default" onClick={() => update({ lineup: null })}>
+          <Button variant="default" loading={best.isPending} onClick={() => best.mutate()} title="The best players for the formation, each in the role he rates highest in">
             Pick best XI and bench
           </Button>
           <SavedTactics />
         </Group>
       </Group>
       {save.error && <Alert color="red">{save.error.message}</Alert>}
+      {best.error && <Alert color="red">{best.error.message}</Alert>}
       {refusal && (
         <Alert color="orange" withCloseButton onClose={() => setRefusal(null)}>
           {refusal}

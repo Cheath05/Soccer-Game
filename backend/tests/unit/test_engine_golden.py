@@ -61,7 +61,9 @@ the real count, and defenders clearing first time under pressure in their danger
 two opponents caught upfield, sides play balls in behind and value forward passes more
 (Phase E, Mac only); home advantage fitted to real football's home edge, the crowd's
 decision noise and pass error under pressure at 0.85 and the referee's card and foul bias at
-0.08 and 0.02 (Step 2.1, Mac only).
+0.08 and 0.02 (Step 2.1, Mac only); automatic substitutions bringing on whoever rates
+highest in the tired player's position, in his best role there, instead of the best
+player of the same group in the old role (college fixes, Mac only).
 """
 
 import json

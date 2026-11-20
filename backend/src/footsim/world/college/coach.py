@@ -150,6 +150,7 @@ class RecruitView:
     expects: float  # the prestige he hopes for
     visited_on: str | None = None  # his official visit to the user's program, if made
     visit_fixture: int | None = None  # the home game he's invited to (world/college/visits.py)
+    portal_from: str | None = None  # a transfer portal player's D-II/D-III school (W9e)
 
 
 WANTS = {
@@ -229,7 +230,21 @@ def recruits(conn: Connection, world: World, meta: CareerMeta,
     chosen = [board.recruits[i] for i in ids if i in board.recruits] if ids is not None \
         else list(board.recruits.values())
     views = [_view(board, user, r, names, nations, starters, detail) for r in chosen]
+    portal = _portal_schools(conn, board.class_season)
+    for v in views:
+        v.portal_from = portal.get(v.id)
     return sorted(views, key=lambda v: v.national_rank)
+
+
+def _portal_schools(conn: Connection, class_season: int) -> dict[int, str]:
+    """The class's transfer portal players' schools, by recruit: "Lynn (D-II)"."""
+    from sqlalchemy import text
+
+    return {int(r.id): f"{r.name} (D-{'II' if int(r.division) == 2 else 'III'})"
+            for r in conn.execute(text(
+                "SELECT r.id, k.name, lt.division FROM recruit r JOIN club k ON k.id = "
+                "r.from_club_id JOIN lower_team lt ON lt.club_id = r.from_club_id "
+                "WHERE r.class_season = :c AND r.source = 'portal'"), {"c": class_season})}
 
 
 def class_rankings(conn: Connection, world: World, meta: CareerMeta

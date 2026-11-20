@@ -93,6 +93,10 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
         meta.user_club_id = college_club_id(conn, college_program)
         meta.board_enabled = False  # a college program has no ledger, so no board
         write_meta(conn, meta)
+        # D-II and D-III (W9e) come with a college coach's career, now its school is known.
+        from footsim.world.college.lower import create_lower_fixtures
+
+        create_lower_fixtures(conn, world, meta, 1, start)
     ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).

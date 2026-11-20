@@ -210,8 +210,13 @@ export interface Prospect {
 
 const noRetryOn404 = (count: number, error: Error) => !(error instanceof ApiError && error.status === 404) && count < 2
 
-export const useConferences = (enabled = true) =>
-  useQuery({ queryKey: ['college', 'conferences'], queryFn: () => api.get<Conference[]>('/college/conferences'), retry: noRetryOn404, enabled })
+export const useConferences = (enabled = true, division = 1) =>
+  useQuery({
+    queryKey: ['college', 'conferences', division],
+    queryFn: () => api.get<Conference[]>(division === 1 ? '/college/conferences' : `/college/conferences?division=${division}`),
+    retry: noRetryOn404,
+    enabled,
+  })
 
 export const useRankings = (enabled: boolean) =>
   useQuery({ queryKey: ['college', 'rankings'], queryFn: () => api.get<Ranking[]>('/college/rankings?limit=50'), enabled, retry: noRetryOn404 })

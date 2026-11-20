@@ -65,6 +65,7 @@ export interface Recruit {
   expects: number // the program prestige he hopes for
   visited_on?: string | null // his official visit to you, if made
   visit_fixture?: number | null // the home game he's invited to
+  portal_from?: string | null // a transfer portal player's D-II/D-III school
 }
 
 export interface RecruitPage {
@@ -82,7 +83,7 @@ export interface ClassRank {
 }
 
 export interface RecruitFilters {
-  view: 'board' | 'targets' | 'offers' | 'class'
+  view: 'board' | 'targets' | 'offers' | 'class' | 'portal'
   position: string | null
   state: string | null
   stars: number | null

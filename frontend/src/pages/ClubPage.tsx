@@ -279,6 +279,7 @@ const TITLE_NAMES: Record<string, string> = {
 /** A college program's season: its record, conference finish, RPI and NCAA run. */
 function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOverview }) {
   const played = r.won + r.drawn + r.lost
+  const lower = (r.division ?? 1) > 1
   const confPlayed = r.conference_won + r.conference_drawn + r.conference_lost
   return (
     <SimpleGrid cols={{ base: 2, sm: 4 }}>
@@ -292,18 +293,18 @@ function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOvervie
         value={r.conference_position ? `${ordinal(r.conference_position)} of ${r.conference_teams}` : '–'}
         note={confPlayed ? `${r.conference_won}-${r.conference_drawn}-${r.conference_lost} in conference · ${r.conference_points} pts` : 'No conference games yet'}
       />
-      <Fact label="RPI ranking" value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note="Nationally" />
+      <Fact label={lower ? 'Division ranking' : 'RPI ranking'} value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note={lower ? 'By points a game' : 'Nationally'} />
       <Fact
-        label="NCAA tournament"
-        value={!r.ncaa ? 'Not in it' : r.ncaa === 'NCAA champions' ? 'Champions' : r.ncaa.includes(': out') ? 'Knocked out' : 'Still in it'}
-        note={r.ncaa && r.ncaa !== 'NCAA champions' ? r.ncaa.replace(/^NCAA tournament: |^In the NCAA tournament: /, '') : undefined}
+        label={lower ? 'National tournament' : 'NCAA tournament'}
+        value={!r.ncaa ? 'Not in it' : /champions$/i.test(r.ncaa) ? 'Champions' : r.ncaa.includes(': out') ? 'Knocked out' : 'Still in it'}
+        note={r.ncaa && !/champions$/i.test(r.ncaa) ? r.ncaa.replace(/^(NCAA|National) tournament: |^In the (NCAA|national) tournament(: )?/, '') : undefined}
       />
       <Fact
         label="Titles this season"
         value={r.titles.length ? String(r.titles.length) : 'None'}
         note={r.titles.length ? r.titles.map((t) => TITLE_NAMES[t] ?? t).join(' · ') : undefined}
       />
-      <Fact label="Program" value={`Tier ${r.tier}`} note={`Prestige ${r.prestige.toFixed(0)}${r.prestige_facilities ? ` (+${r.prestige_facilities.toFixed(0)} facilities)` : ''}`} />
+      <Fact label="Program" value={lower ? `Division ${r.division === 2 ? 'II' : 'III'}` : `Tier ${r.tier}`} note={lower ? 'NCAA, played with quick results' : `Prestige ${r.prestige.toFixed(0)}${r.prestige_facilities ? ` (+${r.prestige_facilities.toFixed(0)} facilities)` : ''}`} />
       <Fact label="Squad" value={`${squad.squad_size} players`} note={`Average age ${squad.average_age.toFixed(1)} · OVR ${squad.average_overall.toFixed(1)}`} />
       <Fact label="Best player" value={squad.top_players[0]?.name ?? '–'} note={squad.top_players[0] ? `${squad.top_players[0].position} · ${squad.top_players[0].overall} OVR` : undefined} />
     </SimpleGrid>

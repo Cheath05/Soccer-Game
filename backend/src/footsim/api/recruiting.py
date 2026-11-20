@@ -77,6 +77,7 @@ class RecruitOut(BaseModel):
     expects: float  # the program prestige he hopes for
     visited_on: str | None = None  # his official visit to you, if made
     visit_fixture: int | None = None  # the home game he's invited to (game-day visit)
+    portal_from: str | None = None  # a transfer portal player's D-II/D-III school
 
 
 class RecruitPage(BaseModel):
@@ -115,7 +116,8 @@ def _out(v: coach.RecruitView) -> RecruitOut:
         offers=v.offers, status=v.status, committed_to=_ref(v.committed_to),
         leader=_ref(v.leader), hopes=v.hopes, wants=v.wants,
         top=[OfferingOut(club=ClubRef(id=c, name=n), share=s) for c, n, s in v.top],
-        fit=v.fit, expects=v.expects, visited_on=v.visited_on, visit_fixture=v.visit_fixture)
+        fit=v.fit, expects=v.expects, visited_on=v.visited_on, visit_fixture=v.visit_fixture,
+        portal_from=v.portal_from)
 
 
 def _refused(exc: coach.RecruitingError) -> HTTPException:
@@ -139,7 +141,7 @@ def get_recruiting(session: Session) -> RecruitingOut:
         prestige=round(s.prestige), offer_limit=s.offer_limit)
 
 
-VIEWS = ("board", "targets", "offers", "class")
+VIEWS = ("board", "targets", "offers", "class", "portal")
 
 
 @router.get("/recruits")
@@ -168,6 +170,8 @@ def get_recruits(session: Session, view: str = "board", position: str | None = N
         if view == "offers" and v.offer_status != "open":
             return False
         if view == "class" and not (v.committed_to and v.committed_to[0] == user):
+            return False
+        if view == "portal" and v.portal_from is None:
             return False
         if position and v.position != position and v.position not in groups.get(position, ()):
             return False

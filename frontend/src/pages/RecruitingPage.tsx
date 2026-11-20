@@ -53,6 +53,7 @@ export default function RecruitingPage() {
     { value: 'targets', label: `My targets (${s.targets})` },
     { value: 'offers', label: `My offers (${s.open_offers})` },
     { value: 'class', label: `My class (${s.class_count})` },
+    { value: 'portal', label: 'Transfer portal' },
     { value: 'rankings', label: 'Class rankings' },
   ]
 
@@ -234,6 +235,7 @@ function RecruitList({ view, onOpen }: { view: RecruitFilters['view']; onOpen: (
               targets: 'No targets yet. Open a recruit on the Board and give him a priority: your staff spread their week over your targets.',
               offers: 'No offers out. Offer a recruit a scholarship from his card.',
               class: 'Nobody has committed yet.',
+              portal: 'The transfer portal opens in December, when the D-II and D-III seasons are over: their best players looking to move up to D-I appear here.',
             }[view]
           }
         </Text>
@@ -249,6 +251,16 @@ const FIT: Record<Recruit['fit'], { label: string; color: string; about: string 
   reach: { label: 'Reach', color: 'yellow', about: 'He hopes for a bigger program, but the right offer and attention can win him.' },
   long_shot: { label: 'Long shot', color: 'orange', about: 'He hopes for a much bigger program: only likely if nobody bigger wants him.' },
   out_of_reach: { label: 'Out of reach', color: 'red', about: 'He expects one of the biggest programs. Your prestige grows with winning, NCAA tournament runs and titles.' },
+}
+
+/** A transfer portal player's school: he's a college player moving up, not a high-school senior. */
+function Portal({ r }: { r: Recruit }) {
+  if (!r.portal_from) return null
+  return (
+    <Text size="xs" c="grape" fw={600} title="In the transfer portal: a D-II or D-III player looking to move up. Signed, he joins you a class on from where he is.">
+      Portal · {r.portal_from}
+    </Text>
+  )
 }
 
 /** How a recruit sees a program of your prestige. */
@@ -271,6 +283,7 @@ function Stars({ n }: { n: number }) {
 }
 
 function Home({ r }: { r: Recruit }) {
+  if (r.portal_from) return <>{r.state ?? r.nation}</>
   return <>{r.state ? `${r.state} #${r.state_rank}` : `${r.nation} (abroad)`}</>
 }
 
@@ -338,6 +351,7 @@ function RecruitTable({ recruits, onOpen }: { recruits: Recruit[]; onOpen: (id: 
                   {r.name}
                 </Text>
                 <Stars n={r.stars} />
+                <Portal r={r} />
               </Table.Td>
               <Table.Td>
                 <Badge color={positionColor(r.position)} variant="light" w={44}>
@@ -393,6 +407,7 @@ function RecruitCards({ recruits, onOpen }: { recruits: Recruit[]; onOpen: (id: 
                 <Stars n={r.stars} />
                 <Fit r={r} />
               </Group>
+              <Portal r={r} />
               <Text size="xs" c="dimmed" truncate>
                 {r.position} #{r.position_rank} · <Home r={r} /> · ovr {r.overall.low}–{r.overall.high} · pot {r.potential.low}–{r.potential.high}
               </Text>
@@ -440,7 +455,7 @@ function RecruitDetail({ r, summary }: { r: Recruit; summary: Recruiting }) {
           {r.position}
         </Badge>
         <Text size="sm" c="dimmed">
-          No. {r.national_rank} nationally · No. {r.position_rank} at {r.position} · {r.state ? `No. ${r.state_rank} in ${r.state}` : `from abroad (${r.nation})`} · age {r.age}
+          No. {r.national_rank} nationally · No. {r.position_rank} at {r.position} · {r.portal_from ? `transfer from ${r.portal_from}` : r.state ? `No. ${r.state_rank} in ${r.state}` : `from abroad (${r.nation})`} · age {r.age}
         </Text>
       </Group>
 

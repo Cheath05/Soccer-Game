@@ -1,0 +1,679 @@
+# NCAA Division III men's soccer: programs and conference membership (W9e).
+# Source: Wikipedia "List of NCAA Division III institutions" (read 2026-11-20): each member's primary
+#   conference. There is no list of D-III men's soccer programs; nearly every member sponsors the sport
+#   (about 415 programs; the 2026 championship field is 64), so the members are used, women's colleges
+#   left out (406 programs). A few schools' men's soccer affiliations differ from their primary
+#   conference's.
+# Notes: school names are their usual short athletic names. Tiers (1 strongest to 5) are a generated
+#   spread for variety, not a judgement of real programs. Independents get no automatic bid.
+conferences:
+  D3AEC:
+    name: Atlantic East Conference
+    short_name: Atlantic East
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: "Centenary (NJ)", nickname: Cyclones, state: NJ, tier: 5}
+      - {school: Gwynedd Mercy, nickname: Griffins, state: PA, tier: 2}
+      - {school: Immaculata, nickname: Mighty Macs, state: PA, tier: 3}
+      - {school: Marymount, nickname: Saints, state: VA, tier: 3}
+      - {school: Pratt, nickname: Cannoneers, state: NY, tier: 1}
+      - {school: Saint Elizabeth, nickname: Screaming Eagles, state: NJ, tier: 3}
+  D3AMCC:
+    name: Allegheny Mountain Collegiate Conference
+    short_name: AMCC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Carlow, nickname: Celtics, state: PA, tier: 3}
+      - {school: Hilbert, nickname: Hawks, state: NY, tier: 2}
+      - {school: La Roche, nickname: Redhawks, state: PA, tier: 4}
+      - {school: Mount Aloysius, nickname: Mounties, state: PA, tier: 4}
+      - {school: Penn State Altoona, nickname: Lions, state: PA, tier: 5}
+      - {school: Penn State Behrend, nickname: Lions, state: PA, tier: 3}
+      - {school: "Pitt-Bradford", nickname: Panthers, state: PA, tier: 1}
+      - {school: "Pitt-Greensburg", nickname: Bobcats, state: PA, tier: 2}
+  D3ARC:
+    name: American Rivers Conference
+    short_name: American Rivers
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Buena Vista, nickname: Beavers, state: IA, tier: 4}
+      - {school: "Central (IA)", nickname: Dutch, state: IA, tier: 3}
+      - {school: Coe, nickname: Kohawks, state: IA, tier: 3}
+      - {school: Dubuque, nickname: Spartans, state: IA, tier: 5}
+      - {school: Loras, nickname: Duhawks, state: IA, tier: 3}
+      - {school: Nebraska Wesleyan, nickname: Prairie Wolves, state: NE, tier: 3}
+      - {school: Simpson, nickname: Storm, state: IA, tier: 4}
+      - {school: Wartburg, nickname: Knights, state: IA, tier: 3}
+  D3ASC:
+    name: American Southwest Conference
+    short_name: ASC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: East Texas Baptist, nickname: Tigers, state: TX, tier: 5}
+      - {school: "Hardin-Simmons", nickname: Cowboys, state: TX, tier: 4}
+      - {school: Howard Payne, nickname: Yellow Jackets, state: TX, tier: 3}
+      - {school: McMurry, nickname: War Hawks, state: TX, tier: 5}
+      - {school: "Mary Hardin-Baylor", nickname: Crusaders, state: TX, tier: 3}
+      - {school: Schreiner, nickname: Mountaineers, state: TX, tier: 1}
+  D3C2C:
+    name: Coast to Coast Athletic Conference
+    short_name: C2C
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Christopher Newport, nickname: Captains, state: VA, tier: 2}
+      - {school: "Johnson & Wales Charlotte", nickname: Wildcats, state: NC, tier: 5}
+      - {school: Mary Washington, nickname: Eagles, state: VA, tier: 5}
+      - {school: Regent, nickname: Royals, state: VA, tier: 2}
+      - {school: Salisbury, nickname: Sea Gulls, state: MD, tier: 5}
+      - {school: UC Santa Cruz, nickname: Banana Slugs, state: CA, tier: 3}
+      - {school: Warren Wilson, nickname: Owls, state: NC, tier: 3}
+  D3CCIW:
+    name: College Conference of Illinois and Wisconsin
+    short_name: CCIW
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Augustana, nickname: Vikings, state: IL, tier: 3}
+      - {school: Carroll, nickname: Pioneers, state: WI, tier: 2}
+      - {school: Carthage, nickname: Firebirds, state: WI, tier: 4}
+      - {school: Elmhurst, nickname: Bluejays, state: IL, tier: 3}
+      - {school: Illinois Wesleyan, nickname: Titans, state: IL, tier: 1}
+      - {school: Millikin, nickname: Big Blue, state: IL, tier: 2}
+      - {school: "North Central (IL)", nickname: Cardinals, state: IL, tier: 3}
+      - {school: North Park, nickname: Vikings, state: IL, tier: 3}
+      - {school: "Wheaton (IL)", nickname: Thunder, state: IL, tier: 3}
+  D3CCS:
+    name: Collegiate Conference of the South
+    short_name: CCS
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Asbury, nickname: Eagles, state: KY, tier: 3}
+      - {school: Belhaven, nickname: Blazers, state: MS, tier: 1}
+      - {school: Covenant, nickname: Scots, state: GA, tier: 3}
+      - {school: Huntingdon, nickname: Hawks, state: AL, tier: 3}
+      - {school: LaGrange, nickname: Panthers, state: GA, tier: 3}
+      - {school: Piedmont, nickname: Lions, state: GA, tier: 3}
+  D3CENT:
+    name: Centennial Conference
+    short_name: Centennial
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Dickinson, nickname: Red Devils, state: PA, tier: 1}
+      - {school: "Franklin & Marshall", nickname: Diplomats, state: PA, tier: 2}
+      - {school: Gettysburg, nickname: Bullets, state: PA, tier: 4}
+      - {school: Haverford, nickname: Fords, state: PA, tier: 5}
+      - {school: Johns Hopkins, nickname: Blue Jays, state: MD, tier: 3}
+      - {school: McDaniel, nickname: Green Terror, state: MD, tier: 2}
+      - {school: Muhlenberg, nickname: Mules, state: PA, tier: 2}
+      - {school: Swarthmore, nickname: Garnet, state: PA, tier: 3}
+      - {school: Ursinus, nickname: Bears, state: PA, tier: 2}
+      - {school: Washington College, nickname: Shoremen, state: MD, tier: 3}
+  D3CNE:
+    name: Conference of New England
+    short_name: CNE
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Curry, nickname: Colonels, state: MA, tier: 3}
+      - {school: Endicott, nickname: Gulls, state: MA, tier: 3}
+      - {school: Gordon, nickname: Fighting Scots, state: MA, tier: 4}
+      - {school: Hartford, nickname: Hawks, state: CT, tier: 2}
+      - {school: "Johnson & Wales", nickname: Wildcats, state: RI, tier: 3}
+      - {school: Nichols, nickname: Bison, state: MA, tier: 4}
+      - {school: Roger Williams, nickname: Hawks, state: RI, tier: 4}
+      - {school: Suffolk, nickname: Rams, state: MA, tier: 3}
+      - {school: "New England (ME)", nickname: "Nor'easters", state: ME, tier: 3}
+      - {school: Wentworth, nickname: Leopards, state: MA, tier: 5}
+      - {school: Western New England, nickname: Golden Bears, state: MA, tier: 3}
+  D3CUNYAC:
+    name: City University of New York Athletic Conference
+    short_name: CUNYAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Baruch, nickname: Bearcats, state: NY, tier: 2}
+      - {school: Brooklyn, nickname: Bulldogs, state: NY, tier: 2}
+      - {school: City College of New York, nickname: Beavers, state: NY, tier: 5}
+      - {school: Hunter, nickname: Hawks, state: NY, tier: 5}
+      - {school: John Jay, nickname: Bloodhounds, state: NY, tier: 3}
+      - {school: Lehman, nickname: Lightning, state: NY, tier: 1}
+      - {school: Medgar Evers, nickname: Cougars, state: NY, tier: 3}
+      - {school: "York (CUNY)", nickname: Cardinals, state: NY, tier: 3}
+  D3E8:
+    name: Empire 8
+    short_name: Empire 8
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Alfred, nickname: Saxons, state: NY, tier: 2}
+      - {school: Elmira, nickname: Soaring Eagles, state: NY, tier: 3}
+      - {school: Hartwick, nickname: Hawks, state: NY, tier: 4}
+      - {school: Houghton, nickname: Highlanders, state: NY, tier: 3}
+      - {school: Keuka, nickname: Wolves, state: NY, tier: 3}
+      - {school: Nazareth, nickname: Golden Flyers, state: NY, tier: 5}
+      - {school: Russell Sage, nickname: Gators, state: NY, tier: 1}
+      - {school: "St. John Fisher", nickname: Cardinals, state: NY, tier: 4}
+      - {school: SUNY Brockport, nickname: Golden Eagles, state: NY, tier: 4}
+      - {school: SUNY Geneseo, nickname: Knights, state: NY, tier: 3}
+      - {school: SUNY Poly, nickname: Wildcats, state: NY, tier: 3}
+      - {school: Utica, nickname: Pioneers, state: NY, tier: 3}
+  D3GNAC3:
+    name: Great Northeast Athletic Conference
+    short_name: "GNAC (D-III)"
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Albertus Magnus, nickname: Falcons, state: CT, tier: 1}
+      - {school: "Colby-Sawyer", nickname: Chargers, state: NH, tier: 3}
+      - {school: Dean, nickname: Bulldogs, state: MA, tier: 2}
+      - {school: Elms, nickname: Blazers, state: MA, tier: 3}
+      - {school: "Emmanuel (MA)", nickname: Saints, state: MA, tier: 5}
+      - {school: Lasell, nickname: Lasers, state: MA, tier: 1}
+      - {school: Mitchell, nickname: Mariners, state: CT, tier: 5}
+      - {school: New England College, nickname: Pilgrims, state: NH, tier: 3}
+      - {school: Norwich, nickname: Cadets, state: VT, tier: 5}
+      - {school: "Regis (MA)", nickname: Pride, state: MA, tier: 3}
+      - {school: Rivier, nickname: Raiders, state: NH, tier: 2}
+      - {school: "Saint Joseph's (ME)", nickname: Monks, state: ME, tier: 2}
+      - {school: "Saint Joseph (CT)", nickname: Blue Jays, state: CT, tier: 2}
+  D3HCAC:
+    name: Heartland Collegiate Athletic Conference
+    short_name: HCAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: "Anderson (IN)", nickname: Ravens, state: IN, tier: 2}
+      - {school: Berea, nickname: Mountaineers, state: KY, tier: 2}
+      - {school: Bluffton, nickname: Beavers, state: OH, tier: 4}
+      - {school: Earlham, nickname: Quakers, state: IN, tier: 5}
+      - {school: "Franklin (IN)", nickname: Grizzlies, state: IN, tier: 1}
+      - {school: Hanover, nickname: Panthers, state: IN, tier: 4}
+      - {school: Manchester, nickname: Spartans, state: IN, tier: 2}
+      - {school: "Mount St. Joseph", nickname: Lions, state: OH, tier: 5}
+      - {school: "Rose-Hulman", nickname: "Fightin' Engineers", state: IN, tier: 3}
+      - {school: Transylvania, nickname: Pioneers, state: KY, tier: 5}
+  D3IND:
+    name: Independent
+    short_name: Independents
+    tournament: 0
+    auto_bid: false
+    teams:
+      - {school: Maranatha Baptist, nickname: Sabercats, state: WI, tier: 3}
+  D3LAND:
+    name: Landmark Conference
+    short_name: Landmark
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Catholic, nickname: Cardinals, state: DC, tier: 4}
+      - {school: Drew, nickname: Rangers, state: NJ, tier: 2}
+      - {school: Elizabethtown, nickname: Blue Jays, state: PA, tier: 3}
+      - {school: Goucher, nickname: Gophers, state: MD, tier: 3}
+      - {school: Juniata, nickname: Eagles, state: PA, tier: 3}
+      - {school: Lycoming, nickname: Warriors, state: PA, tier: 3}
+      - {school: Moravian, nickname: Greyhounds, state: PA, tier: 5}
+      - {school: Scranton, nickname: Royals, state: PA, tier: 3}
+      - {school: Susquehanna, nickname: River Hawks, state: PA, tier: 3}
+      - {school: Wilkes, nickname: Colonels, state: PA, tier: 3}
+  D3LEC:
+    name: Little East Conference
+    short_name: Little East
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Eastern Connecticut, nickname: Warriors, state: CT, tier: 3}
+      - {school: Keene State, nickname: Owls, state: NH, tier: 4}
+      - {school: Plymouth State, nickname: Panthers, state: NH, tier: 2}
+      - {school: Rhode Island College, nickname: Anchormen, state: RI, tier: 4}
+      - {school: UMass Boston, nickname: Beacons, state: MA, tier: 3}
+      - {school: UMass Dartmouth, nickname: Corsairs, state: MA, tier: 4}
+      - {school: Southern Maine, nickname: Huskies, state: ME, tier: 3}
+      - {school: Vermont State Castleton, nickname: Spartans, state: VT, tier: 3}
+      - {school: Western Connecticut State, nickname: Wolves, state: CT, tier: 3}
+  D3LL:
+    name: Liberty League
+    short_name: Liberty League
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Bard, nickname: Raptors, state: NY, tier: 3}
+      - {school: Clarkson, nickname: Golden Knights, state: NY, tier: 5}
+      - {school: Hobart, nickname: Statesmen, state: NY, tier: 4}
+      - {school: Ithaca, nickname: Bombers, state: NY, tier: 3}
+      - {school: RIT, nickname: Tigers, state: NY, tier: 3}
+      - {school: RPI, nickname: Engineers, state: NY, tier: 2}
+      - {school: Skidmore, nickname: Thoroughbreds, state: NY, tier: 4}
+      - {school: "St. Lawrence", nickname: Saints, state: NY, tier: 2}
+      - {school: "Union (NY)", nickname: Garnet Chargers, state: NY, tier: 3}
+      - {school: Vassar, nickname: Brewers, state: NY, tier: 3}
+  D3MACC:
+    name: MAC Commonwealth Conference
+    short_name: MAC Commonwealth
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Albright, nickname: Lions, state: PA, tier: 1}
+      - {school: Alvernia, nickname: Golden Wolves, state: PA, tier: 3}
+      - {school: "Eastern (PA)", nickname: Eagles, state: PA, tier: 5}
+      - {school: Hood, nickname: Blazers, state: MD, tier: 5}
+      - {school: Messiah, nickname: Falcons, state: PA, tier: 2}
+      - {school: Neumann, nickname: Knights, state: PA, tier: 3}
+      - {school: Stevenson, nickname: Mustangs, state: MD, tier: 5}
+      - {school: Widener, nickname: Pride, state: PA, tier: 4}
+      - {school: "York (PA)", nickname: Spartans, state: PA, tier: 3}
+  D3MACF:
+    name: MAC Freedom Conference
+    short_name: MAC Freedom
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Arcadia, nickname: Knights, state: PA, tier: 5}
+      - {school: Delaware Valley, nickname: Aggies, state: PA, tier: 2}
+      - {school: DeSales, nickname: Bulldogs, state: PA, tier: 4}
+      - {school: FDU Florham, nickname: Devils, state: NJ, tier: 3}
+      - {school: "King's (PA)", nickname: Monarchs, state: PA, tier: 3}
+      - {school: Lebanon Valley, nickname: Flying Dutchmen, state: PA, tier: 3}
+      - {school: Marywood, nickname: Pacers, state: PA, tier: 5}
+      - {school: Misericordia, nickname: Cougars, state: PA, tier: 3}
+      - {school: Stevens, nickname: Ducks, state: NJ, tier: 3}
+  D3MASCAC:
+    name: Massachusetts State Collegiate Athletic Conference
+    short_name: MASCAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Bridgewater State, nickname: Bears, state: MA, tier: 5}
+      - {school: Fitchburg State, nickname: Falcons, state: MA, tier: 2}
+      - {school: Framingham State, nickname: Rams, state: MA, tier: 2}
+      - {school: MCLA, nickname: Trailblazers, state: MA, tier: 2}
+      - {school: Mass Maritime, nickname: Buccaneers, state: MA, tier: 3}
+      - {school: Salem State, nickname: Vikings, state: MA, tier: 2}
+      - {school: Westfield State, nickname: Owls, state: MA, tier: 4}
+      - {school: Worcester State, nickname: Lancers, state: MA, tier: 1}
+  D3MIAA:
+    name: Michigan Intercollegiate Athletic Association
+    short_name: MIAA
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Adrian, nickname: Bulldogs, state: MI, tier: 2}
+      - {school: Albion, nickname: Britons, state: MI, tier: 4}
+      - {school: Alma, nickname: Scots, state: MI, tier: 1}
+      - {school: Calvin, nickname: Knights, state: MI, tier: 2}
+      - {school: Hope, nickname: Flying Dutchmen, state: MI, tier: 4}
+      - {school: Kalamazoo, nickname: Hornets, state: MI, tier: 3}
+      - {school: Olivet, nickname: Comets, state: MI, tier: 3}
+      - {school: Trine, nickname: Thunder, state: IN, tier: 3}
+  D3MIAC:
+    name: Minnesota Intercollegiate Athletic Conference
+    short_name: MIAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Augsburg, nickname: Auggies, state: MN, tier: 3}
+      - {school: "Bethel (MN)", nickname: Royals, state: MN, tier: 4}
+      - {school: Carleton, nickname: Knights, state: MN, tier: 4}
+      - {school: "Concordia (MN)", nickname: Cobbers, state: MN, tier: 3}
+      - {school: Gustavus Adolphus, nickname: Gusties, state: MN, tier: 1}
+      - {school: Hamline, nickname: Pipers, state: MN, tier: 3}
+      - {school: Macalester, nickname: Scots, state: MN, tier: 3}
+      - {school: "Saint John's (MN)", nickname: Johnnies, state: MN, tier: 2}
+      - {school: "Saint Mary's (MN)", nickname: Cardinals, state: MN, tier: 5}
+      - {school: "St. Olaf", nickname: Oles, state: MN, tier: 3}
+      - {school: Scholastica, nickname: Saints, state: MN, tier: 3}
+  D3MWC:
+    name: Midwest Conference
+    short_name: Midwest Conference
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Beloit, nickname: Buccaneers, state: WI, tier: 3}
+      - {school: "Cornell (IA)", nickname: Rams, state: IA, tier: 2}
+      - {school: Grinnell, nickname: Pioneers, state: IA, tier: 4}
+      - {school: Illinois College, nickname: Blueboys, state: IL, tier: 5}
+      - {school: Knox, nickname: Prairie Fire, state: IL, tier: 4}
+      - {school: Lake Forest, nickname: Foresters, state: IL, tier: 3}
+      - {school: Lawrence, nickname: Vikings, state: WI, tier: 3}
+      - {school: Luther, nickname: Norse, state: IA, tier: 3}
+      - {school: "Monmouth (IL)", nickname: Scots, state: IL, tier: 3}
+      - {school: Ripon, nickname: Red Hawks, state: WI, tier: 3}
+  D3NAC:
+    name: North Atlantic Conference
+    short_name: NAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Husson, nickname: Eagles, state: ME, tier: 4}
+      - {school: Lesley, nickname: Lynx, state: MA, tier: 4}
+      - {school: Maine Farmington, nickname: Beavers, state: ME, tier: 3}
+      - {school: Maine Maritime, nickname: Mariners, state: ME, tier: 2}
+      - {school: Maine Presque Isle, nickname: Owls, state: ME, tier: 4}
+      - {school: Thomas, nickname: Terriers, state: ME, tier: 4}
+      - {school: Vermont State Johnson, nickname: Badgers, state: VT, tier: 2}
+      - {school: Vermont State Lyndon, nickname: Hornets, state: VT, tier: 3}
+  D3NACC:
+    name: Northern Athletics Collegiate Conference
+    short_name: NACC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Aurora, nickname: Spartans, state: IL, tier: 3}
+      - {school: "Benedictine (IL)", nickname: Eagles, state: IL, tier: 3}
+      - {school: Concordia Chicago, nickname: Cougars, state: IL, tier: 3}
+      - {school: Concordia Wisconsin, nickname: Falcons, state: WI, tier: 5}
+      - {school: "Dominican (IL)", nickname: Stars, state: IL, tier: 3}
+      - {school: Edgewood, nickname: Eagles, state: WI, tier: 1}
+      - {school: Illinois Tech, nickname: Scarlet Hawks, state: IL, tier: 3}
+      - {school: Lakeland, nickname: Muskies, state: WI, tier: 4}
+      - {school: "Marian (WI)", nickname: Sabres, state: WI, tier: 3}
+      - {school: MSOE, nickname: Raiders, state: WI, tier: 2}
+      - {school: Rockford, nickname: Regents, state: IL, tier: 4}
+      - {school: "St. Norbert", nickname: Green Knights, state: WI, tier: 3}
+      - {school: Wisconsin Lutheran, nickname: Warriors, state: WI, tier: 2}
+  D3NCAC:
+    name: North Coast Athletic Conference
+    short_name: NCAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Denison, nickname: Big Red, state: OH, tier: 3}
+      - {school: DePauw, nickname: Tigers, state: IN, tier: 3}
+      - {school: John Carroll, nickname: Blue Streaks, state: OH, tier: 1}
+      - {school: Kenyon, nickname: Owls, state: OH, tier: 3}
+      - {school: Oberlin, nickname: Yeomen, state: OH, tier: 3}
+      - {school: Ohio Wesleyan, nickname: Battling Bishops, state: OH, tier: 3}
+      - {school: Wabash, nickname: Little Giants, state: IN, tier: 2}
+      - {school: Wittenberg, nickname: Tigers, state: OH, tier: 3}
+      - {school: Wooster, nickname: Fighting Scots, state: OH, tier: 3}
+  D3NESCAC:
+    name: New England Small College Athletic Conference
+    short_name: NESCAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Amherst, nickname: Mammoths, state: MA, tier: 2}
+      - {school: Bates, nickname: Bobcats, state: ME, tier: 3}
+      - {school: Bowdoin, nickname: Polar Bears, state: ME, tier: 3}
+      - {school: Colby, nickname: Mules, state: ME, tier: 4}
+      - {school: Connecticut College, nickname: Camels, state: CT, tier: 3}
+      - {school: Hamilton, nickname: Continentals, state: NY, tier: 1}
+      - {school: Middlebury, nickname: Panthers, state: VT, tier: 4}
+      - {school: "Trinity (CT)", nickname: Bantams, state: CT, tier: 5}
+      - {school: Tufts, nickname: Jumbos, state: MA, tier: 2}
+      - {school: Wesleyan, nickname: Cardinals, state: CT, tier: 3}
+      - {school: Williams, nickname: Ephs, state: MA, tier: 3}
+  D3NEWMAC:
+    name: "New England Women's and Men's Athletic Conference"
+    short_name: NEWMAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Babson, nickname: Beavers, state: MA, tier: 3}
+      - {school: Clark, nickname: Cougars, state: MA, tier: 3}
+      - {school: Emerson, nickname: Lions, state: MA, tier: 2}
+      - {school: MIT, nickname: Engineers, state: MA, tier: 3}
+      - {school: Salve Regina, nickname: Seahawks, state: RI, tier: 5}
+      - {school: Springfield, nickname: Pride, state: MA, tier: 3}
+      - {school: Coast Guard, nickname: Bears, state: CT, tier: 2}
+      - {school: "Wheaton (MA)", nickname: Lyons, state: MA, tier: 2}
+      - {school: WPI, nickname: Engineers, state: MA, tier: 4}
+  D3NJAC:
+    name: New Jersey Athletic Conference
+    short_name: NJAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Kean, nickname: Cougars, state: NJ, tier: 5}
+      - {school: Montclair State, nickname: Red Hawks, state: NJ, tier: 4}
+      - {school: SUNY New Paltz, nickname: Hawks, state: NY, tier: 5}
+      - {school: Ramapo, nickname: Roadrunners, state: NJ, tier: 2}
+      - {school: Rowan, nickname: Profs, state: NJ, tier: 5}
+      - {school: "Rutgers-Camden", nickname: Scarlet Raptors, state: NJ, tier: 3}
+      - {school: "Rutgers-Newark", nickname: Scarlet Raiders, state: NJ, tier: 4}
+      - {school: Stockton, nickname: Ospreys, state: NJ, tier: 5}
+      - {school: TCNJ, nickname: Lions, state: NJ, tier: 1}
+      - {school: William Paterson, nickname: Pioneers, state: NJ, tier: 2}
+  D3NWC:
+    name: Northwest Conference
+    short_name: Northwest Conference
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: George Fox, nickname: Bruins, state: OR, tier: 3}
+      - {school: "Lewis & Clark", nickname: River Otters, state: OR, tier: 3}
+      - {school: Linfield, nickname: Wildcats, state: OR, tier: 3}
+      - {school: "Pacific (OR)", nickname: Boxers, state: OR, tier: 3}
+      - {school: Pacific Lutheran, nickname: Lutes, state: WA, tier: 5}
+      - {school: Puget Sound, nickname: Loggers, state: WA, tier: 4}
+      - {school: Whitman, nickname: Blues, state: WA, tier: 4}
+      - {school: Whitworth, nickname: Pirates, state: WA, tier: 4}
+      - {school: Willamette, nickname: Bearcats, state: OR, tier: 4}
+  D3OAC:
+    name: Ohio Athletic Conference
+    short_name: OAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Baldwin Wallace, nickname: Yellow Jackets, state: OH, tier: 4}
+      - {school: Capital, nickname: Comets, state: OH, tier: 3}
+      - {school: Heidelberg, nickname: Student Princes, state: OH, tier: 2}
+      - {school: Marietta, nickname: Pioneers, state: OH, tier: 4}
+      - {school: Mount Union, nickname: Purple Raiders, state: OH, tier: 3}
+      - {school: Muskingum, nickname: Fighting Muskies, state: OH, tier: 4}
+      - {school: Ohio Northern, nickname: Polar Bears, state: OH, tier: 3}
+      - {school: Otterbein, nickname: Cardinals, state: OH, tier: 4}
+      - {school: "Wilmington (OH)", nickname: Quakers, state: OH, tier: 5}
+  D3ODAC:
+    name: Old Dominion Athletic Conference
+    short_name: ODAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Averett, nickname: Cougars, state: VA, tier: 2}
+      - {school: Batten, nickname: Marlins, state: VA, tier: 4}
+      - {school: "Bridgewater (VA)", nickname: Eagles, state: VA, tier: 3}
+      - {school: Eastern Mennonite, nickname: Royals, state: VA, tier: 3}
+      - {school: Guilford, nickname: Quakers, state: NC, tier: 4}
+      - {school: "Hampden-Sydney", nickname: Tigers, state: VA, tier: 2}
+      - {school: Lynchburg, nickname: Hornets, state: VA, tier: 2}
+      - {school: Randolph, nickname: WildCats, state: VA, tier: 2}
+      - {school: "Randolph-Macon", nickname: Yellow Jackets, state: VA, tier: 2}
+      - {school: Roanoke, nickname: Maroons, state: VA, tier: 3}
+      - {school: Shenandoah, nickname: Hornets, state: VA, tier: 3}
+      - {school: Washington and Lee, nickname: Generals, state: VA, tier: 4}
+  D3PAC:
+    name: "Presidents' Athletic Conference"
+    short_name: PAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Allegheny, nickname: Gators, state: PA, tier: 3}
+      - {school: "Bethany (WV)", nickname: Bison, state: WV, tier: 3}
+      - {school: Chatham, nickname: Cougars, state: PA, tier: 5}
+      - {school: Franciscan, nickname: Barons, state: OH, tier: 4}
+      - {school: Geneva, nickname: Golden Tornadoes, state: PA, tier: 4}
+      - {school: Grove City, nickname: Wolverines, state: PA, tier: 3}
+      - {school: Hiram, nickname: Terriers, state: OH, tier: 3}
+      - {school: "Saint Francis (PA)", nickname: Red Wolves, state: PA, tier: 3}
+      - {school: Saint Vincent, nickname: Bearcats, state: PA, tier: 2}
+      - {school: Thiel, nickname: Tomcats, state: PA, tier: 4}
+      - {school: "Washington & Jefferson", nickname: Presidents, state: PA, tier: 2}
+      - {school: Waynesburg, nickname: Yellow Jackets, state: PA, tier: 2}
+      - {school: "Westminster (PA)", nickname: Titans, state: PA, tier: 2}
+  D3SAA:
+    name: Southern Athletic Association
+    short_name: SAA
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Berry, nickname: Vikings, state: GA, tier: 3}
+      - {school: Centre, nickname: Colonels, state: KY, tier: 4}
+      - {school: "Maryville (TN)", nickname: Scots, state: TN, tier: 4}
+      - {school: Millsaps, nickname: Majors, state: MS, tier: 4}
+      - {school: Oglethorpe, nickname: Stormy Petrels, state: GA, tier: 3}
+      - {school: Rhodes, nickname: Lynx, state: TN, tier: 5}
+      - {school: Sewanee, nickname: Tigers, state: TN, tier: 3}
+      - {school: "Southwestern (TX)", nickname: Pirates, state: TX, tier: 3}
+      - {school: "Trinity (TX)", nickname: Tigers, state: TX, tier: 3}
+  D3SCAC:
+    name: Southern Collegiate Athletic Conference
+    short_name: SCAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Austin, nickname: Kangaroos, state: TX, tier: 2}
+      - {school: "Centenary (LA)", nickname: Gentlemen, state: LA, tier: 4}
+      - {school: Colorado College, nickname: Tigers, state: CO, tier: 4}
+      - {school: Concordia Texas, nickname: Tornados, state: TX, tier: 3}
+      - {school: Dallas, nickname: Crusaders, state: TX, tier: 3}
+      - {school: Hendrix, nickname: Warriors, state: AR, tier: 3}
+      - {school: LeTourneau, nickname: Yellow Jackets, state: TX, tier: 3}
+      - {school: Ozarks, nickname: Eagles, state: AR, tier: 2}
+      - {school: Texas Lutheran, nickname: Bulldogs, state: TX, tier: 4}
+      - {school: "St. Thomas (TX)", nickname: Celts, state: TX, tier: 3}
+  D3SCIAC:
+    name: Southern California Intercollegiate Athletic Conference
+    short_name: SCIAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Azusa Pacific, nickname: Cougars, state: CA, tier: 1}
+      - {school: Caltech, nickname: Beavers, state: CA, tier: 1}
+      - {school: Cal Lutheran, nickname: Kingsmen, state: CA, tier: 4}
+      - {school: Chapman, nickname: Panthers, state: CA, tier: 3}
+      - {school: "Claremont-Mudd-Scripps", nickname: Stags, state: CA, tier: 3}
+      - {school: La Verne, nickname: Leopards, state: CA, tier: 3}
+      - {school: Occidental, nickname: Tigers, state: CA, tier: 1}
+      - {school: "Pomona-Pitzer", nickname: Sagehens, state: CA, tier: 5}
+      - {school: Redlands, nickname: Bulldogs, state: CA, tier: 3}
+      - {school: Whittier, nickname: Poets, state: CA, tier: 3}
+  D3SKY:
+    name: Skyline Conference
+    short_name: Skyline
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Farmingdale State, nickname: Rams, state: NY, tier: 5}
+      - {school: Manhattanville, nickname: Valiants, state: NY, tier: 4}
+      - {school: "Mount Saint Mary (NY)", nickname: Knights, state: NY, tier: 2}
+      - {school: Mount Saint Vincent, nickname: Dolphins, state: NY, tier: 1}
+      - {school: SUNY Maritime, nickname: Privateers, state: NY, tier: 3}
+      - {school: SUNY Old Westbury, nickname: Panthers, state: NY, tier: 2}
+      - {school: Purchase, nickname: Panthers, state: NY, tier: 3}
+      - {school: "St. Joseph's (Brooklyn)", nickname: Bears, state: NY, tier: 2}
+      - {school: "St. Joseph's (Long Island)", nickname: Golden Eagles, state: NY, tier: 1}
+      - {school: Sarah Lawrence, nickname: Gryphons, state: NY, tier: 2}
+      - {school: Merchant Marine, nickname: Mariners, state: NY, tier: 5}
+      - {school: Yeshiva, nickname: Maccabees, state: NY, tier: 2}
+  D3SLIAC:
+    name: "St. Louis Intercollegiate Athletic Conference"
+    short_name: SLIAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Blackburn, nickname: Beavers, state: IL, tier: 5}
+      - {school: Eureka, nickname: Red Devils, state: IL, tier: 3}
+      - {school: Greenville, nickname: Panthers, state: IL, tier: 2}
+      - {school: Lyon, nickname: Scots, state: AR, tier: 3}
+      - {school: Mississippi for Women, nickname: Owls, state: MS, tier: 3}
+      - {school: Principia, nickname: Panthers, state: IL, tier: 1}
+      - {school: Spalding, nickname: Golden Eagles, state: KY, tier: 4}
+      - {school: Webster, nickname: Gorloks, state: MO, tier: 4}
+      - {school: "Westminster (MO)", nickname: Blue Jays, state: MO, tier: 4}
+  D3SUNYAC:
+    name: State University of New York Athletic Conference
+    short_name: SUNYAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Alfred State, nickname: Pioneers, state: NY, tier: 3}
+      - {school: Buffalo State, nickname: Bengals, state: NY, tier: 1}
+      - {school: SUNY Canton, nickname: Kangaroos, state: NY, tier: 4}
+      - {school: SUNY Cobleskill, nickname: Fighting Tigers, state: NY, tier: 2}
+      - {school: SUNY Cortland, nickname: Red Dragons, state: NY, tier: 3}
+      - {school: SUNY Delhi, nickname: Broncos, state: NY, tier: 3}
+      - {school: SUNY Fredonia, nickname: Blue Devils, state: NY, tier: 4}
+      - {school: SUNY Morrisville, nickname: Mustangs, state: NY, tier: 5}
+      - {school: SUNY Oneonta, nickname: Red Dragons, state: NY, tier: 3}
+      - {school: SUNY Oswego, nickname: Lakers, state: NY, tier: 2}
+      - {school: SUNY Plattsburgh, nickname: Cardinals, state: NY, tier: 2}
+      - {school: SUNY Potsdam, nickname: Bears, state: NY, tier: 2}
+  D3UAA:
+    name: University Athletic Association
+    short_name: UAA
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Brandeis, nickname: Judges, state: MA, tier: 5}
+      - {school: Carnegie Mellon, nickname: Tartans, state: PA, tier: 3}
+      - {school: Case Western Reserve, nickname: Spartans, state: OH, tier: 3}
+      - {school: Chicago, nickname: Maroons, state: IL, tier: 3}
+      - {school: Emory, nickname: Eagles, state: GA, tier: 3}
+      - {school: NYU, nickname: Violets, state: NY, tier: 3}
+      - {school: Rochester, nickname: Yellowjackets, state: NY, tier: 3}
+      - {school: Wash U, nickname: Bears, state: MO, tier: 1}
+  D3UEC:
+    name: United East Conference
+    short_name: United East
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Cairn, nickname: Highlanders, state: PA, tier: 4}
+      - {school: Gallaudet, nickname: Bison, state: DC, tier: 3}
+      - {school: Keystone, nickname: Giants, state: PA, tier: 2}
+      - {school: Lancaster Bible, nickname: Chargers, state: PA, tier: 4}
+      - {school: Penn College, nickname: Wildcats, state: PA, tier: 3}
+      - {school: Penn State Abington, nickname: Nittany Lions, state: PA, tier: 1}
+      - {school: Penn State Berks, nickname: Nittany Lions, state: PA, tier: 3}
+      - {school: Penn State Brandywine, nickname: Lions, state: PA, tier: 3}
+      - {school: Penn State Harrisburg, nickname: Lions, state: PA, tier: 2}
+      - {school: "St. Mary's (MD)", nickname: Seahawks, state: MD, tier: 5}
+      - {school: Wilson, nickname: Phoenix, state: PA, tier: 1}
+  D3UMAC:
+    name: Upper Midwest Athletic Conference
+    short_name: UMAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Bethany Lutheran, nickname: Vikings, state: MN, tier: 5}
+      - {school: Crown, nickname: Polars, state: MN, tier: 3}
+      - {school: Martin Luther, nickname: Knights, state: MN, tier: 3}
+      - {school: "North Central (MN)", nickname: Rams, state: MN, tier: 5}
+      - {school: "Northwestern (MN)", nickname: Eagles, state: MN, tier: 2}
+      - {school: Minnesota Morris, nickname: Cougars, state: MN, tier: 3}
+      - {school: "UW-Superior", nickname: Yellow Jackets, state: WI, tier: 3}
+  D3USAS:
+    name: USA South Athletic Conference
+    short_name: USA South
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: Brevard, nickname: Tornados, state: NC, tier: 2}
+      - {school: Greensboro, nickname: Pride, state: NC, tier: 3}
+      - {school: Mary Baldwin, nickname: Fighting Squirrels, state: VA, tier: 2}
+      - {school: Methodist, nickname: Monarchs, state: NC, tier: 4}
+      - {school: NC Wesleyan, nickname: Bishops, state: NC, tier: 1}
+      - {school: Pfeiffer, nickname: Falcons, state: NC, tier: 1}
+      - {school: Southern Virginia, nickname: Knights, state: VA, tier: 3}
+      - {school: William Peace, nickname: Pacers, state: NC, tier: 5}
+  D3WIAC:
+    name: Wisconsin Intercollegiate Athletic Conference
+    short_name: WIAC
+    tournament: 0
+    auto_bid: true
+    teams:
+      - {school: "UW-Eau Claire", nickname: Blugolds, state: WI, tier: 5}
+      - {school: "UW-La Crosse", nickname: Eagles, state: WI, tier: 3}
+      - {school: "UW-Oshkosh", nickname: Titans, state: WI, tier: 2}
+      - {school: "UW-Platteville", nickname: Pioneers, state: WI, tier: 3}
+      - {school: "UW-River Falls", nickname: Falcons, state: WI, tier: 4}
+      - {school: "UW-Stevens Point", nickname: Pointers, state: WI, tier: 4}
+      - {school: "UW-Stout", nickname: Blue Devils, state: WI, tier: 2}
+      - {school: "UW-Whitewater", nickname: Warhawks, state: WI, tier: 3}

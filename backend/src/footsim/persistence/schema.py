@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 29  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 30  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -627,6 +627,10 @@ recruit = Table(
     Column("committed_on", Text),
     Column("signed_on", Text),
     Column("player_id", ForeignKey("person.id")),
+    # "portal" for a D-II/D-III player in the transfer portal (W9e, v30): ``player_id`` is he,
+    # and his lower-division school is ``from_club_id``. None for a high-school senior.
+    Column("source", Text),
+    Column("from_club_id", ForeignKey("club.id")),
     Index("ix_recruit_class", "class_season", "status"),
 )
 
@@ -841,4 +845,28 @@ guest_player = Table(
     Column("player_id", ForeignKey("person.id"), primary_key=True),
     Column("club_id", ForeignKey("club.id"), nullable=False),
     Index("ix_guest_player_club", "club_id"),
+)
+
+
+# NCAA Divisions II and III (W9e, v30; world/college/lower.py): their programs and players, apart
+# from D-I's ``college_team`` and ``college_player`` so D-I's recruiting, rankings, draft and
+# program builder never see them. Played with quick results; nobody coaches them.
+lower_team = Table(
+    "lower_team",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("division", Integer, nullable=False),  # 2 or 3
+    Column("conference", Text, nullable=False),  # its key in ncaa_d2.yaml / ncaa_d3.yaml
+    Column("tier", Integer, nullable=False),
+    Column("level", Float, nullable=False),
+)
+
+lower_player = Table(
+    "lower_player",  # a D-II/D-III player while he's there (the row goes when he leaves)
+    metadata,
+    Column("player_id", ForeignKey("person.id"), primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("class_year", Integer, nullable=False),  # 1 Fr, 2 So, 3 Jr, 4 Sr
+    Column("entered_season", Integer, nullable=False),
+    Index("ix_lower_player_club", "club_id"),
 )

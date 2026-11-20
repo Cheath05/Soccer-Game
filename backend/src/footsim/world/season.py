@@ -51,8 +51,9 @@ from footsim.persistence.schema import (
 )
 from footsim.world.club_names import apply_club_names, apply_club_nations
 from footsim.world.college.assistant import weekly as assistant_recruiting
-from footsim.world.college.common import is_college_stage
+from footsim.world.college.common import LOWER_REGULAR, is_college_stage, is_lower_stage
 from footsim.world.college.draft import college_turnover
+from footsim.world.college.lower import progress_lower
 from footsim.world.college.program import growth_factors, progress_program
 from footsim.world.college.recruiting import progress_recruiting
 from footsim.world.college.season import (
@@ -324,6 +325,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
         if scope.follows_league(league.key):
             messages += news
     messages += progress_college(conn, world, meta, day)
+    messages += progress_lower(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
     messages += settle_visits(conn, world, meta, day)
     messages += assistant_recruiting(conn, world, meta, day)
@@ -609,6 +611,10 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         return cwc_decider(fx)
     if is_finals(fx.stage):
         return finals_decider(fx)
+    if fx.stage == LOWER_REGULAR:  # D-II/D-III regular season (W9e): draws stand
+        return None
+    if is_lower_stage(fx.stage):  # D-II/D-III national tournaments
+        return Decider(extra_time=True, penalties=True)
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)
     if fx.stage in world.defs.cups:

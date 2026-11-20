@@ -523,6 +523,7 @@ class CollegeSeasonRecordOut(BaseModel):
     tier: int
     prestige: float  # as recruits see it: with the facilities' bonus (program builder)
     prestige_facilities: float = 0.0  # the facilities' share of it
+    division: int = 1  # 2 or 3 for a D-II/D-III program (W9e): no RPI, tier or prestige then
 
 
 class NationalTeamOut(BaseModel):

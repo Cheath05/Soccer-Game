@@ -1,0 +1,56 @@
+# NCAA Divisions II and III (W9e; world/college/lower.py): real schools in their conferences
+# (ncaa_d2.yaml, ncaa_d3.yaml), played with the quick results engine. They are where the
+# high-school seniors D-I didn't sign go on developing, and their standouts can enter the transfer
+# portal to D-I. Nobody coaches them: their programs are run by the game.
+#
+# Dates are MM-DD in the game's July-June season, as in rules.yaml.
+
+divisions:
+  2:
+    key: NCAA2
+    name: NCAA Division II Men's Soccer
+    short_name: NCAA D-II
+    programs: ncaa_d2.yaml
+    # A program's level (its sophomores' mean overall, as in D-I) by tier: a top D-II program is
+    # about a weak D-I one.
+    level_by_tier: {1: 42.0, 2: 40.0, 3: 38.0, 4: 36.0, 5: 34.0}
+    reputation: 14
+    tournament:
+      teams: 36  # the real field: conference champions and at-large teams
+      selection: "11-09"
+      rounds: ["11-13", "11-15", "11-20", "11-22", "12-04", "12-06"]
+      round_names: [First round, Second round, Third round, Quarterfinals, Semifinals, Final]
+      neutral_from: 4
+  3:
+    key: NCAA3
+    name: NCAA Division III Men's Soccer
+    short_name: NCAA D-III
+    programs: ncaa_d3.yaml
+    level_by_tier: {1: 38.0, 2: 36.0, 3: 34.0, 4: 32.0, 5: 30.0}
+    reputation: 10
+    tournament:
+      teams: 64
+      selection: "11-09"
+      rounds: ["11-12", "11-15", "11-19", "11-22", "12-04", "12-06"]
+      round_names: [First round, Second round, Third round, Quarterfinals, Semifinals, Final]
+      neutral_from: 4
+
+level_sd: 1.2
+roster_size: 22  # the first 22 of D-I's roster shape (rules.yaml)
+
+regular_season:
+  # Each team plays its conference once and fills the rest with non-conference games, as in D-I.
+  start: "08-28"
+  end: "11-07"
+  matches: 14
+  slots: 16
+
+# The transfer portal (one way: D-II/D-III to D-I). On this day each season the lower divisions'
+# best non-seniors enter it: at most ``entrants``, by their grade (overall and potential, as a
+# high-school recruit's), each at least ``min_overall`` now. They join D-I's recruiting class:
+# offers, decisions and signing day as for a high-school senior; signed, he moves up at the
+# rollover a class on; unsigned, he stays where he is.
+portal:
+  opens: "12-08"
+  entrants: 60
+  min_overall: 43.0

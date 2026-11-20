@@ -312,6 +312,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'lower-divisions',
+    title: 'Divisions II and III, and the transfer portal',
+    summary: 'Where unsigned recruits develop, and how their best move up to D-I.',
+    blocks: [
+      'The NCAA’s Divisions II and III are in the game: about 200 D-II and 400 D-III programs, real schools in their conferences, played with quick results (scores, scorers and ratings, no full match). Nobody coaches them; on the College page, switch to Division II or III for their conference tables and national tournament.',
+      [
+        'Their seasons: each team plays its conference once and fills the rest with non-conference games, from late August to early November. Each conference’s table winner takes its title and an automatic bid; the best of the rest by points a game fill the national tournament (36 teams in D-II, 64 in D-III), single matches to the final in early December.',
+        'Hidden gems: the high-school seniors no D-I program signed don’t leave the game any more. At the season’s start they join D-II and D-III programs as freshmen (the best of them to the strongest D-II programs), keeping their potential, and develop there. Rosters are filled with generated freshmen beside them; seniors graduate and leave.',
+        'The transfer portal opens on 8 December, after the national tournaments: the best D-II and D-III players who aren’t seniors (60 at most, each at least a 43 overall now) want to move up. They join D-I’s recruiting class: on Recruiting, the Transfer portal tab lists them, each marked with his school. Offer, visit and sign them as you would a high-school senior; the other D-I programs recruit them too.',
+        'A portal player who signs joins his D-I program at the season’s start, a class on from where he was (a D-II sophomore arrives a junior), on the scholarship he signed for. One nobody signs stays at his school.',
+      ],
+    ],
+  },
+  {
     id: 'recruiting',
     title: 'Recruiting high-school players',
     summary: 'The national class, your targets, scholarship offers, commitments and signing day.',

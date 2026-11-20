@@ -165,10 +165,18 @@ def load_college(root: Path) -> CollegeDef:
     rules_path = root / "college" / "rules.yaml"
     programs_path = root / "college" / "ncaa_d1.yaml"
     programs = _parse(ProgramsFile, programs_path)
+    lower_path = root / "college" / "lower.yaml"
+    lower = None
+    if lower_path.exists():  # Divisions II and III (W9e): each division's programs file
+        lower = _read_yaml(lower_path)
+        for division in lower["divisions"].values():
+            division["conferences"] = _parse(
+                ProgramsFile, root / "college" / division["programs"]).conferences
     return _validate(CollegeDef, {"rules": _read_yaml(rules_path),
                                   "conferences": programs.conferences,
                                   "recruiting": _read_yaml(root / "college" / "recruiting.yaml"),
-                                  "program": _read_yaml(root / "college" / "program.yaml")},
+                                  "program": _read_yaml(root / "college" / "program.yaml"),
+                                  "lower": lower},
                      rules_path)
 
 

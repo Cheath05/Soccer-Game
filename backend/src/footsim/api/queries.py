@@ -111,7 +111,13 @@ from footsim.scouting.estimates import (
 )
 from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
-from footsim.world.college.common import CONFERENCE_PREFIX, in_college
+from footsim.world.college.common import (
+    CONFERENCE_PREFIX,
+    LOWER_PREFIX,
+    LOWER_REGULAR,
+    LOWER_TYPE,
+    in_college,
+)
 from footsim.world.college.common import REGULAR as REGULAR_SEASON
 from footsim.world.college.draft import leave_program
 from footsim.world.college.program import facilities_bonus
@@ -199,6 +205,19 @@ def _college_stage(stage: str, round_: int) -> str:
     return f"NCAA {names[round_]}" if 0 <= round_ < len(names) else "NCAA tournament"
 
 
+def _lower_stage(stage: str, round_: int) -> str:
+    """A D-II/D-III fixture's stage (W9e): the regular season or its national tournament's
+    round."""
+    lower = get_world().defs.college.lower
+    if stage == LOWER_REGULAR or lower is None:
+        return "Regular season"
+    division = lower.divisions.get(int(stage.removeprefix(LOWER_PREFIX) or 0))
+    if division is None:
+        return "National tournament"
+    names = division.tournament.round_names
+    return names[round_] if 0 <= round_ < len(names) else "National tournament"
+
+
 def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]],
                 firsts: FirstLegs | None = None) -> FixtureOut:
     comp = comps[row.competition_id]
@@ -207,7 +226,8 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
     continental = defs.continental.get(comp.key)
     named = (cup.rounds[row.round].name if cup
              else stage_name(continental, row.round) if continental
-             else _college_stage(row.stage, row.round) if comp.type == "college" else None)
+             else _college_stage(row.stage, row.round) if comp.type == "college"
+             else _lower_stage(row.stage, row.round) if comp.type == LOWER_TYPE else None)
     prior = _first_leg_goals(row, firsts or {})
     played = row.status == "played" and row.home_goals is not None and row.away_goals is not None
     agg = ((prior[0] + row.home_goals, prior[1] + row.away_goals)
@@ -1119,7 +1139,7 @@ def college_season_record(conn: Connection, world: World, meta: CareerMeta, club
 
     ts = team_season(conn, world, meta, club_id, season_id)
     if ts is None:
-        return None
+        return _lower_season_record(conn, world, meta, club_id, season_id)
     team = conn.execute(select(college_team.c.tier, college_team.c.prestige).where(
         college_team.c.club_id == club_id)).one()
     conf = world.defs.college.conferences[ts.conference]
@@ -1139,6 +1159,32 @@ def college_season_record(conn: Connection, world: World, meta: CareerMeta, club
         prestige=round(float(team.prestige or 0.0) + bonus, 1),
         prestige_facilities=round(bonus, 1))
 
+
+
+def _lower_season_record(conn: Connection, world: World, meta: CareerMeta, club_id: int,
+                         season_id: int) -> CollegeSeasonRecordOut | None:
+    """A D-II/D-III program's season (W9e), in the same shape as D-I's."""
+    from footsim.world.college import lower
+
+    ls = lower.team_season(conn, world, meta, club_id, season_id)
+    defs = lower.rules(world)
+    if ls is None or defs is None:
+        return None
+    d = defs.divisions[ls.division]
+    conf = d.conferences[ls.conference]
+    label = conn.execute(select(season.c.label).where(season.c.id == season_id)).scalar()
+    row = ls.row
+    teams = len(lower.conference_tables(conn, world, meta, ls.division, season_id).get(
+        ls.conference, []))
+    return CollegeSeasonRecordOut(
+        season=str(label or ""), conference=conf.short_name, conference_name=conf.name,
+        conference_position=row.position if row else None, conference_teams=teams,
+        conference_won=row.won if row else 0, conference_drawn=row.drawn if row else 0,
+        conference_lost=row.lost if row else 0, conference_points=row.points if row else 0,
+        won=ls.record.won, drawn=ls.record.drawn, lost=ls.record.lost,
+        goals_for=ls.record.goals_for, goals_against=ls.record.goals_against,
+        rpi_rank=ls.rank, ncaa=ls.national, titles=ls.titles, tier=0, prestige=0.0,
+        division=ls.division)
 
 RECENT_TRANSFERS = 5
 

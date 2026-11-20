@@ -209,6 +209,9 @@ def college_turnover(conn: Connection, world: World, meta: CareerMeta, new_seaso
     filled = recruit(conn, world, meta, new_season, day, minimum=0 if recruited else None,
                      targets=coach)
     open_season(conn, world, meta, new_season, day)  # the program builder's money (W9d)
+    from footsim.world.college.lower import lower_turnover  # lower imports college.season
+
+    news += lower_turnover(conn, world, meta, new_season, day)  # D-II and D-III (W9e)
     if signed:
         news.append(f"College soccer: {signed} recruits enroll as freshmen at the NCAA's "
                     "programs.")

@@ -38,7 +38,7 @@ from footsim.persistence.schema import (
     league_title,
     season,
 )
-from footsim.world.college.common import NCAA, REGULAR, conference_event
+from footsim.world.college.common import LOWER_PREFIX, NCAA, REGULAR, conference_event
 from footsim.world.college.draft import declare_prospects, release_undrafted
 from footsim.world.college.program import ensure_programs
 from footsim.world.college.recruiting import ensure_recruiting
@@ -77,6 +77,9 @@ def create_college_fixtures(conn: Connection, world: World, meta: CareerMeta, se
     news = ensure_college(conn, world, meta, season_id, start)
     news += ensure_recruiting(conn, world, meta, season_id, start)
     news += ensure_programs(conn, world, meta, season_id, start)
+    from footsim.world.college.lower import create_lower_fixtures  # lower imports this module
+
+    news += create_lower_fixtures(conn, world, meta, season_id, start)
     comp = college_competition(conn, world)
     if comp is None or conn.execute(select(fixture.c.id).where(
             fixture.c.season_id == season_id, fixture.c.competition_id == comp)).first():
@@ -374,7 +377,8 @@ def progress_college(conn: Connection, world: World, meta: CareerMeta, day: date
             league_title.c.title == NATIONAL_TITLE)).first() is not None:
         return news  # the season is over
     started = conn.execute(select(college_entry.c.event).where(
-        college_entry.c.season_id == meta.season_id).limit(1)).first() is not None
+        college_entry.c.season_id == meta.season_id,
+        college_entry.c.event.not_like(f"{LOWER_PREFIX}%")).limit(1)).first() is not None
     if not started and not _conference_champions(conn, comp, meta.season_id):
         news += _start_conferences(conn, world, meta, comp, day)
     dates = [on(d, start) for d in college.rules.conference_tournament.rounds]

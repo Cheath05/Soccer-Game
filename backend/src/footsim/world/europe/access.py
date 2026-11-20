@@ -17,6 +17,7 @@ from footsim.persistence.schema import (
     cup_tie,
     guest_club,
     league_final,
+    lower_team,
     nation,
     national_team,
 )
@@ -87,6 +88,7 @@ def _lottery(conn: Connection, world: World, meta: CareerMeta, season_id: int,
         nation.c.code == nation_code, club.c.id.not_in(in_league),
         club.c.id.not_in(select(national_team.c.club_id)),
         club.c.id.not_in(select(college_team.c.club_id)),
+        club.c.id.not_in(select(lower_team.c.club_id)),
         club.c.id.not_in(select(guest_club.c.club_id))).order_by(club.c.id)).all()
     if not rows:
         return []

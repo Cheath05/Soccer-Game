@@ -27,6 +27,7 @@ from sqlalchemy import Connection, Engine, Row, text
 from footsim.core.rng import derive_rng
 from footsim.match.report import MatchReport
 from footsim.match.teams import TeamSheet
+from footsim.world.college.common import LOWER_TYPE
 from footsim.world.context import World
 from footsim.world.international.common import away_players, national_club_ids
 from footsim.world.international.windows import FRIENDLY
@@ -82,6 +83,8 @@ def split_day(conn: Connection, world: World, meta: CareerMeta, games: list[Row[
         key, kind = comps[fx.competition_id]
         if key == FRIENDLY:
             is_fast = meta.user_nation_id not in (fx.home_club_id, fx.away_club_id)
+        elif kind == LOWER_TYPE:  # D-II and D-III: always quick results (W9e)
+            is_fast = True
         elif kind in ("league", "college"):
             is_fast = key in fast
         elif kind == "cup" and key in world.defs.cups:

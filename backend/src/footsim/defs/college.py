@@ -3,6 +3,7 @@
 draft pool (data/config/college/rules.yaml), and high-school recruiting (W9c,
 data/config/college/recruiting.yaml)."""
 
+import math
 import re
 from datetime import date
 
@@ -519,11 +520,72 @@ class ProgramBuilderDef(DefModel):
         return _curve(value)
 
 
+class LowerTournamentDef(DefModel):
+    """A lower division's national tournament (W9e): single matches, the higher seed at home
+    until ``neutral_from``, extra time then penalties."""
+
+    teams: int = Field(ge=2)
+    selection: str  # MM-DD
+    rounds: list[str]  # a date per round, the last the final's
+    round_names: list[str]
+    neutral_from: int = Field(ge=0)
+
+    @field_validator("selection")
+    @classmethod
+    def _selection(cls, value: str) -> str:
+        return _month_day(value)
+
+
+class DivisionDef(DefModel):
+    """NCAA Division II or III (W9e, data/config/college/lower.yaml)."""
+
+    key: str  # its competition's key
+    name: str
+    short_name: str
+    programs: str  # the programs file, beside lower.yaml
+    level_by_tier: dict[int, float]
+    reputation: int
+    tournament: LowerTournamentDef
+    conferences: dict[str, ConferenceDef] = {}  # from ``programs``
+
+    @model_validator(mode="after")
+    def _rounds(self) -> "DivisionDef":
+        need = max(1, math.ceil(math.log2(self.tournament.teams)))
+        if len(self.tournament.rounds) < need or len(self.tournament.round_names) < need:
+            raise ValueError(f"{self.name}: a field of {self.tournament.teams} needs {need} "
+                             "round dates and names")
+        return self
+
+
+class PortalDef(DefModel):
+    """The transfer portal from D-II/D-III to D-I (W9e)."""
+
+    opens: str  # MM-DD
+    entrants: int = Field(ge=0)
+    min_overall: float
+
+    @field_validator("opens")
+    @classmethod
+    def _opens(cls, value: str) -> str:
+        return _month_day(value)
+
+
+class LowerDef(DefModel):
+    """NCAA Divisions II and III (W9e): their programs are played with quick results."""
+
+    divisions: dict[int, DivisionDef]
+    portal: PortalDef
+    level_sd: float = Field(ge=0)
+    roster_size: int = Field(ge=11)
+    regular_season: RegularSeasonDef
+
+
 class CollegeDef(DefModel):
     rules: CollegeRulesDef
     conferences: dict[str, ConferenceDef]
     recruiting: HsRecruitingDef
     program: ProgramBuilderDef
+    lower: LowerDef | None = None  # Divisions II and III (W9e)
 
     @model_validator(mode="after")
     def _field(self) -> "CollegeDef":

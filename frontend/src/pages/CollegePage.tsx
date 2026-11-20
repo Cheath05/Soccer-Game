@@ -30,19 +30,38 @@ const GROUPS: Record<string, string[]> = {
   ATT: ['LW', 'RW', 'ST'],
 }
 
+const DIVISIONS = [
+  { value: '1', label: 'Division I' },
+  { value: '2', label: 'Division II' },
+  { value: '3', label: 'Division III' },
+]
+
+const LOWER_TABS = [
+  { value: 'tables', label: 'Conferences' },
+  { value: 'ncaa', label: 'National tournament' },
+]
+
 export default function CollegePage() {
-  const conferences = useConferences()
+  const [div, setDiv] = useUrlState('div', '1')
+  const division = Number(div) || 1
+  const conferences = useConferences(true, division)
   const [tab, setTab] = useUrlState('tab', 'tables')
   const missing = conferences.error instanceof ApiError && conferences.error.status === 404
+  const lower = division !== 1
+  const tabs = lower ? LOWER_TABS : TABS
+  const shown = tabs.some((t) => t.value === tab) ? tab : 'tables'
 
   return (
     <Stack gap="sm">
       <div>
         <Title order={2}>College soccer</Title>
         <Text size="sm" c="dimmed">
-          NCAA Division I men’s soccer: where MLS’s SuperDraft finds its players
+          {lower
+            ? `NCAA Division ${division === 2 ? 'II' : 'III'} men’s soccer: where the players D-I didn’t sign go on developing. Their best enter the transfer portal in December.`
+            : 'NCAA Division I men’s soccer: where MLS’s SuperDraft finds its players'}
         </Text>
       </div>
+      <SegmentedControl value={div} onChange={setDiv} data={DIVISIONS} aria-label="Division" />
       {conferences.isPending ? (
         <Loader />
       ) : missing ? (
@@ -54,11 +73,11 @@ export default function CollegePage() {
         <Text c="red">{conferences.error?.message}</Text>
       ) : (
         <>
-          <SegmentedControl fullWidth value={tab} onChange={setTab} data={TABS} aria-label="College view" />
-          {tab === 'tables' && <Conferences list={conferences.data} />}
-          {tab === 'rpi' && <Rankings />}
-          {tab === 'ncaa' && <NcaaBracket />}
-          {tab === 'draft' && <DraftPool />}
+          <SegmentedControl fullWidth value={shown} onChange={setTab} data={tabs} aria-label="College view" />
+          {shown === 'tables' && <Conferences key={div} list={conferences.data} />}
+          {shown === 'rpi' && <Rankings />}
+          {shown === 'ncaa' && (lower ? <LowerBracket division={division} /> : <NcaaBracket />)}
+          {shown === 'draft' && <DraftPool />}
         </>
       )}
     </Stack>
@@ -275,6 +294,27 @@ function NcaaBracket() {
         )}
       </Group>
       <CollegeBracket bracket={b} empty="The 48-team field is picked on 16 November, after the conference tournaments: the 23 conference champions and the best 25 of the rest by the RPI. The College Cup, the semifinals and the final, is in mid-December." />
+    </Stack>
+  )
+}
+
+function LowerBracket({ division }: { division: number }) {
+  const bracket = useBracket(`LOWER${division}`, true)
+  if (bracket.isPending) return <Loader />
+  if (!bracket.data) return <Text c="red">{bracket.error?.message}</Text>
+  const b = bracket.data
+  return (
+    <Stack gap="sm">
+      <Title order={3}>
+        {b.name}{' '}
+        <Text span c="dimmed" fz="md">
+          {b.season}
+        </Text>
+      </Title>
+      <CollegeBracket
+        bracket={b}
+        empty={`The ${b.seeded}-team field is picked on 9 November, when the regular season is over: each conference's table winner, then the best of the rest by points a game. The final is in early December.`}
+      />
     </Stack>
   )
 }

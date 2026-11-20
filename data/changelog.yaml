@@ -27,6 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.142"
+  date: "2026-11-20"
+  title: "NCAA Divisions II and III, and the transfer portal"
+  changes:
+    - "College coaches: Divisions II and III are in the game, about 200 D-II and 400 D-III real schools in their conferences, played with quick results. The College page switches between Division I, II and III: conference tables and each division's national tournament (36 teams in D-II, 64 in D-III). Every school has its club page and roster."
+    - "Hidden gems: the high-school seniors no D-I program signs no longer leave the game. They join D-II and D-III programs as freshmen, keeping their potential, and develop there."
+    - "The transfer portal: on 8 December, after the national tournaments, the best D-II and D-III players who aren't seniors (up to 60) look to move up. Recruiting's Transfer portal tab lists them with their school; offer, visit and sign them like recruits (the assistant and the other D-I programs go after them too). Signed, a player joins you at the season's start a class on from where he was."
+    - "An existing college career gets the two divisions the first day it plays after this update: their games start next season, and this December's portal already has their players."
+
 - version: "1.141"
   date: "2026-11-20"
   title: "Manage a country"

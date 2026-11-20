@@ -1047,6 +1047,7 @@ export interface CollegeSeasonRecord {
   tier: number
   prestige: number // as recruits see it (with the facilities' bonus)
   prestige_facilities?: number
+  division?: number // 2 or 3 for a D-II/D-III program
 }
 
 // GET /api/international/world-cup: the finals (empty before the draw).

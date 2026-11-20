@@ -36,6 +36,7 @@ from footsim.persistence.schema import (
     college_team,
     competition,
     contract,
+    lower_player,
     nation,
     person,
     player,
@@ -120,7 +121,7 @@ class _Rows:
     def write(self, conn: Connection, with_state: bool) -> None:
         tables = [(person, "person"), (player, "player"), (player_attr, "attr"),
                   (player_position, "position"), (player_personality, "personality"),
-                  (contract, "contract"), (college_player, "college")]
+                  (contract, "contract"), (college_player, "college"), (lower_player, "lower")]
         if with_state:
             tables.append((player_state, "state"))
         for table, key in tables:
@@ -153,7 +154,7 @@ class _Maker:
 
     def make(self, club_id: int, club_rep: int, position: str, class_year: int, age: float,
              overall: float, season_id: int, signed: "RecruitPerson | None" = None,
-             scholarship: float = 0.0) -> int:
+             scholarship: float = 0.0, lower: bool = False) -> int:
         """A player of ``class_year`` aged ``age`` on the day, about ``overall``; his id. A
         signed high-school recruit (W9c) brings his own name, nation, birth date and potential."""
         pid = self.next_id
@@ -206,10 +207,15 @@ class _Maker:
             "person_id": pid, "club_id": club_id, "kind": COLLEGE_CONTRACT,
             "start_date": self.day.isoformat(), "end_date": graduates.isoformat(),
             "wage_weekly_cents": 0, "release_clause_cents": None, "is_active": 1})
-        rows["college"].append({"player_id": pid, "club_id": club_id, "class_year": class_year,
-                                "status": ENROLLED, "ga": 0, "scholarship": scholarship,
-                                "entered_season": season_id - class_year + 1,
-                                "declared_season": None, "left_on": None})
+        if lower:  # a D-II/D-III player (W9e)
+            rows["lower"].append({"player_id": pid, "club_id": club_id, "class_year": class_year,
+                                  "entered_season": season_id - class_year + 1})
+        else:
+            rows["college"].append({"player_id": pid, "club_id": club_id,
+                                    "class_year": class_year, "status": ENROLLED, "ga": 0,
+                                    "scholarship": scholarship,
+                                    "entered_season": season_id - class_year + 1,
+                                    "declared_season": None, "left_on": None})
         rows["state"].append({"player_id": pid, "condition": 100.0, "form": 6.5,
                               "suspended_matches": 0, "season_yellows": 0})
         self.rows.count += 1

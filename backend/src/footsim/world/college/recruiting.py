@@ -1051,8 +1051,20 @@ def enroll_class(conn: Connection, world: World, meta: CareerMeta, season_id: in
     conn.execute(text("UPDATE recruit SET status = :gone WHERE class_season = :c "
                       "AND status IN (:open, :committed)"),
                  {"gone": GONE, "c": season_id, "open": OPEN, "committed": COMMITTED})
+    # Portal players (W9e) are players already: they move up from their D-II/D-III school.
+    portal = [r for r in rows if r.player_id is not None]
+    rows = [r for r in rows if r.player_id is None]
+    if portal:
+        from footsim.world.college.lower import move_up  # lower imports college.season
+
+        for r in portal:
+            move_up(conn, season_id, day, int(r.player_id), int(r.club_id),
+                    float(r.share or 0.0))
+        conn.execute(text(f"UPDATE recruit SET status = '{JOINED}' WHERE id = :id"),
+                     [{"id": int(r.id)} for r in portal])
+        bump_players_epoch(conn)
     if not rows:
-        return 0
+        return len(portal)
     maker = _Maker(conn, world, meta, day)
     links = []
     for r in rows:
@@ -1068,7 +1080,7 @@ def enroll_class(conn: Connection, world: World, meta: CareerMeta, season_id: in
     conn.execute(text(f"UPDATE recruit SET status = '{JOINED}', player_id = :p WHERE id = :id"),
                  links)
     bump_players_epoch(conn)
-    return len(rows)
+    return len(rows) + len(portal)
 
 
 def had_class(conn: Connection, season_id: int) -> bool:

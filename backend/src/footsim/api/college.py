@@ -12,7 +12,7 @@ from footsim.api.schemas import ClubRef
 from footsim.competitions.bracket import BYE, rounds_for
 from footsim.defs.college import on
 from footsim.persistence.schema import club, college_entry, college_team, league_title, season
-from footsim.world.college.common import NCAA, conference_event
+from footsim.world.college.common import LOWER_PREFIX, NCAA, conference_event, is_lower_stage
 from footsim.world.college.draft import draft_pool
 from footsim.world.college.season import (
     Record,
@@ -159,9 +159,13 @@ def _competition(conn: Connection, world: World) -> int:
 
 
 @router.get("/conferences")
-def conferences(session: Session, season_id: int | None = None) -> list[ConferenceOut]:
-    """Every conference's table (conference games only) and its champions so far."""
+def conferences(session: Session, season_id: int | None = None, division: int = 1
+                ) -> list[ConferenceOut]:
+    """Every conference's table (conference games only) and its champions so far; ``division``
+    2 or 3 for D-II or D-III (W9e)."""
     world = get_world()
+    if division != 1:
+        return _lower_conferences(session, world, division, season_id)
     with session.read() as conn:
         meta = read_meta(conn)
         comp = _competition(conn, world)
@@ -226,6 +230,8 @@ def college_bracket(session: Session, event: str = NCAA,
     world = get_world()
     college = world.defs.college
     prefix = conference_event("")
+    if is_lower_stage(event):
+        return _lower_bracket(session, world, event, season_id)
     if event != NCAA and not (event.startswith(prefix)
                               and event.removeprefix(prefix) in college.conferences):
         raise HTTPException(404, "no such college tournament")
@@ -320,3 +326,115 @@ def college_top25(session: Session) -> list[TopRankOut]:
             ratings = rankings(conn, world, meta.season_id - 1)
         order = sorted(ratings, key=lambda c: (-ratings[c], c))[:25]
         return [TopRankOut(club_id=c, rank=k) for k, c in enumerate(order, start=1)]
+
+
+
+def _lower_conferences(session: Session, world: World, division: int, season_id: int | None
+                       ) -> list[ConferenceOut]:
+    from footsim.world.college import lower
+
+    defs = lower.rules(world)
+    if defs is None or division not in defs.divisions:
+        raise HTTPException(404, "no such division")
+    with session.read() as conn:
+        meta = read_meta(conn)
+        comp = lower.competitions(conn, world).get(division)
+        if comp is None:
+            raise HTTPException(404, "the lower divisions start next season")
+        sid, _, _ = _season(conn, meta, season_id)
+        names = {int(r.id): str(r.name) for r in conn.execute(select(club.c.id, club.c.name))}
+        titles = {str(r.phase): int(r.club_id) for r in conn.execute(
+            select(league_title).where(league_title.c.season_id == sid,
+                                       league_title.c.competition_id == comp,
+                                       league_title.c.kind == "champion"))}
+        found = lower.records(conn, world, division, sid)
+        out = []
+        for key, table in lower.conference_tables(conn, world, meta, division, sid).items():
+            conf = defs.divisions[division].conferences[key]
+            won = titles.get(key)
+
+            def record(club_id: int) -> RecordOut:
+                r = found.get(club_id)
+                return RecordOut(played=r.played if r else 0, won=r.won if r else 0,
+                                 drawn=r.drawn if r else 0, lost=r.lost if r else 0,
+                                 goals_for=r.goals_for if r else 0,
+                                 goals_against=r.goals_against if r else 0)
+
+            out.append(ConferenceOut(
+                key=key, name=conf.name, short_name=conf.short_name, tournament=0,
+                regular_season_champion=ClubRef(id=won, name=names[won]) if won else None,
+                tournament_champion=None,
+                rows=[ConferenceRowOut(
+                    position=r.position, club=ClubRef(id=r.club_id, name=names[r.club_id]),
+                    played=r.played, won=r.won, drawn=r.drawn, lost=r.lost,
+                    goals_for=r.goals_for, goals_against=r.goals_against, points=r.points,
+                    in_tournament=r.position == 1 and conf.auto_bid,
+                    overall=record(r.club_id)) for r in table]))
+        return out
+
+
+def _lower_bracket(session: Session, world: World, event: str, season_id: int | None
+                   ) -> BracketOut:
+    """A D-II/D-III national tournament's bracket (W9e)."""
+    from footsim.persistence.schema import lower_team
+    from footsim.world.college import lower
+
+    defs = lower.rules(world)
+    division = int(event.removeprefix(LOWER_PREFIX) or 0)
+    if defs is None or division not in defs.divisions:
+        raise HTTPException(404, "no such college tournament")
+    d = defs.divisions[division]
+    with session.read() as conn:
+        meta = read_meta(conn)
+        comp = lower.competitions(conn, world).get(division)
+        if comp is None:
+            raise HTTPException(404, "the lower divisions start next season")
+        sid, label, start = _season(conn, meta, season_id)
+        names = {int(r.id): str(r.name) for r in conn.execute(select(club.c.id, club.c.name))}
+        conference = {int(r.club_id): str(r.conference)
+                      for r in conn.execute(select(lower_team))}
+        seeds, matches = bracket(conn, comp, sid, event)
+        if not seeds:
+            matches = []
+        rows = {int(r.seed): r for r in conn.execute(select(college_entry).where(
+            college_entry.c.season_id == sid, college_entry.c.event == event))}
+        total = rounds_for(len(seeds)) if seeds else 0
+        dates = d.tournament.rounds
+
+        def side(seed: int | None) -> BracketSideOut | None:
+            if seed is None or seed == BYE:
+                return None
+            return BracketSideOut(seed=seed, club=ClubRef(id=seeds[seed],
+                                                          name=names[seeds[seed]]))
+
+        rounds = []
+        for rnd in range(total):
+            day = on(dates[len(dates) - total + rnd], start)
+            out = []
+            for m in (m for m in matches if m.round == rnd):
+                f = m.fixture
+                out.append(BracketMatchOut(
+                    index=m.index, a=side(m.seed_a), b=side(m.seed_b),
+                    bye=rnd == 0 and m.seed_b == BYE, fixture_id=f.id if f else None,
+                    date=f.date if f else None, neutral=bool(f.neutral) if f else False,
+                    home_goals=f.home_goals if f else None,
+                    away_goals=f.away_goals if f else None,
+                    home_pens=f.home_pens if f else None, away_pens=f.away_pens if f else None,
+                    extra_time=bool(f.extra_time) if f else False,
+                    home_club_id=f.home_club_id if f else None, winner=side(m.winner_seed)))
+            names_list = d.tournament.round_names
+            rounds.append(BracketRoundOut(
+                round=rnd, name=names_list[len(names_list) - total + rnd],
+                date=day.isoformat(), matches=out))
+        final = [m for m in matches if m.round == total - 1]
+        winner = final[0].winner_seed if final and final[0].winner_seed else None
+        return BracketOut(
+            event=event, name=f"{d.short_name} Tournament", season=label,
+            seeded=d.tournament.teams,
+            entrants=[EntrantOut(
+                seed=s, club=ClubRef(id=c, name=names[c]),
+                conference=d.conferences[conference[c]].short_name,
+                bid=rows[s].bid, rank=rows[s].rank, rpi=rows[s].rating)
+                for s, c in sorted(seeds.items())],
+            rounds=rounds,
+            champion=ClubRef(id=seeds[winner], name=names[seeds[winner]]) if winner else None)

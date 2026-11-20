@@ -1,6 +1,9 @@
 """International football's page (W8, world/international): the national teams ranked by Elo,
 with their confederations, and the latest international results."""
 
+from datetime import date
+from typing import Any
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -9,8 +12,10 @@ from footsim.api import queries
 from footsim.api.routes import Session
 from footsim.api.schemas import ClubRef, FixtureOut
 from footsim.world.context import get_world
+from footsim.world.international import club_world_cup as cwc
 from footsim.world.international import qualifiers as q
 from footsim.world.international.common import TYPE
+from footsim.world.meta import read_meta
 
 router = APIRouter(prefix="/api/international")
 RESULTS = 40  # the latest international results shown
@@ -137,3 +142,63 @@ def qualifiers_view(session: Session) -> QualifiersOut:
     return QualifiersOut(cycle=spec.cycle, stages=stages, qualified=[
         QualifiedOut(team=ref[code], how=how) for code, how in sorted(
             through.items(), key=lambda t: (t[1] != "Hosts", ref[t[0]].name)) if code in ref])
+
+
+# --- the Club World Cup (W10) ------------------------------------------------------------
+
+
+class CwcEntrantOut(BaseModel):
+    team: ClubRef
+    confederation: str
+    how: str  # Champions League winners | UEFA club coefficient | Ranking | Guest | Hosts
+
+
+class CwcRoundOut(BaseModel):
+    name: str
+    fixtures: list[FixtureOut]
+
+
+class ClubWorldCupOut(BaseModel):
+    year: int
+    draw: str  # the draw's day
+    host: str  # a FIFA code
+    entrants: list[CwcEntrantOut]  # empty before the draw
+    groups: list[GroupOut]
+    rounds: list[CwcRoundOut]
+
+
+@router.get("/club-world-cup")
+def club_world_cup_view(session: Session) -> ClubWorldCupOut:
+    """The next (or current) Club World Cup: its entrants, groups and knockout rounds."""
+    world = get_world()
+    spec = world.defs.international.club_world_cup
+    with session.read() as conn:
+        today = read_meta(conn).current_date
+        year = spec.first_year
+        while date(year, 7, 31) < today:
+            year += spec.every_years
+        state = cwc._get(conn, cwc._meta_key(year)) or {}
+        names = queries._club_names(conn)
+        comps = queries._competitions(conn)
+        entrants = [CwcEntrantOut(team=ClubRef(id=e["club_id"], name=names[e["club_id"]]),
+                                  confederation=e["confederation"], how=e["how"])
+                    for e in state.get("entrants", [])]
+        groups = [GroupOut(name=f"Group {letter}", rows=[GroupRowOut(
+            team=ClubRef(id=r.club_id, name=names[r.club_id]), played=_played(conn, r.club_id),
+            points=r.points, gd=r.gd, gf=r.gf) for r in table])
+            for letter, table in cwc.group_tables(conn).items()] if state else []
+        rounds = []
+        for rnd in cwc.ROUNDS:
+            rows = conn.execute(text("SELECT * FROM fixture WHERE stage = :s "
+                                     "ORDER BY CAST(tie AS INTEGER)"), {"s": f"CWC:{rnd}"}).all()
+            if rows:
+                rounds.append(CwcRoundOut(name=cwc.ROUND_NAMES[rnd],
+                                          fixtures=queries.fixtures_out(conn, rows, names, comps)))
+    return ClubWorldCupOut(year=year, draw=cwc.draw_date(world, year).isoformat(),
+                           host=spec.host, entrants=entrants, groups=groups, rounds=rounds)
+
+
+def _played(conn: Any, club_id: int) -> int:
+    return int(conn.execute(text(
+        "SELECT COUNT(*) FROM fixture WHERE stage = 'CWC:G' AND status = 'played' "
+        "AND (home_club_id = :c OR away_club_id = :c)"), {"c": club_id}).scalar_one())

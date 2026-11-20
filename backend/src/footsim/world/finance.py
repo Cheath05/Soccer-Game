@@ -161,6 +161,7 @@ def initialize_finances(conn: Connection, world: World, meta: CareerMeta, day: d
     leagues = club_leagues(conn, meta.season_id)
     existing |= college_club_ids(conn)  # college programs have no ledger (world/college)
     existing |= national_club_ids(conn)  # nor national teams (world/international)
+    existing |= {int(r[0]) for r in conn.execute(text("SELECT club_id FROM guest_club"))}
     new_rows, opening = [], []
     for (club_id,) in conn.execute(select(club.c.id).order_by(club.c.id)):
         if club_id in existing:

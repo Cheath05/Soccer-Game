@@ -990,3 +990,13 @@ export interface Qualifiers {
   stages: QualifierStage[]
   qualified: { team: ClubRef; how: string }[]
 }
+
+// GET /api/international/club-world-cup: the next (or current) Club World Cup.
+export interface ClubWorldCupView {
+  year: number
+  draw: string
+  host: string
+  entrants: { team: ClubRef; confederation: string; how: string }[]
+  groups: { name: string; rows: QualifierGroupRow[] }[]
+  rounds: { name: string; fixtures: Fixture[] }[]
+}

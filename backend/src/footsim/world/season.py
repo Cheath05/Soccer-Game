@@ -64,6 +64,8 @@ from footsim.world.draft import draft_day
 from footsim.world.europe.stages import europe_decider, progress_europe, start_europe
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.international import ensure_international
+from footsim.world.international.club_world_cup import club_world_cup_day, is_cwc
+from footsim.world.international.club_world_cup import decider as cwc_decider
 from footsim.world.international.common import SUMMER_TYPES
 from footsim.world.international.common import TYPE as INTERNATIONAL_TYPE
 from footsim.world.international.qualifiers import decider as qualifier_decider
@@ -313,6 +315,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     messages += progress_college(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
     messages += international_day(conn, world, meta, day)
+    messages += club_world_cup_day(conn, world, meta, day)
     messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
@@ -587,6 +590,8 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         return None
     if is_qualifier(fx.stage):
         return qualifier_decider(conn, world, fx)
+    if is_cwc(fx.stage):
+        return cwc_decider(fx)
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)
     if fx.stage in world.defs.cups:

@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.123"
+  date: "2026-11-19"
+  title: "The FIFA Club World Cup"
+  changes:
+    - "The FIFA Club World Cup, every four years from June 2029 (hosted by the USA): 32 clubs drawn in December 2028. Europe's twelve are the Champions League winners and the best by UEFA's club coefficient; the other continents' come from their leagues in the game, by strength and league titles, and from 30 guest clubs for the regions without a league here (Al Ahly, Mamelodi Sundowns, Wydad, Urawa, Ulsan, Al Ain, Auckland City and more). Eight groups of four, then the round of 16 to the final in mid-July, with FIFA's prize money."
+    - "International → Club World Cup: the entrants, groups and knockout rounds. Guest clubs' players also play for their countries (Al Ahly's for Egypt)."
+    - "Fixed: national teams' made-up home-based players were treated as free agents and retired young; their pools are now topped up before every international window."
+
 - version: "1.122"
   date: "2026-11-19"
   title: "World Cup 2030 qualifiers"

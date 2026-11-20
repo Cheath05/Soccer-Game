@@ -1,0 +1,86 @@
+# The FIFA Club World Cup (W10, world/international/club_world_cup.py): 32 clubs every four years,
+# FIFA's 2025 format, from 2029.
+#
+# Entrants (each confederation's `slots`, at most `per_country` clubs of one country, unless
+# more won the continental title):
+#   UEFA: the Champions League winners of the editions in the career before the draw, then the
+#         best by UEFA's club coefficient (europe/coefficients.py).
+#   the others: the clubs of the confederation's leagues in the game and its guest clubs (below),
+#         ranked by strength: a club's level (the average overall of its best 16 players; a
+#         guest's `level`) plus `title_bonus` for each league title in the seasons before the
+#         draw (standing in for the continental titles until W9b adds those competitions).
+#   the host: the host country's best-ranked club not already in.
+# FIFA hasn't chosen a 2029 host: `host` is a choice to change freely.
+
+first_year: 2029
+every_years: 4
+host: USA
+draw: "12-05"  # the draw's month and day, the year before
+title_bonus: 3.0
+# The tournament (C2): 8 groups of 4, then single-match knockouts, at neutral venues.
+dates:
+  groups: ["06-15", "06-19", "06-24"]
+  round_of_16: "06-28"
+  quarter_finals: "07-04"
+  semi_finals: "07-08"
+  final: "07-13"
+# Prize money (EUR; FIFA's 2025 amounts in dollars at about 0.92), paid to clubs with finances
+# (guests have none): participation by confederation when the draw is made; each group win and
+# draw; then each round reached (cumulative); the winners' extra.
+prizes:
+  participation: {UEFA: 20000000, CONMEBOL: 14000000, CONCACAF: 8700000, AFC: 8700000, CAF: 8700000, OFC: 3200000}
+  win: 1840000
+  draw: 920000
+  round_of_16: 6900000
+  quarter_finals: 12100000
+  semi_finals: 19300000
+  final: 27600000
+  champions: 9200000
+slots:
+  UEFA: {slots: 12, per_country: 2}
+  CONMEBOL: {slots: 6, per_country: 4}
+  CONCACAF: {slots: 4, per_country: 2}
+  AFC: {slots: 4, per_country: 2}
+  CAF: {slots: 4, per_country: 2}
+  OFC: {slots: 1, per_country: 1}
+
+# Guest clubs: real clubs of the regions the game has no league for. They play only the Club
+# World Cup; their squads are made-up players of their country at `level` (a best XI's average
+# overall), who also count as their country's home-based players (for its national team).
+# The levels are estimates from the clubs' standing (continental titles, the 2025 Club World Cup,
+# Opta's club rankings), set against the game's leagues: Brazil's best clubs about 78, MLS's
+# about 72.
+guests:
+  # CAF
+  - {name: Al Ahly, country: EGY, confederation: CAF, level: 74, stadium: Cairo International Stadium, capacity: 75000}
+  - {name: Pyramids, country: EGY, confederation: CAF, level: 72, stadium: 30 June Stadium, capacity: 30000}
+  - {name: Zamalek, country: EGY, confederation: CAF, level: 70, stadium: Cairo International Stadium, capacity: 75000}
+  - {name: Mamelodi Sundowns, country: RSA, confederation: CAF, level: 73, stadium: Loftus Versfeld, capacity: 51762}
+  - {name: Orlando Pirates, country: RSA, confederation: CAF, level: 70, stadium: Orlando Stadium, capacity: 37139}
+  - {name: Wydad AC, country: MAR, confederation: CAF, level: 70, stadium: Stade Mohammed V, capacity: 45000}
+  - {name: RS Berkane, country: MAR, confederation: CAF, level: 70, stadium: Stade Municipal de Berkane, capacity: 15000}
+  - {name: "Espérance de Tunis", country: TUN, confederation: CAF, level: 70, stadium: Stade Hammadi Agrebi, capacity: 60000}
+  - {name: TP Mazembe, country: COD, confederation: CAF, level: 68, stadium: Stade TP Mazembe, capacity: 18500}
+  - {name: MC Alger, country: ALG, confederation: CAF, level: 68, stadium: Stade Nelson Mandela, capacity: 40784}
+  - {name: Al Hilal Omdurman, country: SDN, confederation: CAF, level: 66, stadium: Al Hilal Stadium, capacity: 25000}
+  - {name: Simba SC, country: TAN, confederation: CAF, level: 66, stadium: Benjamin Mkapa Stadium, capacity: 60000}
+  # AFC (Saudi Arabia's clubs are in the game's Saudi Pro League)
+  - {name: Vissel Kobe, country: JPN, confederation: AFC, level: 73, stadium: Noevir Stadium Kobe, capacity: 30132}
+  - {name: Urawa Red Diamonds, country: JPN, confederation: AFC, level: 72, stadium: Saitama Stadium 2002, capacity: 63700}
+  - {name: Kawasaki Frontale, country: JPN, confederation: AFC, level: 72, stadium: Todoroki Athletics Stadium, capacity: 26827}
+  - {name: Yokohama F. Marinos, country: JPN, confederation: AFC, level: 71, stadium: Nissan Stadium, capacity: 72327}
+  - {name: Ulsan HD, country: KOR, confederation: AFC, level: 72, stadium: Ulsan Munsu Football Stadium, capacity: 44102}
+  - {name: Jeonbuk Hyundai Motors, country: KOR, confederation: AFC, level: 72, stadium: Jeonju World Cup Stadium, capacity: 42477}
+  - {name: Pohang Steelers, country: KOR, confederation: AFC, level: 70, stadium: Pohang Steel Yard, capacity: 17443}
+  - {name: Al Ain, country: UAE, confederation: AFC, level: 71, stadium: Hazza bin Zayed Stadium, capacity: 25053}
+  - {name: Shabab Al-Ahli, country: UAE, confederation: AFC, level: 72, stadium: Rashid Stadium, capacity: 12000}
+  - {name: Al Sadd, country: QAT, confederation: AFC, level: 72, stadium: Jassim bin Hamad Stadium, capacity: 12946}
+  - {name: Persepolis, country: IRN, confederation: AFC, level: 70, stadium: Azadi Stadium, capacity: 78116}
+  - {name: Shanghai Port, country: CHN, confederation: AFC, level: 70, stadium: Pudong Football Stadium, capacity: 37000}
+  - {name: Buriram United, country: THA, confederation: AFC, level: 68, stadium: Chang Arena, capacity: 32600}
+  - {name: Melbourne City, country: AUS, confederation: AFC, level: 69, stadium: AAMI Park, capacity: 30050}
+  # OFC
+  - {name: Auckland City, country: NZL, confederation: OFC, level: 60, stadium: Kiwitea Street, capacity: 3500}
+  - {name: Hienghène Sport, country: NCL, confederation: OFC, level: 55, stadium: Stade Yoshida, capacity: 2000}
+  - {name: AS Pirae, country: TAH, confederation: OFC, level: 54, stadium: Stade Pater, capacity: 11700}
+  - {name: Lae City, country: PNG, confederation: OFC, level: 52, stadium: Sir Ignatius Kilage Stadium, capacity: 5000}

@@ -12,6 +12,7 @@ import type {
   OfferRules,
   InternationalOverview,
   Qualifiers,
+  ClubWorldCupView,
   SimulationSettings,
   ClubHistory,
   Finances,
@@ -119,6 +120,10 @@ export const useInternational = () =>
 /** The World Cup qualifiers: every stage's groups and ties, and who is through. */
 export const useQualifiers = () =>
   useQuery({ queryKey: ['wc-qualifiers'], queryFn: () => api.get<Qualifiers>('/international/qualifiers') })
+
+/** The next (or current) FIFA Club World Cup. */
+export const useClubWorldCup = () =>
+  useQuery({ queryKey: ['club-world-cup'], queryFn: () => api.get<ClubWorldCupView>('/international/club-world-cup') })
 
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })

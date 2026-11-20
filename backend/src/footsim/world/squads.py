@@ -43,6 +43,10 @@ _NATIONAL_SQUAD_SQL = text("""
 """)
 
 
+# A Club World Cup guest's players (world/international/guests.py): no contracts.
+_GUEST_SQUAD_SQL = text(str(_NATIONAL_SQUAD_SQL).replace("national_squad", "guest_player"))
+
+
 def display_name(first: str, last: str, known_as: str | None) -> str:
     return known_as or f"{first} {last}".strip()
 
@@ -54,10 +58,13 @@ def short_name(first: str, last: str, known_as: str | None) -> str:
 
 
 def load_squad(conn: Connection, club_id: int, day: date) -> list[SquadPlayer]:
-    national = conn.execute(text("SELECT 1 FROM national_team WHERE club_id = :c"),
-                            {"c": club_id}).first() is not None
-    rows = conn.execute(_NATIONAL_SQUAD_SQL if national else _SQUAD_SQL,
-                        {"club": club_id}).all()
+    kind = conn.execute(text(
+        "SELECT (SELECT 1 FROM national_team WHERE club_id = :c) AS national, "
+        "(SELECT 1 FROM guest_club WHERE club_id = :c) AS guest"), {"c": club_id}).one()
+    national = kind.national is not None
+    sql = (_NATIONAL_SQUAD_SQL if national else _GUEST_SQUAD_SQL if kind.guest is not None
+           else _SQUAD_SQL)
+    rows = conn.execute(sql, {"club": club_id}).all()
     # A club's players away with their national teams can't play for it (world/international).
     away = set() if national else away_players(conn, day)
     ids = [r.id for r in rows]

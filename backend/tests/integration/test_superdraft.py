@@ -51,6 +51,7 @@ def drafted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Engine, World, in
         assert meta.current_date == when - timedelta(days=draft.rules(world).reminder_days)
         atlanta = _club(conn, "Atlanta United")
         meta.user_club_id = atlanta
+        meta.offer_mode = "wait"  # a bid for one of its players mustn't stop the days here
         write_meta(conn, meta)
         pool = draft_pool(conn, world, meta, 1)
         assert len(pool) >= draft.rules(world).rounds * 30 // 2

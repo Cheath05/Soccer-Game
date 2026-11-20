@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 27  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 28  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -786,4 +786,20 @@ national_squad = Table(
     Column("player_id", ForeignKey("person.id"), nullable=False),
     PrimaryKeyConstraint("club_id", "player_id"),
     Index("ix_national_squad_player", "player_id"),
+)
+
+guest_club = Table(
+    "guest_club",  # a Club World Cup guest (W10): a real club of a region with no league here
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("confederation", Text, nullable=False),
+    Column("level", Float, nullable=False),  # its best XI's average overall
+)
+
+guest_player = Table(
+    "guest_player",  # a guest club's made-up players (also its country's home-based players)
+    metadata,
+    Column("player_id", ForeignKey("person.id"), primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Index("ix_guest_player_club", "club_id"),
 )

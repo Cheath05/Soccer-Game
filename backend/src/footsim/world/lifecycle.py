@@ -82,7 +82,8 @@ def _players(conn: Connection) -> list[Any]:
                k.kind AS contract_kind, a.*,
                (SELECT position FROM player_position pp WHERE pp.player_id = p.id
                 ORDER BY familiarity DESC LIMIT 1) AS primary_position,
-               COALESCE(d.ageless, 0) AS ageless, pl.pa_hidden
+               COALESCE(d.ageless, 0) AS ageless, pl.pa_hidden,
+               EXISTS (SELECT 1 FROM national_pool n WHERE n.player_id = p.id) AS home_based
         FROM person p JOIN player pl ON pl.person_id = p.id
         JOIN player_attr a ON a.player_id = p.id
         LEFT JOIN playing k ON k.person_id = p.id
@@ -108,8 +109,10 @@ def retire_players(conn: Connection, world: World, meta: CareerMeta, day: date) 
     for r, position, overall, draw in zip(rows, positions, overalls, rng.random(len(rows)),
                                           strict=True):
         age = (day - date.fromisoformat(r.birth_date)).days / 365.25
+        # A made-up home-based player (world/international) plays for a club outside the game:
+        # no free agent.
         chance = retirement_chance(world, age, position == "GK", float(overall),
-                                   bool(r.ageless), r.club_id is None)
+                                   bool(r.ageless), r.club_id is None and not r.home_based)
         if draw < chance:
             retiring.append((r, int(age), float(overall)))
     for r, _, _ in retiring:

@@ -144,7 +144,8 @@ def _sheet_keys(conn: Connection, clubs: list[int], day: date) -> dict[int, tupl
     for r in conn.execute(text(f"""
             SELECT k.club_id, k.person_id, s.condition, s.injured_until, s.suspended_matches
             FROM (SELECT club_id, person_id FROM playing
-                  UNION ALL SELECT club_id, player_id FROM national_squad) k
+                  UNION ALL SELECT club_id, player_id FROM national_squad
+                  UNION ALL SELECT club_id, player_id FROM guest_player) k
             LEFT JOIN player_state s ON s.player_id = k.person_id
             WHERE k.club_id IN ({marks}) ORDER BY k.club_id, k.person_id"""), params):
         injured = r.injured_until is not None and date.fromisoformat(r.injured_until) > day

@@ -143,11 +143,63 @@ class QualifiersDef(DefModel):
     stages: list[QualifierStageDef]
 
 
+class GuestClubDef(DefModel):
+    name: str
+    country: str  # FIFA code
+    confederation: str
+    level: float  # its best XI's average overall
+    stadium: str | None = None
+    capacity: int | None = None
+
+
+class CwcSlotsDef(DefModel):
+    slots: int = Field(ge=0)
+    per_country: int = Field(ge=1)
+
+
+class CwcDatesDef(DefModel):
+    groups: list[str]  # "MM-DD" of each group matchday
+    round_of_16: str
+    quarter_finals: str
+    semi_finals: str
+    final: str
+
+
+class CwcPrizesDef(DefModel):
+    participation: dict[str, float]  # by confederation
+    win: float
+    draw: float
+    round_of_16: float
+    quarter_finals: float
+    semi_finals: float
+    final: float
+    champions: float
+
+
+class ClubWorldCupDef(DefModel):
+    first_year: int
+    every_years: int = Field(ge=1)
+    host: str  # FIFA code
+    draw: str  # "MM-DD", the year before
+    title_bonus: float = Field(ge=0)
+    dates: CwcDatesDef
+    prizes: CwcPrizesDef
+    slots: dict[str, CwcSlotsDef]
+    guests: list[GuestClubDef]
+
+    @model_validator(mode="after")
+    def _shape(self) -> "ClubWorldCupDef":
+        if sum(s.slots for s in self.slots.values()) != 31:
+            raise ValueError("the Club World Cup's confederation slots must make 31 (and a host)")
+        return self
+
+
 class InternationalDef(DefModel):
     teams: dict[str, TeamDef]  # by FIFA code
     names: NamesDef
     rules: InternationalRulesDef
     qualifiers: QualifiersDef  # the next World Cup's (W8 I3)
+    club_world_cup: ClubWorldCupDef  # W10
 
     @model_validator(mode="after")
     def _regions(self) -> "InternationalDef":
@@ -161,6 +213,9 @@ class InternationalDef(DefModel):
                 if source.stage not in stages[:k]:
                     raise ValueError(f"{stage.key}: enters from {source.stage}, not an earlier "
                                      "stage")
+        guests = sorted({g.country for g in self.club_world_cup.guests} - set(self.teams))
+        if guests:
+            raise ValueError(f"guest clubs of unknown countries {guests}")
         unknown = sorted(set(self.qualifiers.hosts) - set(self.teams))
         if unknown:
             raise ValueError(f"unknown hosts {unknown}")

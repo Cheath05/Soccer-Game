@@ -17,8 +17,10 @@ from footsim.world.squads import load_squad
 def ensure_international(conn: Connection, world: World, meta: CareerMeta, day: date
                          ) -> list[str]:
     """Every FIFA member's national team, if the save hasn't got them: its club row, Elo, the
-    made-up players its squad needs, and a first squad. Returns news (none)."""
+    made-up players its squad needs, and a first squad; then the Club World Cup's guest clubs
+    (W10), if it hasn't got those. Returns news (none)."""
     if conn.execute(text("SELECT 1 FROM national_team LIMIT 1")).first() is not None:
+        _guests(conn, world, meta, day)
         return []
     teams = world.defs.international.teams
     rules = world.defs.international.rules
@@ -40,7 +42,18 @@ def ensure_international(conn: Connection, world: World, meta: CareerMeta, day: 
     reputation = {code: rules.reputation.of(team.elo) for code, team in teams.items()}
     top_up_pools(conn, world, meta, day, elo, reputation)
     pick_squads(conn, world, meta, day)
+    _guests(conn, world, meta, day)
     return []
+
+
+def _guests(conn: Connection, world: World, meta: CareerMeta, day: date) -> None:
+    """The guest clubs, once (world/international/guests.py), with their formations."""
+    from footsim.world.international.guests import ensure_guests, guest_club_ids
+
+    if conn.execute(text("SELECT 1 FROM guest_club LIMIT 1")).first() is not None:
+        return
+    ensure_guests(conn, world, meta, day)
+    _formations(conn, world, day, sorted(guest_club_ids(conn)))
 
 
 def pick_squads(conn: Connection, world: World, meta: CareerMeta, day: date,

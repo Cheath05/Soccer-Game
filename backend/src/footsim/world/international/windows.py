@@ -19,6 +19,7 @@ from footsim.defs.calendar import DateRange
 from footsim.persistence.schema import competition, fixture
 from footsim.world.context import World
 from footsim.world.international.common import AWAY_KEY, TYPE
+from footsim.world.international.pools import top_up_pools
 from footsim.world.international.qualifiers import qualifiers_day
 from footsim.world.international.teams import ensure_international, pick_squads
 from footsim.world.meta import CareerMeta
@@ -86,10 +87,21 @@ def start_window(conn: Connection, world: World, meta: CareerMeta, window: DateR
     """The call-ups for ``window`` and the friendlies on its free matchdays."""
     day = window.start - timedelta(days=1)
     ensure_international(conn, world, meta, day)
+    _top_up(conn, world, meta, day)
     pick_squads(conn, world, meta, day)
     _meta_set(conn, AWAY_KEY, {"start": window.start.isoformat(), "end": window.end.isoformat()})
     _schedule_friendlies(conn, world, meta, window)
     return _called_up_news(conn, meta)
+
+
+def _top_up(conn: Connection, world: World, meta: CareerMeta, day: date) -> None:
+    """Made-up home-based players for the places retirements have emptied (at each nation's
+    current Elo)."""
+    rules = world.defs.international.rules
+    elo = {str(r.code): float(r.elo) for r in conn.execute(text(
+        "SELECT code, elo FROM national_team"))}
+    top_up_pools(conn, world, meta, day, elo,
+                 {code: rules.reputation.of(value) for code, value in elo.items()})
 
 
 def _schedule_friendlies(conn: Connection, world: World, meta: CareerMeta,

@@ -202,7 +202,8 @@ def test_version_9_starts_finances_for_a_career_under_way(tmp_path: Path) -> Non
         # College programs (W9a) have no finances.
         clubs: int = conn.execute(text("SELECT COUNT(*) FROM club WHERE id NOT IN "
                                        "(SELECT club_id FROM college_team) AND id NOT IN "
-                                       "(SELECT club_id FROM national_team)")).scalar_one()
+                                       "(SELECT club_id FROM national_team) AND id NOT IN "
+                                       "(SELECT club_id FROM guest_club)")).scalar_one()
         conn.execute(text("DROP TABLE finance_ledger"))
         conn.execute(text("DROP TABLE club_finance"))
         conn.execute(text("UPDATE game_meta SET value = '\"2026-10-14\"' "

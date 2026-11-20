@@ -10,6 +10,7 @@ import type { Fixture } from '../api/types'
 import { Crest } from '../components/PhoneNav'
 import ResultBadge from '../components/ResultBadge'
 import { confidenceColor, longDate, money, score, shortDate, stageLabel } from '../lib/format'
+import RankTag from '../components/RankTag'
 
 export default function DashboardPage() {
   const career = useCareer().data
@@ -51,11 +52,11 @@ export default function DashboardPage() {
         {next ? (
           <>
             <Group mt="md" justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-              <Side name={next.home.name} mine={next.home.id === career.club.id} />
+              <Side id={next.home.id} name={next.home.name} mine={next.home.id === career.club.id} />
               <Text className="fs-num" fz={26} c="dimmed" pt={14}>
                 V
               </Text>
-              <Side name={next.away.name} mine={next.away.id === career.club.id} />
+              <Side id={next.away.id} name={next.away.name} mine={next.away.id === career.club.id} />
             </Group>
             <Text size="sm" c="dimmed" ta="center" mt="md">
               {longDate(next.date)} · {next.competition_name} · {stageLabel(next.stage, next.round, next.tie, next.leg, next.stage_name)}
@@ -143,6 +144,7 @@ export default function DashboardPage() {
                     <ResultBadge fixture={f} clubId={career.club.id} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Text size="sm" fw={600} truncate>
+                        <RankTag clubId={home ? f.away.id : f.home.id} />
                         {home ? f.away.name : f.home.name}
                         <Text span c="dimmed" fw={400}>
                           {' '}
@@ -284,11 +286,12 @@ function ordinal(n: number): string {
   return `${n}${suffix}`
 }
 
-function Side({ name, mine }: { name: string; mine: boolean }) {
+function Side({ id, name, mine }: { id: number; name: string; mine: boolean }) {
   return (
     <Stack align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
       <Crest name={name} size={56} mine={mine} />
       <Text className="fs-num" fz={20} lh={1.1} ta="center" tt="uppercase" lineClamp={2} c={mine ? undefined : 'dark.1'}>
+        <RankTag clubId={id} />
         {name}
       </Text>
     </Stack>

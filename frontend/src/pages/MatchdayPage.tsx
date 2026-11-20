@@ -5,6 +5,7 @@ import { useCareer, usePlayInstant, useTactics } from '../api/hooks'
 import type { ClubRef } from '../api/types'
 import { Crest } from '../components/PhoneNav'
 import { longDate, positionColor, stageLabel } from '../lib/format'
+import RankTag from '../components/RankTag'
 
 export default function MatchdayPage() {
   const career = useCareer().data
@@ -108,6 +109,7 @@ function Side({ club, mine }: { club: ClubRef; mine: boolean }) {
     <Stack align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
       <Crest name={club.name} size={60} mine={mine} />
       <Text className="fs-num" fz={22} lh={1.1} ta="center" tt="uppercase" lineClamp={2}>
+        <RankTag clubId={club.id} />
         {club.name}
       </Text>
     </Stack>

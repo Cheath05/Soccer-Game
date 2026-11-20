@@ -312,7 +312,8 @@ class CollegeCareerOut(BaseModel):
     conference: str  # its key
     conference_name: str
     tier: int  # 1 (a national power) to 5
-    prestige: int  # 0-100
+    prestige: int  # 0-100, as recruits see it: with the facilities' bonus (program builder)
+    prestige_facilities: int = 0  # the facilities' share of it
     rpi_rank: int | None  # this season's, once games are played
     mode: str = "classic"  # classic | builder (the program builder: money and facilities, W9d)
 
@@ -519,7 +520,8 @@ class CollegeSeasonRecordOut(BaseModel):
     ncaa: str | None  # how far it got in the NCAA tournament, in words
     titles: list[str]  # "regular season", "conference tournament", "national"
     tier: int
-    prestige: float
+    prestige: float  # as recruits see it: with the facilities' bonus (program builder)
+    prestige_facilities: float = 0.0  # the facilities' share of it
 
 
 class NationalTeamOut(BaseModel):

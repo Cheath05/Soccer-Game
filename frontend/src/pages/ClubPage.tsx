@@ -303,7 +303,7 @@ function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOvervie
         value={r.titles.length ? String(r.titles.length) : 'None'}
         note={r.titles.length ? r.titles.map((t) => TITLE_NAMES[t] ?? t).join(' · ') : undefined}
       />
-      <Fact label="Program" value={`Tier ${r.tier}`} note={`Prestige ${r.prestige.toFixed(0)}`} />
+      <Fact label="Program" value={`Tier ${r.tier}`} note={`Prestige ${r.prestige.toFixed(0)}${r.prestige_facilities ? ` (+${r.prestige_facilities.toFixed(0)} facilities)` : ''}`} />
       <Fact label="Squad" value={`${squad.squad_size} players`} note={`Average age ${squad.average_age.toFixed(1)} · OVR ${squad.average_overall.toFixed(1)}`} />
       <Fact label="Best player" value={squad.top_players[0]?.name ?? '–'} note={squad.top_players[0] ? `${squad.top_players[0].position} · ${squad.top_players[0].overall} OVR` : undefined} />
     </SimpleGrid>

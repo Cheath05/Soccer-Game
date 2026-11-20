@@ -114,6 +114,7 @@ from footsim.world.club_names import load_club_names
 from footsim.world.college.common import CONFERENCE_PREFIX, in_college
 from footsim.world.college.common import REGULAR as REGULAR_SEASON
 from footsim.world.college.draft import leave_program
+from footsim.world.college.program import facilities_bonus
 from footsim.world.college.season import conference_tables, rankings
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
@@ -417,8 +418,10 @@ def _college_career(conn: Connection, world: World, meta: CareerMeta
         rank = order.index(meta.user_club_id) + 1
     prestige = float(row.prestige) if row.prestige is not None else float(
         world.defs.college.recruiting.programs.prestige_by_tier[int(row.tier)])
+    bonus = facilities_bonus(conn, world, int(meta.user_club_id or 0))
     return CollegeCareerOut(conference=str(row.conference), conference_name=conference.name,
-                            tier=int(row.tier), prestige=round(prestige), rpi_rank=rank,
+                            tier=int(row.tier), prestige=round(prestige + bonus),
+                            prestige_facilities=round(bonus), rpi_rank=rank,
                             mode=meta.college_mode), position
 
 
@@ -1118,6 +1121,7 @@ def college_season_record(conn: Connection, world: World, meta: CareerMeta, club
         college_team.c.club_id == club_id)).one()
     conf = world.defs.college.conferences[ts.conference]
     label = conn.execute(select(season.c.label).where(season.c.id == season_id)).scalar()
+    bonus = facilities_bonus(conn, world, club_id)
     row = ts.row
     return CollegeSeasonRecordOut(
         season=str(label or ""), conference=conf.short_name, conference_name=conf.name,
@@ -1129,7 +1133,8 @@ def college_season_record(conn: Connection, world: World, meta: CareerMeta, club
         won=ts.overall.won, drawn=ts.overall.drawn, lost=ts.overall.lost,
         goals_for=ts.overall.goals_for, goals_against=ts.overall.goals_against,
         rpi_rank=ts.rpi_rank, ncaa=ts.ncaa, titles=ts.titles, tier=int(team.tier),
-        prestige=round(float(team.prestige or 0.0), 1))
+        prestige=round(float(team.prestige or 0.0) + bonus, 1),
+        prestige_facilities=round(bonus, 1))
 
 
 RECENT_TRANSFERS = 5

@@ -108,7 +108,8 @@ export interface CollegeCareer {
   conference: string
   conference_name: string
   tier: number // 1 (a national power) to 5
-  prestige: number // 0-100
+  prestige: number // 0-100, as recruits see it (with the facilities' bonus)
+  prestige_facilities?: number // the facilities' share of it (program builder)
   rpi_rank: number | null
   mode?: 'classic' | 'builder' // the program builder: money and facilities (W9d)
 }
@@ -1043,7 +1044,8 @@ export interface CollegeSeasonRecord {
   ncaa: string | null
   titles: string[]
   tier: number
-  prestige: number
+  prestige: number // as recruits see it (with the facilities' bonus)
+  prestige_facilities?: number
 }
 
 // GET /api/international/world-cup: the finals (empty before the draw).

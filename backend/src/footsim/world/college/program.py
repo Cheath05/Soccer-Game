@@ -91,6 +91,12 @@ def appeal(conn: Connection, world: World) -> dict[int, float]:
             for club_id, kinds in facilities(conn).items()}
 
 
+def facilities_bonus(conn: Connection, world: World, club_id: int) -> float:
+    """A program's facilities as prestige in recruits' eyes (``appeal``): 0 in a classic
+    career. Recruiting adds it to the program's prestige, and so do the screens that show it."""
+    return appeal(conn, world).get(club_id, 0.0) if is_on(conn) else 0.0
+
+
 def class_budgets(conn: Connection) -> dict[int, float]:
     """Each program's class budget (full scholarships for next season's class)."""
     return {int(r.club_id): float(r.class_budget)

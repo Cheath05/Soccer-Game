@@ -212,6 +212,11 @@ export default function DashboardPage() {
                 <Figure label="RPI rank" value={college.rpi_rank ? `${college.rpi_rank}` : '–'} />
                 <Figure label="Prestige" value={`${college.prestige}`} />
               </Group>
+              {(college.prestige_facilities ?? 0) > 0 && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Prestige {college.prestige - (college.prestige_facilities ?? 0)} from results and tier, +{college.prestige_facilities} from your facilities: what recruits see.
+                </Text>
+              )}
               {program && program.mode === 'builder' && (
                 <Text size="sm" mt="xs" c="dimmed">
                   Balance {money(program.balance_eur)} · training level {program.facilities.find((f) => f.kind === 'training')?.level} · stadium level{' '}

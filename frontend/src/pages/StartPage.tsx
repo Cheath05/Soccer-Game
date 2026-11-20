@@ -2,7 +2,7 @@ import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, NumberI
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useCollegePrograms, useLoadCareer, useNewCareer, useSaves, useWorldLeagues } from '../api/hooks'
+import { useCollegePrograms, useLoadCareer, useNewCareer, useSaves, useWorldLeagues, useWorldNations } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
 import { tierStars } from '../lib/college'
 import SimulationPicker from '../components/SimulationPicker'
@@ -27,8 +27,11 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const [boardTouched, setBoardTouched] = useState(false)
   const [league, setLeague] = useState('ENG1')
   const [clubId, setClubId] = useState<number | null>(null)
-  // A professional club, or an NCAA program to coach (W9c).
-  const [kind, setKind] = useState<'club' | 'college'>('club')
+  // A professional club, an NCAA program to coach (W9c), or only a country (no club).
+  const [kind, setKind] = useState<'club' | 'college' | 'nation'>('club')
+  const nations = useWorldNations()
+  const [nationCode, setNationCode] = useState<string | null>(null)
+  const country = kind === 'nation'
   const colleges = useCollegePrograms()
   const [conference, setConference] = useState('ACC')
   const [program, setProgram] = useState<string | null>(null)
@@ -53,20 +56,23 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
 
   const taken = (saves.data ?? []).filter((s) => s.has_save || s.has_autosave)
   const free = (saves.data ?? []).filter((s) => !s.has_save && !s.has_autosave).map((s) => s.slot)
-  const picked = college ? program : clubId !== null ? (selectedLeague?.clubs.find((c) => c.id === clubId)?.name ?? 'this club') : null
-  const userLeague = college ? 'NCAA' : league
+  const picked = country ? (nations.data?.find((n) => n.code === nationCode)?.name ?? null) : college ? program : clubId !== null ? (selectedLeague?.clubs.find((c) => c.id === clubId)?.name ?? 'this club') : null
+  const userLeague = college ? 'NCAA' : country ? null : league
+  // No board, budget or transfers: a college program's, or a country's.
+  const noClub = college || country
   const programs = colleges.data?.find((c) => c.key === conference)?.programs ?? []
   const start = () =>
     picked !== null &&
     void newCareer
       .mutateAsync({
         slot: Number(slot),
-        clubId: college ? null : clubId,
+        clubId: noClub ? null : clubId,
         collegeProgram: college ? program : null,
         collegeMode,
+        nationCode: country ? nationCode : null,
         manager: manager || (college ? 'Coach' : 'Manager'),
-        budget: college || budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
-        boardEnabled: board && !college,
+        budget: noClub || budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
+        boardEnabled: board && !noClub,
         fastLeagues: fast.filter((k) => k !== userLeague),
       })
       .then(goHome, ignore)
@@ -171,17 +177,49 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           </Card>
 
           <Card withBorder padding="md">
-            <Step n={2} title={college ? 'Your program' : 'Your club'} />
+            <Step n={2} title={college ? 'Your program' : country ? 'Your country' : 'Your club'} />
             <Stack gap="sm" mt="sm">
               <SegmentedControl
                 fullWidth
                 value={kind}
-                onChange={(v) => setKind(v as 'club' | 'college')}
+                onChange={(v) => setKind(v as 'club' | 'college' | 'nation')}
                 data={[
                   { value: 'club', label: 'Professional club' },
                   { value: 'college', label: 'NCAA program' },
+                  { value: 'nation', label: 'Manage a country' },
                 ]}
               />
+              {country && (
+                <>
+                  <Text size="sm" c="dimmed">
+                    Manage a national team without a club: pick its squad for every international window and tournament, set its tactics and play its matches. Continue moves on from one window to the next. You can move to another country later, from International → My country.
+                  </Text>
+                  {nations.error && <Alert color="red">{nations.error.message}</Alert>}
+                  <Select
+                    label="Country"
+                    searchable
+                    placeholder="Find a country"
+                    value={nationCode}
+                    onChange={setNationCode}
+                    data={(nations.data ?? []).map((n) => ({ value: n.code, label: `${n.name} (#${n.rank})` }))}
+                  />
+                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
+                    {(nations.data ?? []).slice(0, 12).map((n) => (
+                      <UnstyledButton key={n.code} onClick={() => setNationCode(n.code)} className="fs-club" data-picked={nationCode === n.code || undefined}>
+                        <Crest name={n.name} size={34} mine={nationCode === n.code} />
+                        <div style={{ minWidth: 0 }}>
+                          <Text fw={600} size="sm" truncate>
+                            {n.name}
+                          </Text>
+                          <Text size="xs" c="dimmed" truncate>
+                            #{n.rank} · {n.confederation}
+                          </Text>
+                        </div>
+                      </UnstyledButton>
+                    ))}
+                  </SimpleGrid>
+                </>
+              )}
               {college && (
                 <>
                   <Text size="sm" c="dimmed">
@@ -237,9 +275,9 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                   </SimpleGrid>
                 </>
               )}
-              {!college && leagues.isPending && <Loader />}
-              {!college && leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
-              {!college && leagues.data && (
+              {!noClub && leagues.isPending && <Loader />}
+              {!noClub && leagues.error && <Alert color="red">{leagues.error.message}</Alert>}
+              {!noClub && leagues.data && (
                 <>
                   <LeaguePicker
                     leagues={leagues.data}
@@ -274,17 +312,19 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
               <Group justify="space-between" wrap="nowrap">
                 <Step n={3} title="Options" />
                 <Text size="sm" c="dimmed">
-                  {college ? 'College' : board ? 'Board on' : 'No board'} · {CURRENCIES[currency].label}
-                  {!college && budgetMillions !== '' ? ' · sandbox' : ''}
+                  {college ? 'College' : country ? 'Country' : board ? 'Board on' : 'No board'} · {CURRENCIES[currency].label}
+                  {!noClub && budgetMillions !== '' ? ' · sandbox' : ''}
                   {fast.filter((k) => k !== userLeague).length > 0 ? ' · fast leagues' : ''} {options ? '▴' : '▾'}
                 </Text>
               </Group>
             </UnstyledButton>
             <Collapse expanded={options}>
               <Stack gap="md" mt="md">
-                {college ? (
+                {noClub ? (
                   <Text size="sm" c="dimmed">
-                    A college program has no board, budget or transfers: your players come from recruiting.
+                    {college
+                      ? 'A college program has no board, budget or transfers: your players come from recruiting.'
+                      : 'A country has no board, budget or transfers: you call up its players.'}
                   </Text>
                 ) : (
                   <Switch
@@ -307,7 +347,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     data={(Object.keys(CURRENCIES) as Currency[]).map((c) => ({ value: c, label: CURRENCIES[c].label }))}
                   />
                 </div>
-                {!college && <NumberInput
+                {!noClub && <NumberInput
                   label={`Sandbox: budget (${CURRENCIES[currency].symbol}M)`}
                   description="Optional. To spend on transfer fees and wages. Leave empty for the board's budget"
                   placeholder="Board's budget"
@@ -334,7 +374,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           {newCareer.error && <Alert color="red">{newCareer.error.message}</Alert>}
           <Group style={picked !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
             <Button size="lg" fullWidth disabled={picked === null} loading={newCareer.isPending} onClick={start}>
-              {picked === null ? (college ? 'Pick a program to start' : 'Pick a club to start') : `Start with ${picked}`}
+              {picked === null ? (college ? 'Pick a program to start' : country ? 'Pick a country to start' : 'Pick a club to start') : `Start with ${picked}`}
             </Button>
           </Group>
         </Stack>

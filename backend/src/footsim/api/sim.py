@@ -117,7 +117,10 @@ def sim_targets(conn: Connection, user: tuple[int, ...], today: date) -> list[Si
     return targets
 
 
-def _run(session: CareerSession, job: SimJob, user: tuple[int, ...]) -> None:
+def _run(session: CareerSession, job: SimJob, user: tuple[int, ...],
+         club_id: int | None) -> None:
+    """``user``: the user's teams; ``club_id``: his club, for the season's summary (a national
+    team's manager without a club has none)."""
     world = get_world()
     try:
         while not job.cancel.is_set():
@@ -132,9 +135,9 @@ def _run(session: CareerSession, job: SimJob, user: tuple[int, ...]) -> None:
             job.day = step.date
             job.messages += step.messages
             if step.stop is not None:
-                if step.stop == "season_end":
+                if step.stop == "season_end" and club_id is not None:
                     with session.read() as conn:
-                        job.season_final = season_final(conn, world, user[0], job.messages)
+                        job.season_final = season_final(conn, world, club_id, job.messages)
                 job.stop = step.stop
                 break
         else:
@@ -157,8 +160,8 @@ def start(body: SimIn, request: Request) -> SimStatusOut:
             raise HTTPException(409, "finish the match being watched first")
         with session.read() as conn:
             meta = read_meta(conn)
-        if meta.user_club_id is None:
-            raise HTTPException(409, "no club to manage")
+        if not meta.user_teams:
+            raise HTTPException(409, "no team to manage")
         today = meta.current_date
         until = body.until
         if body.target is not None:
@@ -177,9 +180,10 @@ def start(body: SimIn, request: Request) -> SimStatusOut:
         job = SimJob(today, until, session.generation, today)
         with session.read() as conn:
             job.club_name = str(conn.execute(select(club.c.name).where(
-                club.c.id == meta.user_club_id)).scalar() or "") or None
+                club.c.id == meta.user_teams[0])).scalar() or "") or None
         session.sim = job
-        threading.Thread(target=_run, args=(session, job, meta.user_teams), daemon=True,
+        threading.Thread(target=_run, args=(session, job, meta.user_teams, meta.user_club_id),
+                         daemon=True,
                          name="sim-to-date").start()
         return job.status()
 
@@ -190,7 +194,7 @@ def targets(request: Request) -> list[SimTargetOut]:
     session = _session(request)
     with session.read() as conn:
         meta = read_meta(conn)
-        if meta.user_club_id is None:
+        if not meta.user_teams:
             return []
         return sim_targets(conn, meta.user_teams, meta.current_date)
 

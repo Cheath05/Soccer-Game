@@ -33,6 +33,7 @@ from footsim.api.schemas import (
     LeagueOption,
     LeaguePlayoffOut,
     MatchOut,
+    NationOption,
     NewCareerIn,
     PlayerDetailOut,
     PlayerSeasonOut,
@@ -110,6 +111,15 @@ def college_programs() -> list[CollegeConferenceOption]:
                              key=lambda kv: kv[1].short_name)]
 
 
+@router.get("/world/national-teams")
+def world_national_teams() -> list[NationOption]:
+    """The national teams a new career can manage without a club, the strongest (by Elo)
+    first."""
+    teams = sorted(get_world().defs.international.teams.values(), key=lambda t: (-t.elo, t.code))
+    return [NationOption(code=t.code, name=t.name, confederation=t.confederation, rank=k)
+            for k, t in enumerate(teams, start=1)]
+
+
 @router.get("/saves")
 def saves(session: Session) -> list[SaveSlotOut]:
     result = []
@@ -142,11 +152,14 @@ def _record_club_name(session: CareerSession) -> None:
 def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
     if not session.base_world.exists():
         raise HTTPException(503, "No base world built yet: run `just build-world`.")
-    if (body.club_id is None) == (body.college_program is None):
-        raise HTTPException(422, "pick a club or a college program")
+    if sum(x is not None for x in (body.club_id, body.college_program, body.nation_code)) != 1:
+        raise HTTPException(422, "pick a club, a college program or a country")
     if body.college_program is not None and body.college_program not in \
             get_world().defs.college.program_conference():
         raise HTTPException(404, "no such college program")
+    if body.nation_code is not None and body.nation_code not in \
+            get_world().defs.international.teams:
+        raise HTTPException(404, "no such country")
     session.new_career(slot, body.club_id, body.manager_name.strip() or "Manager",
                        body.budget_eur if body.club_id is not None else None,
                        body.board_enabled and body.club_id is not None,
@@ -154,7 +167,8 @@ def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
                        else "USD",
                        [k for k in body.fast_leagues if k in fast_sim.selectable(get_world())],
                        college_program=body.college_program,
-                       college_mode="builder" if body.college_mode == "builder" else "classic")
+                       college_mode="builder" if body.college_mode == "builder" else "classic",
+                       nation_code=body.nation_code)
     _record_club_name(session)
     session.save()
     return _career(session)
@@ -190,10 +204,12 @@ def advance_career(session: Session) -> AdvanceOut:
     session.autosave()
     final = None
     with session.read() as conn:
-        user = read_meta(conn).user_club_id
+        meta = read_meta(conn)
+        user = meta.user_club_id
         if result.stop == "season_end" and user is not None:
             final = season_review.season_final(conn, world, user, result.messages)
-        club = queries._club_names(conn).get(user) if user is not None else None
+        team = meta.user_teams[0] if meta.user_teams else None  # without a club, his country
+        club = queries._club_names(conn).get(team) if team is not None else None
     return AdvanceOut(date=result.date.isoformat(), stop=result.stop,
                       fixture_id=result.fixture_id, messages=result.messages,
                       season_final=final, sections=news_sections(result.messages, club))
@@ -485,10 +501,12 @@ def delete_preset(preset_id: int, session: Session) -> list[PresetOut]:
 
 
 def _tactic_team(conn: Connection, team: str) -> int | None:
-    """``team`` "nation": the national team the user manages (I5); else his club (None)."""
-    if team != "nation":
+    """``team`` "nation": the national team the user manages (I5); else his club (None), or
+    his national team when he has no club."""
+    meta = read_meta(conn)
+    if team != "nation" and meta.user_club_id is not None:
         return None
-    nation = read_meta(conn).user_nation_id
+    nation = meta.user_nation_id
     if nation is None:
         raise HTTPException(404, "you don't manage a national team")
     return nation

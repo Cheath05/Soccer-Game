@@ -28,6 +28,7 @@ from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
 from footsim.world.international import ensure_international
 from footsim.world.international.common import TYPE as INTERNATIONAL
+from footsim.world.international.manager import take_job
 from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
 from footsim.world.mls import charge_dp_fees, start_mls
@@ -61,10 +62,13 @@ class AdvanceResult:
 def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name: str | None, seed: int | None = None,
                       board_enabled: bool = True, fast_leagues: list[str] | None = None,
-                      college_program: str | None = None, college_mode: str = "classic") -> None:
+                      college_program: str | None = None, college_mode: str = "classic",
+                      nation_code: str | None = None) -> None:
     """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only), or
     for the NCAA program named ``college_program`` (W9c: a college coach's career; its club is
-    made with the college world, so it has no id in the base world).
+    made with the college world, so it has no id in the base world). ``nation_code``: the
+    national team he manages (with ``club_id`` None, his only team), made with the national
+    teams, so also without an id in the base world.
 
     Each career gets its own random seed (unless one is given), so two careers from the
     same world play out differently; within a career everything stays reproducible. The user
@@ -98,6 +102,10 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
 
         create_lower_fixtures(conn, world, meta, 1, start)
     ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
+    if nation_code is not None:
+        if meta.user_club_id is None:
+            meta.board_enabled = False  # no club, so no board
+        take_job(conn, world, meta, nation_code, start)
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).
     start_mls(conn, world, meta, start)

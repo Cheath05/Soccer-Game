@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.142"
+- version: "1.144"
   date: "2026-11-20"
   title: "NCAA Divisions II and III, and the transfer portal"
   changes:
@@ -35,6 +35,13 @@
     - "Hidden gems: the high-school seniors no D-I program signs no longer leave the game. They join D-II and D-III programs as freshmen, keeping their potential, and develop there."
     - "The transfer portal: on 8 December, after the national tournaments, the best D-II and D-III players who aren't seniors (up to 60) look to move up. Recruiting's Transfer portal tab lists them with their school; offer, visit and sign them like recruits (the assistant and the other D-I programs go after them too). Signed, a player joins you at the season's start a class on from where he was."
     - "An existing college career gets the two divisions the first day it plays after this update: their games start next season, and this December's portal already has their players."
+
+- version: "1.142"
+  date: "2026-11-20"
+  title: "A country, and no club"
+  changes:
+    - "New career → Manage a country: manage a national team with no club. Pick its squad for every window and tournament, set its tactics and play its matches; Continue and Sim to move on from one international window to the next."
+    - "With no club the menu leaves out the squad, transfers, finances, league and cups. Home shows your country's world rank, Elo and call-ups; International opens on My country."
 
 - version: "1.141"
   date: "2026-11-20"

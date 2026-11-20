@@ -333,12 +333,13 @@ def my_team(session: Session) -> MyNationOut:
 
 @router.post("/job")
 def take_job(body: JobIn, session: Session) -> MyNationOut:
-    """Take a national team's job, alongside the club (any nation, for now)."""
+    """Take a national team's job (any nation, for now), alongside the club or, without one,
+    in place of the one he has."""
     _not_simulating(session)
     with session.write() as conn:
         meta = read_meta(conn)
-        if meta.user_club_id is None:
-            raise HTTPException(409, "a national team's job goes with a club, for now")
+        if session.live_matches:
+            raise HTTPException(409, "finish the match being watched first")
         try:
             manager.take_job(conn, get_world(), meta, body.code, meta.current_date)
         except manager.JobRefused as exc:
@@ -355,6 +356,9 @@ def leave_job(session: Session) -> MyNationOut:
         meta = read_meta(conn)
         if session.live_matches:
             raise HTTPException(409, "finish the match being watched first")
+        if meta.user_club_id is None:
+            raise HTTPException(409, "your country is your only team: take another country's "
+                                     "job instead of leaving")
         manager.leave_job(conn, meta)
     session.autosave()
     with session.read() as conn:

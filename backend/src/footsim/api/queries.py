@@ -385,16 +385,18 @@ def _overalls(conn: Connection, world: World, club_id: int) -> list[tuple[int, f
 
 def career(conn: Connection, world: World, slot: int) -> CareerOut:
     meta = read_meta(conn)
-    assert meta.user_club_id is not None
+    # A national team's manager without a club: his team is the national team.
+    user = meta.user_club_id if meta.user_club_id is not None else meta.user_nation_id
+    assert user is not None
     names = _club_names(conn)
     comps = _competitions(conn)
-    comp = _club_competition(conn, meta.user_club_id, meta.season_id)
+    comp = (_club_competition(conn, meta.user_club_id, meta.season_id)
+            if meta.user_club_id is not None else None)
     position = None
     if comp is not None:
         table = standings(conn, world, meta, comp.id, meta.season_id)
         if any(r.played for r in table):
             position = next(r.position for r in table if r.club_id == meta.user_club_id)
-    user = meta.user_club_id
     teams = meta.user_teams  # his national team's matches are his too (W8 I5)
     upcoming = conn.execute(select(fixture).where(
         fixture.c.status == "scheduled",
@@ -419,6 +421,7 @@ def career(conn: Connection, world: World, slot: int) -> CareerOut:
         college=college[0] if college else None,
         nation=(ClubRef(id=meta.user_nation_id, name=names[meta.user_nation_id])
                 if meta.user_nation_id is not None else None),
+        nation_only=meta.user_club_id is None,
     )
 
 

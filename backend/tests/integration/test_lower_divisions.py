@@ -100,7 +100,7 @@ def test_the_season_and_the_portal(career: tuple[Engine, World]) -> None:
             _play(conn, comp, "lower", date(start.year, 12, 31), div)
         selection = date(start.year, 11, 9)
         lower.progress_lower(conn, world, meta, selection)
-        for div, comp in comps.items():
+        for div in comps:
             seeds = lower.entries(conn, meta.season_id, lower.event(div))
             assert len(seeds) == defs.divisions[div].tournament.teams
             autos = conn.execute(text(

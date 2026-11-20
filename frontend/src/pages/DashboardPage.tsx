@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useConferences, wdl } from '../api/americas'
 import { useProgram } from '../api/program'
 import { useRecruiting } from '../api/recruiting'
-import { useCareer, useFinances, useSquad, useTable } from '../api/hooks'
+import { useCareer, useFinances, useInternational, useMyNation, useSquad, useTable } from '../api/hooks'
 import { tierStars } from '../lib/college'
 import type { Fixture } from '../api/types'
 import { Crest } from '../components/PhoneNav'
@@ -15,11 +15,14 @@ import RankTag from '../components/RankTag'
 export default function DashboardPage() {
   const career = useCareer().data
   const table = useTable(career?.competition?.key)
-  const squad = useSquad(career?.club.id)
+  // A national team's manager without a club: his country's card instead of a table, a squad
+  // and money.
+  const only = !!career?.nation_only
+  const squad = useSquad(only ? undefined : career?.club.id)
   // A college coach (W9c): the conference's table instead of a league's, and no money.
   const college = career?.college ?? null
   const conferences = useConferences(!!college)
-  const finances = useFinances(!!career && !college).data
+  const finances = useFinances(!!career && !college && !only).data
   const recruiting = useRecruiting(!!college).data
   const program = useProgram(college?.mode === 'builder').data
   const navigate = useNavigate()
@@ -77,7 +80,12 @@ export default function DashboardPage() {
       </Card>
 
       <Grid gap="sm">
-        <Grid.Col span={{ base: 12, md: 6 }}>
+        {only && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <CountryCard onOpen={() => void navigate({ to: '/international' })} />
+          </Grid.Col>
+        )}
+        {!only && <Grid.Col span={{ base: 12, md: 6 }}>
           <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: college ? '/college' : '/league' })}>
             <Group justify="space-between" align="center">
               <span className="fs-label">{college ? college.conference_name : career.competition?.name}</span>
@@ -117,7 +125,7 @@ export default function DashboardPage() {
               </Table.Tbody>
             </Table>
           </Card>
-        </Grid.Col>
+        </Grid.Col>}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card withBorder h="100%">
             <span className="fs-label">Recent results</span>
@@ -164,7 +172,7 @@ export default function DashboardPage() {
             </Stack>
           </Card>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
+        {!only && <Grid.Col span={{ base: 12, md: 6 }}>
           <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/squad' })}>
             <span className="fs-label">Squad status</span>
             <Stack gap={8} mt="xs">
@@ -198,7 +206,7 @@ export default function DashboardPage() {
               ))}
             </Stack>
           </Card>
-        </Grid.Col>
+        </Grid.Col>}
         {college && (
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/college' })}>
@@ -268,6 +276,49 @@ export default function DashboardPage() {
     </Stack>
   )
 
+}
+
+/** A national team's manager without a club: his country's world ranking and call-ups. */
+function CountryCard({ onOpen }: { onOpen: () => void }) {
+  const mine = useMyNation().data
+  const ranked = useInternational().data?.teams.find((t) => t.code === mine?.code)
+  if (!mine?.team) return null
+  const called = mine.players.filter((p) => p.selected)
+  const injured = called.filter((p) => p.injured)
+  return (
+    <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={onOpen}>
+      <Group justify="space-between">
+        <span className="fs-label">Your country</span>
+        <Badge variant="light">{mine.code}</Badge>
+      </Group>
+      <Group mt="sm" grow align="flex-start">
+        <Figure label="World rank" value={ranked ? `${ranked.rank}` : '–'} />
+        <Figure label="Elo" value={ranked ? `${Math.round(ranked.elo)}` : '–'} />
+        <Figure label="Squad" value={`${called.length}/${mine.squad_size}`} />
+      </Group>
+      <Stack gap={6} mt="sm">
+        {injured.length === 0 ? (
+          <Text size="sm">
+            <Text span c="teal" fw={700}>
+              ●{' '}
+            </Text>
+            Everyone called up is fit.
+          </Text>
+        ) : (
+          injured.map((p) => (
+            <Group key={p.id} justify="space-between" wrap="nowrap">
+              <Text size="sm" truncate>
+                {p.name}
+              </Text>
+              <Badge color="red" variant="light" style={{ flexShrink: 0 }}>
+                Injured
+              </Badge>
+            </Group>
+          ))
+        )}
+      </Stack>
+    </Card>
+  )
 }
 
 function Figure({ label, value, color }: { label: string; value: string; color?: string }) {

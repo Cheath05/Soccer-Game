@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.136"
+  date: "2026-11-20"
+  title: "The Hall of fame"
+  changes:
+    - "Hall of fame (in the menu; under More on a phone): everyone who has played for your club in the career, with years, appearances, goals, assists, average rating, the titles won while he was there and where he is now, sortable. The greats (40 appearances, and a 7.0 average rating, 20 goals, 20 assists or a national title) get a card at the top."
+
 - version: "1.135"
   date: "2026-11-20"
   title: "The assistant trains positions"

@@ -16,6 +16,7 @@ from footsim.api.changelog import router as changelog_router
 from footsim.api.college import router as college_router
 from footsim.api.draft import router as draft_router
 from footsim.api.europe import router as europe_router
+from footsim.api.hall_of_fame import router as hall_of_fame_router
 from footsim.api.international import router as international_router
 from footsim.api.live import router as live_router
 from footsim.api.market_overview import router as market_overview_router
@@ -80,6 +81,7 @@ def create_app(session: CareerSession | None = None, frontend: Path | None = FRO
     app.include_router(college_router)
     app.include_router(recruiting_router)
     app.include_router(program_router)
+    app.include_router(hall_of_fame_router)
     app.include_router(mls_router)
     app.include_router(draft_router)
     app.include_router(simulation_router)

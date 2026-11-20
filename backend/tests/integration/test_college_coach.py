@@ -126,3 +126,31 @@ def test_the_assistant_trains_positions(career: tuple[Engine, World]) -> None:
         assert len(rows) == started
         assert all(0 < r.familiarity < natural and r.familiarity == r.best for r in rows)
         conn.rollback()
+
+
+def test_the_hall_of_fame_lists_who_played(career: tuple[Engine, World]) -> None:
+    """The Hall of fame page (20 Nov): everyone who has played for the user's club, with his
+    record there; the greats need hall_of_fame's appearances first."""
+    from contextlib import contextmanager
+    from typing import Any
+
+    from footsim.api.hall_of_fame import hall_of_fame
+
+    engine, world = career
+
+    class _Session:
+        @contextmanager
+        def read(self) -> Any:
+            with engine.connect() as conn:
+                yield conn
+
+    with engine.connect() as conn:
+        user = read_meta(conn).user_club_id
+        played = conn.execute(text("SELECT COUNT(DISTINCT player_id) FROM player_match "
+                                   "WHERE club_id = :c"), {"c": user}).scalar_one()
+    out = hall_of_fame(_Session())  # type: ignore[arg-type]
+    assert out.club.id == user and "appearances" in out.rule
+    assert len(out.players) == played
+    rules = world.defs.lifecycle.hall_of_fame
+    assert all(p.appearances >= rules.min_apps for p in out.players if p.hall_of_fame)
+    assert all(p.now == "with_you" for p in out.players)  # nobody has left yet

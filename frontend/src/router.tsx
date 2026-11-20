@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import CalendarPage from './pages/CalendarPage'
 import CollegePage from './pages/CollegePage'
 import ProgramPage from './pages/ProgramPage'
+import HallOfFamePage from './pages/HallOfFamePage'
 import RecruitingPage from './pages/RecruitingPage'
 import ClubPage from './pages/ClubPage'
 import CupsPage from './pages/CupsPage'
@@ -45,6 +46,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: '/college', component: CollegePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/recruiting', component: RecruitingPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/program', component: ProgramPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/hall-of-fame', component: HallOfFamePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/international', component: InternationalPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/matchday', component: MatchdayPage }),

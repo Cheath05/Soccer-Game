@@ -35,6 +35,7 @@ const NAV = [
   { to: '/europe', label: 'Europe' },
   { to: '/international', label: 'International' },
   { to: '/college', label: 'College' },
+  { to: '/hall-of-fame', label: 'Hall of fame' },
   { to: '/settings', label: 'Settings' },
   { to: '/start', label: 'Save / Load' },
 ] as const
@@ -142,6 +143,7 @@ export default function Layout() {
     { to: '/program', label: 'Program', icon: 'finances', active: at('/program') },
     { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
     { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
+    { to: '/hall-of-fame', label: 'Hall of fame', icon: 'cups', active: at('/hall-of-fame') },
     { to: '/settings', label: 'Settings', icon: 'settings', active: at('/settings') },
     { to: '/start', label: 'Save / Load', icon: 'saves', active: false },
   ]

@@ -89,7 +89,7 @@ function GodPlayerCard() {
     <Card withBorder padding="sm" bg={g.available ? 'var(--mantine-color-yellow-light)' : undefined}>
       <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <div style={{ flex: 1, minWidth: 220 }}>
-          <Text fw={700}>GOD player</Text>
+          <Text fw={700}>OP player</Text>
           <Text size="xs" c="dimmed">
             Once every {g.every_seasons} seasons: a freshman with a pro&apos;s ratings (about {g.overall} overall) at a random position, on no scholarship. He stays all four years.
           </Text>
@@ -115,7 +115,7 @@ function GodPlayerCard() {
             </Group>
           ) : (
             <Button color="yellow" variant="light" onClick={() => setSure(true)}>
-              Sign a GOD player
+              Sign a OP player
             </Button>
           ))}
       </Group>

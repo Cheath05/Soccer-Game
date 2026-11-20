@@ -350,7 +350,7 @@ class ProgramRulesDef(DefModel):
 
 
 class GodPlayerDef(DefModel):
-    """A college coach's GOD player (world/college/god_player.py)."""
+    """A college coach's OP player (world/college/god_player.py)."""
 
     every_seasons: int = Field(default=4, ge=1)
     overall: float = Field(default=78.0, ge=1, le=99)

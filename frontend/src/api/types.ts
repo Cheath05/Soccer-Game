@@ -539,6 +539,7 @@ export interface PlayerSeasonLine {
   average_rating: number | null
   yellow: number
   red: number
+  school?: boolean // a college season: the club is a school
 }
 
 export interface PlayerSeason {

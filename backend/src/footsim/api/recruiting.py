@@ -251,7 +251,7 @@ def get_classes(session: Session, limit: int = 25) -> list[ClassRankOut]:
 
 
 class GodPlayerOut(BaseModel):
-    """The GOD player (world/college/god_player.py): whether one can be signed now, and those
+    """The OP player (world/college/god_player.py): whether one can be signed now, and those
     signed so far."""
 
     available: bool
@@ -285,7 +285,7 @@ def get_god_player(session: Session) -> GodPlayerOut:
 
 @router.post("/god-player")
 def post_god_player(session: Session) -> GodPlayerOut:
-    """Sign this season's GOD player: a freshman with a pro's ratings, at a random position."""
+    """Sign this season's OP player: a freshman with a pro's ratings, at a random position."""
     from footsim.world.college import god_player
 
     _not_simulating(session)

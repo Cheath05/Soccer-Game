@@ -294,6 +294,10 @@ function SeasonRecord({ playerId }: { playerId: number }) {
       <Table.Td ta="right" visibleFrom="sm">{line.red}</Table.Td>
     </>
   )
+  // A college player's seasons are at a school; one who has also played as a pro has both.
+  const lines = seasons.flatMap((s) => s.lines)
+  const schools = lines.filter((l) => l.school).length
+  const clubTitle = schools === 0 ? 'Club' : schools === lines.length ? 'School' : 'Club / school'
   return (
     <Card withBorder padding="sm" aria-label="Seasons">
       <Title order={4} mb={4}>
@@ -309,7 +313,7 @@ function SeasonRecord({ playerId }: { playerId: number }) {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Season</Table.Th>
-                <Table.Th>Club</Table.Th>
+                <Table.Th>{clubTitle}</Table.Th>
                 <Table.Th visibleFrom="sm">Competition</Table.Th>
                 <Table.Th ta="right">Apps</Table.Th>
                 <Table.Th ta="right" visibleFrom="sm">Starts</Table.Th>

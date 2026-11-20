@@ -659,6 +659,8 @@ class PlayerSeasonLineOut(BaseModel):
     average_rating: float | None
     yellow: int
     red: int
+    school: bool = False  # a college season (the club is a school)
+
 
 
 class PlayerSeasonOut(BaseModel):

@@ -287,7 +287,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         'Tactics: Pick best XI and bench puts the best players in the formation, each in the role he rates highest in. Automatic substitutions (yours when the assistant manages, and the other teams’) bring on whoever rates highest in the tired player’s position, in his best role there.',
         'Players leave by graduating after their senior season, by declaring for the SuperDraft (seniors, and the best underclassmen after the College Cup), or when you let one go (Release on his page): he turns pro as a free agent. A program can’t sign professionals.',
         'Prestige (0–100) starts from the program’s tier and moves at each season’s end with your last three seasons: your RPI rank, NCAA tournament wins and titles. Each NCAA tournament win also lifts it at once (1.5), and the national title more (6), so recruits still deciding hear about a run. The higher it is, the better the recruits who want you.',
-        'GOD player (on Recruiting): once every four seasons you may sign a freshman with a professional’s ratings (about 78 overall) at a random position, on no scholarship. He never declares early for the draft, so he plays all four years. Your roster needs a free place.',
+        'OP player (on Recruiting): once every four seasons you may sign a freshman with a professional’s ratings (about 78 overall) at a random position, on no scholarship. He never declares early for the draft, so he plays all four years. Your roster needs a free place.',
         'The menu leaves out Transfers, Finances, the professional League, Cups and Europe. On a phone the bar has Home, Squad, Tactics and Recruiting; College is under More.',
       ],
     ],

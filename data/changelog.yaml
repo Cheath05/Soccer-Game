@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.134"
+  date: "2026-11-20"
+  title: "College: the OP player, one line a season"
+  changes:
+    - "The GOD player is now called the OP player."
+    - "A college player's Seasons table shows one line a season (the regular season, conference tournament and NCAA tournament together), and its column says School."
+
 - version: "1.133"
   date: "2026-11-20"
   title: "College: season records, recruiting chances, tidier news and the GOD player"

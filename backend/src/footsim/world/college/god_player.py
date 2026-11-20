@@ -1,5 +1,5 @@
-"""The GOD player (college fixes, 20 Nov): once every few seasons a college coach may sign a
-freshman with a professional's ratings, at a random position.
+"""The OP player (college fixes, 20 Nov; first called the GOD player): once every few seasons
+a college coach may sign a freshman with a professional's ratings, at a random position.
 
 He joins at once as a freshman on no scholarship, with about ``god_player.overall``
 (recruiting.yaml) and a potential only a little above it. He never declares early for the draft
@@ -20,7 +20,7 @@ from footsim.world.meta import CareerMeta, bump_players_epoch, write_meta
 
 
 class GodPlayerRefused(ValueError):
-    """Why a GOD player can't be signed now, for the user."""
+    """Why a OP player can't be signed now, for the user."""
 
 
 @dataclass(frozen=True)
@@ -55,13 +55,13 @@ def status(conn: Connection, world: World, meta: CareerMeta) -> GodPlayerStatus:
 
 
 def sign(conn: Connection, world: World, meta: CareerMeta, day: date) -> int:
-    """Sign this season's GOD player for the user's program; his player id."""
+    """Sign this season's OP player for the user's program; his player id."""
     club_id = meta.user_club_id
     if club_id is None or not is_college_club(conn, club_id):
-        raise GodPlayerRefused("The GOD player is for a college coach.")
+        raise GodPlayerRefused("The OP player is for a college coach.")
     found = status(conn, world, meta)
     if not found.available:
-        raise GodPlayerRefused(f"You've had your GOD player: the next one is in "
+        raise GodPlayerRefused(f"You've had your OP player: the next one is in "
                                f"{found.next_season}.")
     roster = int(conn.execute(text("SELECT COUNT(*) FROM college_player WHERE club_id = :c "
                                    "AND status = :e"), {"c": club_id, "e": ENROLLED}).scalar_one())

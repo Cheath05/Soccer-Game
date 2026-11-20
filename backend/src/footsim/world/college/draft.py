@@ -87,7 +87,7 @@ def declare_prospects(conn: Connection, world: World, meta: CareerMeta, season_i
     candidates = _players(conn, world, "cp.status = :enrolled AND cp.class_year < 4 "
                           "AND pl.pa_hidden >= :least",
                           {"enrolled": ENROLLED, "least": rules.min_potential})
-    # A GOD player (world/college/god_player.py) stays his four years.
+    # A OP player (world/college/god_player.py) stays his four years.
     candidates = [c for c in candidates if int(c[0].player_id) not in meta.god_players]
     best = sorted(candidates, key=lambda c: (-int(c[0].pa_hidden), -c[2],
                                              int(c[0].player_id)))[:rules.underclassmen]

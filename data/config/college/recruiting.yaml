@@ -147,7 +147,7 @@ user:
   # below the last. Prestige weighs most in his choice, so this is the recruiting screen's guide to
   # whom the program can realistically land.
   fit_labels: [[0.45, good], [0.25, reach], [0.1, long_shot]]
-  # The GOD player: once every this many seasons a college coach may sign a freshman with a
+  # The OP player: once every this many seasons a college coach may sign a freshman with a
   # professional's ratings (about this overall) at a random position, on no scholarship. He grows
   # only a little more (potential this much above) and never declares early: he stays four years.
   god_player:

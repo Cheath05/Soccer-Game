@@ -120,7 +120,7 @@ export const useSetTarget = () => useRecruitAction(({ id, priority }: { id: numb
 export const useMakeOffer = () => useRecruitAction(({ id, share }: { id: number; share: number }) => api.put<Recruit>(`/recruiting/offers/${id}`, { share }))
 export const usePullOffer = () => useRecruitAction((id: number) => api.delete<string[]>(`/recruiting/offers/${id}`))
 
-// The GOD player (world/college/god_player.py): once every few seasons, a freshman with a pro's
+// The OP player (world/college/god_player.py): once every few seasons, a freshman with a pro's
 // ratings at a random position, who stays four years.
 export interface GodPlayer {
   available: boolean

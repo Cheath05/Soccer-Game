@@ -4,6 +4,7 @@ import json
 import unicodedata
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -1284,11 +1285,55 @@ _SEASON_LINES_SQL = """
 
 def _season_line(club_ref: ClubRef | None, key: str, name: str, apps: int, starts: int,
                  minutes: int, goals: int, assists: int, rating_sum: float, yellow: int,
-                 red: int) -> PlayerSeasonLineOut:
+                 red: int, school: bool = False) -> PlayerSeasonLineOut:
     return PlayerSeasonLineOut(
         club=club_ref, competition_key=key, competition=name, appearances=apps, starts=starts,
         minutes=minutes, goals=goals, assists=assists,
-        average_rating=round(rating_sum / apps, 2) if apps else None, yellow=yellow, red=red)
+        average_rating=round(rating_sum / apps, 2) if apps else None, yellow=yellow, red=red,
+        school=school)
+
+
+@dataclass
+class _Line:
+    season_id: int
+    competition_id: int
+    stage: str
+    club_id: int
+    apps: int
+    starts: int
+    minutes: int
+    goals: int
+    assists: int
+    rating_sum: float
+    yellow: int
+    red: int
+
+
+def _college_merged(conn: Connection, comps: dict[int, Row[Any]], query: Any, player_id: int
+                    ) -> list[_Line]:
+    """The season lines with a college season's stages (regular season, conference
+    tournament, NCAA tournament) as one line: they're one competition."""
+    merged: dict[tuple[int, int, str, int], _Line] = {}
+    for r in conn.execute(query, {"pid": player_id}):
+        college = comps[r.competition_id].type == "college"
+        stage = comps[r.competition_id].key if college else str(r.stage)
+        key = (int(r.season_id), int(r.competition_id), stage, int(r.club_id))
+        line = merged.get(key)
+        if line is None:
+            merged[key] = _Line(int(r.season_id), int(r.competition_id), stage, int(r.club_id),
+                                int(r.apps), int(r.starts or 0), int(r.minutes or 0),
+                                int(r.goals or 0), int(r.assists or 0), float(r.rating_sum or 0),
+                                int(r.yellow or 0), int(r.red or 0))
+        else:
+            line.apps += int(r.apps)
+            line.starts += int(r.starts or 0)
+            line.minutes += int(r.minutes or 0)
+            line.goals += int(r.goals or 0)
+            line.assists += int(r.assists or 0)
+            line.rating_sum += float(r.rating_sum or 0)
+            line.yellow += int(r.yellow or 0)
+            line.red += int(r.red or 0)
+    return list(merged.values())
 
 
 def player_seasons(conn: Connection, world: World, player_id: int) -> list[PlayerSeasonOut]:
@@ -1301,8 +1346,8 @@ def player_seasons(conn: Connection, world: World, player_id: int) -> list[Playe
     comps = _competitions(conn)
     labels = {r.id: r.label for r in conn.execute(select(season))}
     # (season) -> [(sort key, competition key, competition name, row)]
-    found: dict[int, list[tuple[tuple[int, int, str], str, str, Row[Any]]]] = defaultdict(list)
-    for r in conn.execute(text(_SEASON_LINES_SQL), {"pid": player_id}):
+    found: dict[int, list[tuple[tuple[int, int, str], str, str, _Line]]] = defaultdict(list)
+    for r in _college_merged(conn, comps, text(_SEASON_LINES_SQL), player_id):
         comp = comps[r.competition_id]
         league = world.defs.leagues.get(comp.key)
         if r.stage == "league" or r.stage == comp.key or league is None:
@@ -1320,7 +1365,8 @@ def player_seasons(conn: Connection, world: World, player_id: int) -> list[Playe
             season_id=season_id, season=labels[season_id],
             lines=[_season_line(ClubRef(id=r.club_id, name=names[r.club_id]), key, name, r.apps,
                                 r.starts, r.minutes, r.goals, r.assists, r.rating_sum, r.yellow,
-                                r.red) for _, key, name, r in entries],
+                                r.red, school=comps[r.competition_id].type == "college")
+                   for _, key, name, r in entries],
             total=_season_line(None, "", "All competitions", sum(r.apps for r in rows),
                                sum(r.starts for r in rows), sum(r.minutes for r in rows),
                                sum(r.goals for r in rows), sum(r.assists for r in rows),

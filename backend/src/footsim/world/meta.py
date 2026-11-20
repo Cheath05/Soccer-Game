@@ -43,7 +43,7 @@ class CareerMeta:
     # A college coach's game mode (W9d): "classic", or "builder" (programs have money and build
     # training facilities and stadiums, world/college/program.py). Saves from before it: classic.
     college_mode: str = "classic"
-    # A college coach's GOD players (world/college/god_player.py): player id -> the season he
+    # A college coach's OP players (world/college/god_player.py): player id -> the season he
     # was signed. One every few seasons; he never declares early, so he stays four years.
     god_players: dict[int, int] = field(default_factory=dict)
 

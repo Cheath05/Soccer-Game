@@ -1044,3 +1044,12 @@ export interface CollegeSeasonRecord {
   tier: number
   prestige: number
 }
+
+// GET /api/international/world-cup: the finals (empty before the draw).
+export interface WorldCupFinals {
+  year: number
+  draw: string
+  groups: { name: string; rows: QualifierGroupRow[] }[]
+  rounds: { name: string; fixtures: Fixture[] }[]
+  champion: ClubRef | null
+}

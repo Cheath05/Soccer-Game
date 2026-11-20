@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.131"
+- version: "1.133"
   date: "2026-11-20"
   title: "College: season records, recruiting chances, tidier news and the GOD player"
   changes:
@@ -39,6 +39,13 @@
     - "A college coach gets a real season summary: conference finish, record, RPI, NCAA run, the class you signed, every conference's champions and your squad's development."
     - "Continue now stops a college coach on set days (NCAA selection, the College Cup final, the SuperDraft, recruiting's opening, signing day and close, and the 1st of each month once your games are over), instead of running to the season's end."
     - "The GOD player (on Recruiting): once every four seasons, sign a freshman with a pro's ratings (about 78 overall) at a random position. He stays all four years."
+
+- version: "1.129"
+  date: "2026-11-19"
+  title: "The 2030 World Cup finals"
+  changes:
+    - "The 2030 World Cup in Spain, Portugal and Morocco: once qualifying is over, the 48 teams are drawn on 5 April 2030 into 12 groups of four (the hosts head groups A to C and play their group games at home; no group has two teams from one continent, Europe's two at most). The top two of each group and the eight best third-placed teams go to a round of 32, then single matches with extra time and penalties to the final on 19 July, with a match for third place."
+    - "The squads are called up the day before the first match on 13 June, and those players are away from their clubs until the final. International → World Cup 2030 shows the groups, the knockout rounds and the champion."
 
 - version: "1.127"
   date: "2026-11-19"

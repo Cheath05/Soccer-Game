@@ -69,6 +69,8 @@ from footsim.world.international.club_world_cup import club_world_cup_day, is_cw
 from footsim.world.international.club_world_cup import decider as cwc_decider
 from footsim.world.international.common import SUMMER_TYPES
 from footsim.world.international.common import TYPE as INTERNATIONAL_TYPE
+from footsim.world.international.finals import decider as finals_decider
+from footsim.world.international.finals import is_finals
 from footsim.world.international.qualifiers import decider as qualifier_decider
 from footsim.world.international.qualifiers import is_qualifier
 from footsim.world.international.windows import FRIENDLY, international_day
@@ -601,6 +603,8 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         return qualifier_decider(conn, world, fx)
     if is_cwc(fx.stage):
         return cwc_decider(fx)
+    if is_finals(fx.stage):
+        return finals_decider(fx)
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)
     if fx.stage in world.defs.cups:

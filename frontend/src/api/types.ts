@@ -109,7 +109,8 @@ export interface CollegeCareer {
   conference: string
   conference_name: string
   tier: number // 1 (a national power) to 5
-  prestige: number // 0-100
+  prestige: number // 0-100, as recruits see it (with the facilities' bonus)
+  prestige_facilities?: number // the facilities' share of it (program builder)
   rpi_rank: number | null
   mode?: 'classic' | 'builder' // the program builder: money and facilities (W9d)
 }
@@ -183,6 +184,11 @@ export interface SeasonFinal {
   europe?: EuropeRun[] // and in each European competition
   review?: SeasonReview | null // how the season went across the game, and for the squad
   news?: string[] // the sim's other news: what the review doesn't cover
+  news_sections?: NewsSection[] // the same, in sections
+  college?: CollegeSeasonRecord | null // a college coach's season
+  conference_champions?: ConferenceChampions[] // a college coach's summary
+  national_champion?: ClubRef | null
+  class_signed?: Record<string, number> // a college coach's new class: recruits by stars
 }
 
 /** A competition's winners at a season's end: a league's champions or a cup's. (Play-off winners
@@ -272,14 +278,28 @@ export interface SimStatus {
   stop: 'date' | 'season_end' | 'offer' | 'cancelled' | 'abandoned' | 'error' | null
   error: string | null
   season_final?: SeasonFinal | null // when it stopped at the season's end
+  sections?: NewsSection[] // the messages in sections
 }
 
 export interface AdvanceResult {
   date: string
-  stop: 'match' | 'season_end' | 'offer' | 'limit'
+  stop: 'match' | 'season_end' | 'offer' | 'limit' | 'stop_day' // stop_day: a college coach's set day
   fixture_id: number | null
   messages: string[]
   season_final?: SeasonFinal | null // when it stopped at the season's end
+  sections?: NewsSection[] // the messages in sections
+}
+
+// The news after a Continue or a sim, in sections (api/news.py).
+export interface NewsSection {
+  title: string
+  items: string[]
+}
+
+export interface ConferenceChampions {
+  conference: string
+  regular_season: ClubRef | null
+  tournament: ClubRef | null
 }
 
 export interface TableRow {
@@ -472,6 +492,7 @@ export interface ClubOverview {
   upcoming: Fixture[]
   recent_transfers: string[]
   national?: NationalTeam | null // a national team's page
+  college?: CollegeSeasonRecord | null // a college program's season so far
 }
 
 export type FamiliarityBand = 'natural' | 'accomplished' | 'competent' | 'awkward' | 'unconvincing'
@@ -520,6 +541,7 @@ export interface PlayerSeasonLine {
   average_rating: number | null
   yellow: number
   red: number
+  school?: boolean // a college season: the club is a school
 }
 
 export interface PlayerSeason {
@@ -1001,6 +1023,30 @@ export interface ClubWorldCupView {
   entrants: { team: ClubRef; confederation: string; how: string }[]
   groups: { name: string; rows: QualifierGroupRow[] }[]
   rounds: { name: string; fixtures: Fixture[] }[]
+}
+
+// ClubOverview.college: a college program's season (world/college/season.py team_season).
+export interface CollegeSeasonRecord {
+  season: string
+  conference: string
+  conference_name: string
+  conference_position: number | null
+  conference_teams: number
+  conference_won: number
+  conference_drawn: number
+  conference_lost: number
+  conference_points: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  rpi_rank: number | null
+  ncaa: string | null
+  titles: string[]
+  tier: number
+  prestige: number // as recruits see it (with the facilities' bonus)
+  prestige_facilities?: number
 }
 
 // GET /api/international/world-cup: the finals (empty before the draw).

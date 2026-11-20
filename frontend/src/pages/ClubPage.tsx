@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { MLS_LEAGUE } from '../api/americas'
 import { useClub, useClubPlayers } from '../api/hooks'
 import BackButton from '../components/BackButton'
-import type { ClubPlayer, Fixture } from '../api/types'
+import type { ClubOverview, ClubPlayer, CollegeSeasonRecord, Fixture } from '../api/types'
 import ClubHistoryCard from '../components/ClubHistoryCard'
 import ClubLink from '../components/ClubLink'
 import Overall from '../components/Overall'
@@ -104,6 +104,8 @@ export default function ClubPage() {
           <Fact label="Squad" value={`${c.squad_size} players`} note={`Average age ${c.average_age.toFixed(1)} · OVR ${c.average_overall.toFixed(1)}`} />
           <Fact label="Best player" value={c.top_players[0]?.name ?? '–'} note={c.top_players[0] ? `${c.top_players[0].position} · ${c.top_players[0].overall} OVR` : undefined} />
         </SimpleGrid>
+      ) : c.college ? (
+        <CollegeFacts r={c.college} squad={c} />
       ) : (
       <SimpleGrid cols={{ base: 2, sm: 4 }}>
         <Fact label="League position" value={c.position ? ordinal(c.position) : '–'} note={c.position ? `${c.points} pts from ${c.played} ${c.played === 1 ? 'game' : 'games'}` : 'Season not started'} />
@@ -266,4 +268,44 @@ function compare(a: ClubPlayer, b: ClubPlayer, key: SortKey): number {
   const y = b[key]
   if (typeof x === 'number' && typeof y === 'number') return x - y
   return String(x).localeCompare(String(y))
+}
+
+const TITLE_NAMES: Record<string, string> = {
+  'regular season': 'Conference regular season',
+  'conference tournament': 'Conference tournament',
+  national: 'NCAA champions',
+}
+
+/** A college program's season: its record, conference finish, RPI and NCAA run. */
+function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOverview }) {
+  const played = r.won + r.drawn + r.lost
+  const confPlayed = r.conference_won + r.conference_drawn + r.conference_lost
+  return (
+    <SimpleGrid cols={{ base: 2, sm: 4 }}>
+      <Fact
+        label={`${r.season} record`}
+        value={played ? `${r.won}-${r.drawn}-${r.lost}` : '–'}
+        note={played ? `W-D-L · goals ${r.goals_for}-${r.goals_against}` : 'No games yet'}
+      />
+      <Fact
+        label={r.conference}
+        value={r.conference_position ? `${ordinal(r.conference_position)} of ${r.conference_teams}` : '–'}
+        note={confPlayed ? `${r.conference_won}-${r.conference_drawn}-${r.conference_lost} in conference · ${r.conference_points} pts` : 'No conference games yet'}
+      />
+      <Fact label="RPI ranking" value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note="Nationally" />
+      <Fact
+        label="NCAA tournament"
+        value={!r.ncaa ? 'Not in it' : r.ncaa === 'NCAA champions' ? 'Champions' : r.ncaa.includes(': out') ? 'Knocked out' : 'Still in it'}
+        note={r.ncaa && r.ncaa !== 'NCAA champions' ? r.ncaa.replace(/^NCAA tournament: |^In the NCAA tournament: /, '') : undefined}
+      />
+      <Fact
+        label="Titles this season"
+        value={r.titles.length ? String(r.titles.length) : 'None'}
+        note={r.titles.length ? r.titles.map((t) => TITLE_NAMES[t] ?? t).join(' · ') : undefined}
+      />
+      <Fact label="Program" value={`Tier ${r.tier}`} note={`Prestige ${r.prestige.toFixed(0)}${r.prestige_facilities ? ` (+${r.prestige_facilities.toFixed(0)} facilities)` : ''}`} />
+      <Fact label="Squad" value={`${squad.squad_size} players`} note={`Average age ${squad.average_age.toFixed(1)} · OVR ${squad.average_overall.toFixed(1)}`} />
+      <Fact label="Best player" value={squad.top_players[0]?.name ?? '–'} note={squad.top_players[0] ? `${squad.top_players[0].position} · ${squad.top_players[0].overall} OVR` : undefined} />
+    </SimpleGrid>
+  )
 }

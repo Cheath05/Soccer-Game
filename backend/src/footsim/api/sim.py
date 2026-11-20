@@ -17,6 +17,7 @@ from sqlalchemy import Connection, Row, or_, select
 
 from footsim.api import workers
 from footsim.api.auth import session_for
+from footsim.api.news import news_sections
 from footsim.api.schemas import SeasonFinalOut, SimIn, SimResultOut, SimStatusOut, SimTargetOut
 from footsim.api.season_review import season_final
 from footsim.api.session import CareerSession
@@ -41,6 +42,7 @@ class SimJob:
     stop: str | None = None  # date | season_end | offer | cancelled | abandoned | error
     error: str | None = None
     season_final: SeasonFinalOut | None = None
+    club_name: str | None = None  # the user's club's name, for the news's sections
     cancel: threading.Event = field(default_factory=threading.Event)
 
     @property
@@ -51,7 +53,8 @@ class SimJob:
         return SimStatusOut(running=self.running, start=self.start.isoformat(),
                             until=self.until.isoformat(), date=self.day.isoformat(),
                             results=list(self.results), messages=list(self.messages),
-                            stop=self.stop, error=self.error, season_final=self.season_final)
+                            stop=self.stop, error=self.error, season_final=self.season_final,
+                            sections=news_sections(self.messages, self.club_name))
 
 
 def running(session: CareerSession) -> bool:
@@ -172,6 +175,9 @@ def start(body: SimIn, request: Request) -> SimStatusOut:
             raise HTTPException(400, f"pick a date after {today.isoformat()} and within "
                                      f"{MAX_DAYS} days")
         job = SimJob(today, until, session.generation, today)
+        with session.read() as conn:
+            job.club_name = str(conn.execute(select(club.c.name).where(
+                club.c.id == meta.user_club_id)).scalar() or "") or None
         session.sim = job
         threading.Thread(target=_run, args=(session, job, meta.user_teams), daemon=True,
                          name="sim-to-date").start()

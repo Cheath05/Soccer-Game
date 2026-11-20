@@ -4,6 +4,8 @@ from datetime import date
 
 from pydantic import AliasChoices, BaseModel, Field
 
+from footsim.api.news import NewsSectionOut
+
 
 class ClubRef(BaseModel):
     id: int
@@ -310,7 +312,8 @@ class CollegeCareerOut(BaseModel):
     conference: str  # its key
     conference_name: str
     tier: int  # 1 (a national power) to 5
-    prestige: int  # 0-100
+    prestige: int  # 0-100, as recruits see it: with the facilities' bonus (program builder)
+    prestige_facilities: int = 0  # the facilities' share of it
     rpi_rank: int | None  # this season's, once games are played
     mode: str = "classic"  # classic | builder (the program builder: money and facilities, W9d)
 
@@ -337,6 +340,7 @@ class AdvanceOut(BaseModel):
     fixture_id: int | None
     messages: list[str]
     season_final: "SeasonFinalOut | None" = None  # when it stopped at the season's end
+    sections: list[NewsSectionOut] = []  # the messages in sections (api/news.py)
 
 
 class SimIn(BaseModel):
@@ -383,6 +387,12 @@ class SeasonFinalOut(BaseModel):
     europe: list["EuropeRunOut"] = []  # and in each European competition
     review: "SeasonReviewOut | None" = None  # how it went everywhere else, and for the squad
     news: list[str] = []  # the other news from the sim: what the review doesn't cover
+    news_sections: list[NewsSectionOut] = []  # the same, in sections (api/news.py)
+    college: "CollegeSeasonRecordOut | None" = None  # a college coach's season (then
+    # competition, position and the record are its conference's and its own over every game)
+    conference_champions: list["ConferenceChampionsOut"] = []  # a college coach's summary
+    national_champion: "ClubRef | None" = None
+    class_signed: dict[int, int] = {}  # a college coach's new class: recruits by stars
 
 
 class SimStatusOut(BaseModel):
@@ -395,6 +405,13 @@ class SimStatusOut(BaseModel):
     stop: str | None  # date | season_end | cancelled | abandoned | error
     error: str | None
     season_final: SeasonFinalOut | None = None  # when it stopped at the season's end
+    sections: list[NewsSectionOut] = []  # the messages in sections (api/news.py)
+
+
+class ConferenceChampionsOut(BaseModel):
+    conference: str  # short name
+    regular_season: ClubRef | None
+    tournament: ClubRef | None
 
 
 class SquadPlayerOut(BaseModel):
@@ -480,6 +497,32 @@ class ClubOverviewOut(BaseModel):
     upcoming: list[FixtureOut]
     recent_transfers: list[str]  # its latest moves in and out, newest first, in words
     national: "NationalTeamOut | None" = None  # a national team's (W8): its page differs
+    college: "CollegeSeasonRecordOut | None" = None  # a college program's season so far
+
+
+class CollegeSeasonRecordOut(BaseModel):
+    """A college program's season (world/college/season.py ``team_season``)."""
+
+    season: str
+    conference: str  # short name
+    conference_name: str
+    conference_position: int | None  # None before its first conference game
+    conference_teams: int
+    conference_won: int
+    conference_drawn: int
+    conference_lost: int
+    conference_points: int
+    won: int  # every college game
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    rpi_rank: int | None
+    ncaa: str | None  # how far it got in the NCAA tournament, in words
+    titles: list[str]  # "regular season", "conference tournament", "national"
+    tier: int
+    prestige: float  # as recruits see it: with the facilities' bonus (program builder)
+    prestige_facilities: float = 0.0  # the facilities' share of it
 
 
 class NationalTeamOut(BaseModel):
@@ -619,6 +662,8 @@ class PlayerSeasonLineOut(BaseModel):
     average_rating: float | None
     yellow: int
     red: int
+    school: bool = False  # a college season (the club is a school)
+
 
 
 class PlayerSeasonOut(BaseModel):

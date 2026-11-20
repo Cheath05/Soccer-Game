@@ -43,6 +43,18 @@ class CareerMeta:
     # A college coach's game mode (W9d): "classic", or "builder" (programs have money and build
     # training facilities and stadiums, world/college/program.py). Saves from before it: classic.
     college_mode: str = "classic"
+    # A college coach's OP players (world/college/god_player.py): player id -> the season he
+    # was signed. One every few seasons; he never declares early, so he stays four years.
+    god_players: dict[int, int] = field(default_factory=dict)
+    # The assistant trains positions (world/training.py auto_train): each month every one of the
+    # user's players not learning a position starts on his best alternate one.
+    auto_position_training: bool = False
+    # A college coach's game-day visits (world/college/visits.py): recruit id -> the home
+    # fixture he's invited to.
+    gameday_visits: dict[int, int] = field(default_factory=dict)
+    # The recruiting assistant (world/college/assistant.py): each Monday until signing day it
+    # targets and offers recruits to replace the college coach's leavers.
+    auto_recruiting: bool = False
 
     @property
     def seed(self) -> int:
@@ -72,6 +84,10 @@ def read_meta(conn: Connection) -> CareerMeta:
         asking_prices={int(k): int(v) for k, v in values.get("asking_prices", {}).items()},
         user_nation_id=values.get("user_nation_id"),
         college_mode=str(values.get("college_mode", "classic")),
+        god_players={int(k): int(v) for k, v in values.get("god_players", {}).items()},
+        auto_position_training=bool(values.get("auto_position_training", False)),
+        gameday_visits={int(k): int(v) for k, v in values.get("gameday_visits", {}).items()},
+        auto_recruiting=bool(values.get("auto_recruiting", False)),
     )
 
 
@@ -92,6 +108,10 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "asking_prices": {str(k): v for k, v in meta.asking_prices.items()},
         "user_nation_id": meta.user_nation_id,
         "college_mode": meta.college_mode,
+        "god_players": {str(k): v for k, v in meta.god_players.items()},
+        "auto_position_training": meta.auto_position_training,
+        "gameday_visits": {str(k): v for k, v in meta.gameday_visits.items()},
+        "auto_recruiting": meta.auto_recruiting,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

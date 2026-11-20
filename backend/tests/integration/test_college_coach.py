@@ -67,6 +67,9 @@ def test_the_programs_matches_are_the_users(career: tuple[Engine, World]) -> Non
     engine, world = career
     with engine.begin() as conn:
         result = advance(conn, world)
+        # Recruiting's offers opening (1 August) is one of a college coach's set days.
+        assert result.stop == "stop_day" and result.date.isoformat().endswith("-08-02")
+        result = advance(conn, world)
         assert result.stop == "match" and result.fixture_id is not None
         meta = read_meta(conn)
         fx = conn.execute(select(fixture).where(fixture.c.id == result.fixture_id)).one()
@@ -100,4 +103,92 @@ def test_players_leave_as_free_agents_and_pros_cant_join(career: tuple[Engine, W
         with pytest.raises(MoveRefused, match="high-school recruits"):
             validate_move(conn, world, meta, Move(int(pro), meta.user_club_id, by_user=True),
                           meta.current_date)
+        conn.rollback()
+
+
+def test_the_assistant_trains_positions(career: tuple[Engine, World]) -> None:
+    """Settings → Position training (20 Nov): each of the user's players not learning a
+    position starts on the familiar, not natural, position he knows best; once only."""
+    from footsim.world.training import auto_train
+
+    engine, world = career
+    natural = world.defs.development.position_training.natural
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        started = auto_train(conn, world, meta, meta.current_date)
+        assert started > 0
+        assert auto_train(conn, world, meta, meta.current_date) == 0  # nobody twice
+        rows = conn.execute(text(
+            "SELECT t.player_id, t.position, pp.familiarity, (SELECT MAX(familiarity) FROM "
+            "player_position o WHERE o.player_id = t.player_id AND o.familiarity < :n) AS best "
+            "FROM position_training t JOIN player_position pp ON pp.player_id = t.player_id "
+            "AND pp.position = t.position"), {"n": natural}).all()
+        assert len(rows) == started
+        assert all(0 < r.familiarity < natural and r.familiarity == r.best for r in rows)
+        conn.rollback()
+
+
+def test_the_hall_of_fame_lists_who_played(career: tuple[Engine, World]) -> None:
+    """The Hall of fame page (20 Nov): everyone who has played for the user's club, with his
+    record there; the greats need hall_of_fame's appearances first."""
+    from contextlib import contextmanager
+    from typing import Any
+
+    from footsim.api.hall_of_fame import hall_of_fame
+
+    engine, world = career
+
+    class _Session:
+        @contextmanager
+        def read(self) -> Any:
+            with engine.connect() as conn:
+                yield conn
+
+    with engine.connect() as conn:
+        user = read_meta(conn).user_club_id
+        played = conn.execute(text("SELECT COUNT(DISTINCT player_id) FROM player_match "
+                                   "WHERE club_id = :c"), {"c": user}).scalar_one()
+    out = hall_of_fame(_Session())  # type: ignore[arg-type]
+    assert out.club.id == user and "appearances" in out.rule
+    assert len(out.players) == played
+    rules = world.defs.lifecycle.hall_of_fame
+    assert all(p.appearances >= rules.min_apps for p in out.players if p.hall_of_fame)
+    assert all(p.now == "with_you" for p in out.players)  # nobody has left yet
+
+
+def test_a_game_day_visit_moves_with_the_result(career: tuple[Engine, World]) -> None:
+    """Game-day visits (20 Nov): an invited recruit gains the visit's boost times the result's
+    factor once the game is played; one invitation a recruit, and only to home games."""
+    from footsim.world.college import visits
+
+    engine, world = career
+    rules = world.defs.college.recruiting.programs
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        games = visits.home_games(conn, world, meta)
+        assert games and all(g.date >= meta.current_date for g in games)
+        rid = int(conn.execute(text(
+            "SELECT id FROM recruit WHERE class_season = :c AND status = 'open' "
+            "ORDER BY national_rank LIMIT 1 OFFSET 400"), {"c": meta.season_id + 1}).scalar_one())
+        visits.invite(conn, world, meta, rid, games[0].fixture_id)
+        assert read_meta(conn).gameday_visits == {rid: games[0].fixture_id}
+        away = conn.execute(select(fixture.c.id).where(
+            fixture.c.away_club_id == meta.user_club_id, fixture.c.status == "scheduled")
+            .limit(1)).scalar_one()
+        with pytest.raises(visits.VisitRefused):
+            visits.invite(conn, world, read_meta(conn), rid, int(away))
+        before = float(conn.execute(text(
+            "SELECT interest FROM recruit_interest WHERE recruit_id = :r AND club_id = :c"),
+            {"r": rid, "c": meta.user_club_id}).scalar_one())
+        conn.execute(text("UPDATE fixture SET status = 'played', home_goals = 3, away_goals = 0 "
+                          "WHERE id = :f"), {"f": games[0].fixture_id})
+        news = visits.settle(conn, world, read_meta(conn), games[0].date)
+        after = conn.execute(text(
+            "SELECT interest, visited_on FROM recruit_interest WHERE recruit_id = :r AND "
+            "club_id = :c"), {"r": rid, "c": meta.user_club_id}).one()
+        assert after.visited_on == games[0].date.isoformat() and len(news) == 1
+        assert float(after.interest) == pytest.approx(
+            min(100.0, before + rules.visit_boost * rules.gameday_visit.big_win))
+        assert read_meta(conn).gameday_visits == {}
+        assert visits.factor(world, 1, 0) > visits.factor(world, 1, 1) > visits.factor(world, 0, 1)
         conn.rollback()

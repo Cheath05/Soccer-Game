@@ -299,3 +299,24 @@ def college_draft_pool(session: Session, season_id: int | None = None) -> list[P
                             class_year=p.class_year, age=p.age, position=p.position,
                             overall=p.overall, potential=p.potential, ga=p.ga)
                 for p in draft_pool(conn, world, meta, sid)]
+
+
+class TopRankOut(BaseModel):
+    club_id: int
+    rank: int
+
+
+@router.get("/top25")
+def college_top25(session: Session) -> list[TopRankOut]:
+    """The 25 best college programs by this season's RPI (last season's final one until this
+    season's games begin), for the "#12" beside their names. Empty without the NCAA."""
+    world = get_world()
+    with session.read() as conn:
+        meta = read_meta(conn)
+        if college_competition(conn, world) is None:
+            return []
+        ratings = rankings(conn, world, meta.season_id)
+        if not ratings and meta.season_id > 1:
+            ratings = rankings(conn, world, meta.season_id - 1)
+        order = sorted(ratings, key=lambda c: (-ratings[c], c))[:25]
+        return [TopRankOut(club_id=c, rank=k) for k, c in enumerate(order, start=1)]

@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router'
 
 import type { ClubRef } from '../api/types'
+import RankTag from './RankTag'
 
-/** A club's name that opens its page. The click stays on the link, so it also works inside
+/** A club's name that opens its page (with "#12" before a college top-25 program's). The click stays on the link, so it also works inside
  * table rows that open something else. */
 export default function ClubLink({ club, bold }: { club: ClubRef; bold?: boolean }) {
   return (
@@ -14,6 +15,7 @@ export default function ClubLink({ club, bold }: { club: ClubRef; bold?: boolean
       onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
       onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
     >
+      <RankTag clubId={club.id} />
       {club.name}
     </Link>
   )

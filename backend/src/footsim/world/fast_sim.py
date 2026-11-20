@@ -27,15 +27,18 @@ from sqlalchemy import Connection, Engine, Row, text
 from footsim.core.rng import derive_rng
 from footsim.match.report import MatchReport
 from footsim.match.teams import TeamSheet
-from footsim.world.college.common import is_college_club
 from footsim.world.context import World
 from footsim.world.international.common import away_players, national_club_ids
 from footsim.world.international.windows import FRIENDLY
 from footsim.world.meta import CareerMeta, players_epoch
+from footsim.world.news_scope import effective_fast, user_league
 from footsim.world.season import decider_for
 from footsim.world.squads import team_sheet
 
 SIM = "fast"  # fixture.sim for a fast result
+
+
+__all__ = ["effective_fast", "user_league"]  # moved to news_scope; kept importable here
 
 
 # --- the setting -------------------------------------------------------------------------
@@ -47,28 +50,6 @@ def selectable(world: World) -> dict[str, str]:
     found = {key: lg.nation for key, lg in world.defs.leagues.items()}
     found[world.defs.college.rules.key] = "USA"
     return found
-
-
-def user_league(conn: Connection, meta: CareerMeta) -> str | None:
-    """The key of the user's club's league this season (always fully simulated)."""
-    if meta.user_club_id is None:
-        return None
-    if is_college_club(conn, meta.user_club_id):  # a college coach: the NCAA (W9c)
-        return str(conn.execute(text("SELECT key FROM competition WHERE type = 'college'"))
-                   .scalar_one())
-    value = conn.execute(text(
-        "SELECT c.key FROM club_league_membership m JOIN competition c ON c.id = m.competition_id "
-        "WHERE m.club_id = :club AND m.season_id = :s"),
-        {"club": meta.user_club_id, "s": meta.season_id}).scalar()
-    return str(value) if value is not None else None
-
-
-def effective_fast(conn: Connection, meta: CareerMeta) -> set[str]:
-    """The competitions given fast results today: the setting, less the user's own league."""
-    fast = set(meta.fast_leagues)
-    if fast:
-        fast.discard(user_league(conn, meta) or "")
-    return fast
 
 
 def set_fast_leagues(world: World, meta: CareerMeta, keys: list[str]) -> None:

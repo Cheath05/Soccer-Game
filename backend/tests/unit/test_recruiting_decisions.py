@@ -180,3 +180,14 @@ def test_curves_and_dates(world: World) -> None:
     assert rc.step_down(0.37, 0.05) == pytest.approx(0.35)
     states = hs.states
     assert 2000 < rc.miles(states["NY"], states["CA"]) < 2700
+
+
+def test_the_fit_label_follows_the_prestige_score() -> None:
+    """The recruiting screen's "Your chances" (college fixes): from how a recruit's prestige
+    score sees the user's program, best first."""
+    from footsim.world.college.coach import fit_label
+    from footsim.world.context import get_world
+
+    hs = get_world().defs.college.recruiting
+    labels = [fit_label(hs, part) for part in (0.9, 0.5, 0.3, 0.15, 0.05)]
+    assert labels == ["good", "good", "reach", "long_shot", "out_of_reach"]

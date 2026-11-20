@@ -846,7 +846,9 @@ def _effort(board: Board) -> None:
             row.changed = True
             if (row.priority == TOP and offered and row.visited_on is None
                     and row.interest >= rules.visit_interest and p.visits < rules.official_visits
-                    and board.recruits[row.recruit_id].status == OPEN):
+                    and board.recruits[row.recruit_id].status == OPEN
+                    # one invited to a game day visits then (world/college/visits.py)
+                    and not (club_id == user and row.recruit_id in board.meta.gameday_visits)):
                 row.interest = min(100.0, row.interest + rules.visit_boost)
                 row.visited_on = today
                 p.visits += 1

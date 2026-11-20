@@ -64,6 +64,9 @@ class SheetPlayer:
     group: PositionGroup
     role: str
     rating: float
+    # His overall in each role (no familiarity or condition): set for the bench, so an automatic
+    # substitution can bring on whoever fits the position best, in his best role there.
+    role_overalls: dict[str, float] = field(default_factory=dict)
 
     @property
     def player_id(self) -> int:
@@ -165,10 +168,34 @@ class LineupPicker:
                 group=self.defs.positions[pos].group,
                 role=self.defs.roles_for(self.defs.positions[pos].group)[0].key,
                 rating=float(best[i]),
+                role_overalls={k: float(overalls[i][j])
+                               for j, k in enumerate(self.model.role_keys)},
             ))
         sheet = TeamSheet(club_id, name, formation, roles, starters, bench, instructions or {})
         _number(sheet)
         return sheet
+
+    def best_roles(self, squad: list[SquadPlayer], formation: FormationDef) -> dict[str, str]:
+        """Each slot's role for the best XI ("Pick best XI"): the XI and the roles chosen
+        together, every player in the slot and the role where he rates highest."""
+        available = [p for p in squad if p.available] or list(squad)
+        overalls = self.model.role_overalls(np.stack([p.attrs for p in available]))
+        slots = formation.slots
+        options = [[r.key for r in self.defs.roles_for(self.defs.positions[s.position].group)]
+                   for s in slots]
+        score = np.zeros((len(available), len(slots)))
+        role_of: dict[tuple[int, int], str] = {}
+        for i, p in enumerate(available):
+            for j, slot in enumerate(slots):
+                best_key = max(options[j], key=lambda k: (overalls[i][self.model.role_index(k)],
+                                                          k == slot.default_role))
+                role_of[(i, j)] = best_key
+                score[i, j] = self.slot_rating(p, slot.position, best_key, overalls[i])
+        rows, cols = linear_sum_assignment(-score)
+        roles = {s.id: s.default_role for s in slots}
+        for row, col in zip(rows.tolist(), cols.tolist(), strict=True):
+            roles[slots[col].id] = role_of[(row, col)]
+        return roles
 
     def best_formation(self, club_id: int, name: str, squad: list[SquadPlayer],
                        keys: list[str]) -> str:

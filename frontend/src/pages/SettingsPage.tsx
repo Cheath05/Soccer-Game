@@ -2,6 +2,9 @@ import { Alert, Card, Stack, Text, Title } from '@mantine/core'
 
 import { ApiError } from '../api/client'
 import { useSetSimulation, useSimulation } from '../api/hooks'
+import AutoTrainingSwitch from '../components/AutoTrainingSwitch'
+import RecruitingAssistantSwitch from '../components/RecruitingAssistantSwitch'
+import { useCareer } from '../api/hooks'
 import OfferRulesCard from '../components/OfferRulesCard'
 import SimulationPicker from '../components/SimulationPicker'
 
@@ -10,10 +13,25 @@ import SimulationPicker from '../components/SimulationPicker'
 export default function SettingsPage() {
   const sim = useSimulation()
   const save = useSetSimulation()
+  const college = !!useCareer().data?.college
   return (
     <Stack>
       <Title order={2}>Settings</Title>
       <OfferRulesCard />
+      <Card withBorder padding="md">
+        <Title order={4} mb="xs">
+          Position training
+        </Title>
+        <AutoTrainingSwitch />
+      </Card>
+      {college && (
+        <Card withBorder padding="md">
+          <Title order={4} mb="xs">
+            Recruiting
+          </Title>
+          <RecruitingAssistantSwitch />
+        </Card>
+      )}
       <Card withBorder padding="md">
         <Title order={4} mb={4}>
           Simulation

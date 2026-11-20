@@ -56,6 +56,36 @@ def _meta(engine: Engine) -> CareerMeta:
         return read_meta(conn)
 
 
+def test_the_assistant_recruits_the_leavers_replacements(career: tuple[Engine, World]) -> None:
+    """The recruiting assistant (20 Nov): Top targets with offers, at the leavers' position
+    groups, to realistic recruits; nothing twice; the user's own targets left alone. (Rolled
+    back, so the recruiting year below starts as before.)"""
+    from footsim.world.college import coach
+    from footsim.world.college.assistant import leaving, recruit_for_leavers
+
+    engine, world = career
+    with engine.connect() as conn:
+        tx = conn.begin()
+        meta = read_meta(conn)
+        meta.auto_recruiting = True
+        meta.current_date = date(meta.current_date.year, 8, 3)  # offers are open
+        need = leaving(conn, world, meta)
+        assert sum(need.values()) > 0
+        mine = next(v for v in coach.recruits(conn, world, meta) if v.fit == "good")
+        coach.set_target(conn, world, meta, mine.id, rc.WATCH)
+        news = recruit_for_leavers(conn, world, meta, meta.current_date)
+        assert news and news[0].startswith("Your assistant offered")
+        views = coach.recruits(conn, world, meta)
+        offered = [v for v in views if v.offer_status == "open"]
+        assert offered and all(v.priority == rc.TOP and v.fit in ("good", "reach")
+                               for v in offered)
+        groups = {str(world.defs.positions[v.position].group) for v in offered}
+        assert groups <= set(need)
+        assert next(v for v in views if v.id == mine.id).priority == rc.WATCH
+        assert recruit_for_leavers(conn, world, meta, meta.current_date) == []
+        tx.rollback()
+
+
 def test_a_recruiting_year(career: tuple[Engine, World]) -> None:
     engine, world = career
     with engine.begin() as conn:

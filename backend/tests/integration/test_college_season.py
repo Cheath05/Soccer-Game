@@ -21,11 +21,11 @@ from footsim.api import college as api
 from footsim.core.paths import data_dir
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
-from footsim.persistence.schema import college_entry, fixture, league_title
+from footsim.persistence.schema import college_entry, college_team, fixture, league_title
 from footsim.world.career import advance, initialize_career
 from footsim.world.college import draft_pool, turn_pro
 from footsim.world.college.common import IN_COLLEGE_SQL, NCAA, conference_event
-from footsim.world.college.season import college_competition, conference_tables
+from footsim.world.college.season import college_competition, conference_tables, team_season
 from footsim.world.context import get_world
 from footsim.world.meta import read_meta
 from footsim.world.transfers import Move, MoveRefused, validate_move
@@ -177,6 +177,17 @@ def test_the_ncaa_tournament(played: _Season) -> None:
                                                                          f.away_pens or 0)
                   else f.away_club_id)
         assert title.club_id == winner and title.won_on == "2026-12-14"
+        # A program's season in words (its club page and the season summary).
+        meta = read_meta(conn)
+        champ = team_season(conn, world, meta, int(winner), 1)
+        assert champ is not None and champ.ncaa == "NCAA champions" and "national" in champ.titles
+        assert champ.overall.played > 0 and champ.rpi_rank is not None
+        loser = f.away_club_id if winner == f.home_club_id else f.home_club_id
+        assert team_season(conn, world, meta, int(loser), 1).ncaa == \
+            "NCAA tournament: out in the College Cup final"  # type: ignore[union-attr]
+        outside = next(int(r.club_id) for r in conn.execute(select(college_team))
+                       if int(r.club_id) not in seed_of)
+        assert team_season(conn, world, meta, outside, 1).ncaa is None  # type: ignore[union-attr]
 
 
 def test_the_draft_pool(played: _Season) -> None:

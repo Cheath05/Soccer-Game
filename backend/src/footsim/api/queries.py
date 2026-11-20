@@ -4,6 +4,7 @@ import json
 import unicodedata
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from footsim.api.schemas import (
     ClubSeasonOut,
     CollegeCareerOut,
     CollegePlayerOut,
+    CollegeSeasonRecordOut,
     CompetitionOut,
     CupOut,
     CupRoundOut,
@@ -112,6 +114,7 @@ from footsim.world.club_names import load_club_names
 from footsim.world.college.common import CONFERENCE_PREFIX, in_college
 from footsim.world.college.common import REGULAR as REGULAR_SEASON
 from footsim.world.college.draft import leave_program
+from footsim.world.college.program import facilities_bonus
 from footsim.world.college.season import conference_tables, rankings
 from footsim.world.context import World, default_instructions, get_world
 from footsim.world.cups import cups_in_play, season_cups
@@ -418,8 +421,10 @@ def _college_career(conn: Connection, world: World, meta: CareerMeta
         rank = order.index(meta.user_club_id) + 1
     prestige = float(row.prestige) if row.prestige is not None else float(
         world.defs.college.recruiting.programs.prestige_by_tier[int(row.tier)])
+    bonus = facilities_bonus(conn, world, int(meta.user_club_id or 0))
     return CollegeCareerOut(conference=str(row.conference), conference_name=conference.name,
-                            tier=int(row.tier), prestige=round(prestige), rpi_rank=rank,
+                            tier=int(row.tier), prestige=round(prestige + bonus),
+                            prestige_facilities=round(bonus), rpi_rank=rank,
                             mode=meta.college_mode), position
 
 
@@ -1103,7 +1108,36 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         recent=fixtures_out(conn, recent, names, comps),
         upcoming=fixtures_out(conn, upcoming, names, comps),
         recent_transfers=_recent_transfers(conn, world, club_id, names, meta.currency),
+        college=college_season_record(conn, world, meta, club_id, meta.season_id),
     )
+
+
+def college_season_record(conn: Connection, world: World, meta: CareerMeta, club_id: int,
+                          season_id: int) -> CollegeSeasonRecordOut | None:
+    """A college program's season, for its club page and the season summary."""
+    from footsim.world.college.season import conference_tables, team_season
+
+    ts = team_season(conn, world, meta, club_id, season_id)
+    if ts is None:
+        return None
+    team = conn.execute(select(college_team.c.tier, college_team.c.prestige).where(
+        college_team.c.club_id == club_id)).one()
+    conf = world.defs.college.conferences[ts.conference]
+    label = conn.execute(select(season.c.label).where(season.c.id == season_id)).scalar()
+    bonus = facilities_bonus(conn, world, club_id)
+    row = ts.row
+    return CollegeSeasonRecordOut(
+        season=str(label or ""), conference=conf.short_name, conference_name=conf.name,
+        conference_position=row.position if row else None,
+        conference_teams=len(conference_tables(conn, world, meta, season_id).get(
+            ts.conference, [])),
+        conference_won=row.won if row else 0, conference_drawn=row.drawn if row else 0,
+        conference_lost=row.lost if row else 0, conference_points=row.points if row else 0,
+        won=ts.overall.won, drawn=ts.overall.drawn, lost=ts.overall.lost,
+        goals_for=ts.overall.goals_for, goals_against=ts.overall.goals_against,
+        rpi_rank=ts.rpi_rank, ncaa=ts.ncaa, titles=ts.titles, tier=int(team.tier),
+        prestige=round(float(team.prestige or 0.0) + bonus, 1),
+        prestige_facilities=round(bonus, 1))
 
 
 RECENT_TRANSFERS = 5
@@ -1259,11 +1293,55 @@ _SEASON_LINES_SQL = """
 
 def _season_line(club_ref: ClubRef | None, key: str, name: str, apps: int, starts: int,
                  minutes: int, goals: int, assists: int, rating_sum: float, yellow: int,
-                 red: int) -> PlayerSeasonLineOut:
+                 red: int, school: bool = False) -> PlayerSeasonLineOut:
     return PlayerSeasonLineOut(
         club=club_ref, competition_key=key, competition=name, appearances=apps, starts=starts,
         minutes=minutes, goals=goals, assists=assists,
-        average_rating=round(rating_sum / apps, 2) if apps else None, yellow=yellow, red=red)
+        average_rating=round(rating_sum / apps, 2) if apps else None, yellow=yellow, red=red,
+        school=school)
+
+
+@dataclass
+class _Line:
+    season_id: int
+    competition_id: int
+    stage: str
+    club_id: int
+    apps: int
+    starts: int
+    minutes: int
+    goals: int
+    assists: int
+    rating_sum: float
+    yellow: int
+    red: int
+
+
+def _college_merged(conn: Connection, comps: dict[int, Row[Any]], query: Any, player_id: int
+                    ) -> list[_Line]:
+    """The season lines with a college season's stages (regular season, conference
+    tournament, NCAA tournament) as one line: they're one competition."""
+    merged: dict[tuple[int, int, str, int], _Line] = {}
+    for r in conn.execute(query, {"pid": player_id}):
+        college = comps[r.competition_id].type == "college"
+        stage = comps[r.competition_id].key if college else str(r.stage)
+        key = (int(r.season_id), int(r.competition_id), stage, int(r.club_id))
+        line = merged.get(key)
+        if line is None:
+            merged[key] = _Line(int(r.season_id), int(r.competition_id), stage, int(r.club_id),
+                                int(r.apps), int(r.starts or 0), int(r.minutes or 0),
+                                int(r.goals or 0), int(r.assists or 0), float(r.rating_sum or 0),
+                                int(r.yellow or 0), int(r.red or 0))
+        else:
+            line.apps += int(r.apps)
+            line.starts += int(r.starts or 0)
+            line.minutes += int(r.minutes or 0)
+            line.goals += int(r.goals or 0)
+            line.assists += int(r.assists or 0)
+            line.rating_sum += float(r.rating_sum or 0)
+            line.yellow += int(r.yellow or 0)
+            line.red += int(r.red or 0)
+    return list(merged.values())
 
 
 def player_seasons(conn: Connection, world: World, player_id: int) -> list[PlayerSeasonOut]:
@@ -1276,8 +1354,8 @@ def player_seasons(conn: Connection, world: World, player_id: int) -> list[Playe
     comps = _competitions(conn)
     labels = {r.id: r.label for r in conn.execute(select(season))}
     # (season) -> [(sort key, competition key, competition name, row)]
-    found: dict[int, list[tuple[tuple[int, int, str], str, str, Row[Any]]]] = defaultdict(list)
-    for r in conn.execute(text(_SEASON_LINES_SQL), {"pid": player_id}):
+    found: dict[int, list[tuple[tuple[int, int, str], str, str, _Line]]] = defaultdict(list)
+    for r in _college_merged(conn, comps, text(_SEASON_LINES_SQL), player_id):
         comp = comps[r.competition_id]
         league = world.defs.leagues.get(comp.key)
         if r.stage == "league" or r.stage == comp.key or league is None:
@@ -1295,7 +1373,8 @@ def player_seasons(conn: Connection, world: World, player_id: int) -> list[Playe
             season_id=season_id, season=labels[season_id],
             lines=[_season_line(ClubRef(id=r.club_id, name=names[r.club_id]), key, name, r.apps,
                                 r.starts, r.minutes, r.goals, r.assists, r.rating_sum, r.yellow,
-                                r.red) for _, key, name, r in entries],
+                                r.red, school=comps[r.competition_id].type == "college")
+                   for _, key, name, r in entries],
             total=_season_line(None, "", "All competitions", sum(r.apps for r in rows),
                                sum(r.starts for r in rows), sum(r.minutes for r in rows),
                                sum(r.goals for r in rows), sum(r.assists for r in rows),

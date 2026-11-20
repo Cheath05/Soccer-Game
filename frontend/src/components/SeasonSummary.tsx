@@ -1,13 +1,14 @@
-import { Accordion, Badge, Group, List, Paper, Stack, Table, Text } from '@mantine/core'
+import { Accordion, Badge, Group, Paper, Stack, Table, Text } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 
 import { useNations } from '../api/hooks'
-import type { ClubMove, Headline, Honour, Nation, SeasonFinal } from '../api/types'
+import type { ClubMove, Headline, Honour, Nation, SeasonFinal, SeasonReview } from '../api/types'
 import { europeText } from '../lib/europeRuns'
 import { type NationChoice, longDate, nationChoices, nationName, ordinal, positionColor, ratingColor } from '../lib/format'
 import ClubLink from './ClubLink'
+import NewsSections from './NewsSections'
 import { TrebleBanner } from './EuropeHonours'
 import NationPicker from './NationPicker'
 import Overall from './Overall'
@@ -50,6 +51,142 @@ function Finish({ final, userClubId }: { final: SeasonFinal; userClubId: number 
           {run.name}: {europeText(run)}
         </Text>
       ))}
+    </Stack>
+  )
+}
+
+const STAR_WORDS: Record<string, string> = { '5': 'five-star', '4': 'four-star', '3': 'three-star', '2': 'two-star' }
+
+/** A college coach's season: the program's finish, record, NCAA run and new class. */
+function CollegeFinish({ final }: { final: SeasonFinal }) {
+  const c = final.college
+  if (!c) return null
+  const signed = Object.entries(final.class_signed ?? {}).sort((a, b) => Number(b[0]) - Number(a[0]))
+  const total = signed.reduce((n, [, k]) => n + k, 0)
+  return (
+    <Stack gap={2}>
+      {c.titles.includes('national') && (
+        <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-yellow-light)" style={{ borderLeft: '4px solid var(--mantine-color-yellow-6)' }}>
+          <Text fw={700}>NCAA champions!</Text>
+        </Paper>
+      )}
+      <Text fw={700}>
+        {c.conference_position ? `${ordinal(c.conference_position)} in the ${c.conference_name}` : c.conference_name}
+        {c.titles.includes('regular season') ? ' · Regular-season champions' : ''}
+        {c.titles.includes('conference tournament') ? ' · Tournament champions' : ''}
+      </Text>
+      <Text size="sm" c="dimmed">
+        Won {c.won}, drawn {c.drawn}, lost {c.lost} · goals {c.goals_for}–{c.goals_against}
+        {c.rpi_rank ? ` · ${ordinal(c.rpi_rank)} in the RPI` : ''}
+      </Text>
+      <Text size="sm">{c.ncaa ?? 'Not in the NCAA tournament'}</Text>
+      <Text size="sm">
+        New class: {total === 0 ? 'nobody signed' : signed.map(([st, k]) => `${k} ${STAR_WORDS[st] ?? `${st}-star`}`).join(', ')}
+      </Text>
+    </Stack>
+  )
+}
+
+function ConferenceChampionsTable({ final, userClubId }: { final: SeasonFinal; userClubId: number }) {
+  const rows = final.conference_champions ?? []
+  if (rows.length === 0) return <Text size="sm" c="dimmed">No conference champions this season.</Text>
+  const bold = (id?: number) => (id === userClubId ? 700 : 500)
+  return (
+    <Table verticalSpacing={4}>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>Conference</Table.Th>
+          <Table.Th>Regular season</Table.Th>
+          <Table.Th>Tournament</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {rows.map((r) => (
+          <Table.Tr key={r.conference}>
+            <Table.Td>
+              <Text size="sm">{r.conference}</Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm" fw={bold(r.regular_season?.id)}>
+                {r.regular_season ? <ClubLink club={r.regular_season} /> : '–'}
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm" fw={bold(r.tournament?.id)}>
+                {r.tournament ? <ClubLink club={r.tournament} /> : '–'}
+              </Text>
+            </Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  )
+}
+
+/** How the squad's overalls moved over the season. */
+function DevelopmentTable({ review }: { review: SeasonReview }) {
+  return (
+    <Stack gap="xs">
+      {!review.development_recorded && (
+        <Text size="sm" c="dimmed">
+          The ratings at the start of this season weren&apos;t kept: it began before the game recorded them.
+        </Text>
+      )}
+      {review.development_recorded && review.development_since && (
+        <Text size="sm" c="dimmed">
+          The game began recording ratings on {longDate(review.development_since)}, part-way through the season: changes
+          are counted from then.
+        </Text>
+      )}
+      {review.development_recorded && review.development.length === 0 && (
+        <Text size="sm" c="dimmed">
+          No player&apos;s overall changed.
+        </Text>
+      )}
+      {review.development.length > 0 && (
+        <Table.ScrollContainer minWidth={380}>
+          <Table verticalSpacing={4}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Pos</Table.Th>
+                <Table.Th>Player</Table.Th>
+                <Table.Th ta="right">Age</Table.Th>
+                <Table.Th ta="right">Start</Table.Th>
+                <Table.Th ta="right">Now</Table.Th>
+                <Table.Th ta="right">Change</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {review.development.map((d) => (
+                <Table.Tr key={d.player_id}>
+                  <Table.Td>
+                    <Position position={d.position} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">
+                      <PlayerLink id={d.player_id} name={d.name} />
+                    </Text>
+                  </Table.Td>
+                  <Table.Td ta="right">{d.age}</Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" c={ratingColor(d.before)} span>
+                      {d.before}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Overall value={d.after} trend={Math.sign(d.change)} hint={{ up: 'Improved over the season', down: 'Declined over the season' }} />
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" fw={600} c={d.change > 0 ? 'green.7' : 'red.7'} span>
+                      {d.change > 0 ? `+${d.change}` : `−${-d.change}`}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      )}
     </Stack>
   )
 }
@@ -249,8 +386,29 @@ export default function SeasonSummary({
 
   return (
     <Stack gap="sm" onClickCapture={closeOnLink}>
-      <Finish final={final} userClubId={userClubId} />
-      {review && (
+      {final.college ? <CollegeFinish final={final} /> : <Finish final={final} userClubId={userClubId} />}
+      {review && final.college && (
+        <>
+          <Text size="sm" c="dimmed">
+            {review.next_season ? `The ${review.next_season} season begins.` : `The ${review.season} season is over.`}
+            {final.national_champion ? ` ${final.national_champion.name} won the College Cup.` : ''}
+          </Text>
+          <Accordion multiple variant="separated" defaultValue={['conferences', 'development']}>
+            <Section value="conferences" title="Conference champions" count={(final.conference_champions ?? []).length}>
+              <ConferenceChampionsTable final={final} userClubId={userClubId} />
+            </Section>
+            <Section value="development" title="Your squad's development" count={review.development.length}>
+              <DevelopmentTable review={review} />
+            </Section>
+            {news.length > 0 && (
+              <Section value="news" title="Other news" count={news.length}>
+                <NewsSections sections={final.news_sections} messages={news} />
+              </Section>
+            )}
+          </Accordion>
+        </>
+      )}
+      {review && !final.college && (
         <>
           <Stack gap="xs">
             <Text size="sm" c="dimmed">
@@ -269,68 +427,7 @@ export default function SeasonSummary({
               <Moves moves={review.relegated.filter((m) => m.nation === nation)} userClubId={userClubId} none="No club went down." />
             </Section>
             <Section value="development" title="Your squad's development" count={review.development.length}>
-              <Stack gap="xs">
-                {!review.development_recorded && (
-                  <Text size="sm" c="dimmed">
-                    The ratings at the start of this season weren&apos;t kept: it began before the game recorded them.
-                  </Text>
-                )}
-                {review.development_recorded && review.development_since && (
-                  <Text size="sm" c="dimmed">
-                    The game began recording ratings on {longDate(review.development_since)}, part-way through the season: changes
-                    are counted from then.
-                  </Text>
-                )}
-                {review.development_recorded && review.development.length === 0 && (
-                  <Text size="sm" c="dimmed">
-                    No player&apos;s overall changed.
-                  </Text>
-                )}
-                {review.development.length > 0 && (
-                  <Table.ScrollContainer minWidth={380}>
-                    <Table verticalSpacing={4}>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Pos</Table.Th>
-                          <Table.Th>Player</Table.Th>
-                          <Table.Th ta="right">Age</Table.Th>
-                          <Table.Th ta="right">Start</Table.Th>
-                          <Table.Th ta="right">Now</Table.Th>
-                          <Table.Th ta="right">Change</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {review.development.map((d) => (
-                          <Table.Tr key={d.player_id}>
-                            <Table.Td>
-                              <Position position={d.position} />
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm">
-                                <PlayerLink id={d.player_id} name={d.name} />
-                              </Text>
-                            </Table.Td>
-                            <Table.Td ta="right">{d.age}</Table.Td>
-                            <Table.Td ta="right">
-                              <Text size="sm" c={ratingColor(d.before)} span>
-                                {d.before}
-                              </Text>
-                            </Table.Td>
-                            <Table.Td ta="right">
-                              <Overall value={d.after} trend={Math.sign(d.change)} hint={{ up: 'Improved over the season', down: 'Declined over the season' }} />
-                            </Table.Td>
-                            <Table.Td ta="right">
-                              <Text size="sm" fw={600} c={d.change > 0 ? 'green.7' : 'red.7'} span>
-                                {d.change > 0 ? `+${d.change}` : `−${-d.change}`}
-                              </Text>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  </Table.ScrollContainer>
-                )}
-              </Stack>
+              <DevelopmentTable review={review} />
             </Section>
             <Section value="retired" title="Retirements" count={review.retired.length}>
               {review.retired.length === 0 ? (
@@ -410,13 +507,7 @@ export default function SeasonSummary({
               <Section value="news" title="Other news" count={headlines.length + news.length}>
                 <Stack gap="sm">
                   {headlines.length > 0 && <Headlines headlines={headlines} />}
-                  {news.length > 0 && (
-                    <List spacing={4} size="sm">
-                      {news.map((m, i) => (
-                        <List.Item key={`${i}-${m}`}>{m}</List.Item>
-                      ))}
-                    </List>
-                  )}
+                  {news.length > 0 && <NewsSections sections={final.news_sections} messages={news} />}
                 </Stack>
               </Section>
             )}

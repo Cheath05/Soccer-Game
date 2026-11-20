@@ -31,6 +31,7 @@ from footsim.persistence.schema import (
 from footsim.world.context import World
 from footsim.world.finance import Entry, post
 from footsim.world.meta import CareerMeta
+from footsim.world.news_scope import NewsScope
 from footsim.world.squads import club_name
 
 REST_DAYS = 2  # clear days a club gets between two matches
@@ -104,43 +105,55 @@ def start_cups(conn: Connection, world: World, meta: CareerMeta, today: date) ->
     return messages
 
 
-def progress_cups(conn: Connection, world: World, meta: CareerMeta, today: date) -> list[str]:
-    """Settle the ties played so far, and draw the next round once a round is over."""
-    messages: list[str] = []
+def progress_cups(conn: Connection, world: World, meta: CareerMeta, today: date,
+                  scope: NewsScope | None = None) -> list[str]:
+    """Settle the ties played so far, and draw the next round once a round is over. The news
+    leaves out the cups of countries the user doesn't follow (``scope``)."""
+    out: list[str] = []
     ids = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
     for cup, calendar in cups_in_play(conn, world, meta.season_id):
-        ties = _ties(conn, meta.season_id, ids[cup.key]) if cup.key in ids else []
-        if not ties:
-            # A save from before the cups, in a season whose first round is still to come:
-            # start it now (its league matches are rearranged around the ties as usual).
-            if today + timedelta(days=REST_DAYS) < calendar.cups[cup.key][0][0]:
-                messages += _draw(conn, world, meta, calendar, cup, 0, today)
-            continue
-        current = max(t.round for t in ties)
-        if today < calendar.cups[cup.key][current][0]:
-            continue  # none of this round's matches is due yet
-        decided = []
-        for t in ties:
-            if t.round == current and t.winner_club_id is None:
-                winner = _winner(conn, meta.season_id, cup.key, t)
-                if winner is not None:
-                    conn.execute(update(cup_tie).where(cup_tie.c.id == t.id)
-                                 .values(winner_club_id=winner))
-                    decided.append((t, winner))
-        # Prize money, once: a tie is decided only while it has no winner, so a day that runs
-        # again pays nothing more.
-        post(conn, today, meta.season_id, [
-            Entry(winner, "prize", cup_prize_cents(world, cup, current), ids[cup.key])
-            for _, winner in decided])
-        messages += _results_news(conn, meta, cup, current, decided)
-        if any(t.round == current and t.winner_club_id is None
-               for t in _ties(conn, meta.season_id, ids[cup.key])):
-            continue
-        if current + 1 < len(cup.rounds):
-            messages += _draw(conn, world, meta, calendar, cup, current + 1, today)
-        elif decided:
-            messages.append(f"{club_name(conn, decided[0][1])} win the {cup.name}.")
-    return messages
+        messages: list[str] = []
+        _progress_cup(conn, world, meta, today, cup, calendar, ids, messages)
+        if scope is None or scope.follows_nation(cup.nation):
+            out += messages
+    return out
+
+
+def _progress_cup(conn: Connection, world: World, meta: CareerMeta, today: date, cup: CupDef,
+                  calendar: SeasonCalendarDef, ids: dict[str, int], messages: list[str]
+                  ) -> None:
+    """One cup's day (``progress_cups``): its news goes into ``messages``."""
+    ties = _ties(conn, meta.season_id, ids[cup.key]) if cup.key in ids else []
+    if not ties:
+        # A save from before the cups, in a season whose first round is still to come:
+        # start it now (its league matches are rearranged around the ties as usual).
+        if today + timedelta(days=REST_DAYS) < calendar.cups[cup.key][0][0]:
+            messages += _draw(conn, world, meta, calendar, cup, 0, today)
+        return
+    current = max(t.round for t in ties)
+    if today < calendar.cups[cup.key][current][0]:
+        return  # none of this round's matches is due yet
+    decided = []
+    for t in ties:
+        if t.round == current and t.winner_club_id is None:
+            winner = _winner(conn, meta.season_id, cup.key, t)
+            if winner is not None:
+                conn.execute(update(cup_tie).where(cup_tie.c.id == t.id)
+                             .values(winner_club_id=winner))
+                decided.append((t, winner))
+    # Prize money, once: a tie is decided only while it has no winner, so a day that runs
+    # again pays nothing more.
+    post(conn, today, meta.season_id, [
+        Entry(winner, "prize", cup_prize_cents(world, cup, current), ids[cup.key])
+        for _, winner in decided])
+    messages += _results_news(conn, meta, cup, current, decided)
+    if any(t.round == current and t.winner_club_id is None
+           for t in _ties(conn, meta.season_id, ids[cup.key])):
+        return
+    if current + 1 < len(cup.rounds):
+        messages += _draw(conn, world, meta, calendar, cup, current + 1, today)
+    elif decided:
+        messages.append(f"{club_name(conn, decided[0][1])} win the {cup.name}.")
 
 
 def cup_prize_cents(world: World, cup: CupDef, round_index: int) -> int:

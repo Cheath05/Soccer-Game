@@ -107,6 +107,8 @@ def test_the_api(tmp_path: Path) -> None:
     assert {p["id"] for p in view["players"] if p["selected"]} == set(ids[:20])
     tactics = client.get("/api/tactics", params={"team": "nation"}).json()
     assert {s["player_id"] for s in tactics["starters"]} <= set(ids[:20])
+    best = client.post("/api/tactics/best", params={"team": "nation"}, json={}).json()
+    assert {s["player_id"] for s in best["starters"]} <= set(ids[:20])
     career = client.get("/api/career").json()
     assert career["nation"]["id"] == view["team"]["id"]
     assert career["next_fixture"] is not None

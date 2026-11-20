@@ -5,11 +5,13 @@ the user's players stop the game, wait, or are answered by the user's asking pri
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import Connection, text
 
 from footsim.api.routes import Session, _not_simulating
 from footsim.world import fast_sim, offers
 from footsim.world.context import World, get_world
 from footsim.world.meta import CareerMeta, read_meta, write_meta
+from footsim.world.training import auto_train
 from footsim.world.transfers import owner_contract
 
 router = APIRouter(prefix="/api")
@@ -134,5 +136,45 @@ def put_asking_price(player_id: int, body: AskingPriceIn, session: Session) -> O
             raise HTTPException(422, str(exc)) from exc
         write_meta(conn, meta)
         result = _rules_out(meta)
+    session.autosave()
+    return result
+
+
+class TrainingSettingOut(BaseModel):
+    auto: bool  # the assistant trains every player's alternate positions (world/training.py)
+    training: int  # the user's players learning a position now
+
+
+class TrainingSettingIn(BaseModel):
+    auto: bool
+
+
+def _training_out(conn: Connection, meta: CareerMeta) -> TrainingSettingOut:
+    count: int = conn.execute(text(
+        "SELECT COUNT(*) FROM position_training t JOIN contract c ON c.person_id = t.player_id "
+        "AND c.is_active = 1 AND c.kind != 'loan' WHERE c.club_id = :club"),
+        {"club": meta.user_club_id}).scalar_one()
+    return TrainingSettingOut(auto=meta.auto_position_training, training=int(count))
+
+
+@router.get("/settings/training")
+def get_training_setting(session: Session) -> TrainingSettingOut:
+    with session.read() as conn:
+        return _training_out(conn, read_meta(conn))
+
+
+@router.put("/settings/training")
+def put_training_setting(body: TrainingSettingIn, session: Session) -> TrainingSettingOut:
+    """Have the assistant train positions: switched on, every player not learning a position
+    starts on his best alternate one at once, and again each month."""
+    _not_simulating(session)
+    world = get_world()
+    with session.write() as conn:
+        meta = read_meta(conn)
+        meta.auto_position_training = body.auto
+        write_meta(conn, meta)
+        if body.auto:
+            auto_train(conn, world, meta, meta.current_date)
+        result = _training_out(conn, meta)
     session.autosave()
     return result

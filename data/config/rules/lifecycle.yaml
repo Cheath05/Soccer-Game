@@ -67,3 +67,12 @@ squads:
   user_min_players: 16    # the user's squad is theirs to manage, but they can't release below
   user_min_keepers: 2     # this many senior players or keepers: there are no transfers yet to
                           # replace them, and a side without eleven can't play
+
+# The user's club's Hall of fame (the Hall of fame page): a player who made this many appearances
+# for the club, and reached at least one of the rest there.
+hall_of_fame:
+  min_apps: 40
+  min_rating: 7.0       # average match rating
+  min_goals: 20
+  min_assists: 20
+  national_title: true  # or won a national title with the club (a league's or the NCAA's)

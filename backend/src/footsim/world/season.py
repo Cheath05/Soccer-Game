@@ -50,6 +50,7 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.world.club_names import apply_club_names, apply_club_nations
+from footsim.world.college.assistant import weekly as assistant_recruiting
 from footsim.world.college.common import is_college_stage
 from footsim.world.college.draft import college_turnover
 from footsim.world.college.program import growth_factors, progress_program
@@ -59,6 +60,7 @@ from footsim.world.college.season import (
     create_college_fixtures,
     progress_college,
 )
+from footsim.world.college.visits import settle as settle_visits
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.draft import draft_day
@@ -79,6 +81,7 @@ from footsim.world.loans import end_loans
 from footsim.world.market import run_market
 from footsim.world.meta import CareerMeta, bump_players_epoch
 from footsim.world.mls import mls_month, new_mls_season
+from footsim.world.news_scope import news_scope
 from footsim.world.overall_history import record_season_start
 from footsim.world.renewals import contract_reminders, settle_expiring
 from footsim.world.reputation import drift_reputations
@@ -302,24 +305,32 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
         messages += contract_reminders(conn, world, meta, day,
                                        season_calendar(world, meta, meta.season_id).season_end)
         messages += mls_month(conn, world, meta, day)
-    messages += progress_cups(conn, world, meta, day)
-    messages += progress_europe(conn, world, meta, day)
+    scope = news_scope(conn, world, meta)  # the news of leagues the user doesn't follow is left out
+    messages += progress_cups(conn, world, meta, day, scope)
+    europe = progress_europe(conn, world, meta, day)
+    messages += [] if scope.quiet_world else europe
     for active in active_leagues(conn, world):
         cid, league = active.competition_id, active.league
+        news: list[str] = []
         for phase in league.phases:
-            messages += _progress_phase(conn, world, meta, cid, league, phase, day)
+            news += _progress_phase(conn, world, meta, cid, league, phase, day)
         if not _finalized(conn, cid, meta.season_id):
             if _scheduled(conn, cid, meta.season_id, "league") == 0:
-                messages += _finalize_league(conn, world, meta, cid, league, day)
-            continue
-        for playoff in league.playoffs:
-            if playoff.phase is None:
-                messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
+                news += _finalize_league(conn, world, meta, cid, league, day)
+        else:
+            for playoff in league.playoffs:
+                if playoff.phase is None:
+                    news += _progress_playoff(conn, world, meta, cid, league, playoff, day)
+        if scope.follows_league(league.key):
+            messages += news
     messages += progress_college(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
+    messages += settle_visits(conn, world, meta, day)
+    messages += assistant_recruiting(conn, world, meta, day)
     messages += progress_program(conn, world, meta, day)
     messages += international_day(conn, world, meta, day)
-    messages += club_world_cup_day(conn, world, meta, day)
+    club_world_cup = club_world_cup_day(conn, world, meta, day)
+    messages += [] if scope.quiet_world else club_world_cup
     messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
     messages += run_market(conn, world, meta, day,
@@ -676,9 +687,12 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     conn.execute(club_league_membership.insert(), new_rows)
     key_of = {cid: key for key, cid in comp_id.items()}
     previous = {r.club_id: r.competition_id for r in current}
+    scope = news_scope(conn, world, meta)
     for club_id, target in sorted(moves.items()):
         new_league = world.defs.leagues[key_of[target]]
         old_league = world.defs.leagues[key_of[previous[club_id]]]
+        if not (scope.follows_league(new_league.key) or scope.follows_league(old_league.key)):
+            continue
         verb = "promoted to" if new_league.tier < old_league.tier else "relegated to"
         messages.append(f"{club_name(conn, club_id)} {verb} the {new_league.name}.")
 

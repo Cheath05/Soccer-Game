@@ -73,6 +73,10 @@ class RecruitOut(BaseModel):
     hopes: float  # the scholarship he hopes for
     wants: list[str]  # what matters most to him, in his words
     top: list[OfferingOut]  # his offers in order of preference, when known
+    fit: str  # how he sees the user's prestige: good | reach | long_shot | out_of_reach
+    expects: float  # the program prestige he hopes for
+    visited_on: str | None = None  # his official visit to you, if made
+    visit_fixture: int | None = None  # the home game he's invited to (game-day visit)
 
 
 class RecruitPage(BaseModel):
@@ -110,7 +114,8 @@ def _out(v: coach.RecruitView) -> RecruitOut:
         interest=v.interest, priority=v.priority, offer=v.offer, offer_status=v.offer_status,
         offers=v.offers, status=v.status, committed_to=_ref(v.committed_to),
         leader=_ref(v.leader), hopes=v.hopes, wants=v.wants,
-        top=[OfferingOut(club=ClubRef(id=c, name=n), share=s) for c, n, s in v.top])
+        top=[OfferingOut(club=ClubRef(id=c, name=n), share=s) for c, n, s in v.top],
+        fit=v.fit, expects=v.expects, visited_on=v.visited_on, visit_fixture=v.visit_fixture)
 
 
 def _refused(exc: coach.RecruitingError) -> HTTPException:
@@ -140,9 +145,11 @@ VIEWS = ("board", "targets", "offers", "class")
 @router.get("/recruits")
 def get_recruits(session: Session, view: str = "board", position: str | None = None,
                  state: str | None = None, stars: int | None = None, q: str = "",
-                 open_only: bool = False, offset: int = 0, limit: int = 50) -> RecruitPage:
+                 open_only: bool = False, realistic: bool = False, offset: int = 0,
+                 limit: int = 50) -> RecruitPage:
     """The class by national rank, filtered: ``view`` board (everyone), targets (the user's
-    list), offers (the user's open offers) or class (committed or signed to the user)."""
+    list), offers (the user's open offers) or class (committed or signed to the user);
+    ``realistic`` keeps the recruits who'd see the user's program as a good fit or a reach."""
     if view not in VIEWS:
         raise HTTPException(422, f"view is one of {', '.join(VIEWS)}")
     with session.read() as conn:
@@ -171,6 +178,8 @@ def get_recruits(session: Session, view: str = "board", position: str | None = N
         if stars and v.stars != stars:
             return False
         if open_only and v.status != "open":
+            return False
+        if realistic and v.fit not in ("good", "reach"):
             return False
         return not words or words in v.name.lower()
 
@@ -241,3 +250,145 @@ def get_classes(session: Session, limit: int = 25) -> list[ClassRankOut]:
             out.append(ClassRankOut(rank=rank, club=ClubRef(id=club_id, name=name),
                                     recruits=count, points=points, stars=by_stars, mine=mine))
     return out
+
+
+class GodPlayerOut(BaseModel):
+    """The OP player (world/college/god_player.py): whether one can be signed now, and those
+    signed so far."""
+
+    available: bool
+    next_season: str | None  # when the next is allowed, if not now
+    every_seasons: int
+    overall: int  # about what he's rated
+    signed: list[ClubRef]  # the players (id, name), latest first
+
+
+def _god_status(session: Session) -> GodPlayerOut:
+    from footsim.persistence.schema import person
+    from footsim.world.college import god_player
+    from footsim.world.squads import display_name
+
+    with session.read() as conn:
+        meta = read_meta(conn)
+        found = god_player.status(conn, get_world(), meta)
+        names = {int(r.id): display_name(r.first_name, r.last_name, r.known_as)
+                 for r in conn.execute(person.select().where(
+                     person.c.id.in_([pid for pid, _ in found.signed])))}
+    return GodPlayerOut(available=found.available, next_season=found.next_season,
+                        every_seasons=found.every_seasons, overall=found.overall,
+                        signed=[ClubRef(id=pid, name=names.get(pid, "?"))
+                                for pid, _ in found.signed])
+
+
+@router.get("/god-player")
+def get_god_player(session: Session) -> GodPlayerOut:
+    return _god_status(session)
+
+
+@router.post("/god-player")
+def post_god_player(session: Session) -> GodPlayerOut:
+    """Sign this season's OP player: a freshman with a pro's ratings, at a random position."""
+    from footsim.world.college import god_player
+
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        try:
+            god_player.sign(conn, get_world(), meta, meta.current_date)
+        except god_player.GodPlayerRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+    session.autosave()
+    return _god_status(session)
+
+
+
+class HomeGameOut(BaseModel):
+    fixture_id: int
+    date: str
+    opponent: str
+    invited: list[int]  # recruit ids
+
+
+class HomeGamesOut(BaseModel):
+    games: list[HomeGameOut]  # your home games before signing day
+    per_game: int
+    visits_used: int  # official visits made or arranged this class
+    visits: int  # the season's allowance
+
+
+class VisitIn(BaseModel):
+    fixture_id: int | None  # None: call it off
+
+
+@router.get("/home-games")
+def get_home_games(session: Session) -> HomeGamesOut:
+    """The home games a recruit can visit (world/college/visits.py)."""
+    from footsim.world.college import visits
+
+    world = get_world()
+    with session.read() as conn:
+        meta = read_meta(conn)
+        games = visits.home_games(conn, world, meta)
+        used = visits.visits_used(conn, meta, meta.user_club_id or 0)
+    rules = world.defs.college.recruiting.programs
+    return HomeGamesOut(
+        games=[HomeGameOut(fixture_id=g.fixture_id, date=g.date.isoformat(),
+                           opponent=g.opponent, invited=g.invited) for g in games],
+        per_game=rules.gameday_visit.per_game, visits_used=used, visits=rules.official_visits)
+
+
+@router.put("/visits/{recruit_id}")
+def put_visit(recruit_id: int, body: VisitIn, session: Session) -> RecruitOut:
+    """Invite a recruit to a home game for his official visit, or call it off."""
+    from footsim.world.college import visits
+
+    _not_simulating(session)
+    with session.write() as conn:
+        try:
+            visits.invite(conn, get_world(), read_meta(conn), recruit_id, body.fixture_id)
+        except (visits.VisitRefused, coach.RecruitingError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+    session.autosave()
+    return get_recruit(recruit_id, session)
+
+
+
+class AssistantOut(BaseModel):
+    auto: bool  # the assistant recruits your leavers' replacements
+    leaving: dict[str, int]  # your leavers after this season, by position group
+
+
+class AssistantIn(BaseModel):
+    auto: bool
+
+
+def _assistant(session: Session) -> AssistantOut:
+    from footsim.world.college.assistant import leaving
+
+    with session.read() as conn:
+        meta = read_meta(conn)
+        return AssistantOut(auto=meta.auto_recruiting,
+                            leaving=dict(leaving(conn, get_world(), meta)))
+
+
+@router.get("/assistant")
+def get_assistant(session: Session) -> AssistantOut:
+    return _assistant(session)
+
+
+@router.put("/assistant")
+def put_assistant(body: AssistantIn, session: Session) -> AssistantOut:
+    """The recruiting assistant on or off: switched on, it recruits at once (from the day offers
+    open until signing day), then every Monday."""
+    from footsim.world.college.assistant import recruit_for_leavers
+    from footsim.world.meta import write_meta
+
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        meta.auto_recruiting = body.auto
+        write_meta(conn, meta)
+        if body.auto:
+            recruit_for_leavers(conn, get_world(), meta, meta.current_date)
+    session.autosave()
+    return _assistant(session)

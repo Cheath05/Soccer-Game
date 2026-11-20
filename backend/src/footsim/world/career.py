@@ -12,9 +12,17 @@ from footsim.core.rng import derive_rng
 from footsim.match.engine.engine import MatchEngine
 from footsim.match.report import MatchReport
 from footsim.match.teams import BENCH_SIZE, sub_order
-from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
-from footsim.world.college.common import college_club_id
+from footsim.persistence.schema import (
+    fixture,
+    game_meta,
+    metadata,
+    player,
+    player_state,
+    tactic,
+)
+from footsim.world.college.common import college_club_id, is_college_club
 from footsim.world.college.program import crowd, crowd_scale
+from footsim.world.college.season import stop_days
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
@@ -35,7 +43,7 @@ from footsim.world.season import (
     season_calendar,
     season_complete,
 )
-from footsim.world.squads import team_sheet
+from footsim.world.squads import load_squad, team_sheet
 from footsim.world.transfers import initialize_value_premiums
 
 MAX_ADVANCE_DAYS = 400
@@ -44,7 +52,8 @@ MAX_ADVANCE_DAYS = 400
 @dataclass
 class AdvanceResult:
     date: date
-    stop: str  # match | season_end | offer (an AI club bid for a user's player) | limit
+    stop: str  # match | season_end | offer (an AI club bid for a user's player) | limit |
+    # stop_day (a college coach's set day: world/college/season.py stop_days)
     fixture_id: int | None = None
     messages: list[str] = field(default_factory=list)
 
@@ -179,6 +188,9 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
     meta = read_meta(conn)
     day = meta.current_date
     messages: list[str] = []
+    # A college coach stops on the season's set days too (world/college/season.py stop_days).
+    stops = (stop_days(conn, world, meta) if meta.user_club_id is not None
+             and is_college_club(conn, meta.user_club_id) else set())
     for _ in range(max_days):
         _play_day(conn, world, meta, day)
         user_fx = _user_fixture(conn, meta, day)
@@ -203,6 +215,8 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
         write_meta(conn, meta)
         if stops_for_offers(meta) and bid_arrived(conn, meta, day - timedelta(days=1)):
             return AdvanceResult(day, "offer", None, messages)
+        if day - timedelta(days=1) in stops:
+            return AdvanceResult(day, "stop_day", None, messages)
     return AdvanceResult(day, "limit", None, messages)
 
 
@@ -230,7 +244,8 @@ def sim_step(conn: Connection, world: World, until: date) -> SimStep:
         play_user_instant(conn, world, meta, user_fx, day)
         return SimStep(day, None, user_fx.id)
     result = advance(conn, world, max_days=(until - day).days)
-    stop = {"match": None, "season_end": "season_end", "offer": "offer"}.get(result.stop, "date")
+    stop = {"match": None, "season_end": "season_end", "offer": "offer",
+            "stop_day": None}.get(result.stop, "date")
     return SimStep(result.date, stop, messages=result.messages)
 
 
@@ -262,6 +277,22 @@ def set_user_tactic(conn: Connection, world: World, formation: str, roles: dict[
            "roles": json.dumps(roles),
            "lineup": json.dumps(lineup) if lineup else None,
            "instructions": json.dumps(instructions)})
+
+
+def pick_best_xi(conn: Connection, world: World, club_id: int | None = None) -> None:
+    """"Pick best XI and bench": the line-up goes back to the automatic pick, and every slot's
+    role becomes the one its best player rates highest in (the formation and instructions
+    stay). For the user's club, or ``club_id`` (his national team, W8 I5)."""
+    meta = read_meta(conn)
+    team = club_id or meta.user_club_id
+    if team is None:
+        raise ValueError("no club to manage")
+    row = conn.execute(select(tactic).where(tactic.c.club_id == team)).first()
+    formation = row.formation if row is not None else "4-3-3"
+    instructions = json.loads(row.instructions) if row is not None else {}
+    squad = load_squad(conn, team, meta.current_date)
+    roles = world.picker.best_roles(squad, world.defs.formations[formation])
+    set_user_tactic(conn, world, formation, roles, None, instructions, club_id=club_id)
 
 
 def scheduled_count(conn: Connection, season_id: int) -> int:

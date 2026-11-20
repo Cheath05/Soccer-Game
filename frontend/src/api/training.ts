@@ -25,6 +25,7 @@ export function useSetTraining(playerId: number) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['training', playerId] })
       void client.invalidateQueries({ queryKey: ['player', playerId] })
+      void client.invalidateQueries({ queryKey: ['training-setting'] })
     },
   })
 }

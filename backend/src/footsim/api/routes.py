@@ -13,6 +13,7 @@ from footsim import __version__
 from footsim.api import calendar as calendar_view
 from footsim.api import finances, queries, season_review, sim, workers
 from footsim.api.auth import registry, session_for
+from footsim.api.news import news_sections
 from footsim.api.schemas import (
     AdvanceOut,
     BoardIn,
@@ -47,7 +48,7 @@ from footsim.core.build_info import build_info
 from footsim.core.paths import DEFAULT_SAVES
 from footsim.persistence.schema import fixture
 from footsim.world import fast_sim, tactic_presets
-from footsim.world.career import advance, set_user_tactic
+from footsim.world.career import advance, pick_best_xi, set_user_tactic
 from footsim.world.context import get_world
 from footsim.world.finance import set_board_enabled
 from footsim.world.meta import read_meta
@@ -188,14 +189,14 @@ def advance_career(session: Session) -> AdvanceOut:
     result = workers.simulate(session, advance)
     session.autosave()
     final = None
-    if result.stop == "season_end":
-        with session.read() as conn:
-            user = read_meta(conn).user_club_id
-            if user is not None:
-                final = season_review.season_final(conn, world, user, result.messages)
+    with session.read() as conn:
+        user = read_meta(conn).user_club_id
+        if result.stop == "season_end" and user is not None:
+            final = season_review.season_final(conn, world, user, result.messages)
+        club = queries._club_names(conn).get(user) if user is not None else None
     return AdvanceOut(date=result.date.isoformat(), stop=result.stop,
                       fixture_id=result.fixture_id, messages=result.messages,
-                      season_final=final)
+                      season_final=final, sections=news_sections(result.messages, club))
 
 
 @router.get("/finances")
@@ -497,6 +498,20 @@ def _tactic_team(conn: Connection, team: str) -> int | None:
 def get_tactics(session: Session, team: str = "club") -> TacticsOut:
     with session.read() as conn:
         return queries.tactics(conn, get_world(), club_id=_tactic_team(conn, team))
+
+
+@router.post("/tactics/best")
+def best_tactics(session: Session, team: str = "club") -> TacticsOut:
+    """Pick the best XI and bench, each player in the role he rates highest in."""
+    world = get_world()
+    try:
+        with session.write() as conn:
+            club_id = _tactic_team(conn, team)
+            pick_best_xi(conn, world, club_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    with session.read() as conn:
+        return queries.tactics(conn, world, club_id=club_id)
 
 
 @router.put("/tactics")

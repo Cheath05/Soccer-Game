@@ -317,7 +317,7 @@ def _start_conferences(conn: Connection, world: World, meta: CareerMeta, comp: i
             _seed(conn, meta.season_id, conference_event(key),
                   [r.club_id for r in table[:conference.tournament]])
         news.append(f"{_club_name(conn, top)} win the {conference.short_name} regular season.")
-    return [" ".join(news)] if news else []
+    return news  # a line each: the news's Conference champions section lists them (api/news.py)
 
 
 def _conference_champions(conn: Connection, comp: int, season_id: int) -> dict[str, int]:
@@ -394,10 +394,128 @@ def progress_college(conn: Connection, world: World, meta: CareerMeta, day: date
                                                                              start):
             return news
         news += select_field(conn, world, meta.season_id, comp)
+    _buzz(conn, world, comp, meta.season_id, day)
     won = _advance(conn, comp, meta.season_id, NCAA, [on(d, start) for d in ncaa.rounds],
                    ncaa.neutral_from, day)
     if won is not None and _title(conn, comp, meta.season_id, NATIONAL_TITLE, won, "champion",
                                   NCAA, day):
+        _lift(conn, won, world.defs.college.recruiting.programs.title_buzz)
         news.append(f"{_club_name(conn, won)} win the College Cup: they are the NCAA champions.")
         news += declare_prospects(conn, world, meta, meta.season_id, day)
     return news
+
+
+def _buzz(conn: Connection, world: World, comp: int, season_id: int, day: date) -> None:
+    """Today's NCAA tournament winners gain prestige at once, for the recruits still deciding."""
+    step = world.defs.college.recruiting.programs.ncaa_win_buzz
+    for r in conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.competition_id == comp,
+            fixture.c.stage == NCAA, fixture.c.status == "played",
+            fixture.c.date == day.isoformat())):
+        won = _knockout_winner(r)
+        if won is not None:
+            _lift(conn, won, step)
+
+
+def _lift(conn: Connection, club_id: int, points: float) -> None:
+    if points > 0:
+        conn.execute(text("UPDATE college_team SET prestige = MIN(99.0, prestige + :p) "
+                          "WHERE club_id = :c AND prestige IS NOT NULL"),
+                     {"p": points, "c": club_id})
+
+
+@dataclass
+class TeamSeason:
+    """How one program's season went (or is going): its club page and the season summary."""
+
+    conference: str  # the conference's key
+    row: TableRow | None  # its conference table row (conference games)
+    overall: Record  # every college game
+    rpi_rank: int | None
+    ncaa: str | None  # how far it got in the NCAA tournament, in words; None if not in it
+    titles: list[str]  # "regular season", "conference tournament", "national"
+
+
+def team_season(conn: Connection, world: World, meta: CareerMeta, club_id: int,
+                season_id: int) -> TeamSeason | None:
+    """``club_id``'s college season ``season_id``; None for a club that isn't a program."""
+    team = conn.execute(select(college_team.c.conference).where(
+        college_team.c.club_id == club_id)).first()
+    comp = college_competition(conn, world)
+    if team is None or comp is None:
+        return None
+    key = str(team.conference)
+    table = conference_tables(conn, world, meta, season_id).get(key, [])
+    row = next((r for r in table if r.club_id == club_id and r.played), None)
+    ratings = rankings(conn, world, season_id)
+    order = sorted(ratings, key=lambda c: (-ratings[c], c))
+    rpi_rank = order.index(club_id) + 1 if club_id in ratings else None
+    titles = []
+    won = {(str(r.phase), str(r.kind), str(r.title)) for r in conn.execute(
+        select(league_title).where(league_title.c.season_id == season_id,
+                                   league_title.c.competition_id == comp,
+                                   league_title.c.club_id == club_id))}
+    conf = world.defs.college.conferences[key]
+    if any(p == key and (k == "award" or conf.tournament < 2) for p, k, _ in won):
+        titles.append("regular season")
+    if conf.tournament >= 2 and any(p == key and k == "champion" for p, k, _ in won):
+        titles.append("conference tournament")
+    if any(t == NATIONAL_TITLE for _, _, t in won):
+        titles.append("national")
+    return TeamSeason(conference=key, row=row,
+                      overall=overall_records(conn, world, season_id).get(club_id, Record()),
+                      rpi_rank=rpi_rank, ncaa=_ncaa_run(conn, world, comp, season_id, club_id),
+                      titles=titles)
+
+
+def _ncaa_run(conn: Connection, world: World, comp: int, season_id: int, club_id: int
+              ) -> str | None:
+    seeds, matches = bracket(conn, comp, season_id, NCAA)
+    seed = next((s for s, c in seeds.items() if c == club_id), None)
+    if seed is None:
+        return None
+    names = world.defs.college.rules.ncaa.round_names
+    total = rounds_for(len(seeds))
+    mine = [m for m in matches if seed in (m.seed_a, m.seed_b)]
+    if not mine:
+        return "In the NCAA tournament"
+    last = max(mine, key=lambda m: m.round)
+    name = names[last.round] if last.round < len(names) else f"Round {last.round + 1}"
+    if last.winner_seed is None:
+        return f"In the NCAA tournament: {name} next"
+    if last.winner_seed != seed:
+        return f"NCAA tournament: out in the {name}"
+    if last.round == total - 1:
+        return "NCAA champions"
+    return f"NCAA tournament: through the {name}"
+
+
+def stop_days(conn: Connection, world: World, meta: CareerMeta) -> set[date]:
+    """The days Continue stops a college coach on this season (``continue_stops`` in
+    rules.yaml): it lands on the day after each, once the day's business is done."""
+    from footsim.world.college.recruiting import recruiting_dates
+    from footsim.world.draft import draft_date
+
+    college = world.defs.college
+    stops = college.rules.continue_stops
+    start = _season_start(conn, meta.season_id)
+    days: set[date] = set()
+    if stops.ncaa_selection:
+        days.add(on(college.rules.ncaa.selection, start))
+    if stops.ncaa_final:
+        days.add(on(college.rules.ncaa.rounds[-1], start))
+    if stops.superdraft and world.defs.mls.league in world.defs.leagues:
+        days.add(draft_date(world, conn, meta.season_id))
+    if stops.recruiting:
+        dates = recruiting_dates(college.recruiting, start)
+        days |= {dates.start, dates.signing_day, dates.close}
+    user = meta.user_club_id
+    if stops.monthly and user is not None and not conn.execute(select(fixture.c.id).where(
+            fixture.c.season_id == meta.season_id, fixture.c.status == "scheduled",
+            (fixture.c.home_club_id == user) | (fixture.c.away_club_id == user)).limit(1)
+            ).first():
+        month = date(start.year, start.month, 1)
+        for _ in range(13):
+            days.add(month)
+            month = date(month.year + month.month // 12, month.month % 12 + 1, 1)
+    return days

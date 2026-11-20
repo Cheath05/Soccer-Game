@@ -116,6 +116,8 @@ def test_home_games_sell_tickets_and_the_crowd_scales(builder: tuple[Engine, Wor
     engine, world = builder
     with engine.begin() as conn:
         result = advance(conn, world)
+        while result.stop == "stop_day":  # a college coach's set days (recruiting opens)
+            result = advance(conn, world)
         meta = read_meta(conn)
         fx = conn.execute(select(fixture).where(fixture.c.id == result.fixture_id)).one()
         seen = pg.crowd(conn, world, fx)

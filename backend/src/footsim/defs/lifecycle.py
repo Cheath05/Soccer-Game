@@ -59,7 +59,19 @@ class SquadsDef(DefModel):
         return self
 
 
+class HallOfFameDef(DefModel):
+    """Who goes into the user's club's Hall of fame (api/hall_of_fame.py): this many
+    appearances for the club, and at least one of the rest."""
+
+    min_apps: int = Field(default=40, ge=1)
+    min_rating: float = 7.0  # average match rating
+    min_goals: int = 20
+    min_assists: int = 20
+    national_title: bool = True  # or a national (league or NCAA) title won with the club
+
+
 class LifecycleDef(DefModel):
     retirement: RetirementDef
     youth: YouthDef
     squads: SquadsDef
+    hall_of_fame: HallOfFameDef = Field(default_factory=HallOfFameDef)

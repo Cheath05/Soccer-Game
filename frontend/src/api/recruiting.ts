@@ -61,6 +61,10 @@ export interface Recruit {
   hopes: number // the scholarship he hopes for
   wants: string[]
   top: { club: ClubRef; share: number }[] // his offers by preference, when known
+  fit: 'good' | 'reach' | 'long_shot' | 'out_of_reach' // how he sees a program of your prestige
+  expects: number // the program prestige he hopes for
+  visited_on?: string | null // his official visit to you, if made
+  visit_fixture?: number | null // the home game he's invited to
 }
 
 export interface RecruitPage {
@@ -84,6 +88,7 @@ export interface RecruitFilters {
   stars: number | null
   q: string
   openOnly: boolean
+  realistic: boolean
   offset: number
   limit: number
 }
@@ -99,6 +104,7 @@ export function useRecruits(f: RecruitFilters) {
   if (f.stars) params.set('stars', String(f.stars))
   if (f.q.trim()) params.set('q', f.q.trim())
   if (f.openOnly) params.set('open_only', 'true')
+  if (f.realistic) params.set('realistic', 'true')
   return useQuery({ queryKey: [...KEY, 'recruits', params.toString()], queryFn: () => api.get<RecruitPage>(`/recruiting/recruits?${params}`), placeholderData: (prev) => prev })
 }
 
@@ -115,3 +121,49 @@ function useRecruitAction<T, R>(fn: (arg: T) => Promise<R>) {
 export const useSetTarget = () => useRecruitAction(({ id, priority }: { id: number; priority: Priority | null }) => api.put<Recruit>(`/recruiting/targets/${id}`, { priority }))
 export const useMakeOffer = () => useRecruitAction(({ id, share }: { id: number; share: number }) => api.put<Recruit>(`/recruiting/offers/${id}`, { share }))
 export const usePullOffer = () => useRecruitAction((id: number) => api.delete<string[]>(`/recruiting/offers/${id}`))
+
+// The OP player (world/college/god_player.py): once every few seasons, a freshman with a pro's
+// ratings at a random position, who stays four years.
+export interface GodPlayer {
+  available: boolean
+  next_season: string | null
+  every_seasons: number
+  overall: number
+  signed: ClubRef[] // the players (id, name), latest first
+}
+
+export const useGodPlayer = (enabled = true) => useQuery({ queryKey: [...KEY, 'god'], queryFn: () => api.get<GodPlayer>('/recruiting/god-player'), enabled })
+
+export function useSignGodPlayer() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<GodPlayer>('/recruiting/god-player', {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: KEY })
+      void client.invalidateQueries({ queryKey: ['squad'] })
+      void client.invalidateQueries({ queryKey: ['career'] })
+    },
+  })
+}
+
+// Game-day visits (world/college/visits.py): invite a recruit to a home game; the result sways him.
+export interface HomeGames {
+  games: { fixture_id: number; date: string; opponent: string; invited: number[] }[]
+  per_game: number
+  visits_used: number
+  visits: number
+}
+
+export const useHomeGames = (enabled = true) => useQuery({ queryKey: [...KEY, 'home-games'], queryFn: () => api.get<HomeGames>('/recruiting/home-games'), enabled })
+
+export const useSetVisit = () => useRecruitAction(({ id, fixtureId }: { id: number; fixtureId: number | null }) => api.put<Recruit>(`/recruiting/visits/${id}`, { fixture_id: fixtureId }))
+
+// The recruiting assistant (world/college/assistant.py): targets and offers to replace your leavers.
+export interface RecruitingAssistant {
+  auto: boolean
+  leaving: Record<string, number> // your leavers after this season, by position group
+}
+
+export const useRecruitingAssistant = (enabled = true) => useQuery({ queryKey: [...KEY, 'assistant'], queryFn: () => api.get<RecruitingAssistant>('/recruiting/assistant'), enabled })
+
+export const useSetRecruitingAssistant = () => useRecruitAction((auto: boolean) => api.put<RecruitingAssistant>('/recruiting/assistant', { auto }))

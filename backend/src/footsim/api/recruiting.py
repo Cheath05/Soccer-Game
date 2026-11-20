@@ -73,6 +73,8 @@ class RecruitOut(BaseModel):
     hopes: float  # the scholarship he hopes for
     wants: list[str]  # what matters most to him, in his words
     top: list[OfferingOut]  # his offers in order of preference, when known
+    fit: str  # how he sees the user's prestige: good | reach | long_shot | out_of_reach
+    expects: float  # the program prestige he hopes for
 
 
 class RecruitPage(BaseModel):
@@ -110,7 +112,8 @@ def _out(v: coach.RecruitView) -> RecruitOut:
         interest=v.interest, priority=v.priority, offer=v.offer, offer_status=v.offer_status,
         offers=v.offers, status=v.status, committed_to=_ref(v.committed_to),
         leader=_ref(v.leader), hopes=v.hopes, wants=v.wants,
-        top=[OfferingOut(club=ClubRef(id=c, name=n), share=s) for c, n, s in v.top])
+        top=[OfferingOut(club=ClubRef(id=c, name=n), share=s) for c, n, s in v.top],
+        fit=v.fit, expects=v.expects)
 
 
 def _refused(exc: coach.RecruitingError) -> HTTPException:
@@ -140,9 +143,11 @@ VIEWS = ("board", "targets", "offers", "class")
 @router.get("/recruits")
 def get_recruits(session: Session, view: str = "board", position: str | None = None,
                  state: str | None = None, stars: int | None = None, q: str = "",
-                 open_only: bool = False, offset: int = 0, limit: int = 50) -> RecruitPage:
+                 open_only: bool = False, realistic: bool = False, offset: int = 0,
+                 limit: int = 50) -> RecruitPage:
     """The class by national rank, filtered: ``view`` board (everyone), targets (the user's
-    list), offers (the user's open offers) or class (committed or signed to the user)."""
+    list), offers (the user's open offers) or class (committed or signed to the user);
+    ``realistic`` keeps the recruits who'd see the user's program as a good fit or a reach."""
     if view not in VIEWS:
         raise HTTPException(422, f"view is one of {', '.join(VIEWS)}")
     with session.read() as conn:
@@ -171,6 +176,8 @@ def get_recruits(session: Session, view: str = "board", position: str | None = N
         if stars and v.stars != stars:
             return False
         if open_only and v.status != "open":
+            return False
+        if realistic and v.fit not in ("good", "reach"):
             return False
         return not words or words in v.name.lower()
 
@@ -241,3 +248,52 @@ def get_classes(session: Session, limit: int = 25) -> list[ClassRankOut]:
             out.append(ClassRankOut(rank=rank, club=ClubRef(id=club_id, name=name),
                                     recruits=count, points=points, stars=by_stars, mine=mine))
     return out
+
+
+class GodPlayerOut(BaseModel):
+    """The GOD player (world/college/god_player.py): whether one can be signed now, and those
+    signed so far."""
+
+    available: bool
+    next_season: str | None  # when the next is allowed, if not now
+    every_seasons: int
+    overall: int  # about what he's rated
+    signed: list[ClubRef]  # the players (id, name), latest first
+
+
+def _god_status(session: Session) -> GodPlayerOut:
+    from footsim.persistence.schema import person
+    from footsim.world.college import god_player
+    from footsim.world.squads import display_name
+
+    with session.read() as conn:
+        meta = read_meta(conn)
+        found = god_player.status(conn, get_world(), meta)
+        names = {int(r.id): display_name(r.first_name, r.last_name, r.known_as)
+                 for r in conn.execute(person.select().where(
+                     person.c.id.in_([pid for pid, _ in found.signed])))}
+    return GodPlayerOut(available=found.available, next_season=found.next_season,
+                        every_seasons=found.every_seasons, overall=found.overall,
+                        signed=[ClubRef(id=pid, name=names.get(pid, "?"))
+                                for pid, _ in found.signed])
+
+
+@router.get("/god-player")
+def get_god_player(session: Session) -> GodPlayerOut:
+    return _god_status(session)
+
+
+@router.post("/god-player")
+def post_god_player(session: Session) -> GodPlayerOut:
+    """Sign this season's GOD player: a freshman with a pro's ratings, at a random position."""
+    from footsim.world.college import god_player
+
+    _not_simulating(session)
+    with session.write() as conn:
+        meta = read_meta(conn)
+        try:
+            god_player.sign(conn, get_world(), meta, meta.current_date)
+        except god_player.GodPlayerRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+    session.autosave()
+    return _god_status(session)

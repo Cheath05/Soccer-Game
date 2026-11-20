@@ -179,6 +179,16 @@ class DraftDef(DefModel):
         return _month_day(value)
 
 
+class ContinueStopsDef(DefModel):
+    """The days Continue stops a college coach on (world/college/season.py ``stop_days``)."""
+
+    ncaa_selection: bool = True
+    ncaa_final: bool = True
+    superdraft: bool = True
+    recruiting: bool = True
+    monthly: bool = True
+
+
 class CollegeRulesDef(DefModel):
     key: str  # the competition's key
     name: str
@@ -196,6 +206,7 @@ class CollegeRulesDef(DefModel):
     potential: PotentialDef
     recruiting: RecruitingDef
     draft: DraftDef
+    continue_stops: ContinueStopsDef = Field(default_factory=ContinueStopsDef)
 
 
 class AbilityDef(DefModel):
@@ -304,6 +315,8 @@ class ProgramRulesDef(DefModel):
     results_seasons: int = Field(ge=1)
     ncaa_win_points: float = Field(ge=0)
     title_points: float = Field(ge=0)
+    ncaa_win_buzz: float = Field(default=0.0, ge=0)  # prestige at once for an NCAA win
+    title_buzz: float = Field(default=0.0, ge=0)  # and for the national title
     effort_by_tier: dict[int, float]
     priority_weight: dict[str, float]
     effort_cap: float = Field(gt=0)
@@ -336,6 +349,15 @@ class ProgramRulesDef(DefModel):
         return self
 
 
+class GodPlayerDef(DefModel):
+    """A college coach's GOD player (world/college/god_player.py)."""
+
+    every_seasons: int = Field(default=4, ge=1)
+    overall: float = Field(default=78.0, ge=1, le=99)
+    potential_room: int = Field(default=2, ge=0)
+    age: float = Field(default=18.3, ge=15, le=25)
+
+
 class UserRecruitingDef(DefModel):
     """A college coach's view of recruits and the rules of their offers."""
 
@@ -349,6 +371,8 @@ class UserRecruitingDef(DefModel):
     decommit_penalty: float = Field(ge=0)
     min_roster: int = Field(ge=11)
     class_points: dict[int, float]
+    fit_labels: list[tuple[float, str]] = []  # (threshold, label), best first
+    god_player: GodPlayerDef = Field(default_factory=GodPlayerDef)
 
 
 class StateDef(DefModel):

@@ -13,6 +13,7 @@ from footsim import __version__
 from footsim.api import calendar as calendar_view
 from footsim.api import finances, queries, season_review, sim, workers
 from footsim.api.auth import registry, session_for
+from footsim.api.news import news_sections
 from footsim.api.schemas import (
     AdvanceOut,
     BoardIn,
@@ -188,14 +189,14 @@ def advance_career(session: Session) -> AdvanceOut:
     result = workers.simulate(session, advance)
     session.autosave()
     final = None
-    if result.stop == "season_end":
-        with session.read() as conn:
-            user = read_meta(conn).user_club_id
-            if user is not None:
-                final = season_review.season_final(conn, world, user, result.messages)
+    with session.read() as conn:
+        user = read_meta(conn).user_club_id
+        if result.stop == "season_end" and user is not None:
+            final = season_review.season_final(conn, world, user, result.messages)
+        club = queries._club_names(conn).get(user) if user is not None else None
     return AdvanceOut(date=result.date.isoformat(), stop=result.stop,
                       fixture_id=result.fixture_id, messages=result.messages,
-                      season_final=final)
+                      season_final=final, sections=news_sections(result.messages, club))
 
 
 @router.get("/finances")

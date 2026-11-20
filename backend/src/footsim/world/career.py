@@ -20,8 +20,9 @@ from footsim.persistence.schema import (
     player_state,
     tactic,
 )
-from footsim.world.college.common import college_club_id
+from footsim.world.college.common import college_club_id, is_college_club
 from footsim.world.college.program import crowd, crowd_scale
+from footsim.world.college.season import stop_days
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
@@ -51,7 +52,8 @@ MAX_ADVANCE_DAYS = 400
 @dataclass
 class AdvanceResult:
     date: date
-    stop: str  # match | season_end | offer (an AI club bid for a user's player) | limit
+    stop: str  # match | season_end | offer (an AI club bid for a user's player) | limit |
+    # stop_day (a college coach's set day: world/college/season.py stop_days)
     fixture_id: int | None = None
     messages: list[str] = field(default_factory=list)
 
@@ -185,6 +187,9 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
     meta = read_meta(conn)
     day = meta.current_date
     messages: list[str] = []
+    # A college coach stops on the season's set days too (world/college/season.py stop_days).
+    stops = (stop_days(conn, world, meta) if meta.user_club_id is not None
+             and is_college_club(conn, meta.user_club_id) else set())
     for _ in range(max_days):
         _play_day(conn, world, meta, day)
         user_fx = _user_fixture(conn, meta, day)
@@ -209,6 +214,8 @@ def advance(conn: Connection, world: World, max_days: int = MAX_ADVANCE_DAYS) ->
         write_meta(conn, meta)
         if stops_for_offers(meta) and bid_arrived(conn, meta, day - timedelta(days=1)):
             return AdvanceResult(day, "offer", None, messages)
+        if day - timedelta(days=1) in stops:
+            return AdvanceResult(day, "stop_day", None, messages)
     return AdvanceResult(day, "limit", None, messages)
 
 
@@ -236,7 +243,8 @@ def sim_step(conn: Connection, world: World, until: date) -> SimStep:
         play_user_instant(conn, world, meta, user_fx, day)
         return SimStep(day, None, user_fx.id)
     result = advance(conn, world, max_days=(until - day).days)
-    stop = {"match": None, "season_end": "season_end", "offer": "offer"}.get(result.stop, "date")
+    stop = {"match": None, "season_end": "season_end", "offer": "offer",
+            "stop_day": None}.get(result.stop, "date")
     return SimStep(result.date, stop, messages=result.messages)
 
 

@@ -14,9 +14,11 @@ from sqlalchemy import Connection, Row, bindparam, func, select, text
 
 from footsim.api import queries
 from footsim.api.honours import european_runs, treble
+from footsim.api.news import news_sections
 from footsim.api.schemas import (
     ClubMoveOut,
     ClubRef,
+    ConferenceChampionsOut,
     DevelopmentOut,
     HeadlineOut,
     HonourOut,
@@ -37,12 +39,17 @@ from footsim.persistence.schema import (
     league_title,
     nation,
     player_season_overall,
+    recruit,
     season,
 )
 from footsim.scouting.estimates import OWN_CLUB_KNOWLEDGE, potential_label, potential_range
+from footsim.world.college.common import is_college_club
+from footsim.world.college.recruiting import JOINED, SIGNED
+from footsim.world.college.season import NATIONAL_TITLE, college_competition
 from footsim.world.context import World
 from footsim.world.europe.common import KNOCKOUT, competitions_by_rank
 from footsim.world.meta import read_meta
+from footsim.world.news_scope import news_scope
 from footsim.world.overall_history import player_overalls, primary_positions
 from footsim.world.squads import display_name
 
@@ -370,10 +377,21 @@ def season_review(conn: Connection, world: World, season_id: int, user: int | No
         retired = _retired(conn, world, following.start_date, user, names)
         if user is not None:
             youth = _youth(conn, world, following.start_date, user, meta.seed)
+    # Only what the user follows: no leagues on fast results, nor their countries' cups, nor
+    # (following no professional league) Europe, the headlines or other clubs' retirements.
+    scope = news_scope(conn, world, meta)
+    honours = [h for h in _honours(conn, world, season_id, comps, names)
+               if (scope.follows_league(h.key) if h.kind == "league"
+                   else scope.follows_nation(h.nation) if h.kind == "cup"
+                   else not scope.quiet_world)]
+    promoted = [m for m in promoted if scope.follows_nation(m.nation)]
+    relegated = [m for m in relegated if scope.follows_nation(m.nation)]
+    headlines = [] if scope.quiet_world else _headlines(conn, world, season_id, comps, names)
+    if scope.quiet_world:
+        retired = [r for r in retired if r.own_player]
     return SeasonReviewOut(
         season=seasons[season_id].label, next_season=following.label if following else None,
-        honours=_honours(conn, world, season_id, comps, names),
-        headlines=_headlines(conn, world, season_id, comps, names), promoted=promoted,
+        honours=honours, headlines=headlines, promoted=promoted,
         relegated=relegated, development=development, development_recorded=recorded,
         development_since=since, retired=retired, youth=youth)
 
@@ -381,7 +399,10 @@ def season_review(conn: Connection, world: World, season_id: int, user: int | No
 def season_final(conn: Connection, world: World, user: int, messages: Iterable[str] = ()
                  ) -> SeasonFinalOut | None:
     """How the user's club finished the season that has just ended, and the review of it."""
-    ended = read_meta(conn).season_id - 1
+    meta = read_meta(conn)
+    ended = meta.season_id - 1
+    if is_college_club(conn, user):
+        return _college_final(conn, world, user, ended, list(messages))
     row = conn.execute(
         select(league_final, competition.c.name).join(
             competition, competition.c.id == league_final.c.competition_id).where(
@@ -394,4 +415,53 @@ def season_final(conn: Connection, world: World, user: int, messages: Iterable[s
         points=row.points, outcome=row.outcome,
         cups=queries.cup_runs(conn, world, user).get(ended, []),
         europe=european_runs(conn, world, user).get(ended, []),
-        review=season_review(conn, world, ended, user), news=other_news(messages))
+        review=season_review(conn, world, ended, user), news=other_news(messages),
+        news_sections=news_sections(other_news(messages), queries._club_names(conn).get(user)))
+
+
+def _college_final(conn: Connection, world: World, user: int, ended: int, messages: list[str]
+                   ) -> SeasonFinalOut | None:
+    """A college coach's season summary: the program's season (its conference's finish, its
+    record over every game, its NCAA run), the conference champions and the national champion,
+    the class that signed, and the review (development, retirements)."""
+    meta = read_meta(conn)
+    rec = queries.college_season_record(conn, world, meta, user, ended)
+    comp = college_competition(conn, world)
+    if rec is None or comp is None:
+        return None
+    names = queries._club_names(conn)
+
+    def ref(club_id: int | None) -> ClubRef | None:
+        return ClubRef(id=club_id, name=names[club_id]) if club_id is not None else None
+
+    titles = {(str(r.phase), str(r.kind)): int(r.club_id) for r in conn.execute(
+        select(league_title).where(league_title.c.season_id == ended,
+                                   league_title.c.competition_id == comp))}
+    champions = []
+    for key, conf in sorted(world.defs.college.conferences.items(),
+                            key=lambda kv: kv[1].short_name):
+        has_tournament = conf.tournament >= 2
+        regular = titles.get((key, "award" if has_tournament else "champion"))
+        won = titles.get((key, "champion")) if has_tournament else None
+        if regular is not None or won is not None:
+            champions.append(ConferenceChampionsOut(
+                conference=conf.short_name, regular_season=ref(regular), tournament=ref(won)))
+    national = conn.execute(select(league_title.c.club_id).where(
+        league_title.c.season_id == ended, league_title.c.competition_id == comp,
+        league_title.c.title == NATIONAL_TITLE)).scalar()
+    signed: dict[int, int] = defaultdict(int)
+    for r in conn.execute(select(recruit.c.stars).where(
+            recruit.c.class_season == ended + 1, recruit.c.club_id == user,
+            recruit.c.status.in_((SIGNED, JOINED)))):
+        signed[int(r.stars)] += 1
+    news = other_news(messages)
+    return SeasonFinalOut(
+        competition=rec.conference_name, position=rec.conference_position or 0,
+        played=rec.won + rec.drawn + rec.lost, won=rec.won, drawn=rec.drawn, lost=rec.lost,
+        goals_for=rec.goals_for, goals_against=rec.goals_against,
+        points=rec.conference_points, outcome="champion" if "national" in rec.titles else None,
+        review=season_review(conn, world, ended, user), news=news,
+        news_sections=news_sections(news, names.get(user)), college=rec,
+        conference_champions=champions,
+        national_champion=ref(int(national)) if national is not None else None,
+        class_signed=dict(sorted(signed.items(), reverse=True)))

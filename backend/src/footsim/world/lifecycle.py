@@ -125,10 +125,14 @@ def retire_players(conn: Connection, world: World, meta: CareerMeta, day: date) 
         bump_players_epoch(conn)
     club_names = {c.id: c.name for c in conn.execute(select(club.c.id, club.c.name))}
     news = []
+    # Other clubs' players only for a user who follows a professional league.
+    from footsim.world.news_scope import news_scope
+
+    others = not news_scope(conn, world, meta).quiet_world
     for r, age, overall in sorted(retiring, key=lambda x: -x[2]):
         if r.club_id is not None and r.club_id == meta.user_club_id:
             news.append(f"{names[r.id]} retires at {age}.")
-        elif r.club_id is not None and overall >= rules.news_from:
+        elif others and r.club_id is not None and overall >= rules.news_from:
             news.append(f"{names[r.id]} ({club_names[r.club_id]}) retires at {age}.")
     return news
 

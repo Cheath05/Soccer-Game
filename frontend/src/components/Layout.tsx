@@ -1,4 +1,4 @@
-import { AppShell, Badge, Box, Button, Center, Group, List, Loader, Menu, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Box, Button, Center, Group, Loader, Menu, Modal, NavLink, ScrollArea, Stack, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
@@ -6,12 +6,13 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { MLS_LEAGUE } from '../api/americas'
 import { useAdvance, useCareer, useEuropeList, useSaveGame } from '../api/hooks'
-import type { SeasonFinal } from '../api/types'
+import type { NewsSection, SeasonFinal } from '../api/types'
 import { useDevice } from '../lib/device'
 import { CURRENCIES, type Currency, competitionNation, longDate, setCurrency, shownCurrency, useCurrency } from '../lib/format'
 import { AccountFooter } from './AuthGate'
 import ClubSearch from './ClubSearch'
 import { Crest, MoreSheet, type NavItem, TabBar } from './PhoneNav'
+import NewsSections from './NewsSections'
 import SeasonSummary from './SeasonSummary'
 import SimToDate from './SimToDate'
 import VersionTag from './VersionTag'
@@ -56,6 +57,7 @@ export default function Layout() {
   const path = useRouterState({ select: (s) => s.location.pathname })
   const currency = useCurrency() // pages re-render in a newly chosen currency
   const [messages, setMessages] = useState<string[]>([])
+  const [sections, setSections] = useState<NewsSection[]>([])
   // How the season went, when Continue ran on to its end.
   const [seasonFinal, setSeasonFinal] = useState<SeasonFinal | null>(null)
   const [saved, setSaved] = useState(false)
@@ -101,7 +103,10 @@ export default function Layout() {
     advance.mutate(undefined, {
       onSuccess: (result) => {
         if (result.stop === 'season_end' && result.season_final) setSeasonFinal(result.season_final)
-        else if (result.messages.length) setMessages(result.messages)
+        else if (result.messages.length) {
+          setMessages(result.messages)
+          setSections(result.sections ?? [])
+        }
         // A match day: stay on this page; the button turns into "Match day" for when you're ready.
         if (result.stop === 'offer') void navigate({ to: '/transfers' })
       },
@@ -310,13 +315,9 @@ export default function Layout() {
           </Stack>
         )}
       </Modal>
-      <Modal opened={messages.length > 0} onClose={() => setMessages([])} title="News" centered>
+      <Modal opened={messages.length > 0} onClose={() => setMessages([])} title="News" centered size="lg" scrollAreaComponent={ScrollArea.Autosize}>
         <Stack>
-          <List spacing="xs">
-            {messages.map((m) => (
-              <List.Item key={m}>{m}</List.Item>
-            ))}
-          </List>
+          <NewsSections sections={sections} messages={messages} />
           <Button onClick={() => setMessages([])}>OK</Button>
         </Stack>
       </Modal>

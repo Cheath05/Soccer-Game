@@ -67,6 +67,9 @@ def test_the_programs_matches_are_the_users(career: tuple[Engine, World]) -> Non
     engine, world = career
     with engine.begin() as conn:
         result = advance(conn, world)
+        # Recruiting's offers opening (1 August) is one of a college coach's set days.
+        assert result.stop == "stop_day" and result.date.isoformat().endswith("-08-02")
+        result = advance(conn, world)
         assert result.stop == "match" and result.fixture_id is not None
         meta = read_meta(conn)
         fx = conn.execute(select(fixture).where(fixture.c.id == result.fixture_id)).one()

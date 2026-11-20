@@ -1,10 +1,11 @@
-import { ActionIcon, Badge, Button, Group, List, Menu, Modal, Progress, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
+import { ActionIcon, Badge, Button, Group, Menu, Modal, Progress, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { useSimStatus, useSimTargets, useStartSim, useStopSim } from '../api/hooks'
 import type { Career, SimResult, SimStatus } from '../api/types'
 import { addDays, addMonths, competitionNation, daysBetween, longDate, shortDate } from '../lib/format'
+import NewsSections from './NewsSections'
 import SeasonSummary from './SeasonSummary'
 
 const OUTCOME_COLOR = { W: 'teal', D: 'gray', L: 'red' } as const
@@ -231,13 +232,7 @@ export default function SimToDate({
               />
             ) : (
               news.messages.length > 0 && (
-                <ScrollArea.Autosize mah={360}>
-                  <List spacing={4} size="sm">
-                    {news.messages.map((m, i) => (
-                      <List.Item key={`${i}-${m}`}>{m}</List.Item>
-                    ))}
-                  </List>
-                </ScrollArea.Autosize>
+                <NewsSections sections={news.sections} messages={news.messages} />
               )
             )}
             <Button onClick={() => setNews(null)}>OK</Button>

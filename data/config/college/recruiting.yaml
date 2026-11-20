@@ -91,6 +91,10 @@ programs:
   results_seasons: 3
   ncaa_win_points: 6.0  # each NCAA tournament win adds this to a season's success (0-100 scale)
   title_points: 10.0  # the national title adds this more
+  # A tournament run lifts prestige straight away, so recruits still deciding hear about it (the
+  # rollover then moves it on towards its target as above): each NCAA tournament win, and the title.
+  ncaa_win_buzz: 1.5
+  title_buzz: 6.0
   # Each week's recruiting effort, by tier (a power's staff is bigger), spread over the program's
   # targets by priority, no more than the cap on one.
   effort_by_tier: {1: 36.0, 2: 32.0, 3: 28.0, 4: 24.0, 5: 20.0}
@@ -138,6 +142,19 @@ user:
   min_roster: 22
   # A program's class points (the class rankings), by a recruit's stars.
   class_points: {5: 30, 4: 18, 3: 9, 2: 4}
+  # How a recruit sees a program of the user's prestige, from his prestige score (0-1; a half
+  # when it meets his hopes): the label at or above each threshold, best first, "out_of_reach"
+  # below the last. Prestige weighs most in his choice, so this is the recruiting screen's guide to
+  # whom the program can realistically land.
+  fit_labels: [[0.45, good], [0.25, reach], [0.1, long_shot]]
+  # The GOD player: once every this many seasons a college coach may sign a freshman with a
+  # professional's ratings (about this overall) at a random position, on no scholarship. He grows
+  # only a little more (potential this much above) and never declares early: he stays four years.
+  god_player:
+    every_seasons: 4
+    overall: 78
+    potential_room: 2
+    age: 18.3
 
 # Where recruits come from, and where every program is: a state's population centre and its share
 # of the high-school class (roughly where US youth soccer players are). DC is a program's state.

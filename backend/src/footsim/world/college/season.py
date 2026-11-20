@@ -394,13 +394,34 @@ def progress_college(conn: Connection, world: World, meta: CareerMeta, day: date
                                                                              start):
             return news
         news += select_field(conn, world, meta.season_id, comp)
+    _buzz(conn, world, comp, meta.season_id, day)
     won = _advance(conn, comp, meta.season_id, NCAA, [on(d, start) for d in ncaa.rounds],
                    ncaa.neutral_from, day)
     if won is not None and _title(conn, comp, meta.season_id, NATIONAL_TITLE, won, "champion",
                                   NCAA, day):
+        _lift(conn, won, world.defs.college.recruiting.programs.title_buzz)
         news.append(f"{_club_name(conn, won)} win the College Cup: they are the NCAA champions.")
         news += declare_prospects(conn, world, meta, meta.season_id, day)
     return news
+
+
+def _buzz(conn: Connection, world: World, comp: int, season_id: int, day: date) -> None:
+    """Today's NCAA tournament winners gain prestige at once, for the recruits still deciding."""
+    step = world.defs.college.recruiting.programs.ncaa_win_buzz
+    for r in conn.execute(select(fixture).where(
+            fixture.c.season_id == season_id, fixture.c.competition_id == comp,
+            fixture.c.stage == NCAA, fixture.c.status == "played",
+            fixture.c.date == day.isoformat())):
+        won = _knockout_winner(r)
+        if won is not None:
+            _lift(conn, won, step)
+
+
+def _lift(conn: Connection, club_id: int, points: float) -> None:
+    if points > 0:
+        conn.execute(text("UPDATE college_team SET prestige = MIN(99.0, prestige + :p) "
+                          "WHERE club_id = :c AND prestige IS NOT NULL"),
+                     {"p": points, "c": club_id})
 
 
 @dataclass
@@ -467,3 +488,34 @@ def _ncaa_run(conn: Connection, world: World, comp: int, season_id: int, club_id
     if last.round == total - 1:
         return "NCAA champions"
     return f"NCAA tournament: through the {name}"
+
+
+def stop_days(conn: Connection, world: World, meta: CareerMeta) -> set[date]:
+    """The days Continue stops a college coach on this season (``continue_stops`` in
+    rules.yaml): it lands on the day after each, once the day's business is done."""
+    from footsim.world.college.recruiting import recruiting_dates
+    from footsim.world.draft import draft_date
+
+    college = world.defs.college
+    stops = college.rules.continue_stops
+    start = _season_start(conn, meta.season_id)
+    days: set[date] = set()
+    if stops.ncaa_selection:
+        days.add(on(college.rules.ncaa.selection, start))
+    if stops.ncaa_final:
+        days.add(on(college.rules.ncaa.rounds[-1], start))
+    if stops.superdraft and world.defs.mls.league in world.defs.leagues:
+        days.add(draft_date(world, conn, meta.season_id))
+    if stops.recruiting:
+        dates = recruiting_dates(college.recruiting, start)
+        days |= {dates.start, dates.signing_day, dates.close}
+    user = meta.user_club_id
+    if stops.monthly and user is not None and not conn.execute(select(fixture.c.id).where(
+            fixture.c.season_id == meta.season_id, fixture.c.status == "scheduled",
+            (fixture.c.home_club_id == user) | (fixture.c.away_club_id == user)).limit(1)
+            ).first():
+        month = date(start.year, start.month, 1)
+        for _ in range(13):
+            days.add(month)
+            month = date(month.year + month.month // 12, month.month % 12 + 1, 1)
+    return days

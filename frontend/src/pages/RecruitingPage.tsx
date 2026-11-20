@@ -1,4 +1,5 @@
 import { Alert, Badge, Button, Card, Drawer, Group, Loader, NumberInput, Pagination, Progress, SegmentedControl, Select, SimpleGrid, Slider, Stack, Switch, Table, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import {
@@ -7,12 +8,14 @@ import {
   type RecruitFilters,
   type Recruiting,
   useClassRankings,
+  useGodPlayer,
   useMakeOffer,
   usePullOffer,
   useRecruit,
   useRecruiting,
   useRecruits,
   useSetTarget,
+  useSignGodPlayer,
 } from '../api/recruiting'
 import { useCareer } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
@@ -62,6 +65,7 @@ export default function RecruitingPage() {
         <PhaseBadge s={s} />
       </Group>
       <SummaryCards s={s} />
+      <GodPlayerCard />
       {phone ? (
         <Select aria-label="Show" value={tab} onChange={(v) => v && setTab(v)} allowDeselect={false} data={tabs} />
       ) : (
@@ -70,6 +74,62 @@ export default function RecruitingPage() {
       {tab === 'rankings' ? <ClassRankings /> : <RecruitList key={tab} view={tab as RecruitFilters['view']} onOpen={setOpen} />}
       <RecruitCard id={open} summary={s} onClose={() => setOpen(null)} />
     </Stack>
+  )
+}
+
+/** Once every few seasons: a freshman with a pro's ratings, at a random position. */
+function GodPlayerCard() {
+  const god = useGodPlayer()
+  const sign = useSignGodPlayer()
+  const [sure, setSure] = useState(false)
+  if (!god.data) return null
+  const g = god.data
+  const latest = g.signed[0]
+  return (
+    <Card withBorder padding="sm" bg={g.available ? 'var(--mantine-color-yellow-light)' : undefined}>
+      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <Text fw={700}>GOD player</Text>
+          <Text size="xs" c="dimmed">
+            Once every {g.every_seasons} seasons: a freshman with a pro&apos;s ratings (about {g.overall} overall) at a random position, on no scholarship. He stays all four years.
+          </Text>
+          {latest && (
+            <Text size="sm" mt={4}>
+              Yours:{' '}
+              <Link to="/players/$playerId" params={{ playerId: String(latest.id) }}>
+                {latest.name}
+              </Link>
+              {g.next_season ? ` · the next one in ${g.next_season}` : ''}
+            </Text>
+          )}
+        </div>
+        {g.available &&
+          (sure ? (
+            <Group gap="xs">
+              <Button color="yellow" loading={sign.isPending} onClick={() => sign.mutate(undefined, { onSettled: () => setSure(false) })}>
+                Sign him
+              </Button>
+              <Button variant="default" onClick={() => setSure(false)}>
+                Not yet
+              </Button>
+            </Group>
+          ) : (
+            <Button color="yellow" variant="light" onClick={() => setSure(true)}>
+              Sign a GOD player
+            </Button>
+          ))}
+      </Group>
+      {sure && (
+        <Text size="xs" mt={6}>
+          You get one now and the next in {g.every_seasons} seasons. His position is random.
+        </Text>
+      )}
+      {sign.error && (
+        <Alert mt="xs" color="red">
+          {sign.error.message}
+        </Alert>
+      )}
+    </Card>
   )
 }
 
@@ -141,8 +201,9 @@ function RecruitList({ view, onOpen }: { view: RecruitFilters['view']; onOpen: (
   const [starFilter, setStars] = useUrlState('stars', 'all')
   const [q, setQ] = useState('')
   const [openOnly, setOpenOnly] = useUrlState('uncommitted', false)
+  const [realistic, setRealistic] = useUrlState('realistic', false)
   const [page, setPage] = useState(1)
-  const filters: RecruitFilters = { view, position, state, stars: starFilter === 'all' ? null : Number(starFilter), q, openOnly, offset: (page - 1) * PAGE, limit: PAGE }
+  const filters: RecruitFilters = { view, position, state, stars: starFilter === 'all' ? null : Number(starFilter), q, openOnly, realistic, offset: (page - 1) * PAGE, limit: PAGE }
   const list = useRecruits(filters)
   const reset = () => setPage(1)
 
@@ -155,6 +216,7 @@ function RecruitList({ view, onOpen }: { view: RecruitFilters['view']; onOpen: (
           <Select size="xs" placeholder="Home" clearable searchable value={state} onChange={(v) => (setState(v), reset())} data={[{ value: 'INTL', label: 'Abroad' }, ...STATES]} w={110} aria-label="Home state" />
           <SegmentedControl size="xs" value={starFilter} onChange={(v) => (setStars(v), reset())} data={[{ value: 'all', label: 'All' }, { value: '5', label: '5★' }, { value: '4', label: '4★' }, { value: '3', label: '3★' }, { value: '2', label: '2★' }]} />
           <Switch size="xs" label="Uncommitted" checked={openOnly} onChange={(e) => (setOpenOnly(e.currentTarget.checked), reset())} />
+          <Switch size="xs" label="Realistic for you" checked={realistic} onChange={(e) => (setRealistic(e.currentTarget.checked), reset())} title="Recruits who'd see your program's prestige as a good fit or a reach" />
         </Group>
       )}
       {list.error && <Alert color="red">{list.error.message}</Alert>}
@@ -173,6 +235,24 @@ function RecruitList({ view, onOpen }: { view: RecruitFilters['view']; onOpen: (
       {list.data && list.data.total > 0 && (phone ? <RecruitCards recruits={list.data.recruits} onOpen={onOpen} /> : <RecruitTable recruits={list.data.recruits} onOpen={onOpen} />)}
       {list.data && list.data.total > PAGE && <Pagination size="sm" value={page} onChange={setPage} total={Math.ceil(list.data.total / PAGE)} />}
     </Stack>
+  )
+}
+
+const FIT: Record<Recruit['fit'], { label: string; color: string; about: string }> = {
+  good: { label: 'Good fit', color: 'teal', about: 'Your program is the size he hopes for: you can land him.' },
+  reach: { label: 'Reach', color: 'yellow', about: 'He hopes for a bigger program, but the right offer and attention can win him.' },
+  long_shot: { label: 'Long shot', color: 'orange', about: 'He hopes for a much bigger program: only likely if nobody bigger wants him.' },
+  out_of_reach: { label: 'Out of reach', color: 'red', about: 'He expects one of the biggest programs. Your prestige grows with winning, NCAA tournament runs and titles.' },
+}
+
+/** How a recruit sees a program of your prestige. */
+function Fit({ r }: { r: Recruit }) {
+  if (r.status !== 'open' && !(r.status === 'committed' && r.offer_status !== 'accepted')) return null
+  const f = FIT[r.fit]
+  return (
+    <Badge size="sm" variant="light" color={f.color} title={f.about} style={{ flexShrink: 0, overflow: 'visible' }} styles={{ label: { overflow: 'visible' } }}>
+      {f.label}
+    </Badge>
   )
 }
 
@@ -235,6 +315,7 @@ function RecruitTable({ recruits, onOpen }: { recruits: Recruit[]; onOpen: (id: 
             <Table.Th>Home</Table.Th>
             <Table.Th ta="right" title="Your staff's estimate">Ovr</Table.Th>
             <Table.Th ta="right" title="Your staff's estimate">Pot</Table.Th>
+            <Table.Th title="How he sees a program of your prestige">Your chances</Table.Th>
             <Table.Th>Interest in you</Table.Th>
             <Table.Th>Where</Table.Th>
             <Table.Th>Yours</Table.Th>
@@ -271,6 +352,9 @@ function RecruitTable({ recruits, onOpen }: { recruits: Recruit[]; onOpen: (id: 
               <Table.Td ta="right">
                 {r.potential.low}–{r.potential.high}
               </Table.Td>
+              <Table.Td miw={110} style={{ whiteSpace: 'nowrap' }}>
+                <Fit r={r} />
+              </Table.Td>
               <Table.Td w={130}>{r.interest !== null ? <Progress value={r.interest} size="sm" aria-label={`Interest ${Math.round(r.interest)}`} /> : <Text size="xs" c="dimmed">–</Text>}</Table.Td>
               <Table.Td>
                 <Where r={r} />
@@ -301,6 +385,7 @@ function RecruitCards({ recruits, onOpen }: { recruits: Recruit[]; onOpen: (id: 
                   {r.name}
                 </Text>
                 <Stars n={r.stars} />
+                <Fit r={r} />
               </Group>
               <Text size="xs" c="dimmed" truncate>
                 {r.position} #{r.position_rank} · <Home r={r} /> · ovr {r.overall.low}–{r.overall.high} · pot {r.potential.low}–{r.potential.high}
@@ -380,6 +465,14 @@ function RecruitDetail({ r, summary }: { r: Recruit; summary: Recruiting }) {
         <Text size="sm" c="dimmed">
           Hopes for {r.hopes >= 0.95 ? 'a full scholarship' : `about a ${Math.round(r.hopes * 20) * 5}% scholarship`}
         </Text>
+        <Group gap={6} mt={4} wrap="nowrap" align="flex-start">
+          <Badge size="sm" variant="light" color={FIT[r.fit].color} style={{ flexShrink: 0 }}>
+            {FIT[r.fit].label}
+          </Badge>
+          <Text size="xs" c="dimmed">
+            He hopes for a program of prestige about {Math.round(r.expects)}; yours is {summary.prestige}. {FIT[r.fit].about}
+          </Text>
+        </Group>
       </div>
 
       <div>

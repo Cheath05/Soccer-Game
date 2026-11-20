@@ -43,6 +43,9 @@ class CareerMeta:
     # A college coach's game mode (W9d): "classic", or "builder" (programs have money and build
     # training facilities and stadiums, world/college/program.py). Saves from before it: classic.
     college_mode: str = "classic"
+    # A college coach's GOD players (world/college/god_player.py): player id -> the season he
+    # was signed. One every few seasons; he never declares early, so he stays four years.
+    god_players: dict[int, int] = field(default_factory=dict)
 
     @property
     def seed(self) -> int:
@@ -67,6 +70,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         asking_prices={int(k): int(v) for k, v in values.get("asking_prices", {}).items()},
         user_nation_id=values.get("user_nation_id"),
         college_mode=str(values.get("college_mode", "classic")),
+        god_players={int(k): int(v) for k, v in values.get("god_players", {}).items()},
     )
 
 
@@ -87,6 +91,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "asking_prices": {str(k): v for k, v in meta.asking_prices.items()},
         "user_nation_id": meta.user_nation_id,
         "college_mode": meta.college_mode,
+        "god_players": {str(k): v for k, v in meta.god_players.items()},
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

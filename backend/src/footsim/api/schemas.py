@@ -4,6 +4,8 @@ from datetime import date
 
 from pydantic import AliasChoices, BaseModel, Field
 
+from footsim.api.news import NewsSectionOut
+
 
 class ClubRef(BaseModel):
     id: int
@@ -336,6 +338,7 @@ class AdvanceOut(BaseModel):
     fixture_id: int | None
     messages: list[str]
     season_final: "SeasonFinalOut | None" = None  # when it stopped at the season's end
+    sections: list[NewsSectionOut] = []  # the messages in sections (api/news.py)
 
 
 class SimIn(BaseModel):
@@ -382,6 +385,12 @@ class SeasonFinalOut(BaseModel):
     europe: list["EuropeRunOut"] = []  # and in each European competition
     review: "SeasonReviewOut | None" = None  # how it went everywhere else, and for the squad
     news: list[str] = []  # the other news from the sim: what the review doesn't cover
+    news_sections: list[NewsSectionOut] = []  # the same, in sections (api/news.py)
+    college: "CollegeSeasonRecordOut | None" = None  # a college coach's season (then
+    # competition, position and the record are its conference's and its own over every game)
+    conference_champions: list["ConferenceChampionsOut"] = []  # a college coach's summary
+    national_champion: "ClubRef | None" = None
+    class_signed: dict[int, int] = {}  # a college coach's new class: recruits by stars
 
 
 class SimStatusOut(BaseModel):
@@ -394,6 +403,13 @@ class SimStatusOut(BaseModel):
     stop: str | None  # date | season_end | cancelled | abandoned | error
     error: str | None
     season_final: SeasonFinalOut | None = None  # when it stopped at the season's end
+    sections: list[NewsSectionOut] = []  # the messages in sections (api/news.py)
+
+
+class ConferenceChampionsOut(BaseModel):
+    conference: str  # short name
+    regular_season: ClubRef | None
+    tournament: ClubRef | None
 
 
 class SquadPlayerOut(BaseModel):

@@ -293,8 +293,16 @@ function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOvervie
         note={confPlayed ? `${r.conference_won}-${r.conference_drawn}-${r.conference_lost} in conference · ${r.conference_points} pts` : 'No conference games yet'}
       />
       <Fact label="RPI ranking" value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note="Nationally" />
-      <Fact label="NCAA tournament" value={r.ncaa ?? 'Not in it'} />
-      <Fact label="Titles this season" value={r.titles.length ? r.titles.map((t) => TITLE_NAMES[t] ?? t).join(', ') : 'None'} />
+      <Fact
+        label="NCAA tournament"
+        value={!r.ncaa ? 'Not in it' : r.ncaa === 'NCAA champions' ? 'Champions' : r.ncaa.includes(': out') ? 'Knocked out' : 'Still in it'}
+        note={r.ncaa && r.ncaa !== 'NCAA champions' ? r.ncaa.replace(/^NCAA tournament: |^In the NCAA tournament: /, '') : undefined}
+      />
+      <Fact
+        label="Titles this season"
+        value={r.titles.length ? String(r.titles.length) : 'None'}
+        note={r.titles.length ? r.titles.map((t) => TITLE_NAMES[t] ?? t).join(' · ') : undefined}
+      />
       <Fact label="Program" value={`Tier ${r.tier}`} note={`Prestige ${r.prestige.toFixed(0)}`} />
       <Fact label="Squad" value={`${squad.squad_size} players`} note={`Average age ${squad.average_age.toFixed(1)} · OVR ${squad.average_overall.toFixed(1)}`} />
       <Fact label="Best player" value={squad.top_players[0]?.name ?? '–'} note={squad.top_players[0] ? `${squad.top_players[0].position} · ${squad.top_players[0].overall} OVR` : undefined} />

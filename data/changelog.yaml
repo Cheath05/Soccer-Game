@@ -27,6 +27,19 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.131"
+  date: "2026-11-20"
+  title: "College: season records, recruiting chances, tidier news and the GOD player"
+  changes:
+    - "Every college program's club page shows its season: record over every game, conference finish, RPI rank, NCAA tournament run, titles, tier and prestige."
+    - "Tactics: Pick best XI and bench now also gives every player the role he rates highest in. Automatic substitutions bring on whoever rates highest in the tired player's position, in his best role there."
+    - "Recruiting: each recruit shows your chances with him from your program's prestige (Good fit, Reach, Long shot, Out of reach), his card shows the prestige he hopes for beside yours, and a Realistic for you filter keeps the ones you can land."
+    - "College prestige: every NCAA tournament win, and above all the national title, now lifts your prestige at once, so recruits still deciding hear about it."
+    - "News comes in sections (your team, conference champions a line each, college soccer, recruiting, the world), and leagues you set to fast results stay out of the news and the season summary. A college coach who fast-sims every professional league no longer hears about Europe's leagues, cups and retirements."
+    - "A college coach gets a real season summary: conference finish, record, RPI, NCAA run, the class you signed, every conference's champions and your squad's development."
+    - "Continue now stops a college coach on set days (NCAA selection, the College Cup final, the SuperDraft, recruiting's opening, signing day and close, and the 1st of each month once your games are over), instead of running to the season's end."
+    - "The GOD player (on Recruiting): once every four seasons, sign a freshman with a pro's ratings (about 78 overall) at a random position. He stays all four years."
+
 - version: "1.127"
   date: "2026-11-19"
   title: "The FIFA Club World Cup"

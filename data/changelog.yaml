@@ -27,12 +27,20 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.122"
+- version: "1.125"
   date: "2026-11-19"
   title: "College: the program builder"
   changes:
     - "New college game mode, Program builder (choose it when starting a college career, or turn it on from Program in the menu): every program has money each season from the athletic department, ticket sales, boosters and NCAA tournament payouts, and spends it on scholarships, training facilities and its stadium."
     - "Training facilities make your players grow faster towards their potential; a bigger stadium sells more tickets, and a bigger, fuller crowd puts more pressure on visiting teams. Set how many scholarships to put aside for next season's class; recruiting spends from it. The other programs build up too."
+
+- version: "1.122"
+  date: "2026-11-19"
+  title: "World Cup 2030 qualifiers"
+  changes:
+    - "The qualifiers for the 2030 World Cup (Spain, Portugal and Morocco) are played in the international windows, in each confederation's format: CONMEBOL's round robin of ten from September 2027, CAF's and AFC's groups from late 2027 and 2028, CONCACAF's and OFC's from 2028, UEFA's twelve groups in 2029, then the play-offs and the intercontinental play-off in March 2030. 48 teams qualify."
+    - "International → World Cup 2030: who has qualified so far, and every confederation's groups, tables and play-off ties."
+    - "Qualifiers are fully simulated, with fatigue and injuries that players bring back to their clubs. Cards in internationals don't count towards club bans."
 
 - version: "1.120"
   date: "2026-11-19"

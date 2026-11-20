@@ -967,3 +967,27 @@ export interface InternationalCareer {
   in_squad: boolean
   home_based: boolean // a made-up player whose club is outside the game's leagues
 }
+
+// GET /api/international/qualifiers: the World Cup qualifiers.
+export interface QualifierGroupRow {
+  team: ClubRef
+  played: number
+  points: number
+  gd: number
+  gf: number
+}
+export interface QualifierStage {
+  key: string
+  name: string
+  confederation: string
+  starts: string // "YYYY-MM": its first window
+  drawn: boolean
+  qualified_ranks: number[] | null
+  groups: { name: string; rows: QualifierGroupRow[] }[]
+  ties: { tie: string; name: string; fixtures: Fixture[] }[]
+}
+export interface Qualifiers {
+  cycle: number
+  stages: QualifierStage[]
+  qualified: { team: ClubRef; how: string }[]
+}

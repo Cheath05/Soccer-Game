@@ -19,6 +19,7 @@ from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
 from footsim.world.international import ensure_international
+from footsim.world.international.common import TYPE as INTERNATIONAL
 from footsim.world.market import bid_arrived
 from footsim.world.meta import CareerMeta, read_meta, write_meta
 from footsim.world.mls import charge_dp_fees, start_mls
@@ -123,8 +124,14 @@ def play_fixture(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],
     report = world.quick.play(home, away, rng, neutral=bool(fx.neutral),
                               decider=decider_for(conn, world, fx),
                               crowd=crowd_scale(world, crowd(conn, world, fx)))
-    record_result(conn, fx.id, report, day, sim)
+    record_result(conn, fx.id, report, day, sim, discipline=not is_international(conn, fx))
     return report
+
+
+def is_international(conn: Connection, fx: Row[Any]) -> bool:
+    """A national-team fixture: its cards don't count towards club bans."""
+    return conn.execute(text("SELECT 1 FROM competition WHERE id = :c AND type = :t"),
+                        {"c": fx.competition_id, "t": INTERNATIONAL}).first() is not None
 
 
 def agent_match(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], day: date,
@@ -148,7 +155,8 @@ def play_user_instant(conn: Connection, world: World, meta: CareerMeta, fx: Row[
     engine = agent_match(conn, world, meta, fx, day, record=False)
     engine.run()
     report = engine.report()
-    record_result(conn, fx.id, report, day, "instant")
+    record_result(conn, fx.id, report, day, "instant",
+                  discipline=not is_international(conn, fx))
     return report
 
 

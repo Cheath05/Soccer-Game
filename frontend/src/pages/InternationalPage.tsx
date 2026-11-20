@@ -1,9 +1,10 @@
-import { Badge, Card, Grid, Group, SegmentedControl, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { Badge, Card, Grid, Group, SegmentedControl, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { useInternational } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
+import WorldCupQualifiers from '../components/WorldCupQualifiers'
 import { foldText, longDate } from '../lib/format'
 
 const CONFEDERATIONS = ['All', 'UEFA', 'CONMEBOL', 'CONCACAF', 'AFC', 'CAF', 'OFC']
@@ -26,9 +27,18 @@ export default function InternationalPage() {
         <Title order={2}>International</Title>
         <Text c="dimmed" size="sm">
           Every national team, ranked by its Elo rating, which moves with each international result. Squads are called up for FIFA’s international windows, when the
-          players are away from their clubs. Qualifiers for the 2030 World Cup and the 2029 Club World Cup are on their way.
+          players are away from their clubs.
         </Text>
       </div>
+      <Tabs defaultValue="ranking" keepMounted={false}>
+        <Tabs.List mb="sm">
+          <Tabs.Tab value="ranking">Ranking</Tabs.Tab>
+          <Tabs.Tab value="wc">World Cup 2030</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="wc">
+          <WorldCupQualifiers />
+        </Tabs.Panel>
+        <Tabs.Panel value="ranking">
       <Grid gap="md">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Card withBorder padding="sm" aria-label="Ranking">
@@ -112,6 +122,8 @@ export default function InternationalPage() {
           </Card>
         </Grid.Col>
       </Grid>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   )
 }

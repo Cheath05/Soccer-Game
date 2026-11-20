@@ -11,6 +11,7 @@ import type {
   SimLeague,
   OfferRules,
   InternationalOverview,
+  Qualifiers,
   SimulationSettings,
   ClubHistory,
   Finances,
@@ -114,6 +115,10 @@ export function useSetAskingPrice() {
 /** International football: the national teams by Elo and the latest results. */
 export const useInternational = () =>
   useQuery({ queryKey: ['international'], queryFn: () => api.get<InternationalOverview>('/international') })
+
+/** The World Cup qualifiers: every stage's groups and ties, and who is through. */
+export const useQualifiers = () =>
+  useQuery({ queryKey: ['wc-qualifiers'], queryFn: () => api.get<Qualifiers>('/international/qualifiers') })
 
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })

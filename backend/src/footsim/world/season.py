@@ -66,6 +66,9 @@ from footsim.world.europe.stages import europe_decider, progress_europe, start_e
 from footsim.world.finance import pay_merit, settle_month, start_season_finances
 from footsim.world.international import ensure_international
 from footsim.world.international.common import SUMMER_TYPES
+from footsim.world.international.common import TYPE as INTERNATIONAL_TYPE
+from footsim.world.international.qualifiers import decider as qualifier_decider
+from footsim.world.international.qualifiers import is_qualifier
 from footsim.world.international.windows import FRIENDLY, international_day
 from footsim.world.lifecycle import season_turnover
 from footsim.world.loans import end_loans
@@ -584,6 +587,8 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
     """Knockout rules for a play-off or cup fixture; None for league games and first legs."""
     if fx.stage in ("league", FRIENDLY):
         return None
+    if is_qualifier(fx.stage):
+        return qualifier_decider(conn, world, fx)
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)
     if fx.stage in world.defs.cups:
@@ -624,6 +629,13 @@ def rollover(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
     conn.execute(season.insert().values(id=new, label=calendar.season,
                                         start_date=calendar.season_start.isoformat(),
                                         end_date=calendar.season_end.isoformat()))
+    # International fixtures drawn ahead (qualifiers run over seasons) belong to the season
+    # they're played in.
+    conn.execute(text(
+        "UPDATE fixture SET season_id = :new WHERE season_id = :old AND status = 'scheduled' "
+        "AND date >= :start AND competition_id IN (SELECT id FROM competition WHERE type = :t)"),
+        {"new": new, "old": old, "start": calendar.season_start.isoformat(),
+         "t": INTERNATIONAL_TYPE})
     comp_id = {r.key: r.id for r in conn.execute(select(competition.c.id, competition.c.key))}
     messages: list[str] = []
     moves: dict[int, int] = {}

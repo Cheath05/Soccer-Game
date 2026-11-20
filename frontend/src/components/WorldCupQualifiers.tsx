@@ -1,0 +1,139 @@
+import { Badge, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
+
+import { useQualifiers } from '../api/hooks'
+import type { QualifierStage } from '../api/types'
+import ClubLink from './ClubLink'
+
+const REGIONS = [
+  { value: 'UEFA', label: 'UEFA' },
+  { value: 'CONMEBOL', label: 'CONMEBOL' },
+  { value: 'CONCACAF', label: 'CONCACAF' },
+  { value: 'AFC', label: 'AFC' },
+  { value: 'CAF', label: 'CAF' },
+  { value: 'OFC', label: 'OFC' },
+  { value: 'FIFA', label: 'Play-off' },
+]
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const month = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
+
+/** The World Cup qualifiers: who is through so far, then each confederation's stages, their
+ * group tables and play-off ties. */
+export default function WorldCupQualifiers() {
+  const data = useQualifiers().data
+  const [region, setRegion] = useState('UEFA')
+  if (!data) return null
+  const stages = data.stages.filter((s) => s.confederation === region)
+  return (
+    <Stack>
+      <Card withBorder padding="sm" aria-label="Qualified">
+        <Group justify="space-between" mb={4}>
+          <Title order={4}>World Cup {data.cycle}: qualified</Title>
+          <Badge variant="light">{data.qualified.length} / 48</Badge>
+        </Group>
+        <Group gap={6}>
+          {data.qualified.map((q) => (
+            <Badge key={q.team.id} variant="light" color={q.how === 'Hosts' ? 'yellow' : 'teal'} tt="none" title={q.how}>
+              {q.team.name}
+            </Badge>
+          ))}
+        </Group>
+      </Card>
+      <SegmentedControl value={region} onChange={setRegion} data={REGIONS} aria-label="Confederation" />
+      {stages.map((s) => (
+        <StageCard key={s.key} stage={s} />
+      ))}
+    </Stack>
+  )
+}
+
+function StageCard({ stage }: { stage: QualifierStage }) {
+  return (
+    <Card withBorder padding="sm" aria-label={stage.name}>
+      <Group justify="space-between" mb="xs">
+        <Title order={4}>{stage.name}</Title>
+        <Text size="sm" c="dimmed">
+          From {month(stage.starts)}
+        </Text>
+      </Group>
+      {!stage.drawn && (
+        <Text size="sm" c="dimmed">
+          Drawn the day before the {month(stage.starts)} window.
+        </Text>
+      )}
+      {stage.groups.length > 0 && (
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+          {stage.groups.map((g) => (
+            <div key={g.name}>
+              <Text fw={600} size="sm" mb={2}>
+                {g.name}
+              </Text>
+              <Table withRowBorders={false} verticalSpacing={2}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th />
+                    <Table.Th ta="right">P</Table.Th>
+                    <Table.Th ta="right">GD</Table.Th>
+                    <Table.Th ta="right">Pts</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {g.rows.map((r, i) => (
+                    <Table.Tr key={r.team.id} bg={stage.qualified_ranks?.includes(i + 1) ? 'var(--mantine-color-teal-light)' : undefined}>
+                      <Table.Td>
+                        <Text size="sm" truncate>
+                          <ClubLink club={r.team} />
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="right" className="fs-num">
+                        {r.played}
+                      </Table.Td>
+                      <Table.Td ta="right" className="fs-num">
+                        {r.gd > 0 ? `+${r.gd}` : r.gd}
+                      </Table.Td>
+                      <Table.Td ta="right" className="fs-num" fw={600}>
+                        {r.points}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </div>
+          ))}
+        </SimpleGrid>
+      )}
+      {stage.ties.length > 0 && (
+        <Stack gap={6}>
+          {stage.ties.map((t) => (
+            <div key={t.tie}>
+              <Text size="xs" c="dimmed">
+                {t.name}
+              </Text>
+              {t.fixtures.map((f) => (
+                <Group key={f.id} justify="space-between" wrap="nowrap" className="fs-row">
+                  <Text size="sm" truncate>
+                    <ClubLink club={f.home} /> v <ClubLink club={f.away} />
+                  </Text>
+                  {f.status === 'played' ? (
+                    <Link to="/match/$fixtureId" params={{ fixtureId: String(f.id) }}>
+                      <Text className="fs-num" fw={600}>
+                        {f.home_goals}–{f.away_goals}
+                        {f.home_pens !== null ? ` (${f.home_pens}–${f.away_pens} pens)` : ''}
+                      </Text>
+                    </Link>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      {f.date}
+                    </Text>
+                  )}
+                </Group>
+              ))}
+            </div>
+          ))}
+        </Stack>
+      )}
+    </Card>
+  )
+}

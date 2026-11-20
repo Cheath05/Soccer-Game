@@ -209,7 +209,8 @@ def decide(eng: "MatchEngine", i: int, mode: str | None = None) -> None:
     decisions = eng.a(i, "decisions")
     temperature = (0.004 + 0.010 * (1 - decisions / 100) + 0.004 * (1 - float(eng.stamina[i]))
                    + max(0.0, eng.effect(team, "tempo").care))
-    temperature *= eng.venue_bias(team, eng.defs.home_advantage.crowd.decisions * pressure)
+    temperature *= eng.venue_bias(team, eng.defs.home_advantage.crowd.decisions * eng.crowd
+                                  * pressure)
     utilities = np.array([u for u, _, _ in options])
     weights = np.exp((utilities - utilities.max()) / temperature)
     choice = options[int(eng.rng.choice(len(options), p=weights / weights.sum()))]
@@ -423,7 +424,7 @@ def pass_error(eng: "MatchEngine", team: int, skill: Any, pressure: float, fatig
     spread = spread * (1 + eng.effect(team, "tempo").hurry)  # hurried passes go astray more
     if crowd:
         home = eng.defs.home_advantage
-        spread = spread * eng.venue_bias(team, home.crowd.execution * pressure)
+        spread = spread * eng.venue_bias(team, home.crowd.execution * eng.crowd * pressure)
         if home.familiarity.execution:
             spread = spread * eng.venue_bias(team, home.familiarity.execution)
     length_spread = (ex.length_skill * (1.2 - skill / 100)

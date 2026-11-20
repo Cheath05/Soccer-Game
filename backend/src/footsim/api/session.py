@@ -80,7 +80,7 @@ class CareerSession:
     def new_career(self, slot: int, club_id: int | None, manager_name: str,
                    budget_eur: int | None = None, board_enabled: bool = True,
                    currency: str = "USD", fast_leagues: list[str] | None = None,
-                   college_program: str | None = None) -> None:
+                   college_program: str | None = None, college_mode: str = "classic") -> None:
         """Start a career, at ``club_id`` or as the coach of the NCAA program named
         ``college_program``. The sandbox: ``budget_eur`` is the club's budget to start with for
         fees and wages (the owner puts in the cash). ``board_enabled`` False plays without a
@@ -92,7 +92,7 @@ class CareerSession:
             with self.engine.begin() as conn:
                 initialize_career(conn, get_world(), club_id, manager_name,
                                   board_enabled=board_enabled, fast_leagues=fast_leagues,
-                                  college_program=college_program)
+                                  college_program=college_program, college_mode=college_mode)
                 set_currency(conn, get_world(), currency)
                 if budget_eur is not None and club_id is not None:
                     set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)

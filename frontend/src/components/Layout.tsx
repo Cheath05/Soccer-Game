@@ -21,6 +21,7 @@ const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/squad', label: 'Squad' },
   { to: '/recruiting', label: 'Recruiting' },
+  { to: '/program', label: 'Program' },
   { to: '/mls-roster', label: 'MLS roster' },
   { to: '/tactics', label: 'Tactics' },
   { to: '/transfers', label: 'Transfers' },
@@ -88,6 +89,7 @@ export default function Layout() {
     (to !== '/draft' || inMls) &&
     (to !== '/mls-roster' || isMls) &&
     (to !== '/recruiting' || isCollege) &&
+    (to !== '/program' || isCollege) &&
     !(isCollege && COLLEGE_HIDES.includes(to))
   const matchToday = data.next_fixture?.date === data.date
 
@@ -132,6 +134,7 @@ export default function Layout() {
     ...(isMls ? [{ to: '/mls-roster', label: 'MLS roster', icon: 'roster', active: at('/mls-roster') } as NavItem] : []),
     { to: '/international', label: 'International', icon: 'europe', active: at('/international') },
     { to: '/college', label: 'College', icon: 'college', active: at('/college') },
+    { to: '/program', label: 'Program', icon: 'finances', active: at('/program') },
     { to: '/finances', label: 'Finances', icon: 'finances', active: at('/finances') },
     { to: clubPath, label: 'Club', icon: 'club', active: at(clubPath) },
     { to: '/settings', label: 'Settings', icon: 'settings', active: at('/settings') },

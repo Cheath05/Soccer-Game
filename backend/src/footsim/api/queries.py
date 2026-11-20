@@ -416,7 +416,8 @@ def _college_career(conn: Connection, world: World, meta: CareerMeta
     prestige = float(row.prestige) if row.prestige is not None else float(
         world.defs.college.recruiting.programs.prestige_by_tier[int(row.tier)])
     return CollegeCareerOut(conference=str(row.conference), conference_name=conference.name,
-                            tier=int(row.tier), prestige=round(prestige), rpi_rank=rank), position
+                            tier=int(row.tier), prestige=round(prestige), rpi_rank=rank,
+                            mode=meta.college_mode), position
 
 
 def competitions(conn: Connection, world: World) -> list[CompetitionOut]:

@@ -1,0 +1,76 @@
+# The NCAA "program builder" mode (W9d; world/college/program.py, docs/plans/w9d-program-builder.md):
+# every program has money and builds its training facilities and stadium. Off ("classic") unless
+# a college coach's career chose it. Money here is in US dollars, converted to the game's money
+# at the finance file's dollar rate.
+
+# The athletic department's allocation each season (1 July), by program prestige (linear between
+# the points), and the balance a program starts the mode with, by tier.
+allocation: [[20, 650000], [50, 1400000], [85, 3200000]]
+starting_balance: {1: 1500000, 2: 1000000, 3: 700000, 4: 450000, 5: 300000}
+
+costs:
+  scholarship: 55000  # a full scholarship for a year (cost of attendance); charged on 1 July
+  staff: {1: 900000, 2: 700000, 3: 520000, 4: 400000, 5: 300000}  # coaches and support, a season
+  travel: 12000  # each away game
+
+# Home games: attendance is the stadium's capacity times how full it is, the fill from the
+# program's prestige, adjusted for its form (the share of points in its last games), the visitors'
+# prestige and the kind of game; then capped at the capacity.
+tickets:
+  fill: [[20, 0.2], [50, 0.35], [85, 0.6]]
+  form_games: 5  # the form counts this many of its last college games
+  form_weight: 0.3  # a perfect run adds this much fill, a losing one takes it away
+  opponent_weight: 0.15  # per 50 prestige points the visitors are above 50
+  event: {college: 0.0, conference: 0.15, ncaa: 0.3}  # extra fill for tournament games
+  min_fill: 0.05
+  price: {1: 8, 2: 10, 3: 12, 4: 15, 5: 18}  # a ticket, by stadium level
+
+# Boosters give after the regular season (by wins and a conference title) and after the NCAA
+# tournament (by wins and the national title), more at a bigger-name program (by prestige).
+boosters:
+  per_win: 15000
+  conference_title: 60000
+  per_ncaa_win: 40000
+  national_title: 250000
+  prestige_scale: [[20, 0.5], [50, 1.0], [85, 1.6]]
+
+# The NCAA tournament pays each team that plays a round (by the round, from the first).
+ncaa_payout: [20000, 30000, 45000, 70000, 110000, 180000]
+
+# Facilities, levels 1-5. A level's cost is what it takes to build it from the level below; its
+# upkeep is paid each season while it stands. Work paid for by the cutoff (MM-DD, the spring)
+# finishes over the summer, ready at the next season; later, the season after.
+facilities:
+  build_cutoff: "03-01"
+  training:
+    cost: [0, 400000, 900000, 1800000, 3500000]
+    upkeep: [20000, 45000, 85000, 150000, 240000]
+    growth: [0.0, 0.06, 0.12, 0.18, 0.24]  # extra monthly growth for the program's players
+  stadium:
+    cost: [0, 600000, 1500000, 3500000, 7000000]
+    upkeep: [15000, 40000, 90000, 170000, 300000]
+    capacity: [1000, 2500, 5000, 8000, 12000]
+  start_level:  # by tier
+    training: {1: 4, 2: 3, 3: 3, 4: 2, 5: 1}
+    stadium: {1: 4, 2: 3, 3: 2, 4: 2, 5: 1}
+
+# Recruits count a program's facilities in its appeal: prestige points for each level above 1,
+# averaged over the two facilities.
+appeal_per_level: 2.5
+
+# The home crowd's pressure on the away side (match/home_advantage.yaml crowd) is scaled by the
+# crowd: from min_scale with nobody there, rising with the crowd's size (as a share of full_crowd,
+# to the power) and how full the ground is, to 1.0 (the value calibrated on professional crowds)
+# for a full ground of full_crowd. Professional matches always use 1.0.
+crowd:
+  min_scale: 0.5
+  full_crowd: 12000
+  size_power: 0.5
+  fill_weight: 0.4  # the share of the rise that needs the ground full rather than just big
+
+# AI programs: the class budget they set (in full scholarships, the class they need at their
+# level's shares), a reserve they keep, and what they build first when they can.
+ai:
+  class_budget_share: 1.0  # of the tier's funding (recruiting.yaml) less the returning players'
+  reserve_seasons: 0.5  # keep this many seasons of costs in hand
+  priority: [training, stadium]

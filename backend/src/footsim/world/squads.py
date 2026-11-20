@@ -12,7 +12,6 @@ from footsim.importers.generate import age_on
 from footsim.match.teams import SquadPlayer, TeamSheet
 from footsim.persistence.schema import club, player_attr, player_position, tactic
 from footsim.world.context import World, default_instructions
-from footsim.world.international.common import away_players
 
 # In a fixed order: who's picked when ratings tie, and so every match, mustn't depend on how
 # SQLite happens to walk the playing view (player-id order is what the squads came in before it).
@@ -59,6 +58,10 @@ def load_squad(conn: Connection, club_id: int, day: date) -> list[SquadPlayer]:
     rows = conn.execute(_NATIONAL_SQUAD_SQL if national else _SQUAD_SQL,
                         {"club": club_id}).all()
     # A club's players away with their national teams can't play for it (world/international).
+    # Imported here: world.international's package imports the lifecycle, which imports this
+    # module, so a top-level import is a cycle when this module loads first.
+    from footsim.world.international.common import away_players
+
     away = set() if national else away_players(conn, day)
     ids = [r.id for r in rows]
     if not ids:

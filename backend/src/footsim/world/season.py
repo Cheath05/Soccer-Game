@@ -52,6 +52,7 @@ from footsim.persistence.schema import (
 from footsim.world.club_names import apply_club_names, apply_club_nations
 from footsim.world.college.common import is_college_stage
 from footsim.world.college.draft import college_turnover
+from footsim.world.college.program import growth_factors, progress_program
 from footsim.world.college.recruiting import progress_recruiting
 from footsim.world.college.season import (
     college_decider,
@@ -309,6 +310,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
                 messages += _progress_playoff(conn, world, meta, cid, league, playoff, day)
     messages += progress_college(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
+    messages += progress_program(conn, world, meta, day)
     messages += international_day(conn, world, meta, day)
     messages += draft_day(conn, world, meta, day)
     messages += end_loans(conn, meta, day)
@@ -709,6 +711,8 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
     minutes = np.array([r.minutes for r in rows], dtype=float)
     boost, points = academy_boost(rules, ages, minutes, _academy_products(conn, ids), potential,
                                   boost)
+    # The program builder's training facilities speed their college players' growth (W9d).
+    factors = growth_factors(conn, world)
     inp = DevelopmentInput(
         attrs=matrix,
         ages=ages,
@@ -716,6 +720,8 @@ def develop_players(conn: Connection, world: World, meta: CareerMeta, day: date,
         groups=groups,
         minutes=minutes,
         bench_minutes=np.array([r.bench_minutes for r in rows], dtype=float),
+        growth_factor=(np.array([factors.get(i, 1.0) for i in ids], dtype=float)
+                       if factors else None),
     )
     new, progress, moves = apply_month(rules, world.model, inp, traits, progress,
                                        derive_rng(meta.seed, "development", day.isoformat()))

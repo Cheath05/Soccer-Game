@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.122"
+  date: "2026-11-19"
+  title: "College: the program builder"
+  changes:
+    - "New college game mode, Program builder (choose it when starting a college career, or turn it on from Program in the menu): every program has money each season from the athletic department, ticket sales, boosters and NCAA tournament payouts, and spends it on scholarships, training facilities and its stadium."
+    - "Training facilities make your players grow faster towards their potential; a bigger stadium sells more tickets, and a bigger, fuller crowd puts more pressure on visiting teams. Set how many scholarships to put aside for next season's class; recruiting spends from it. The other programs build up too."
+
 - version: "1.120"
   date: "2026-11-19"
   title: "College: overall records"

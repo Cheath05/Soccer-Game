@@ -263,6 +263,16 @@ def load_programs(conn: Connection, world: World, class_season: int) -> dict[int
         p.returning_money += float(row.scholarship)
     for group_list in (lst for p in programs.values() for lst in p.returning.values()):
         group_list.sort()
+    # The program builder (W9d): money is the limit, set as each program's class budget, and its
+    # facilities add to its appeal.
+    from footsim.world.college.program import appeal, class_budgets, is_on
+
+    if is_on(conn):
+        budgets = class_budgets(conn)
+        bonus = appeal(conn, world)
+        for p in programs.values():
+            p.funding = p.returning_money + budgets.get(p.club_id, 0.0)
+            p.prestige += bonus.get(p.club_id, 0.0)
     for r in conn.execute(select(recruit.c.club_id, recruit.c.position, recruit.c.share,
                                  recruit.c.overall)
                           .where(recruit.c.class_season == class_season,

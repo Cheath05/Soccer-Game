@@ -60,6 +60,7 @@ class SaveSlotOut(BaseModel):
 class NewCareerIn(BaseModel):
     club_id: int | None = None  # the club to manage...
     college_program: str | None = None  # ...or an NCAA program, by name (W9c)
+    college_mode: str = "classic"  # a college program's game: classic | builder (W9d)
     manager_name: str
     # The sandbox: the club's budget for transfer fees and wages to start with, up to EUR 10bn
     # (the owner puts in the cash to back it). None: the board's own budget. (Called
@@ -311,6 +312,7 @@ class CollegeCareerOut(BaseModel):
     tier: int  # 1 (a national power) to 5
     prestige: int  # 0-100
     rpi_rank: int | None  # this season's, once games are played
+    mode: str = "classic"  # classic | builder (the program builder: money and facilities, W9d)
 
 
 class CareerOut(BaseModel):

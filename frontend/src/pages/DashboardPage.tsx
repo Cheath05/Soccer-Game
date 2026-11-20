@@ -2,6 +2,7 @@ import { Badge, Button, Card, Grid, Group, Stack, Table, Text } from '@mantine/c
 import { useNavigate } from '@tanstack/react-router'
 
 import { useConferences, wdl } from '../api/americas'
+import { useProgram } from '../api/program'
 import { useRecruiting } from '../api/recruiting'
 import { useCareer, useFinances, useSquad, useTable } from '../api/hooks'
 import { tierStars } from '../lib/college'
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const conferences = useConferences(!!college)
   const finances = useFinances(!!career && !college).data
   const recruiting = useRecruiting(!!college).data
+  const program = useProgram(college?.mode === 'builder').data
   const navigate = useNavigate()
   if (!career) return null
 
@@ -210,6 +212,12 @@ export default function DashboardPage() {
                 <Figure label="RPI rank" value={college.rpi_rank ? `${college.rpi_rank}` : '–'} />
                 <Figure label="Prestige" value={`${college.prestige}`} />
               </Group>
+              {program && program.mode === 'builder' && (
+                <Text size="sm" mt="xs" c="dimmed">
+                  Balance {money(program.balance_eur)} · training level {program.facilities.find((f) => f.kind === 'training')?.level} · stadium level{' '}
+                  {program.facilities.find((f) => f.kind === 'stadium')?.level} ({program.capacity.toLocaleString()} seats)
+                </Text>
+              )}
             </Card>
           </Grid.Col>
         )}

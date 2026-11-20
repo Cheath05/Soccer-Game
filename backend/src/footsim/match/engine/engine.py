@@ -63,10 +63,13 @@ class MatchEngine:
                  rng: np.random.Generator, *, neutral: bool = False,
                  decider: Decider | None = None, record: bool = True,
                  auto_subs: tuple[bool, bool] = (True, True),
-                 ai_manager: tuple[bool, bool] = (True, True)) -> None:
+                 ai_manager: tuple[bool, bool] = (True, True), crowd: float = 1.0) -> None:
         self.defs = defs
         self.rng = rng
         self.neutral = neutral
+        # The home crowd's size as a share of the calibrated crowd effect (1.0: professional
+        # matches; a college program builder's smaller crowds less, world/college/program.py).
+        self.crowd = crowd
         self.decider = decider
         self.record = record
         self.sheets = [home, away]

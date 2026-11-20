@@ -7,6 +7,7 @@ import { type Training, useSetTraining, useTraining } from '../api/training'
 import { type AvailabilityStatus, useAvailability, useSetAvailability } from '../api/transfers'
 import BackButton from '../components/BackButton'
 import type { FamiliarityBand, PlayerSeasonLine, PositionRating } from '../api/types'
+import AutoTrainingSwitch from '../components/AutoTrainingSwitch'
 import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
 import { useDevice } from '../lib/device'
@@ -522,6 +523,7 @@ function TrainingCard({ playerId, familiarity, ratings }: { playerId: number; fa
             {set.error.message}
           </Text>
         )}
+        <AutoTrainingSwitch compact />
       </Stack>
     </Card>
   )

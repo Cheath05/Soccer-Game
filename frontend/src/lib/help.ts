@@ -87,6 +87,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'A player gives his full rating only in positions he is natural in. In any other he loses a share of it: the less familiar he is, the more he loses. The Positions card on his page lists every position he knows with how natural he is there (natural, accomplished, competent, awkward or unconvincing), his rating there and what it costs him. On Tactics, a ring marks a starter who is not fully at home (amber a little, red out of position).',
       [
         'Position training: on your own player’s page, choose a position under Position training and press Train, or use Train on a row of the Positions card.',
+        'Assistant trains positions (Settings → Position training, or the switch on a player’s Position training card): every one of your players not learning a position starts on his best alternate one, the position he already plays a little and knows best, at once and on the 1st of each month, until he is natural everywhere he plays. You can still choose or stop any player’s training yourself.',
         'It works on one position at a time. Each month he gets more familiar there, faster when he is young, until he is natural. Then he plays it at his full rating and you can train another position.',
         'Training doesn’t change his attributes. Stop cancels it, and the news tells you when he gets there.',
       ],

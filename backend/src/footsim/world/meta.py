@@ -46,6 +46,9 @@ class CareerMeta:
     # A college coach's OP players (world/college/god_player.py): player id -> the season he
     # was signed. One every few seasons; he never declares early, so he stays four years.
     god_players: dict[int, int] = field(default_factory=dict)
+    # The assistant trains positions (world/training.py auto_train): each month every one of the
+    # user's players not learning a position starts on his best alternate one.
+    auto_position_training: bool = False
 
     @property
     def seed(self) -> int:
@@ -71,6 +74,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         user_nation_id=values.get("user_nation_id"),
         college_mode=str(values.get("college_mode", "classic")),
         god_players={int(k): int(v) for k, v in values.get("god_players", {}).items()},
+        auto_position_training=bool(values.get("auto_position_training", False)),
     )
 
 
@@ -92,6 +96,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "user_nation_id": meta.user_nation_id,
         "college_mode": meta.college_mode,
         "god_players": {str(k): v for k, v in meta.god_players.items()},
+        "auto_position_training": meta.auto_position_training,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

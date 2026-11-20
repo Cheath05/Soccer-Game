@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.135"
+  date: "2026-11-20"
+  title: "The assistant trains positions"
+  changes:
+    - "Settings → Position training (also a switch on a player's Position training card): the assistant starts every player who isn't learning a position on his best alternate one, the position he already plays a little and knows best, now and on the 1st of each month, until he's natural everywhere he plays."
+
 - version: "1.134"
   date: "2026-11-20"
   title: "College: the OP player, one line a season"

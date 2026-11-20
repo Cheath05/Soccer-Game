@@ -2,6 +2,7 @@ import { Alert, Card, Stack, Text, Title } from '@mantine/core'
 
 import { ApiError } from '../api/client'
 import { useSetSimulation, useSimulation } from '../api/hooks'
+import AutoTrainingSwitch from '../components/AutoTrainingSwitch'
 import OfferRulesCard from '../components/OfferRulesCard'
 import SimulationPicker from '../components/SimulationPicker'
 
@@ -14,6 +15,12 @@ export default function SettingsPage() {
     <Stack>
       <Title order={2}>Settings</Title>
       <OfferRulesCard />
+      <Card withBorder padding="md">
+        <Title order={4} mb="xs">
+          Position training
+        </Title>
+        <AutoTrainingSwitch />
+      </Card>
       <Card withBorder padding="md">
         <Title order={4} mb={4}>
           Simulation

@@ -94,6 +94,25 @@ export function useSetSimulation() {
   })
 }
 
+/** Settings → Position training: the assistant trains every player's alternate positions. */
+export interface TrainingSetting {
+  auto: boolean
+  training: number // your players learning a position now
+}
+
+export const useTrainingSetting = () => useQuery({ queryKey: ['training-setting'], queryFn: () => api.get<TrainingSetting>('/settings/training') })
+
+export function useSetTrainingSetting() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (auto: boolean) => api.put<TrainingSetting>('/settings/training', { auto }),
+    onSuccess: (data) => {
+      client.setQueryData(['training-setting'], data)
+      void client.invalidateQueries({ queryKey: ['training'] })
+    },
+  })
+}
+
 /** Settings → Transfer offers: whether bids for your players stop the game, wait, or are answered by your prices. */
 export const useOfferRules = () => useQuery({ queryKey: ['offer-rules'], queryFn: () => api.get<OfferRules>('/settings/offers') })
 

@@ -104,3 +104,25 @@ def test_players_leave_as_free_agents_and_pros_cant_join(career: tuple[Engine, W
             validate_move(conn, world, meta, Move(int(pro), meta.user_club_id, by_user=True),
                           meta.current_date)
         conn.rollback()
+
+
+def test_the_assistant_trains_positions(career: tuple[Engine, World]) -> None:
+    """Settings → Position training (20 Nov): each of the user's players not learning a
+    position starts on the familiar, not natural, position he knows best; once only."""
+    from footsim.world.training import auto_train
+
+    engine, world = career
+    natural = world.defs.development.position_training.natural
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        started = auto_train(conn, world, meta, meta.current_date)
+        assert started > 0
+        assert auto_train(conn, world, meta, meta.current_date) == 0  # nobody twice
+        rows = conn.execute(text(
+            "SELECT t.player_id, t.position, pp.familiarity, (SELECT MAX(familiarity) FROM "
+            "player_position o WHERE o.player_id = t.player_id AND o.familiarity < :n) AS best "
+            "FROM position_training t JOIN player_position pp ON pp.player_id = t.player_id "
+            "AND pp.position = t.position"), {"n": natural}).all()
+        assert len(rows) == started
+        assert all(0 < r.familiarity < natural and r.familiarity == r.best for r in rows)
+        conn.rollback()

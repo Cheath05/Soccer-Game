@@ -6,6 +6,11 @@ his familiarity in it grows by ``rate_per_month``, faster when he's young, until
 it (``natural``). From then on he plays it at his full rating there (ratings/overall.py
 familiarity bands: 18+ is natural). Fractions carry from month to month. It's the user's
 choice for their own players; AI clubs pick formations that suit their players instead.
+
+With the assistant training positions (a setting, ``auto_train``), each month every one of the
+user's players who isn't learning a position starts on his best alternate one: the position he
+already plays a little (familiar but not natural) that he knows best. Once he's natural everywhere
+he plays, he has nothing more to learn.
 """
 
 from datetime import date
@@ -56,8 +61,36 @@ def set_training(conn: Connection, world: World, meta: CareerMeta, player_id: in
                  {"p": player_id, "pos": position, "d": day.isoformat()})
 
 
+def auto_train(conn: Connection, world: World, meta: CareerMeta, day: date) -> int:
+    """The assistant starts each of the user's players not learning a position on his best
+    alternate one (the familiar but not natural position he knows best). Returns how many."""
+    if meta.user_club_id is None:
+        return 0
+    natural = world.defs.development.position_training.natural
+    rows = conn.execute(text(
+        "SELECT pp.player_id, pp.position, pp.familiarity FROM player_position pp "
+        "JOIN contract c ON c.person_id = pp.player_id AND c.is_active = 1 AND c.kind != 'loan' "
+        "WHERE c.club_id = :club AND pp.familiarity > 0 AND pp.familiarity < :natural "
+        "AND pp.player_id NOT IN (SELECT player_id FROM position_training) "
+        "ORDER BY pp.player_id, pp.familiarity DESC, pp.position"),
+        {"club": meta.user_club_id, "natural": natural}).all()
+    chosen: dict[int, str] = {}
+    for r in rows:
+        if r.position in world.defs.positions:
+            chosen.setdefault(int(r.player_id), str(r.position))
+    if chosen:
+        conn.execute(text("INSERT INTO position_training (player_id, position, progress, started) "
+                          "VALUES (:p, :pos, 0, :d)"),
+                     [{"p": pid, "pos": pos, "d": day.isoformat()}
+                      for pid, pos in sorted(chosen.items())])
+    return len(chosen)
+
+
 def train_positions(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
-    """A month of position training. Returns news of players who became natural."""
+    """A month of position training (the assistant's choices first, with the setting on).
+    Returns news of players who became natural."""
+    if meta.auto_position_training:
+        auto_train(conn, world, meta, day)
     natural = world.defs.development.position_training.natural
     rows = conn.execute(text(
         "SELECT t.player_id, t.position, t.progress, pe.birth_date, pe.first_name, pe.last_name, "

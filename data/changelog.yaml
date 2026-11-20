@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.142"
+  date: "2026-11-20"
+  title: "A country, and no club"
+  changes:
+    - "New career → Manage a country: manage a national team with no club. Pick its squad for every window and tournament, set its tactics and play its matches; Continue and Sim to move on from one international window to the next."
+    - "With no club the menu leaves out the squad, transfers, finances, league and cups. Home shows your country's world rank, Elo and call-ups; International opens on My country."
+
 - version: "1.141"
   date: "2026-11-20"
   title: "Manage a country"

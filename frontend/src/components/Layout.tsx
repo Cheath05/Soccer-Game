@@ -43,6 +43,8 @@ const NAV = [
 // What a college coach's menu leaves out: a program has no transfers, money, professional league
 // or cups.
 const COLLEGE_HIDES = ['/transfers', '/finances', '/league', '/cups']
+// What a national team's manager without a club sees: no squad, transfers, money, leagues or cups.
+const NATION_SHOWS = ['/', '/tactics', '/calendar', '/fixtures', '/international', '/settings', '/start']
 
 export default function Layout() {
   const [opened, { toggle, close }] = useDisclosure()
@@ -87,7 +89,9 @@ export default function Layout() {
   const isMls = data.competition?.key === MLS_LEAGUE
   // A college coach (W9c) has no transfers, money, professional league, cups or Europe.
   const isCollege = !!data.college
+  const isNation = !!data.nation_only
   const shown = (to: string) =>
+    (!isNation || NATION_SHOWS.includes(to)) &&
     (to !== '/europe' || (hasEurope && !isCollege)) &&
     (to !== '/draft' || inMls) &&
     (to !== '/mls-roster' || isMls) &&
@@ -130,6 +134,11 @@ export default function Layout() {
       ? { to: '/recruiting', label: 'Recruiting', icon: 'recruiting', active: at('/recruiting') }
       : { to: '/transfers', label: 'Transfers', icon: 'transfers', active: at('/transfers') },
   ]
+  if (isNation) {
+    // A country's manager: its call-ups (International) for the squad, its fixtures for transfers.
+    tabs[1] = { to: '/international', label: 'Country', icon: 'squad', active: at('/international') }
+    tabs[3] = { to: '/fixtures', label: 'Fixtures', icon: 'fixtures', active: at('/fixtures') }
+  }
   const allMore: NavItem[] = [
     { to: '/league', label: 'League', icon: 'league', active: at('/league') },
     { to: '/fixtures', label: 'Fixtures', icon: 'fixtures', active: at('/fixtures') },
@@ -230,7 +239,7 @@ export default function Layout() {
         </Box>
         {NAV.filter((item) => shown(item.to)).map((item) => (
           <div key={item.to}>
-            {item.to === '/start' && data && (
+            {item.to === '/start' && data && !isNation && (
               <NavLink
                 mih={phone ? 44 : undefined}
                 label="Club & history"

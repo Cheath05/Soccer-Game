@@ -2,7 +2,7 @@ import { Badge, Card, Grid, Group, SegmentedControl, Stack, Table, Tabs, Text, T
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useInternational } from '../api/hooks'
+import { useCareer, useInternational } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
 import ClubWorldCup from '../components/ClubWorldCup'
 import NationManager from '../components/NationManager'
@@ -16,6 +16,8 @@ const SHOWN = 60
  * with every international result), and the latest international matches. */
 export default function InternationalPage() {
   const data = useInternational().data
+  // A national team's manager without a club opens on his country.
+  const only = !!useCareer().data?.nation_only
   const [confederation, setConfederation] = useState('All')
   const [search, setSearch] = useState('')
   if (!data) return null
@@ -32,7 +34,7 @@ export default function InternationalPage() {
           players are away from their clubs.
         </Text>
       </div>
-      <Tabs defaultValue="ranking" keepMounted={false}>
+      <Tabs defaultValue={only ? 'mine' : 'ranking'} keepMounted={false}>
         <Tabs.List mb="sm">
           <Tabs.Tab value="ranking">Ranking</Tabs.Tab>
           <Tabs.Tab value="wc">World Cup 2030</Tabs.Tab>

@@ -101,6 +101,15 @@ export interface Career {
   currency?: string // the currency money is shown and quoted in, kept with the career
   college?: CollegeCareer | null // a college coach's program (W9c); null for a club
   nation?: ClubRef | null // the national team he also manages (W8 I5)
+  nation_only?: boolean // a national team's manager without a club: `club` is then the national team
+}
+
+// A national team a new career can manage without a club (GET /api/world/national-teams).
+export interface NationOption {
+  code: string // FIFA's code
+  name: string
+  confederation: string
+  rank: number // by Elo, 1 the strongest
 }
 
 // A college coach's program (api/schemas.py CollegeCareerOut). The career's `position` is then its

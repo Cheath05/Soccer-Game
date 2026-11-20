@@ -22,7 +22,8 @@ export default function TacticsPage() {
   const career = useCareer().data
   // The national team the user also manages (W8 I5) has its own tactic: ?team=nation opens it.
   const [team, setTeam] = useState<TacticsTeam>(() => (new URLSearchParams(window.location.search).get('team') === 'nation' ? 'nation' : 'club'))
-  const country = team === 'nation' && !!career?.nation
+  // A national team's manager without a club has only the country's.
+  const country = (team === 'nation' || !!career?.nation_only) && !!career?.nation
   const tactics = useTactics(country ? 'nation' : 'club')
   const squad = useSquad(country ? undefined : career?.club.id)
   const save = useSaveTactics(country ? 'nation' : 'club')
@@ -274,7 +275,7 @@ export default function TacticsPage() {
       <Group justify="space-between">
         <Group gap="sm">
           <Title order={2}>Tactics</Title>
-          {career?.nation && (
+          {career?.nation && !career.nation_only && (
             <SegmentedControl
               size="xs"
               value={country ? 'nation' : 'club'}

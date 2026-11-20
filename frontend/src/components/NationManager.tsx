@@ -16,6 +16,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import {
+  useCareer,
   useInternational,
   useMyNation,
   useNationJob,
@@ -41,17 +42,18 @@ export default function NationManager() {
   return mine.data.team ? <Job key={key} data={mine.data} /> : <TakeJob />;
 }
 
-function TakeJob() {
+/** Take a national team's job; ``move``: a manager without a club moving to another country. */
+function TakeJob({ move = false }: { move?: boolean }) {
   const teams = useInternational().data?.teams ?? [];
   const job = useNationJob();
   const [code, setCode] = useState<string | null>(null);
   return (
     <Card withBorder padding="md" maw={560}>
-      <Title order={4}>Manage a country</Title>
+      <Title order={4}>{move ? "Move to another country" : "Manage a country"}</Title>
       <Text size="sm" c="dimmed" mt={4}>
-        Take a national team’s job alongside your club. You pick its squad for
-        every international window and tournament, set its tactics, and play its
-        matches as your own: they stop Continue like your club’s.
+        {move
+          ? "Take another national team’s job in place of this one: its squad is picked for you to start with, and its matches become yours."
+          : "Take a national team’s job alongside your club. You pick its squad for every international window and tournament, set its tactics, and play its matches as your own: they stop Continue like your club’s."}
       </Text>
       <Group mt="md" align="flex-end">
         <Select
@@ -87,6 +89,8 @@ function Job({ data }: { data: MyNation }) {
   const job = useNationJob();
   const save = useSaveNationSquad();
   const navigate = useNavigate();
+  // A national team's manager without a club: the country is his only team, so no leaving.
+  const only = !!useCareer().data?.nation_only;
   const saved = useMemo(
     () => new Set(data.players.filter((p) => p.selected).map((p) => p.id)),
     [data],
@@ -122,8 +126,10 @@ function Job({ data }: { data: MyNation }) {
               <Badge variant="light">{data.code}</Badge>
             </Title>
             <Text size="sm" c="dimmed">
-              You manage {team.name} alongside your club. Its squad stays as you
-              pick it; an empty one is picked for you at the next call-up.
+              You manage {team.name}
+              {only ? ", your only team" : " alongside your club"}. Its squad
+              stays as you pick it; an empty one is picked for you at the next
+              call-up.
             </Text>
           </div>
           <Group gap="xs">
@@ -135,14 +141,16 @@ function Job({ data }: { data: MyNation }) {
             >
               Tactics
             </Button>
-            <Button
-              variant="subtle"
-              color="red"
-              loading={job.isPending}
-              onClick={() => job.mutate(null)}
-            >
-              Leave the job
-            </Button>
+            {!only && (
+              <Button
+                variant="subtle"
+                color="red"
+                loading={job.isPending}
+                onClick={() => job.mutate(null)}
+              >
+                Leave the job
+              </Button>
+            )}
           </Group>
         </Group>
         <Title order={5} mt="sm">
@@ -291,6 +299,7 @@ function Job({ data }: { data: MyNation }) {
           </Text>
         )}
       </Card>
+      {only && <TakeJob move />}
     </Stack>
   );
 }

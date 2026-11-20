@@ -41,6 +41,15 @@ class CollegeProgramOption(BaseModel):
     tier: int  # 1 (a national power) to 5
 
 
+class NationOption(BaseModel):
+    """A national team a new career can manage without a club."""
+
+    code: str  # FIFA's code
+    name: str
+    confederation: str
+    rank: int  # by Elo, 1 the strongest
+
+
 class CollegeConferenceOption(BaseModel):
     key: str
     name: str
@@ -63,6 +72,7 @@ class NewCareerIn(BaseModel):
     club_id: int | None = None  # the club to manage...
     college_program: str | None = None  # ...or an NCAA program, by name (W9c)
     college_mode: str = "classic"  # a college program's game: classic | builder (W9d)
+    nation_code: str | None = None  # ...or only a national team, by FIFA code (no club)
     manager_name: str
     # The sandbox: the club's budget for transfer fees and wages to start with, up to EUR 10bn
     # (the owner puts in the cash to back it). None: the board's own budget. (Called
@@ -332,6 +342,8 @@ class CareerOut(BaseModel):
     currency: str = "USD"  # money is shown and quoted in it
     college: CollegeCareerOut | None = None  # a college coach's program (W9c)
     nation: ClubRef | None = None  # the national team he also manages (W8 I5)
+    # A national team's manager without a club: ``club`` is then the national team.
+    nation_only: bool = False
 
 
 class AdvanceOut(BaseModel):

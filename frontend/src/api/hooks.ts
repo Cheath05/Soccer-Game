@@ -29,6 +29,7 @@ import type {
   MatchReport,
   MyNation,
   Nation,
+  NationOption,
   OfferRules,
   PlayerDetail,
   PlayerSeason,
@@ -74,6 +75,10 @@ export const useSaves = () => useQuery({ queryKey: ['saves'], queryFn: () => api
 /** The NCAA programs a new career can coach (W9c), by conference (no career needed). */
 export const useCollegePrograms = () =>
   useQuery({ queryKey: ['college-programs'], queryFn: () => api.get<CollegeConferenceOption[]>('/world/college-programs'), staleTime: Infinity })
+
+/** The national teams a new career can manage without a club, the strongest first. */
+export const useWorldNations = () =>
+  useQuery({ queryKey: ['world-national-teams'], queryFn: () => api.get<NationOption[]>('/world/national-teams'), staleTime: Infinity })
 
 export const useWorldLeagues = () =>
   useQuery({ queryKey: ['world-leagues'], queryFn: () => api.get<LeagueOption[]>('/world/leagues'), staleTime: Infinity })
@@ -314,7 +319,7 @@ export function useSaveTactics(team: TacticsTeam = 'club') {
 }
 
 /** The national team the user manages (W8 I5): the players he can call up and its matches. */
-export const useMyNation = () => useQuery({ queryKey: ['my-nation'], queryFn: () => api.get<MyNation>('/international/my-team') })
+export const useMyNation = (enabled = true) => useQuery({ queryKey: ['my-nation'], queryFn: () => api.get<MyNation>('/international/my-team'), enabled })
 
 export function useNationJob() {
   const invalidate = useInvalidateAll()
@@ -346,11 +351,12 @@ export function usePickBestXi(team: TacticsTeam = 'club') {
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number | null; collegeProgram?: string | null; collegeMode?: 'classic' | 'builder'; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
+    mutationFn: (args: { slot: number; clubId: number | null; collegeProgram?: string | null; collegeMode?: 'classic' | 'builder'; nationCode?: string | null; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
       api.post<Career>(`/saves/${args.slot}/new`, {
         club_id: args.clubId,
         college_program: args.collegeProgram ?? null,
         college_mode: args.collegeMode ?? 'classic',
+        nation_code: args.nationCode ?? null,
         manager_name: args.manager,
         budget_eur: args.budget ?? null,
         board_enabled: args.boardEnabled ?? true,

@@ -27,6 +27,15 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.139"
+  date: "2026-11-20"
+  title: "Game-day visits and a recruiting assistant"
+  changes:
+    - "Recruiting assistant (a switch on Recruiting, and in Settings): every Monday from the day offers open until signing day, it makes the best realistic recruits at each position you're losing (your seniors and anyone who declared for the draft) Top targets and offers each the scholarship he hopes for, about twice as many as you need. It stops when your money or places run out and leaves your own targets and offers alone."
+    - "Recruiting: invite a recruit to one of your home games for his official visit (on his card). The result sways him: a win raises his interest in you the most (a big win more still), a draw like a usual visit, a defeat much less."
+    - "News about your program (a visit, your targets) now always comes under Your team."
+    - "The end of the college regular season lists each conference's champion on a line of its own under Conference champions, like the tournaments' champions, instead of one long paragraph."
+
 - version: "1.138"
   date: "2026-11-20"
   title: "The college top 25"

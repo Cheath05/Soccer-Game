@@ -50,6 +50,7 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.world.club_names import apply_club_names, apply_club_nations
+from footsim.world.college.assistant import weekly as assistant_recruiting
 from footsim.world.college.common import is_college_stage
 from footsim.world.college.draft import college_turnover
 from footsim.world.college.program import growth_factors, progress_program
@@ -59,6 +60,7 @@ from footsim.world.college.season import (
     create_college_fixtures,
     progress_college,
 )
+from footsim.world.college.visits import settle as settle_visits
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
 from footsim.world.draft import draft_day
@@ -323,6 +325,8 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
             messages += news
     messages += progress_college(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
+    messages += settle_visits(conn, world, meta, day)
+    messages += assistant_recruiting(conn, world, meta, day)
     messages += progress_program(conn, world, meta, day)
     messages += international_day(conn, world, meta, day)
     club_world_cup = club_world_cup_day(conn, world, meta, day)

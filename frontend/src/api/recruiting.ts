@@ -63,6 +63,8 @@ export interface Recruit {
   top: { club: ClubRef; share: number }[] // his offers by preference, when known
   fit: 'good' | 'reach' | 'long_shot' | 'out_of_reach' // how he sees a program of your prestige
   expects: number // the program prestige he hopes for
+  visited_on?: string | null // his official visit to you, if made
+  visit_fixture?: number | null // the home game he's invited to
 }
 
 export interface RecruitPage {
@@ -143,3 +145,25 @@ export function useSignGodPlayer() {
     },
   })
 }
+
+// Game-day visits (world/college/visits.py): invite a recruit to a home game; the result sways him.
+export interface HomeGames {
+  games: { fixture_id: number; date: string; opponent: string; invited: number[] }[]
+  per_game: number
+  visits_used: number
+  visits: number
+}
+
+export const useHomeGames = (enabled = true) => useQuery({ queryKey: [...KEY, 'home-games'], queryFn: () => api.get<HomeGames>('/recruiting/home-games'), enabled })
+
+export const useSetVisit = () => useRecruitAction(({ id, fixtureId }: { id: number; fixtureId: number | null }) => api.put<Recruit>(`/recruiting/visits/${id}`, { fixture_id: fixtureId }))
+
+// The recruiting assistant (world/college/assistant.py): targets and offers to replace your leavers.
+export interface RecruitingAssistant {
+  auto: boolean
+  leaving: Record<string, number> // your leavers after this season, by position group
+}
+
+export const useRecruitingAssistant = (enabled = true) => useQuery({ queryKey: [...KEY, 'assistant'], queryFn: () => api.get<RecruitingAssistant>('/recruiting/assistant'), enabled })
+
+export const useSetRecruitingAssistant = () => useRecruitAction((auto: boolean) => api.put<RecruitingAssistant>('/recruiting/assistant', { auto }))

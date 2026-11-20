@@ -304,6 +304,17 @@ class RecruitingCalendarDef(DefModel):
 PRIORITIES = ("top", "high", "watch")
 
 
+class GamedayVisitDef(DefModel):
+    """A recruit's official visit on a home game day (world/college/visits.py)."""
+
+    per_game: int = Field(default=3, ge=1)
+    win: float = Field(default=1.6, ge=0)
+    draw: float = Field(default=1.0, ge=0)
+    loss: float = Field(default=0.35, ge=0)
+    big_win_margin: int = Field(default=3, ge=1)
+    big_win: float = Field(default=2.0, ge=0)
+
+
 class ProgramRulesDef(DefModel):
     roster_max: int = Field(ge=11)
     roster_target: int = Field(ge=11)
@@ -327,6 +338,7 @@ class ProgramRulesDef(DefModel):
     official_visits: int = Field(ge=0)
     visit_interest: float = Field(ge=0, le=100)
     visit_boost: float = Field(ge=0)
+    gameday_visit: GamedayVisitDef = Field(default_factory=GamedayVisitDef)
     offer_overcommit: float = Field(ge=1)
     ai_error_by_tier: dict[int, float]
     ai_reach: float = Field(ge=0)

@@ -107,6 +107,15 @@ programs:
   official_visits: 12  # campus visits a program hosts a season
   visit_interest: 60.0  # a Top target with an offer and this much interest visits...
   visit_boost: 18.0  # ...and gains this much
+  # Game-day visits (the user's choice of a home game for a recruit's official visit): he gains the
+  # visit's boost times the result's factor, more for a big win.
+  gameday_visit:
+    per_game: 3
+    win: 1.6
+    draw: 1.0
+    loss: 0.35
+    big_win_margin: 3  # a win by this many goals or more...
+    big_win: 2.0       # ...gives this factor instead
   offer_overcommit: 2.0  # open offers worth at most this many times the places
   # AI programs' scouting error on the grade, by tier (weaker programs see less well), their reach
   # (how far above their prestige they offer), the floor (how far below they'd still bother, until

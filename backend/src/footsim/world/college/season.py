@@ -317,7 +317,7 @@ def _start_conferences(conn: Connection, world: World, meta: CareerMeta, comp: i
             _seed(conn, meta.season_id, conference_event(key),
                   [r.club_id for r in table[:conference.tournament]])
         news.append(f"{_club_name(conn, top)} win the {conference.short_name} regular season.")
-    return [" ".join(news)] if news else []
+    return news  # a line each: the news's Conference champions section lists them (api/news.py)
 
 
 def _conference_champions(conn: Connection, comp: int, season_id: int) -> dict[str, int]:

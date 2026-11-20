@@ -49,6 +49,12 @@ class CareerMeta:
     # The assistant trains positions (world/training.py auto_train): each month every one of the
     # user's players not learning a position starts on his best alternate one.
     auto_position_training: bool = False
+    # A college coach's game-day visits (world/college/visits.py): recruit id -> the home
+    # fixture he's invited to.
+    gameday_visits: dict[int, int] = field(default_factory=dict)
+    # The recruiting assistant (world/college/assistant.py): each Monday until signing day it
+    # targets and offers recruits to replace the college coach's leavers.
+    auto_recruiting: bool = False
 
     @property
     def seed(self) -> int:
@@ -75,6 +81,8 @@ def read_meta(conn: Connection) -> CareerMeta:
         college_mode=str(values.get("college_mode", "classic")),
         god_players={int(k): int(v) for k, v in values.get("god_players", {}).items()},
         auto_position_training=bool(values.get("auto_position_training", False)),
+        gameday_visits={int(k): int(v) for k, v in values.get("gameday_visits", {}).items()},
+        auto_recruiting=bool(values.get("auto_recruiting", False)),
     )
 
 
@@ -97,6 +105,8 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "college_mode": meta.college_mode,
         "god_players": {str(k): v for k, v in meta.god_players.items()},
         "auto_position_training": meta.auto_position_training,
+        "gameday_visits": {str(k): v for k, v in meta.gameday_visits.items()},
+        "auto_recruiting": meta.auto_recruiting,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

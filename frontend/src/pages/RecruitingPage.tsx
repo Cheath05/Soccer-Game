@@ -9,19 +9,22 @@ import {
   type Recruiting,
   useClassRankings,
   useGodPlayer,
+  useHomeGames,
   useMakeOffer,
   usePullOffer,
   useRecruit,
   useRecruiting,
   useRecruits,
   useSetTarget,
+  useSetVisit,
   useSignGodPlayer,
 } from '../api/recruiting'
 import { useCareer } from '../api/hooks'
 import ClubLink from '../components/ClubLink'
+import RecruitingAssistantSwitch from '../components/RecruitingAssistantSwitch'
 import { scholarshipLabel, stars } from '../lib/college'
 import { useDevice } from '../lib/device'
-import { longDate, positionColor } from '../lib/format'
+import { longDate, positionColor, shortDate } from '../lib/format'
 import { useUrlState } from '../lib/urlState'
 
 // High-school recruiting for a college coach (W9c; api/recruiting.ts, world/college/coach.py):
@@ -65,6 +68,9 @@ export default function RecruitingPage() {
         <PhaseBadge s={s} />
       </Group>
       <SummaryCards s={s} />
+      <Card withBorder padding="sm">
+        <RecruitingAssistantSwitch />
+      </Card>
       <GodPlayerCard />
       {phone ? (
         <Select aria-label="Show" value={tab} onChange={(v) => v && setTab(v)} allowDeselect={false} data={tabs} />
@@ -550,6 +556,7 @@ function RecruitDetail({ r, summary }: { r: Recruit; summary: Recruiting }) {
           </Text>
         </Card>
       )}
+      {r.status === 'open' && <GamedayVisit r={r} />}
       {!canOffer && live && summary.phase === 'before' && (
         <Text size="sm" c="dimmed">
           Offers open {longDate(summary.start)}. Put him on your list now and your staff start getting to know him.
@@ -562,6 +569,66 @@ function RecruitDetail({ r, summary }: { r: Recruit; summary: Recruiting }) {
         </Alert>
       ))}
     </Stack>
+  )
+}
+
+/** Invite a recruit to one of your home games for his official visit: the result sways him. */
+function GamedayVisit({ r }: { r: Recruit }) {
+  const homes = useHomeGames()
+  const setVisit = useSetVisit()
+  const [pick, setPick] = useState<string | null>(null)
+  const h = homes.data
+  if (r.visited_on) {
+    return (
+      <Text size="sm" c="dimmed">
+        He made his official visit to you on {longDate(r.visited_on)}.
+      </Text>
+    )
+  }
+  if (!h) return null
+  const planned = h.games.find((g) => g.fixture_id === r.visit_fixture)
+  const open = h.games.filter((g) => g.invited.length < h.per_game || g.fixture_id === r.visit_fixture)
+  return (
+    <Card withBorder padding="sm">
+      <span className="fs-label">Game-day visit</span>
+      {planned ? (
+        <Group justify="space-between" mt={4} wrap="nowrap">
+          <Text size="sm">
+            Visiting for v {planned.opponent} on {longDate(planned.date)}.
+          </Text>
+          <Button size="compact-xs" variant="subtle" color="red" loading={setVisit.isPending} onClick={() => setVisit.mutate({ id: r.id, fixtureId: null })}>
+            Call off
+          </Button>
+        </Group>
+      ) : open.length === 0 ? (
+        <Text size="sm" c="dimmed" mt={4}>
+          No home games left before signing day.
+        </Text>
+      ) : (
+        <Group align="flex-end" gap="xs" mt={4} wrap="nowrap">
+          <Select
+            size="xs"
+            style={{ flex: 1 }}
+            placeholder="Pick a home game"
+            value={pick}
+            onChange={setPick}
+            data={open.map((g) => ({ value: String(g.fixture_id), label: `${shortDate(g.date)} v ${g.opponent}${g.invited.length ? ` (${g.invited.length} visiting)` : ''}` }))}
+            aria-label="Home game for his visit"
+          />
+          <Button size="xs" disabled={!pick || h.visits_used >= h.visits} loading={setVisit.isPending} onClick={() => pick && setVisit.mutate({ id: r.id, fixtureId: Number(pick) })}>
+            Invite
+          </Button>
+        </Group>
+      )}
+      <Text size="xs" c="dimmed" mt={6}>
+        His official visit, on a game day: a win impresses him most (a big win even more), a draw as much as a usual visit, a defeat much less. {h.visits_used} of {h.visits} visits used; up to {h.per_game} recruits a game.
+      </Text>
+      {setVisit.error && (
+        <Alert mt="xs" color="red">
+          {setVisit.error.message}
+        </Alert>
+      )}
+    </Card>
   )
 }
 

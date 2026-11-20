@@ -16,6 +16,7 @@ def test_the_news_comes_in_sections_with_each_conference_on_one_line() -> None:
         "Akron Zips win the College Cup: they are the NCAA champions.",
         "Man Utd win the FA Cup.",
         "Man Utd win the FA Cup.",  # once
+        "Ignacio Gumbau watched your 2-1 win against Gardner-Webb on his visit.",
     ]
     sections = {s.title: s.items for s in news_sections(messages, "UMBC Retrievers")}
     assert list(sections) == ["Your team", "Conference champions", "College soccer",
@@ -23,7 +24,8 @@ def test_the_news_comes_in_sections_with_each_conference_on_one_line() -> None:
     assert sections["Your team"] == [
         "UMBC Retrievers win the America East Tournament.",
         "Player development. Improved: Chris Nielsen 52→53.",
-        "Your target Danny Las commits to Oregon State Beavers."]
+        "Your target Danny Las commits to Oregon State Beavers.",
+        "Ignacio Gumbau watched your 2-1 win against Gardner-Webb on his visit."]
     assert sections["Conference champions"] == [
         "ACC: Stanford Cardinal (regular season and tournament)",
         "America East: Vermont Catamounts (regular season), UMBC Retrievers (tournament)"]

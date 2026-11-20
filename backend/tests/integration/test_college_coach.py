@@ -154,3 +154,41 @@ def test_the_hall_of_fame_lists_who_played(career: tuple[Engine, World]) -> None
     rules = world.defs.lifecycle.hall_of_fame
     assert all(p.appearances >= rules.min_apps for p in out.players if p.hall_of_fame)
     assert all(p.now == "with_you" for p in out.players)  # nobody has left yet
+
+
+def test_a_game_day_visit_moves_with_the_result(career: tuple[Engine, World]) -> None:
+    """Game-day visits (20 Nov): an invited recruit gains the visit's boost times the result's
+    factor once the game is played; one invitation a recruit, and only to home games."""
+    from footsim.world.college import visits
+
+    engine, world = career
+    rules = world.defs.college.recruiting.programs
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        games = visits.home_games(conn, world, meta)
+        assert games and all(g.date >= meta.current_date for g in games)
+        rid = int(conn.execute(text(
+            "SELECT id FROM recruit WHERE class_season = :c AND status = 'open' "
+            "ORDER BY national_rank LIMIT 1 OFFSET 400"), {"c": meta.season_id + 1}).scalar_one())
+        visits.invite(conn, world, meta, rid, games[0].fixture_id)
+        assert read_meta(conn).gameday_visits == {rid: games[0].fixture_id}
+        away = conn.execute(select(fixture.c.id).where(
+            fixture.c.away_club_id == meta.user_club_id, fixture.c.status == "scheduled")
+            .limit(1)).scalar_one()
+        with pytest.raises(visits.VisitRefused):
+            visits.invite(conn, world, read_meta(conn), rid, int(away))
+        before = float(conn.execute(text(
+            "SELECT interest FROM recruit_interest WHERE recruit_id = :r AND club_id = :c"),
+            {"r": rid, "c": meta.user_club_id}).scalar_one())
+        conn.execute(text("UPDATE fixture SET status = 'played', home_goals = 3, away_goals = 0 "
+                          "WHERE id = :f"), {"f": games[0].fixture_id})
+        news = visits.settle(conn, world, read_meta(conn), games[0].date)
+        after = conn.execute(text(
+            "SELECT interest, visited_on FROM recruit_interest WHERE recruit_id = :r AND "
+            "club_id = :c"), {"r": rid, "c": meta.user_club_id}).one()
+        assert after.visited_on == games[0].date.isoformat() and len(news) == 1
+        assert float(after.interest) == pytest.approx(
+            min(100.0, before + rules.visit_boost * rules.gameday_visit.big_win))
+        assert read_meta(conn).gameday_visits == {}
+        assert visits.factor(world, 1, 0) > visits.factor(world, 1, 1) > visits.factor(world, 0, 1)
+        conn.rollback()

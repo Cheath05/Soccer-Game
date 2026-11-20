@@ -148,6 +148,8 @@ class RecruitView:
     top: list[tuple[int, str, int]]  # his offers by his preference (club, name, share %), if known
     fit: str  # how he sees a program of the user's prestige: good, reach, long_shot, out_of_reach
     expects: float  # the prestige he hopes for
+    visited_on: str | None = None  # his official visit to the user's program, if made
+    visit_fixture: int | None = None  # the home game he's invited to (world/college/visits.py)
 
 
 WANTS = {
@@ -201,7 +203,9 @@ def _view(board: rc.Board, user: int, r: rc.Recruit, names: dict[int, str],
         top=[(o.club_id, names[o.club_id], round(o.share * 100)) for _s, o in ranked[:5]]
         if (known or detail) else [],
         fit=fit_label(hs, rc.prestige_part(board, r, board.programs[user])),
-        expects=round(r.expected_prestige, 1))
+        expects=round(r.expected_prestige, 1),
+        visited_on=row.visited_on if row else None,
+        visit_fixture=board.meta.gameday_visits.get(r.id))
 
 
 def fit_label(hs: HsRecruitingDef, part: float) -> str:

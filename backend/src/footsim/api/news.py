@@ -26,7 +26,8 @@ class NewsSectionOut(BaseModel):
 
 def _section(message: str, club: str | None) -> str:
     lower = message.lower()
-    if (club and club in message) or message.startswith(("Your ", "You ", "Player development")):
+    if (club and club in message) or message.startswith(("Your ", "You ", "Player development")) \
+            or " your " in lower or " you " in lower:
         return YOURS
     if "recruit" in lower or "signing day" in lower or "visits campus" in lower \
             or "high-school" in lower:

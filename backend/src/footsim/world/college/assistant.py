@@ -1,0 +1,101 @@
+"""The recruiting assistant (20 Nov): with the setting on, a college coach's staff recruit the
+players who'll replace those leaving.
+
+Every Monday from the day offers open until signing day (and when the setting is switched on) it
+counts the program's leavers at each position group: the seniors and the players who declared for
+the draft. For each group still short (less the class already committed there) it keeps about
+``offer_overcommit`` times that many offers out, to the best realistic recruits at it (a good fit
+or a reach for the program's prestige; the best by the staff's estimate of their potential,
+then by national rank), each a Top target offered the scholarship he hopes for. It stops where
+the program's money or places run out, and never changes the user's own targets or offers."""
+
+import math
+from collections import Counter
+from datetime import date
+
+from sqlalchemy import Connection, text
+
+from footsim.world.college import coach
+from footsim.world.college import recruiting as rc
+from footsim.world.college.common import ENROLLED, PROSPECT, is_college_club
+from footsim.world.context import World
+from footsim.world.meta import CareerMeta
+
+REALISTIC = ("good", "reach")
+
+
+def leaving(conn: Connection, world: World, meta: CareerMeta) -> Counter[str]:
+    """The user's players leaving after this season, by position group: the seniors and those
+    who declared for the draft."""
+    found: Counter[str] = Counter()
+    for r in conn.execute(text(
+            "SELECT (SELECT position FROM player_position pp WHERE pp.player_id = cp.player_id "
+            "ORDER BY familiarity DESC, position LIMIT 1) AS position FROM college_player cp "
+            "WHERE cp.club_id = :c AND ((cp.status = :e AND cp.class_year >= 4) "
+            "OR cp.status = :p)"),
+            {"c": meta.user_club_id, "e": ENROLLED, "p": PROSPECT}):
+        if r.position in world.defs.positions:
+            found[str(world.defs.positions[r.position].group)] += 1
+    return found
+
+
+def _group(world: World, position: str) -> str:
+    return str(world.defs.positions[position].group)
+
+
+def recruit_for_leavers(conn: Connection, world: World, meta: CareerMeta, day: date
+                        ) -> list[str]:
+    """One step of the assistant's recruiting. Returns news of the offers it made."""
+    user = meta.user_club_id
+    if not meta.auto_recruiting or user is None or not is_college_club(conn, user):
+        return []
+    stage, _ = coach.phase(world, conn, meta)
+    if stage != coach.PHASE_OPEN:
+        return []
+    need = leaving(conn, world, meta)
+    if not need:
+        return []
+    views = coach.recruits(conn, world, meta)
+    signed: Counter[str] = Counter()
+    offered: Counter[str] = Counter()
+    for v in views:
+        if v.committed_to and v.committed_to[0] == user:
+            signed[_group(world, v.position)] += 1
+        elif v.offer_status == "open":
+            offered[_group(world, v.position)] += 1
+    overcommit = world.defs.college.recruiting.programs.offer_overcommit
+    step = world.defs.college.recruiting.programs.share_step
+    made: list[str] = []
+    for group, n in sorted(need.items()):
+        short = n - signed[group]
+        want = math.ceil(short * overcommit) - offered[group]
+        if short <= 0 or want <= 0:
+            continue
+        candidates = sorted(
+            (v for v in views if v.status == rc.OPEN and v.fit in REALISTIC
+             and v.offer_status is None and v.priority is None
+             and _group(world, v.position) == group),
+            key=lambda v: (-(v.potential.low + v.potential.high), v.national_rank))
+        for v in candidates[:want]:
+            share = min(1.0, max(step, round(round(v.hopes / step) * step, 2)))
+            try:
+                coach.set_target(conn, world, meta, v.id, rc.TOP)
+                coach.make_offer(conn, world, meta, v.id, share)
+            except coach.RecruitingError:
+                coach.set_target(conn, world, meta, v.id, None)
+                break  # out of money or places for now
+            made.append(f"{v.name} ({v.position}, {scholarship_words(share)})")
+    if not made:
+        return []
+    return [f"Your assistant offered scholarships to replace your leavers: {', '.join(made)}."]
+
+
+def scholarship_words(share: float) -> str:
+    return "full scholarship" if share >= 0.999 else f"{round(share * 100)}%"
+
+
+def weekly(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
+    """The assistant's Monday."""
+    if day.weekday() != 0:
+        return []
+    return recruit_for_leavers(conn, world, meta, day)

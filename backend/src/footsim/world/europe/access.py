@@ -15,6 +15,7 @@ from footsim.persistence.schema import (
     college_team,
     competition,
     cup_tie,
+    guest_club,
     league_final,
     nation,
     national_team,
@@ -77,15 +78,16 @@ def _lottery(conn: Connection, world: World, meta: CareerMeta, season_id: int,
              nation_code: str) -> list[int]:
     """A country without a league: its clubs (those in no league this season) in a weighted
     lottery order, each draw's chances weighted by reputation ** lottery_power. National teams
-    (W8) and college programs (W9a) are clubs in no league too, but never a country's
-    representatives."""
+    (W8), college programs (W9a) and Club World Cup guests (W10) are clubs in no league too, but
+    never a country's representatives."""
     in_league = select(club_league_membership.c.club_id).where(
         club_league_membership.c.season_id == season_id)
     rows = conn.execute(select(club.c.id, club.c.reputation).join(
         nation, nation.c.id == club.c.nation_id).where(
         nation.c.code == nation_code, club.c.id.not_in(in_league),
         club.c.id.not_in(select(national_team.c.club_id)),
-        club.c.id.not_in(select(college_team.c.club_id))).order_by(club.c.id)).all()
+        club.c.id.not_in(select(college_team.c.club_id)),
+        club.c.id.not_in(select(guest_club.c.club_id))).order_by(club.c.id)).all()
     if not rows:
         return []
     top = max(max(r.reputation for r in rows), 1)

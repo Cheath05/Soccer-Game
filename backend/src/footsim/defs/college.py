@@ -375,10 +375,119 @@ class HsRecruitingDef(DefModel):
     states: dict[str, StateDef]
 
 
+class ProgramCostsDef(DefModel):
+    scholarship: float = Field(ge=0)
+    staff: dict[int, float]
+    travel: float = Field(ge=0)
+
+
+class TicketsDef(DefModel):
+    fill: Curve  # (prestige, fill)
+    form_games: int = Field(ge=1)
+    form_weight: float = Field(ge=0)
+    opponent_weight: float = Field(ge=0)
+    event: dict[str, float]  # college | conference | ncaa
+    min_fill: float = Field(ge=0, le=1)
+    price: dict[int, float]
+
+    @field_validator("fill")
+    @classmethod
+    def _points(cls, value: Curve) -> Curve:
+        return _curve(value)
+
+
+class BoostersDef(DefModel):
+    per_win: float = Field(ge=0)
+    conference_title: float = Field(ge=0)
+    per_ncaa_win: float = Field(ge=0)
+    national_title: float = Field(ge=0)
+    prestige_scale: Curve
+
+    @field_validator("prestige_scale")
+    @classmethod
+    def _points(cls, value: Curve) -> Curve:
+        return _curve(value)
+
+
+FACILITIES = ("training", "stadium")
+
+
+class FacilityDef(DefModel):
+    cost: list[float]  # to build each level from the one below (level 1's is 0)
+    upkeep: list[float]  # a season, by level
+    growth: list[float] | None = None  # training: extra monthly growth, by level
+    capacity: list[int] | None = None  # stadium: seats, by level
+
+    @model_validator(mode="after")
+    def _levels(self) -> "FacilityDef":
+        for name in ("cost", "upkeep", "growth", "capacity"):
+            value = getattr(self, name)
+            if value is not None and len(value) != 5:
+                raise ValueError(f"{name}: give 5 levels")
+        return self
+
+
+class FacilitiesDef(DefModel):
+    build_cutoff: str
+    training: FacilityDef
+    stadium: FacilityDef
+    start_level: dict[str, dict[int, int]]  # facility -> tier -> level
+
+    @field_validator("build_cutoff")
+    @classmethod
+    def _date(cls, value: str) -> str:
+        return _month_day(value)
+
+    @model_validator(mode="after")
+    def _kinds(self) -> "FacilitiesDef":
+        if self.training.growth is None or self.stadium.capacity is None:
+            raise ValueError("training needs growth, the stadium capacity")
+        if set(self.start_level) != set(FACILITIES):
+            raise ValueError(f"start_level: give {', '.join(FACILITIES)}")
+        return self
+
+    def of(self, kind: str) -> FacilityDef:
+        return self.training if kind == "training" else self.stadium
+
+
+class CrowdDef(DefModel):
+    min_scale: float = Field(ge=0, le=1)
+    full_crowd: float = Field(gt=0)
+    size_power: float = Field(gt=0)
+    fill_weight: float = Field(ge=0, le=1)
+
+
+class ProgramAiDef(DefModel):
+    class_budget_share: float = Field(ge=0)
+    reserve_seasons: float = Field(ge=0)
+    priority: list[str]
+
+
+class ProgramBuilderDef(DefModel):
+    """The NCAA program builder mode (W9d, data/config/college/program.yaml). Money in dollars."""
+
+    allocation: Curve  # (prestige, dollars a season)
+    starting_balance: dict[int, float]
+    costs: ProgramCostsDef
+    tickets: TicketsDef
+    boosters: BoostersDef
+    ncaa_payout: list[float]  # by NCAA tournament round played
+    facilities: FacilitiesDef
+    appeal_per_level: float = Field(ge=0)
+    crowd: CrowdDef
+    ai: ProgramAiDef
+
+    @field_validator("allocation")
+    @classmethod
+    def _points(cls, value: Curve) -> Curve:
+        return _curve(value)
+
+
 class CollegeDef(DefModel):
     rules: CollegeRulesDef
     conferences: dict[str, ConferenceDef]
     recruiting: HsRecruitingDef
+    program: ProgramBuilderDef
 
     @model_validator(mode="after")
     def _field(self) -> "CollegeDef":

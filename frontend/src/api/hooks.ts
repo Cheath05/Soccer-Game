@@ -290,10 +290,11 @@ export function useSaveTactics() {
 export function useNewCareer() {
   const invalidate = useInvalidateAll()
   return useMutation({
-    mutationFn: (args: { slot: number; clubId: number | null; collegeProgram?: string | null; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
+    mutationFn: (args: { slot: number; clubId: number | null; collegeProgram?: string | null; collegeMode?: 'classic' | 'builder'; manager: string; budget?: number | null; boardEnabled?: boolean; fastLeagues?: string[] }) =>
       api.post<Career>(`/saves/${args.slot}/new`, {
         club_id: args.clubId,
         college_program: args.collegeProgram ?? null,
+        college_mode: args.collegeMode ?? 'classic',
         manager_name: args.manager,
         budget_eur: args.budget ?? null,
         board_enabled: args.boardEnabled ?? true,

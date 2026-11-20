@@ -32,6 +32,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const colleges = useCollegePrograms()
   const [conference, setConference] = useState('ACC')
   const [program, setProgram] = useState<string | null>(null)
+  const [collegeMode, setCollegeMode] = useState<'classic' | 'builder'>('classic')
   const college = kind === 'college'
   // The slot to start in: the first free one, until the player picks.
   const [slotChoice, setSlot] = useState<string | null>(null)
@@ -62,6 +63,7 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
         slot: Number(slot),
         clubId: college ? null : clubId,
         collegeProgram: college ? program : null,
+        collegeMode,
         manager: manager || (college ? 'Coach' : 'Manager'),
         budget: college || budgetMillions === '' ? null : Math.min(MAX_BUDGET_EUR, toEuros(Number(budgetMillions) * 1_000_000)),
         boardEnabled: board && !college,
@@ -199,6 +201,25 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                       data={colleges.data.map((c) => ({ value: c.key, label: `${c.short_name} (${c.programs.length})` }))}
                     />
                   )}
+                  <div>
+                    <Text size="sm" fw={500} mb={4}>
+                      Game mode
+                    </Text>
+                    <SegmentedControl
+                      fullWidth
+                      value={collegeMode}
+                      onChange={(v) => setCollegeMode(v as 'classic' | 'builder')}
+                      data={[
+                        { value: 'classic', label: 'Classic' },
+                        { value: 'builder', label: 'Program builder' },
+                      ]}
+                    />
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {collegeMode === 'builder'
+                        ? 'Money every season (the athletic department, ticket sales, boosters, NCAA payouts) to spend on scholarships, training facilities that speed your players’ growth, and a stadium whose crowd unsettles visiting teams. The other programs build too.'
+                        : 'Recruit, coach and win: scholarship money is set by your program’s tier.'}
+                    </Text>
+                  </div>
                   <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
                     {programs.map((p) => (
                       <UnstyledButton key={p.name} onClick={() => setProgram(p.name)} className="fs-club" data-picked={program === p.name || undefined}>

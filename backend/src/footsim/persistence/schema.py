@@ -24,7 +24,7 @@ from sqlalchemy import (
 from footsim.domain.attributes import ATTRIBUTES
 from footsim.domain.personality import PERSONALITY_TRAITS
 
-SCHEMA_VERSION = 28  # bump on any schema change and add a step to persistence/migrations.py
+SCHEMA_VERSION = 29  # bump on any schema change and add a step to persistence/migrations.py
 
 metadata = MetaData()
 
@@ -220,6 +220,8 @@ fixture = Table(
     Column("home_pens", Integer),
     Column("away_pens", Integer),
     Column("sim", Text),  # quick | live | instant
+    # A college home game's crowd in the program builder mode (W9d, v28); None otherwise.
+    Column("attendance", Integer),
     Column("stats", Text),  # JSON {"home": TeamStats, "away": TeamStats}
     Index("ix_fixture_date", "date"),
     Index("ix_fixture_comp", "competition_id", "season_id", "stage"),
@@ -658,6 +660,43 @@ recruit_interest = Table(
     Column("fit", Float, nullable=False, server_default="0"),
     PrimaryKeyConstraint("recruit_id", "club_id"),
     Index("ix_recruit_interest_club", "club_id"),
+)
+
+# The NCAA program builder mode (W9d, world/college/program.py, v28). Each program's money (in
+# euro cents, as everywhere) and next season's class budget (in full scholarships: what recruiting
+# may spend), its facilities (a level, and a level being built that's ready at the start of
+# ``ready_season``), and its ledger.
+college_program = Table(
+    "college_program",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), primary_key=True),
+    Column("balance_cents", Integer, nullable=False),
+    Column("class_budget", Float, nullable=False),
+)
+
+college_facility = Table(
+    "college_facility",
+    metadata,
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("kind", Text, nullable=False),  # training | stadium
+    Column("level", Integer, nullable=False),
+    Column("building_to", Integer),
+    Column("ready_season", Integer),
+    PrimaryKeyConstraint("club_id", "kind"),
+)
+
+# kind: allocation | tickets | boosters | ncaa | scholarships | staff | upkeep | travel | build
+college_ledger = Table(
+    "college_ledger",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("club_id", ForeignKey("club.id"), nullable=False),
+    Column("season_id", Integer, nullable=False),
+    Column("date", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("amount_cents", Integer, nullable=False),
+    Column("fixture_id", ForeignKey("fixture.id")),
+    Index("ix_college_ledger_club", "club_id", "season_id"),
 )
 
 # MLS's roster rules (world/mls.py, data/config/rules/mls.yaml; v23). Money in euro cents, as

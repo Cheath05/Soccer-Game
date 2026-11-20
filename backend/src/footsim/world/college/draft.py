@@ -27,6 +27,7 @@ from footsim.world.college.common import (
     UNDRAFTED,
     is_college_club,
 )
+from footsim.world.college.program import open_season
 from footsim.world.college.recruiting import enroll_class, had_class, update_prestige
 from footsim.world.college.roster import recruit
 from footsim.world.context import World
@@ -205,6 +206,7 @@ def college_turnover(conn: Connection, world: World, meta: CareerMeta, new_seaso
              and is_college_club(conn, meta.user_club_id) else None)
     filled = recruit(conn, world, meta, new_season, day, minimum=0 if recruited else None,
                      targets=coach)
+    open_season(conn, world, meta, new_season, day)  # the program builder's money (W9d)
     if signed:
         news.append(f"College soccer: {signed} recruits enroll as freshmen at the NCAA's "
                     "programs.")

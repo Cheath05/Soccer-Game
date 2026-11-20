@@ -110,6 +110,7 @@ export interface CollegeCareer {
   tier: number // 1 (a national power) to 5
   prestige: number // 0-100
   rpi_rank: number | null
+  mode?: 'classic' | 'builder' // the program builder: money and facilities (W9d)
 }
 
 // GET /api/world/college-programs: the NCAA programs a new career can coach, by conference.

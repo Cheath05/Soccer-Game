@@ -152,7 +152,8 @@ def new_career(slot: int, body: NewCareerIn, session: Session) -> CareerOut:
                        body.currency if body.currency in get_world().defs.finance.currencies
                        else "USD",
                        [k for k in body.fast_leagues if k in fast_sim.selectable(get_world())],
-                       college_program=body.college_program)
+                       college_program=body.college_program,
+                       college_mode="builder" if body.college_mode == "builder" else "classic")
     _record_club_name(session)
     session.save()
     return _career(session)

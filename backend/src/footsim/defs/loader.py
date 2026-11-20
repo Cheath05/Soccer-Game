@@ -166,7 +166,8 @@ def load_college(root: Path) -> CollegeDef:
     programs = _parse(ProgramsFile, programs_path)
     return _validate(CollegeDef, {"rules": _read_yaml(rules_path),
                                   "conferences": programs.conferences,
-                                  "recruiting": _read_yaml(root / "college" / "recruiting.yaml")},
+                                  "recruiting": _read_yaml(root / "college" / "recruiting.yaml"),
+                                  "program": _read_yaml(root / "college" / "program.yaml")},
                      rules_path)
 
 

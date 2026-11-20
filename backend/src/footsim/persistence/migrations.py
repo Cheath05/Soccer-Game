@@ -282,6 +282,16 @@ def _to_v27(conn: Connection) -> None:
 
 
 def _to_v28(conn: Connection) -> None:
+    """The NCAA program builder mode (W9d): programs' money, facilities and ledger, and a college
+    home game's attendance. Empty until a career turns the mode on."""
+    from footsim.persistence.schema import college_facility, college_ledger, college_program
+
+    _add_column(conn, "fixture", "attendance", "INTEGER")
+    for table in (college_program, college_facility, college_ledger):
+        table.create(conn, checkfirst=True)
+
+
+def _to_v29(conn: Connection) -> None:
     """The Club World Cup's guest clubs and their players (W10). They are added to a career when
     first needed (world/international/guests.py ``ensure_guests``)."""
     from footsim.persistence.schema import guest_club, guest_player
@@ -295,7 +305,7 @@ STEPS: dict[int, Callable[[Connection], None]] = {
     11: _to_v11, 12: _to_v12, 13: _to_v13, 14: _to_v14, 15: _to_v15,
     16: _to_v16, 17: _to_v17, 18: _to_v18, 19: _to_v19, 20: _to_v20,
     21: _to_v21, 22: _to_v22, 23: _to_v23, 24: _to_v24, 25: _to_v25, 26: _to_v26,
-    27: _to_v27, 28: _to_v28}
+    27: _to_v27, 28: _to_v28, 29: _to_v29}
 
 
 def migrate(engine: Engine) -> int:

@@ -84,12 +84,15 @@ class QuickEngine:
                 fatigue *= effect.fatigue
         return own, opp, fatigue
 
-    def expected_goals(self, home: TeamSheet, away: TeamSheet, neutral: bool = False
-                       ) -> tuple[float, float]:
+    def expected_goals(self, home: TeamSheet, away: TeamSheet, neutral: bool = False,
+                       crowd: float = 1.0) -> tuple[float, float]:
+        """The two sides' expected goals. ``crowd`` scales home advantage (1.0 as calibrated;
+        a smaller college crowd less, world/college/program.py)."""
         p = self.p
         att_h, def_h, mid_h = self.strengths(home.starters)
         att_a, def_a, mid_a = self.strengths(away.starters)
-        adv = 1.0 if neutral else p.home_advantage
+        adv = (1.0 if neutral else p.home_advantage if crowd == 1.0
+               else 1.0 + (p.home_advantage - 1.0) * crowd)
         own_h, opp_h, _ = self._effects(home)
         own_a, opp_a, _ = self._effects(away)
         lam_h = p.base_goals * adv * math.exp(
@@ -99,12 +102,13 @@ class QuickEngine:
         return lam_h, lam_a
 
     def play(self, home: TeamSheet, away: TeamSheet, rng: np.random.Generator,
-             neutral: bool = False, decider: Decider | None = None) -> MatchReport:
+             neutral: bool = False, decider: Decider | None = None,
+             crowd: float = 1.0) -> MatchReport:
         p = self.p
         report = MatchReport(home.club_id, away.club_id,
                              bench=[sp.player_id for sheet in (home, away) for sp in sheet.bench])
         sides = [self._side(home), self._side(away)]
-        lam = self.expected_goals(home, away, neutral)
+        lam = self.expected_goals(home, away, neutral, crowd)
         fatigue = [self._effects(home)[2], self._effects(away)[2]]
         mid = [self.strengths(home.starters)[2], self.strengths(away.starters)[2]]
 

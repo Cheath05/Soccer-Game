@@ -288,6 +288,23 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'program-builder',
+    title: 'Program builder: money and facilities',
+    summary: 'The college game mode with a budget, training facilities and a stadium.',
+    blocks: [
+      'A college coach chooses the game mode when starting the career (Classic or Program builder), or turns the program builder on later from Program in the menu (it can’t be turned off). In the program builder every NCAA program has money, and builds its training facilities and stadium.',
+      [
+        'Money: each season starts on 1 July with the athletic department’s allocation (bigger for a bigger-name program); the season’s scholarships (a full one about $55,000 a year), coaching staff and facility upkeep are paid then. Home games sell tickets, away games cost travel, boosters give after the regular season (by wins and a conference title) and after the NCAA tournament, and every NCAA tournament game pays both teams. Program shows the balance and this season’s money line by line.',
+        'Scholarships for next season’s class: set how many full scholarships to put aside (Program). Recruiting’s money left comes from it, so a richer program can offer more. You can’t set more than you can afford after next season’s costs, nor less than your class has already committed.',
+        'Training facilities (levels 1–5): your players grow towards their potential faster, up to 24% faster at level 5. Their potential doesn’t change; they just get there sooner.',
+        'Stadium (levels 1–5, 1,000 to 12,000 seats): more seats sell more tickets when people want to come (better prestige, a winning run, a big-name visitor and tournament games fill it). A bigger, fuller crowd puts more pressure on the visiting team, as home advantage works in the match engine: their decisions and passing suffer more. A small crowd gives you less home advantage than a professional club has, a full 12,000 the same.',
+        'Building: pay for the next level on Program. Work ordered before 1 March is ready for next season; later, the season after. One project per facility at a time, and each level costs more upkeep.',
+        'Recruits count your facilities as part of your program’s appeal, beside its prestige.',
+        'The other programs build too, keeping some money in hand, so winners get richer and build up, and rivals catch up.',
+      ],
+    ],
+  },
+  {
     id: 'recruiting',
     title: 'Recruiting high-school players',
     summary: 'The national class, your targets, scholarship offers, commitments and signing day.',

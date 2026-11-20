@@ -14,6 +14,7 @@ from footsim.match.report import MatchReport
 from footsim.match.teams import BENCH_SIZE, sub_order
 from footsim.persistence.schema import fixture, game_meta, metadata, player, player_state
 from footsim.world.college.common import college_club_id
+from footsim.world.college.program import crowd, crowd_scale
 from footsim.world.context import World
 from footsim.world.fast_sim import play_fast, set_fast_leagues, split_day
 from footsim.world.finance import initialize_finances, set_budgets
@@ -51,7 +52,7 @@ class AdvanceResult:
 def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name: str | None, seed: int | None = None,
                       board_enabled: bool = True, fast_leagues: list[str] | None = None,
-                      college_program: str | None = None) -> None:
+                      college_program: str | None = None, college_mode: str = "classic") -> None:
     """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only), or
     for the NCAA program named ``college_program`` (W9c: a college coach's career; its club is
     made with the college world, so it has no id in the base world).
@@ -70,6 +71,8 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name=manager_name, board_enabled=board_enabled)
     if fast_leagues:
         set_fast_leagues(world, meta, fast_leagues)
+    if college_program is not None:
+        meta.college_mode = college_mode  # classic, or the program builder (W9d)
     write_meta(conn, meta)
     conn.execute(player_state.insert().from_select(
         ["player_id", "condition", "form", "suspended_matches", "season_yellows"],
@@ -119,7 +122,8 @@ def play_fixture(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],
     away = team_sheet(conn, world, fx.away_club_id, day)
     rng = derive_rng(meta.seed, "match", fx.id)
     report = world.quick.play(home, away, rng, neutral=bool(fx.neutral),
-                              decider=decider_for(conn, world, fx))
+                              decider=decider_for(conn, world, fx),
+                              crowd=crowd_scale(world, crowd(conn, world, fx)))
     record_result(conn, fx.id, report, day, sim, discipline=not is_international(conn, fx))
     return report
 
@@ -141,7 +145,8 @@ def agent_match(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any], 
     ai_manager = (fx.home_club_id != meta.user_club_id, fx.away_club_id != meta.user_club_id)
     return MatchEngine(world.defs, home, away, rng, neutral=bool(fx.neutral),
                        decider=decider_for(conn, world, fx), record=record,
-                       ai_manager=ai_manager)
+                       ai_manager=ai_manager,
+                       crowd=crowd_scale(world, crowd(conn, world, fx)))
 
 
 def play_user_instant(conn: Connection, world: World, meta: CareerMeta, fx: Row[Any],

@@ -27,13 +27,20 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.123"
+- version: "1.127"
   date: "2026-11-19"
   title: "The FIFA Club World Cup"
   changes:
     - "The FIFA Club World Cup, every four years from June 2029 (hosted by the USA): 32 clubs drawn in December 2028. Europe's twelve are the Champions League winners and the best by UEFA's club coefficient; the other continents' come from their leagues in the game, by strength and league titles, and from 30 guest clubs for the regions without a league here (Al Ahly, Mamelodi Sundowns, Wydad, Urawa, Ulsan, Al Ain, Auckland City and more). Eight groups of four, then the round of 16 to the final in mid-July, with FIFA's prize money."
     - "International → Club World Cup: the entrants, groups and knockout rounds. Guest clubs' players also play for their countries (Al Ahly's for Egypt)."
     - "Fixed: national teams' made-up home-based players were treated as free agents and retired young; their pools are now topped up before every international window."
+
+- version: "1.125"
+  date: "2026-11-19"
+  title: "College: the program builder"
+  changes:
+    - "New college game mode, Program builder (choose it when starting a college career, or turn it on from Program in the menu): every program has money each season from the athletic department, ticket sales, boosters and NCAA tournament payouts, and spends it on scholarships, training facilities and its stadium."
+    - "Training facilities make your players grow faster towards their potential; a bigger stadium sells more tickets, and a bigger, fuller crowd puts more pressure on visiting teams. Set how many scholarships to put aside for next season's class; recruiting spends from it. The other programs build up too."
 
 - version: "1.122"
   date: "2026-11-19"

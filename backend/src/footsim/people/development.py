@@ -54,6 +54,8 @@ class DevelopmentInput:
     # Minutes credited for being named a substitute without coming on (None: none for anyone).
     # They count towards his growth like minutes played, but never as real minutes.
     bench_minutes: FloatArray | None = None
+    # A per-player factor on growth (the program builder's training facilities, W9d); None: 1.
+    growth_factor: FloatArray | None = None
 
     @property
     def growth_minutes(self) -> FloatArray:
@@ -117,6 +119,8 @@ def monthly_change(rules: DevelopmentDef, inp: DevelopmentInput, overall: FloatA
             if age <= traits.peak_age[i]:
                 yearly = _lookup(rules.growth_by_age, age, rules.late_growth)
                 yearly *= _lookup(rules.minutes, minutes[i], rules.heavy_minutes)
+                if inp.growth_factor is not None:
+                    yearly *= inp.growth_factor[i]
             else:
                 yearly = rules.late_growth
             change[i] = gap * (1 - (1 - min(0.95, yearly)) ** MONTH)

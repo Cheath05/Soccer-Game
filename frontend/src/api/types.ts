@@ -471,6 +471,7 @@ export interface ClubOverview {
   upcoming: Fixture[]
   recent_transfers: string[]
   national?: NationalTeam | null // a national team's page
+  college?: CollegeSeasonRecord | null // a college program's season so far
 }
 
 export type FamiliarityBand = 'natural' | 'accomplished' | 'competent' | 'awkward' | 'unconvincing'
@@ -1000,4 +1001,27 @@ export interface ClubWorldCupView {
   entrants: { team: ClubRef; confederation: string; how: string }[]
   groups: { name: string; rows: QualifierGroupRow[] }[]
   rounds: { name: string; fixtures: Fixture[] }[]
+}
+
+// ClubOverview.college: a college program's season (world/college/season.py team_season).
+export interface CollegeSeasonRecord {
+  season: string
+  conference: string
+  conference_name: string
+  conference_position: number | null
+  conference_teams: number
+  conference_won: number
+  conference_drawn: number
+  conference_lost: number
+  conference_points: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  rpi_rank: number | null
+  ncaa: string | null
+  titles: string[]
+  tier: number
+  prestige: number
 }

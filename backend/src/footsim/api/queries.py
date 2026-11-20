@@ -24,6 +24,7 @@ from footsim.api.schemas import (
     ClubSeasonOut,
     CollegeCareerOut,
     CollegePlayerOut,
+    CollegeSeasonRecordOut,
     CompetitionOut,
     CupOut,
     CupRoundOut,
@@ -1100,7 +1101,34 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
         recent=fixtures_out(conn, recent, names, comps),
         upcoming=fixtures_out(conn, upcoming, names, comps),
         recent_transfers=_recent_transfers(conn, world, club_id, names, meta.currency),
+        college=college_season_record(conn, world, meta, club_id, meta.season_id),
     )
+
+
+def college_season_record(conn: Connection, world: World, meta: CareerMeta, club_id: int,
+                          season_id: int) -> CollegeSeasonRecordOut | None:
+    """A college program's season, for its club page and the season summary."""
+    from footsim.world.college.season import conference_tables, team_season
+
+    ts = team_season(conn, world, meta, club_id, season_id)
+    if ts is None:
+        return None
+    team = conn.execute(select(college_team.c.tier, college_team.c.prestige).where(
+        college_team.c.club_id == club_id)).one()
+    conf = world.defs.college.conferences[ts.conference]
+    label = conn.execute(select(season.c.label).where(season.c.id == season_id)).scalar()
+    row = ts.row
+    return CollegeSeasonRecordOut(
+        season=str(label or ""), conference=conf.short_name, conference_name=conf.name,
+        conference_position=row.position if row else None,
+        conference_teams=len(conference_tables(conn, world, meta, season_id).get(
+            ts.conference, [])),
+        conference_won=row.won if row else 0, conference_drawn=row.drawn if row else 0,
+        conference_lost=row.lost if row else 0, conference_points=row.points if row else 0,
+        won=ts.overall.won, drawn=ts.overall.drawn, lost=ts.overall.lost,
+        goals_for=ts.overall.goals_for, goals_against=ts.overall.goals_against,
+        rpi_rank=ts.rpi_rank, ncaa=ts.ncaa, titles=ts.titles, tier=int(team.tier),
+        prestige=round(float(team.prestige or 0.0), 1))
 
 
 RECENT_TRANSFERS = 5

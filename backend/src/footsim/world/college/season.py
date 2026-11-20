@@ -401,3 +401,69 @@ def progress_college(conn: Connection, world: World, meta: CareerMeta, day: date
         news.append(f"{_club_name(conn, won)} win the College Cup: they are the NCAA champions.")
         news += declare_prospects(conn, world, meta, meta.season_id, day)
     return news
+
+
+@dataclass
+class TeamSeason:
+    """How one program's season went (or is going): its club page and the season summary."""
+
+    conference: str  # the conference's key
+    row: TableRow | None  # its conference table row (conference games)
+    overall: Record  # every college game
+    rpi_rank: int | None
+    ncaa: str | None  # how far it got in the NCAA tournament, in words; None if not in it
+    titles: list[str]  # "regular season", "conference tournament", "national"
+
+
+def team_season(conn: Connection, world: World, meta: CareerMeta, club_id: int,
+                season_id: int) -> TeamSeason | None:
+    """``club_id``'s college season ``season_id``; None for a club that isn't a program."""
+    team = conn.execute(select(college_team.c.conference).where(
+        college_team.c.club_id == club_id)).first()
+    comp = college_competition(conn, world)
+    if team is None or comp is None:
+        return None
+    key = str(team.conference)
+    table = conference_tables(conn, world, meta, season_id).get(key, [])
+    row = next((r for r in table if r.club_id == club_id and r.played), None)
+    ratings = rankings(conn, world, season_id)
+    order = sorted(ratings, key=lambda c: (-ratings[c], c))
+    rpi_rank = order.index(club_id) + 1 if club_id in ratings else None
+    titles = []
+    won = {(str(r.phase), str(r.kind), str(r.title)) for r in conn.execute(
+        select(league_title).where(league_title.c.season_id == season_id,
+                                   league_title.c.competition_id == comp,
+                                   league_title.c.club_id == club_id))}
+    conf = world.defs.college.conferences[key]
+    if any(p == key and (k == "award" or conf.tournament < 2) for p, k, _ in won):
+        titles.append("regular season")
+    if conf.tournament >= 2 and any(p == key and k == "champion" for p, k, _ in won):
+        titles.append("conference tournament")
+    if any(t == NATIONAL_TITLE for _, _, t in won):
+        titles.append("national")
+    return TeamSeason(conference=key, row=row,
+                      overall=overall_records(conn, world, season_id).get(club_id, Record()),
+                      rpi_rank=rpi_rank, ncaa=_ncaa_run(conn, world, comp, season_id, club_id),
+                      titles=titles)
+
+
+def _ncaa_run(conn: Connection, world: World, comp: int, season_id: int, club_id: int
+              ) -> str | None:
+    seeds, matches = bracket(conn, comp, season_id, NCAA)
+    seed = next((s for s, c in seeds.items() if c == club_id), None)
+    if seed is None:
+        return None
+    names = world.defs.college.rules.ncaa.round_names
+    total = rounds_for(len(seeds))
+    mine = [m for m in matches if seed in (m.seed_a, m.seed_b)]
+    if not mine:
+        return "In the NCAA tournament"
+    last = max(mine, key=lambda m: m.round)
+    name = names[last.round] if last.round < len(names) else f"Round {last.round + 1}"
+    if last.winner_seed is None:
+        return f"In the NCAA tournament: {name} next"
+    if last.winner_seed != seed:
+        return f"NCAA tournament: out in the {name}"
+    if last.round == total - 1:
+        return "NCAA champions"
+    return f"NCAA tournament: through the {name}"

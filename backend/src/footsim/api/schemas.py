@@ -479,6 +479,31 @@ class ClubOverviewOut(BaseModel):
     upcoming: list[FixtureOut]
     recent_transfers: list[str]  # its latest moves in and out, newest first, in words
     national: "NationalTeamOut | None" = None  # a national team's (W8): its page differs
+    college: "CollegeSeasonRecordOut | None" = None  # a college program's season so far
+
+
+class CollegeSeasonRecordOut(BaseModel):
+    """A college program's season (world/college/season.py ``team_season``)."""
+
+    season: str
+    conference: str  # short name
+    conference_name: str
+    conference_position: int | None  # None before its first conference game
+    conference_teams: int
+    conference_won: int
+    conference_drawn: int
+    conference_lost: int
+    conference_points: int
+    won: int  # every college game
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    rpi_rank: int | None
+    ncaa: str | None  # how far it got in the NCAA tournament, in words
+    titles: list[str]  # "regular season", "conference tournament", "national"
+    tier: int
+    prestige: float
 
 
 class NationalTeamOut(BaseModel):

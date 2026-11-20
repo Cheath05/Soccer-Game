@@ -1,14 +1,18 @@
-# The World Cup finals (W8 I4, world/international/finals.py): 48 teams, FIFA's 2026 format.
-# The 2030 edition (Spain, Portugal and Morocco): the teams through the qualifiers
-# (qualifiers_2030.yaml) are drawn once qualifying is over, into 12 groups of 4 from 4 pots
+# The World Cup finals (W8 I4, world/international/finals.py): 48 teams, FIFA's 2026 format,
+# every four years from 2030 (world/international/editions.py). The teams through an edition's
+# qualifiers (qualifiers.yaml) are drawn once qualifying is over, into 12 groups of 4 from 4 pots
 # (the hosts and the best by Elo in pot 1), no group with two teams of one confederation
 # (UEFA's, at most two). The top two of each group and the 8 best third-placed teams play a
 # round of 32, seeded by their group results (group winners first, then runners-up, then thirds;
 # no rematch of a group), then single matches with extra time and penalties to the final.
 # Hosts play their group games at home; everything else is at neutral venues. The squads are
 # called up the day before the first match, the players away from their clubs until the final.
+# The dates below are 2030's; a later edition's are the same days of its own year (2034's final
+# on 19 July: FIFA may yet move Saudi Arabia's to the winter, which the game's calendar can't
+# hold).
 
-year: 2030
+year: 2030  # the first edition, the one the dates are written for
+every_years: 4
 draw: "2030-04-05"
 groups: ["2030-06-13", "2030-06-18", "2030-06-23"]
 round_of_32: "2030-06-29"
@@ -17,3 +21,40 @@ quarter_finals: "2030-07-09"
 semi_finals: "2030-07-14"
 third_place: "2030-07-18"
 final: "2030-07-19"
+
+# Each edition's hosts, and the changes to the qualifiers' stages (qualifiers.yaml, by key: any of
+# a stage's fields, a changed `entrants` replacing the whole of it) that its hosts' places need:
+# the hosts and the places through the qualifiers must make 48. FIFA has chosen hosts only to
+# 2034: a later edition repeats this list in turn (2038 as 2030, 2042 as 2034...), so add one
+# here to choose its hosts.
+editions:
+  2030:
+    hosts: [ESP, POR, MAR]
+  2034:
+    # Saudi Arabia hosts: UEFA and CAF have no host to count against their shares (16 and 9
+    # through the qualifiers), AFC one (7).
+    hosts: [KSA]
+    stages:
+      # UEFA 16: the 12 group winners, and four play-off paths of three for the 12 best
+      # runners-up (each path's best waiting in its final).
+      UEFA_PO:
+        paths: 4
+        entrants: {from: [{stage: UEFA_G, best: 12, rank: 2}]}
+      # CAF 9: nine groups (of 5 and 6), the winners through; the play-off as in 2030.
+      CAF_G:
+        groups: 9
+      # AFC 7: the third round's top two, then the fourth round's two group winners meet over
+      # two legs, the winner through and the loser to the intercontinental play-off.
+      AFC_R4:
+        qualified_ranks: null
+      AFC_R5:
+        entrants: {from: [{stage: AFC_R4, ranks: [1, 1]}]}
+        qualified_winners: true
+      IC_PO:
+        entrants:
+          from:
+            - {stage: CONMEBOL, ranks: [7, 7]}
+            - {stage: CAF_PO, winners: true}
+            - {stage: AFC_R5, losers: true}
+            - {stage: CONCACAF_R3, best: 2, rank: 3}
+            - {stage: OFC_KO, losers: true}

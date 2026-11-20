@@ -14,8 +14,8 @@ from footsim.api.routes import Session, _not_simulating
 from footsim.api.schemas import ClubRef, FixtureOut
 from footsim.world.context import get_world
 from footsim.world.international import club_world_cup as cwc
+from footsim.world.international import editions, manager
 from footsim.world.international import finals as wcf
-from footsim.world.international import manager
 from footsim.world.international import qualifiers as q
 from footsim.world.international.common import TYPE
 from footsim.world.meta import read_meta
@@ -107,23 +107,37 @@ def _tie_name(tie: str) -> str:
     return f"Path {path}, " + ("final" if part == "F" else f"semi-final {part[2:]}")
 
 
+FINALS_SHOWN_DAYS = 120  # the finals page shows an edition this long after its final
+
+
+def _edition(world: Any, conn: Any, year: int | None, keep_days: int) -> editions.Edition:
+    """The ``year`` edition, else the one being played or the next."""
+    if year is None:
+        return editions.current(world, read_meta(conn).current_date, keep_days)
+    if not world.defs.international.world_cup.is_edition(year):
+        raise HTTPException(404, f"no World Cup in {year}")
+    return editions.edition(world, year)
+
+
 @router.get("/qualifiers")
-def qualifiers_view(session: Session) -> QualifiersOut:
-    """The World Cup qualifiers: every stage's groups and ties, and who is through."""
+def qualifiers_view(session: Session, year: int | None = None) -> QualifiersOut:
+    """A World Cup's qualifiers (``year``'s, else the one being played or the next): every
+    stage's groups and ties, and who is through."""
     world = get_world()
-    spec = world.defs.international.qualifiers
     with session.read() as conn:
+        ed = _edition(world, conn, year, 0)
         teams = q._Teams.load(conn)
         names = queries._club_names(conn)
         comps = queries._competitions(conn)
         ref = {code: ClubRef(id=c, name=teams.name[c]) for c, code in teams.code.items()}
         stages = []
-        for stage in spec.stages:
+        for stage in ed.stages:
             rows = conn.execute(text("SELECT * FROM fixture WHERE stage = :s ORDER BY date, id"),
-                                {"s": q.STAGE + stage.key}).all()
+                                {"s": ed.qualifier_stage(stage.key)}).all()
             groups, ties = [], []
             if stage.format == "groups":
-                for letter, table in q.group_tables(conn, stage.key, teams).items():
+                for letter, table in q.group_tables(conn, ed.qualifier_stage(stage.key),
+                                                    teams).items():
                     groups.append(GroupOut(name=f"Group {letter}", rows=[GroupRowOut(
                         team=ClubRef(id=r.club_id, name=teams.name[r.club_id]),
                         played=r.played, points=r.points, gd=r.gd, gf=r.gf) for r in table]))
@@ -141,8 +155,9 @@ def qualifiers_view(session: Session) -> QualifiersOut:
                                             stage.qualified_ranks[1] + 1))
                                  if stage.qualified_ranks else None),
                 groups=groups, ties=ties))
-        through = q.qualified_teams(conn)
-    return QualifiersOut(cycle=spec.cycle, stages=stages, qualified=[
+        # The hosts are through once the qualifiers have started.
+        through = q.qualified_teams(conn, ed) if any(s.drawn for s in stages) else {}
+    return QualifiersOut(cycle=ed.year, stages=stages, qualified=[
         QualifiedOut(team=ref[code], how=how) for code, how in sorted(
             through.items(), key=lambda t: (t[1] != "Hosts", ref[t[0]].name)) if code in ref])
 
@@ -186,25 +201,24 @@ def club_world_cup_view(session: Session) -> ClubWorldCupOut:
         entrants = [CwcEntrantOut(team=ClubRef(id=e["club_id"], name=names[e["club_id"]]),
                                   confederation=e["confederation"], how=e["how"])
                     for e in state.get("entrants", [])]
+        played: dict[int, int] = {}
+        for f in cwc.edition_fixtures(conn, year, cwc.GROUPS):
+            if f.status == "played":
+                for c in (f.home_club_id, f.away_club_id):
+                    played[c] = played.get(c, 0) + 1
         groups = [GroupOut(name=f"Group {letter}", rows=[GroupRowOut(
-            team=ClubRef(id=r.club_id, name=names[r.club_id]), played=_played(conn, r.club_id),
+            team=ClubRef(id=r.club_id, name=names[r.club_id]), played=played.get(r.club_id, 0),
             points=r.points, gd=r.gd, gf=r.gf) for r in table])
-            for letter, table in cwc.group_tables(conn).items()] if state else []
+            for letter, table in cwc.group_tables(conn, year).items()] if state else []
         rounds = []
         for rnd in cwc.ROUNDS:
-            rows = conn.execute(text("SELECT * FROM fixture WHERE stage = :s "
-                                     "ORDER BY CAST(tie AS INTEGER)"), {"s": f"CWC:{rnd}"}).all()
+            rows = sorted(cwc.edition_fixtures(conn, year, f"CWC:{rnd}"),
+                          key=lambda f: int(f.tie))
             if rows:
                 rounds.append(CwcRoundOut(name=cwc.ROUND_NAMES[rnd],
                                           fixtures=queries.fixtures_out(conn, rows, names, comps)))
     return ClubWorldCupOut(year=year, draw=cwc.draw_date(world, year).isoformat(),
                            host=spec.host, entrants=entrants, groups=groups, rounds=rounds)
-
-
-def _played(conn: Any, club_id: int) -> int:
-    return int(conn.execute(text(
-        "SELECT COUNT(*) FROM fixture WHERE stage = 'CWC:G' AND status = 'played' "
-        "AND (home_club_id = :c OR away_club_id = :c)"), {"c": club_id}).scalar_one())
 
 
 # --- the World Cup finals (W8 I4) --------------------------------------------------------
@@ -219,28 +233,30 @@ class WorldCupOut(BaseModel):
 
 
 @router.get("/world-cup")
-def world_cup_view(session: Session) -> WorldCupOut:
-    """The World Cup finals: the groups once drawn, the knockouts so far and the champion."""
-    spec = get_world().defs.international.world_cup
+def world_cup_view(session: Session, year: int | None = None) -> WorldCupOut:
+    """A World Cup's finals (``year``'s, else the one being played, or just played, or the
+    next): the groups once drawn, the knockouts so far and the champion."""
+    world = get_world()
     with session.read() as conn:
-        state = wcf._get(conn) or {}
+        ed = _edition(world, conn, year, FINALS_SHOWN_DAYS)
+        spec = ed.dates
+        state = wcf.state(conn, ed) or {}
         names = queries._club_names(conn)
         comps = queries._competitions(conn)
         elo = {int(r.club_id): float(r.elo) for r in conn.execute(text(
             "SELECT club_id, elo FROM national_team"))}
         played: dict[int, int] = {}
         for f in conn.execute(text("SELECT home_club_id, away_club_id FROM fixture "
-                                   "WHERE stage = :s AND status = 'played'"), {"s": wcf.GROUPS}):
+                                   "WHERE stage = :s AND status = 'played'"), {"s": ed.groups}):
             for c in (f.home_club_id, f.away_club_id):
                 played[c] = played.get(c, 0) + 1
         groups = [GroupOut(name=f"Group {letter}", rows=[GroupRowOut(
             team=ClubRef(id=r.club_id, name=names[r.club_id]), played=played.get(r.club_id, 0),
             points=r.points, gd=r.gd, gf=r.gf) for r in table])
-            for letter, table in wcf.group_tables(conn, elo).items()]
+            for letter, table in wcf.group_tables(conn, ed, elo).items()]
         rounds = []
         for rnd in ("R32", "R16", "QF", "SF", "3P", "F"):
-            rows = conn.execute(text("SELECT * FROM fixture WHERE stage = :s "
-                                     "ORDER BY CAST(tie AS INTEGER)"), {"s": f"WCF:{rnd}"}).all()
+            rows = wcf.round_fixtures(conn, ed, rnd)
             if rows:
                 rounds.append(CwcRoundOut(name=wcf.ROUND_NAMES[rnd],
                                           fixtures=queries.fixtures_out(conn, rows, names, comps)))

@@ -425,7 +425,7 @@ export interface ClubHistory {
   titles: number
   promotions: number
   relegations: number
-  trophies: Trophy[] // the honours by trophy: European first, then league titles, then cups
+  trophies: Trophy[] // the honours by trophy: world titles first, then European, league titles, cups
   treble_seasons: string[]
   european_titles: number
 }
@@ -730,10 +730,10 @@ export interface EuropeRun {
 
 /** A kind of trophy in a club's honours, and the seasons it was won. */
 export interface Trophy {
-  kind: 'europe' | 'league' | 'cup'
+  kind: 'world' | 'europe' | 'league' | 'cup' // world: the World Cup, the Club World Cup
   key: string
   name: string
-  seasons: string[] // oldest first
+  seasons: string[] // oldest first (a world title's year: "2030")
 }
 
 export interface CupRun {
@@ -1000,7 +1000,7 @@ export interface InternationalCareer {
   home_based: boolean // a made-up player whose club is outside the game's leagues
 }
 
-// GET /api/international/qualifiers: the World Cup qualifiers.
+// GET /api/international/qualifiers[?year=]: a World Cup's qualifiers (the current or next one's).
 export interface QualifierGroupRow {
   team: ClubRef
   played: number
@@ -1059,7 +1059,8 @@ export interface CollegeSeasonRecord {
   division?: number // 2 or 3 for a D-II/D-III program
 }
 
-// GET /api/international/world-cup: the finals (empty before the draw).
+// GET /api/international/world-cup[?year=]: a World Cup's finals (the current, just played or next
+// one's; empty before the draw).
 export interface WorldCupFinals {
   year: number
   draw: string

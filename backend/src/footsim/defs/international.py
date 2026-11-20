@@ -2,7 +2,9 @@
 team (data/config/international/teams.yaml), the names for made-up home-based players (names.yaml)
 and the rules for squads and those players (rules.yaml)."""
 
-from pydantic import Field, model_validator
+from typing import Any
+
+from pydantic import Field, ValidationError, model_validator
 
 from footsim.defs.common import DefModel
 
@@ -99,7 +101,7 @@ class InternationalRulesDef(DefModel):
 
 
 class EntrantSourceDef(DefModel):
-    """Places in an earlier stage that enter a stage (qualifiers_2030.yaml)."""
+    """Places in an earlier stage that enter a stage (qualifiers.yaml)."""
 
     stage: str
     ranks: tuple[int, int] | None = None  # those ranks in every group
@@ -136,11 +138,50 @@ class QualifierStageDef(DefModel):
         return self
 
 
+    @property
+    def places(self) -> int:
+        """How many teams it sends to the finals."""
+        if self.format == "groups" and self.qualified_ranks is not None:
+            return (self.qualified_ranks[1] - self.qualified_ranks[0] + 1) * self.groups
+        return self.paths if self.format == "paths" and self.qualified_winners else 0
+
+
+def _shift_window(window: str, years: int) -> str:
+    year, month = window.split("-")
+    return f"{int(year) + years}-{month}"
+
+
 class QualifiersDef(DefModel):
-    cycle: int  # the World Cup's year
-    hosts: list[str]
+    """The qualifiers' template (qualifiers.yaml): the stages as the ``cycle`` edition plays
+    them."""
+
+    cycle: int  # the edition the stages' windows are written for
     draw_days_before: int = Field(ge=1)
     stages: list[QualifierStageDef]
+
+    def for_edition(self, year: int, changes: dict[str, dict[str, Any]]
+                    ) -> list[QualifierStageDef]:
+        """The stages of the ``year`` edition: every window moved on by the years since
+        ``cycle``, then the edition's ``changes`` (a changed field's value as given)."""
+        unknown = sorted(set(changes) - {s.key for s in self.stages})
+        if unknown:
+            raise ValueError(f"World Cup {year}: changes to unknown stages {unknown}")
+        stages = []
+        for stage in self.stages:
+            raw = stage.model_dump(by_alias=True)
+            raw["windows"] = [_shift_window(w, year - self.cycle) for w in stage.windows]
+            raw.update(changes.get(stage.key, {}))
+            try:
+                stages.append(QualifierStageDef.model_validate(raw))
+            except ValidationError as exc:
+                raise ValueError(f"World Cup {year}, {stage.key}: {exc}") from exc
+        keys = [s.key for s in stages]
+        for k, stage in enumerate(stages):
+            for source in stage.entrants.from_:
+                if source.stage not in keys[:k]:
+                    raise ValueError(f"World Cup {year}, {stage.key}: enters from "
+                                     f"{source.stage}, not an earlier stage")
+        return stages
 
 
 class GuestClubDef(DefModel):
@@ -194,9 +235,19 @@ class ClubWorldCupDef(DefModel):
         return self
 
 
+class WorldCupEditionDef(DefModel):
+    """One World Cup's hosts, and the changes to the qualifiers' stages their places need."""
+
+    hosts: list[str]
+    stages: dict[str, dict[str, Any]] = {}  # by stage key: fields to change
+
+
 class WorldCupDef(DefModel):
-    """The World Cup finals (W8 I4, world_cup.yaml): ISO dates of the draw and each round."""
-    year: int
+    """The World Cup finals (W8 I4, world_cup.yaml): ISO dates of the draw and each round (the
+    first edition's: a later one's fall on the same days of its year), and the editions."""
+    year: int  # the first edition
+    every_years: int = Field(default=4, ge=1)
+    editions: dict[int, WorldCupEditionDef]
     draw: str
     groups: list[str] = Field(min_length=3, max_length=3)
     round_of_32: str
@@ -206,14 +257,36 @@ class WorldCupDef(DefModel):
     third_place: str
     final: str
 
+    @model_validator(mode="after")
+    def _editions(self) -> "WorldCupDef":
+        expected = [self.year + k * self.every_years for k in range(len(self.editions))]
+        if sorted(self.editions) != expected:
+            raise ValueError(f"the World Cup's editions must be {expected}, one every "
+                             f"{self.every_years} years from {self.year}")
+        return self
+
+    def is_edition(self, year: int) -> bool:
+        return year >= self.year and (year - self.year) % self.every_years == 0
+
+    def edition(self, year: int) -> WorldCupEditionDef:
+        """An edition's hosts and changes: its own, or (after the listed ones) the listed
+        editions' in turn."""
+        if year in self.editions:
+            return self.editions[year]
+        k = (year - self.year) // self.every_years
+        return self.editions[sorted(self.editions)[k % len(self.editions)]]
+
+
+SLOTS = 48  # the finals' teams
+
 
 class InternationalDef(DefModel):
     teams: dict[str, TeamDef]  # by FIFA code
     names: NamesDef
     rules: InternationalRulesDef
-    qualifiers: QualifiersDef  # the next World Cup's (W8 I3)
+    qualifiers: QualifiersDef  # every World Cup's, from a template (W8 I3)
     club_world_cup: ClubWorldCupDef  # W10
-    world_cup: WorldCupDef  # the finals (W8 I4)
+    world_cup: WorldCupDef  # the finals and the editions (W8 I4)
 
     @model_validator(mode="after")
     def _regions(self) -> "InternationalDef":
@@ -221,16 +294,16 @@ class InternationalDef(DefModel):
             unknown = sorted(set(region.donors + region.nations) - set(self.teams))
             if unknown:
                 raise ValueError(f"names region {key}: unknown teams {unknown}")
-        stages = [s.key for s in self.qualifiers.stages]
-        for k, stage in enumerate(self.qualifiers.stages):
-            for source in stage.entrants.from_:
-                if source.stage not in stages[:k]:
-                    raise ValueError(f"{stage.key}: enters from {source.stage}, not an earlier "
-                                     "stage")
         guests = sorted({g.country for g in self.club_world_cup.guests} - set(self.teams))
         if guests:
             raise ValueError(f"guest clubs of unknown countries {guests}")
-        unknown = sorted(set(self.qualifiers.hosts) - set(self.teams))
-        if unknown:
-            raise ValueError(f"unknown hosts {unknown}")
+        for year, edition in self.world_cup.editions.items():
+            unknown = sorted(set(edition.hosts) - set(self.teams))
+            if unknown:
+                raise ValueError(f"World Cup {year}: unknown hosts {unknown}")
+            stages = self.qualifiers.for_edition(year, edition.stages)
+            places = len(edition.hosts) + sum(s.places for s in stages)
+            if places != SLOTS:
+                raise ValueError(f"World Cup {year}: the hosts and the qualifiers' places make "
+                                 f"{places}, not {SLOTS}")
         return self

@@ -26,6 +26,7 @@ from footsim.world.international.qualifiers import (
     STAGE,
     _Teams,
     draw_day,
+    first_edition,
     group_tables,
     qualified_teams,
     qualifiers_day,
@@ -73,7 +74,7 @@ def cycle(tmp_path_factory: pytest.TempPathFactory) -> tuple[Engine, World, list
     with engine.begin() as conn:
         initialize_career(conn, world, None, None, seed=29)
     news: list[str] = []
-    stages = world.defs.international.qualifiers.stages
+    stages = first_edition(world).stages
     with engine.begin() as conn:
         meta = read_meta(conn)
         for stage in sorted(stages, key=lambda s: draw_day(world, meta, s)):
@@ -88,7 +89,7 @@ def test_each_stage_fits_its_windows(cycle: tuple[Engine, World, list[str]]) -> 
     engine, world, _ = cycle
     with engine.connect() as conn:
         meta = read_meta(conn)
-        for stage in world.defs.international.qualifiers.stages:
+        for stage in first_edition(world).stages:
             days = {d.isoformat() for d in stage_days(world, meta, stage)}
             rows = conn.execute(text("SELECT date FROM fixture WHERE stage = :s"),
                                 {"s": STAGE + stage.key}).all()
@@ -106,7 +107,7 @@ def test_groups_are_drawn_from_elo_pots(cycle: tuple[Engine, World, list[str]]) 
     engine, _, _ = cycle
     with engine.connect() as conn:
         teams = _Teams.load(conn)
-        uefa = group_tables(conn, "UEFA_G", teams)
+        uefa = group_tables(conn, STAGE + "UEFA_G", teams)
         assert len(uefa) == 12 and sorted(len(t) for t in uefa.values()) == [4] * 8 + [5] * 4
         assert all(r.played == 2 * (len(t) - 1) for t in uefa.values() for r in t)
         # The 12 best UEFA teams are in 12 different groups (pot 1).
@@ -114,16 +115,16 @@ def test_groups_are_drawn_from_elo_pots(cycle: tuple[Engine, World, list[str]]) 
                        and teams.code[c] not in ("ESP", "POR")), key=lambda c: -teams.elo[c])[:12]
         group_of = {r.club_id: g for g, t in uefa.items() for r in t}
         assert len({group_of[c] for c in best}) == 12
-        conmebol = group_tables(conn, "CONMEBOL", teams)
+        conmebol = group_tables(conn, STAGE + "CONMEBOL", teams)
         assert [len(t) for t in conmebol.values()] == [10]
         assert all(r.played == 18 for r in conmebol["A"])
 
 
 def test_48_teams_qualify(cycle: tuple[Engine, World, list[str]]) -> None:
-    engine, _, news = cycle
+    engine, world, news = cycle
     with engine.connect() as conn:
         teams = _Teams.load(conn)
-        through = qualified_teams(conn)
+        through = qualified_teams(conn, first_edition(world))
         assert len(through) == 48
         assert {"ESP", "POR", "MAR"} <= set(through) and through["ESP"] == "Hosts"
         by_code = {code: c for c, code in teams.code.items()}

@@ -130,6 +130,7 @@ from footsim.world.europe.qualifying import Node, node_of, round_name
 from footsim.world.fast_sim import SIM as FAST_SIM
 from footsim.world.international.common import TYPE as INTERNATIONAL
 from footsim.world.international.common import is_national, nation_ids
+from footsim.world.international.titles import world_titles
 from footsim.world.meta import CareerMeta, read_meta
 from footsim.world.money import money_text, quote
 from footsim.world.season import (
@@ -867,7 +868,8 @@ def club_history(conn: Connection, world: World, club_id: int) -> ClubHistoryOut
         promotions=sum(promoted(f) for f in finals),
         relegations=sum(f.outcome == "relegated" for f in finals),
         trophies=trophy_cabinet(
-            world, labels, [(t.season_id, title_key(t), t.title) for t in won], runs, europe),
+            world, labels, [(t.season_id, title_key(t), t.title) for t in won], runs, europe,
+            world_titles(conn, club_id)),
         treble_seasons=[r.season for r in reversed(rows) if r.treble],
         european_titles=sum(run.won for season_runs in europe.values() for run in season_runs),
     )

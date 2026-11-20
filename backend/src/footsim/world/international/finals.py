@@ -1,5 +1,5 @@
 """The World Cup finals (W8 I4, data/config/international/world_cup.yaml): 48 teams, FIFA's 2026
-format, the 2030 edition.
+format, every edition's (world/international/editions.py) in the year it's played.
 
 On the draw day (once qualifying is over) the qualified teams are drawn into 12 groups of 4: the
 hosts and the best by Elo in pot 1, no group with two teams of one confederation (UEFA's at most
@@ -9,7 +9,8 @@ neutral venues. The top two of each group and the 8 best third-placed teams play
 seeded by their group results with no group rematch, then single matches (extra time and
 penalties) to the final, with a match for third place. Elo moves at the finals' weight
 (``WCF:`` stages). Competition ``WC`` (type ``international``); groups' stage ``WCF:G`` with the
-group's letter as ``tie``; knockouts ``WCF:R32`` ... ``WCF:F`` and ``WCF:3P``.
+group's letter as ``tie``; knockouts ``WCF:R32`` ... ``WCF:F`` and ``WCF:3P`` (2030's names; a
+later edition's ``WC2034``, ``WCF:2034:G``...). The champion is in the edition's state.
 """
 
 import json
@@ -25,35 +26,37 @@ from footsim.match.report import Decider
 from footsim.persistence.schema import fixture
 from footsim.world.context import World
 from footsim.world.international.common import AWAY_KEY
+from footsim.world.international.editions import FINALS, Edition, edition
 from footsim.world.meta import CareerMeta
 
-KEY = "WC"
-GROUPS = "WCF:G"
 ROUNDS = ("R32", "R16", "QF", "SF", "F")
 ROUND_NAMES = {"R32": "Round of 32", "R16": "Round of 16", "QF": "Quarter-finals",
                "SF": "Semi-finals", "3P": "Match for third place", "F": "Final"}
 LETTERS = "ABCDEFGHIJKL"
-STATE_KEY = "wc_finals"  # game_meta: the draw's groups, the squads' call-up, the champion
 
 
-def _get(conn: Connection) -> Any:
+def state(conn: Connection, ed: Edition) -> Any:
+    """An edition's finals so far (game_meta): the draw's groups, the squads' call-up, the
+    champion; None before the draw."""
     value = conn.execute(text("SELECT value FROM game_meta WHERE key = :k"),
-                         {"k": STATE_KEY}).scalar()
+                         {"k": ed.state_key}).scalar()
     return json.loads(value) if value is not None else None
 
 
-def _set(conn: Connection, value: Any, key: str = STATE_KEY) -> None:
+def _set(conn: Connection, value: Any, key: str) -> None:
     conn.execute(text("INSERT INTO game_meta (key, value) VALUES (:k, :v) "
                       "ON CONFLICT(key) DO UPDATE SET value = excluded.value"),
                  {"k": key, "v": json.dumps(value)})
 
 
 def is_finals(stage: str) -> bool:
-    return stage.startswith("WCF:")
+    return stage.startswith(FINALS)
 
 
 def decider(fx: Any) -> Decider | None:
-    return None if fx.stage == GROUPS else Decider(extra_time=True, penalties=True)
+    """Group matches end as they end (every edition's groups' stage ends ``:G``); knockouts go
+    to extra time and penalties."""
+    return None if fx.stage.endswith(":G") else Decider(extra_time=True, penalties=True)
 
 
 @dataclass
@@ -65,11 +68,11 @@ class _Team:
     host: bool
 
 
-def _teams(conn: Connection, world: World) -> list[_Team]:
+def _teams(conn: Connection, ed: Edition) -> list[_Team]:
     from footsim.world.international.qualifiers import qualified_teams
 
-    through = qualified_teams(conn)
-    hosts = set(world.defs.international.qualifiers.hosts)
+    through = qualified_teams(conn, ed)
+    hosts = set(ed.hosts)
     return [_Team(int(r.club_id), str(r.code), str(r.confederation), float(r.elo),
                   str(r.code) in hosts)
             for r in conn.execute(text("SELECT club_id, code, confederation, elo "
@@ -127,21 +130,21 @@ def _insert(conn: Connection, meta: CareerMeta, comp: int, stage: str,
             for day, home, away, tie, rnd, neutral in rows])
 
 
-def _competition(conn: Connection, world: World) -> int:
+def _competition(conn: Connection, ed: Edition) -> int:
     from footsim.world.international.windows import competition_id
 
-    year = world.defs.international.world_cup.year
-    return competition_id(conn, KEY, f"FIFA World Cup {year}", "World Cup")
+    key, name = ed.finals_competition
+    return competition_id(conn, key, name, "World Cup")
 
 
-def _draw(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
-    spec = world.defs.international.world_cup
-    teams = _teams(conn, world)
+def _draw(conn: Connection, meta: CareerMeta, ed: Edition) -> list[str]:
+    spec = ed.dates
+    teams = _teams(conn, ed)
     if len(teams) != 48:
         return []  # qualifying isn't over: drawn when it is
     rng = derive_rng(meta.seed, "wc-draw", spec.year)
     groups = draw_groups(teams, rng)
-    comp = _competition(conn, world)
+    comp = _competition(conn, ed)
     days = [_day(d) for d in spec.groups]
     rows = []
     for g, members in enumerate(groups):
@@ -152,9 +155,9 @@ def _draw(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
                     home, away = away, home
                 rows.append((days[r], home.club_id, away.club_id, LETTERS[g], r + 1,
                              not home.host))
-    _insert(conn, meta, comp, GROUPS, rows)
+    _insert(conn, meta, comp, ed.groups, rows)
     _set(conn, {"groups": {LETTERS[g]: [t.club_id for t in m] for g, m in enumerate(groups)},
-                "called": False, "champion": None})
+                "called": False, "champion": None}, ed.state_key)
     return [f"The {spec.year} World Cup draw is made: 48 teams in 12 groups, from "
             f"{days[0].strftime('%-d %B')}."]
 
@@ -168,10 +171,11 @@ class _Row:
     gf: int = 0
 
 
-def group_tables(conn: Connection, elo: dict[int, float]) -> dict[str, list[_Row]]:
+def group_tables(conn: Connection, ed: Edition, elo: dict[int, float]
+                 ) -> dict[str, list[_Row]]:
     rows: dict[str, dict[int, _Row]] = {}
     for f in conn.execute(text("SELECT * FROM fixture WHERE stage = :s ORDER BY id"),
-                          {"s": GROUPS}):
+                          {"s": ed.groups}):
         group = rows.setdefault(f.tie, {})
         for c in (f.home_club_id, f.away_club_id):
             group.setdefault(c, _Row(c, f.tie))
@@ -228,43 +232,48 @@ def _loser(f: Any) -> int | None:
     return int(f.away_club_id if w == f.home_club_id else f.home_club_id)
 
 
-def _stage(conn: Connection, rnd: str) -> list[Any]:
+def round_fixtures(conn: Connection, ed: Edition, rnd: str) -> list[Any]:
+    """A knockout round's fixtures, in the bracket's order."""
     return list(conn.execute(text("SELECT * FROM fixture WHERE stage = :s "
-                                  "ORDER BY CAST(tie AS INTEGER)"), {"s": f"WCF:{rnd}"}).all())
+                                  "ORDER BY CAST(tie AS INTEGER)"),
+                             {"s": ed.finals_stage(rnd)}).all())
 
 
-def _progress(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
-    spec = world.defs.international.world_cup
-    comp = _competition(conn, world)
+def _progress(conn: Connection, meta: CareerMeta, ed: Edition) -> list[str]:
+    spec = ed.dates
+    comp = _competition(conn, ed)
     elo = {int(r.club_id): float(r.elo) for r in conn.execute(text(
         "SELECT club_id, elo FROM national_team"))}
     news: list[str] = []
     groups = list(conn.execute(text("SELECT status FROM fixture WHERE stage = :s"),
-                               {"s": GROUPS}).all())
-    if groups and all(f.status == "played" for f in groups) and not _stage(conn, "R32"):
-        pairs = round_of_32(group_tables(conn, elo), elo)
-        _insert(conn, meta, comp, "WCF:R32", [(_day(spec.round_of_32), h, a, str(n + 1), 1, True)
-                                               for n, (h, a) in enumerate(pairs)])
+                               {"s": ed.groups}).all())
+    if groups and all(f.status == "played" for f in groups) and not round_fixtures(conn, ed,
+                                                                                    "R32"):
+        pairs = round_of_32(group_tables(conn, ed, elo), elo)
+        _insert(conn, meta, comp, ed.finals_stage("R32"),
+                [(_day(spec.round_of_32), h, a, str(n + 1), 1, True)
+                 for n, (h, a) in enumerate(pairs)])
     days = {"R16": spec.round_of_16, "QF": spec.quarter_finals, "SF": spec.semi_finals,
             "F": spec.final}
     for before, after in zip(ROUNDS, ROUNDS[1:], strict=False):
-        done = _stage(conn, before)
-        if not done or _stage(conn, after) or any(_winner(f) is None for f in done):
+        done = round_fixtures(conn, ed, before)
+        if not done or round_fixtures(conn, ed, after) or any(_winner(f) is None for f in done):
             continue
         winners = [int(w) for f in done if (w := _winner(f)) is not None]
         pairs = [(winners[k], winners[k + 1]) for k in range(0, len(winners), 2)]
-        _insert(conn, meta, comp, f"WCF:{after}", [(_day(days[after]), h, a, str(n + 1), 1, True)
-                                                    for n, (h, a) in enumerate(pairs)])
+        _insert(conn, meta, comp, ed.finals_stage(after),
+                [(_day(days[after]), h, a, str(n + 1), 1, True)
+                 for n, (h, a) in enumerate(pairs)])
         if after == "F":
             losers = [int(x) for f in done if (x := _loser(f)) is not None]
-            _insert(conn, meta, comp, "WCF:3P", [(_day(spec.third_place), losers[0], losers[1],
-                                                  "1", 1, True)])
-    final = _stage(conn, "F")
-    state = _get(conn) or {}
-    if final and state.get("champion") is None and _winner(final[0]) is not None:
+            _insert(conn, meta, comp, ed.finals_stage("3P"),
+                    [(_day(spec.third_place), losers[0], losers[1], "1", 1, True)])
+    final = round_fixtures(conn, ed, "F")
+    found = state(conn, ed) or {}
+    if final and found.get("champion") is None and _winner(final[0]) is not None:
         champion = _winner(final[0])
-        state["champion"] = champion
-        _set(conn, state)
+        found["champion"] = champion
+        _set(conn, found, ed.state_key)
         name: str = conn.execute(text("SELECT name FROM club WHERE id = :c"),
                             {"c": champion}).scalar_one()
         news.append(f"{name} win the {spec.year} World Cup.")
@@ -272,20 +281,24 @@ def _progress(conn: Connection, world: World, meta: CareerMeta) -> list[str]:
 
 
 def finals_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
-    """The draw on its day (or the first day after it with qualifying over), the call-ups the
-    day before the first match, then the knockouts as rounds are decided. Returns news."""
-    spec = world.defs.international.world_cup
-    state = _get(conn)
-    if state is None:
+    """In a World Cup's year: the draw on its day (or the first day after it with qualifying
+    over), the call-ups the day before the first match, then the knockouts as rounds are
+    decided. Returns news."""
+    if not world.defs.international.world_cup.is_edition(day.year):
+        return []
+    ed = edition(world, day.year)
+    spec = ed.dates
+    found = state(conn, ed)
+    if found is None:
         if day >= _day(spec.draw):
-            return _draw(conn, world, meta)
+            return _draw(conn, meta, ed)
         return []
     news: list[str] = []
     first = _day(spec.groups[0])
-    if not state.get("called") and day >= first - timedelta(days=1):
+    if not found.get("called") and day >= first - timedelta(days=1):
         from footsim.world.international.teams import pick_squads
 
-        clubs = [int(c) for members in state["groups"].values() for c in members]
+        clubs = [int(c) for members in found["groups"].values() for c in members]
         codes = {str(r.code) for r in conn.execute(text(
             "SELECT code FROM national_team WHERE club_id IN (SELECT value FROM json_each(:c))"),
             {"c": json.dumps(clubs)})}
@@ -298,8 +311,8 @@ def finals_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> l
 
             ensure_squad(conn, world, meta, day)
         _set(conn, {"start": first.isoformat(), "end": spec.final}, AWAY_KEY)
-        state["called"] = True
-        _set(conn, state)
+        found["called"] = True
+        _set(conn, found, ed.state_key)
     if day >= first:
-        news += _progress(conn, world, meta)
+        news += _progress(conn, meta, ed)
     return news

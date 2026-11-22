@@ -80,6 +80,7 @@ function CollegeFinish({ final }: { final: SeasonFinal }) {
         {c.rpi_rank ? ` · ${ordinal(c.rpi_rank)} in the RPI` : ''}
       </Text>
       <Text size="sm">{c.ncaa ?? 'Not in the NCAA tournament'}</Text>
+      {c.all_division && <Text size="sm">{c.all_division}</Text>}
       <Text size="sm">
         New class: {total === 0 ? 'nobody signed' : signed.map(([st, k]) => `${k} ${STAR_WORDS[st] ?? `${st}-star`}`).join(', ')}
       </Text>
@@ -392,6 +393,7 @@ export default function SeasonSummary({
           <Text size="sm" c="dimmed">
             {review.next_season ? `The ${review.next_season} season begins.` : `The ${review.season} season is over.`}
             {final.national_champion ? ` ${final.national_champion.name} won the College Cup.` : ''}
+            {final.all_division_champion ? ` ${final.all_division_champion.name} won the All-Division Tournament.` : ''}
           </Text>
           <Accordion multiple variant="separated" defaultValue={['conferences', 'development']}>
             <Section value="conferences" title="Conference champions" count={(final.conference_champions ?? []).length}>

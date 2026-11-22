@@ -27,6 +27,16 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.145"
+  date: "2026-11-22"
+  title: "The All-Division Tournament, D-II and D-III rankings, Hall of fame favourites"
+  changes:
+    - "The All-Division Tournament (College page → All-Division): after D-I's College Cup and the D-II and D-III finals, the best of all three divisions meet from 16 to 29 December to settle the best team in college soccer. 40 teams: each division's national champion, then its best by the RPI (16 from D-I, 12 each from D-II and D-III)."
+    - "Byes: D-I's top four start in the Round of 16 (two byes); D-I's 5th to 8th and the top four of D-II and D-III start in the second round (one bye). Each round is drawn when the one before it ends: the best seed left plays the worst left from another division, so D-I meets D-II and D-III wherever it can. If you're in it you play your games; Continue stops after the final."
+    - "D-II and D-III have RPI rankings like D-I's (College page → Division II or III → RPI), and their tournaments' at-large bids and seeds now follow them. Their top 25 show their rank beside their name (\"D-II #3\"), as D-I's do."
+    - "Hall of fame: star (☆) anyone who has played for you to make him a favourite. Favourites get their own cards at the top, and the ★ filter shows only them."
+    - "A D-II or D-III player's season is now one line on his Seasons table, as D-I's is."
+
 - version: "1.144"
   date: "2026-11-20"
   title: "NCAA Divisions II and III, and the transfer portal"

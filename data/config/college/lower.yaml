@@ -54,3 +54,23 @@ portal:
   opens: "12-08"
   entrants: 60
   min_overall: 43.0
+
+# The All-Division Tournament (22 Nov; world/college/all_division.py): once D-I's College Cup
+# and the D-II and D-III finals are played, each division's best meet to settle which is the
+# best team in college soccer. A division's champion is its first, then its best by the final
+# RPI. The best enter latest: D-I's top four have two byes (they start in the Round of 16), D-I's
+# next four and the top four of D-II and D-III one. Each round is drawn when the one before it
+# ends: the best seed left meets the worst left from another division, the better seed at home
+# until the semifinals; extra time, then penalties.
+all_division:
+  key: NCAAALL
+  name: NCAA All-Division Tournament
+  short_name: All-Division Tournament
+  selection: "12-15"
+  entries:  # division -> how many enter in each round, the first round first
+    1: [8, 4, 4]  # D-I: 9th-16th in the first round, 5th-8th the second, the top 4 the third
+    2: [8, 4]  # D-II: 5th-12th in the first round, the top 4 the second
+    3: [8, 4]
+  rounds: ["12-16", "12-18", "12-20", "12-22", "12-27", "12-29"]
+  round_names: [First round, Second round, Round of 16, Quarterfinals, Semifinals, Final]
+  neutral_from: 4

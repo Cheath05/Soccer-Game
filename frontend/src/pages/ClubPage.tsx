@@ -276,7 +276,7 @@ const TITLE_NAMES: Record<string, string> = {
   national: 'NCAA champions',
 }
 
-/** A college program's season: its record, conference finish, RPI and NCAA run. */
+/** A college program's season: its record, conference finish, RPI, NCAA and All-Division runs. */
 function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOverview }) {
   const played = r.won + r.drawn + r.lost
   const lower = (r.division ?? 1) > 1
@@ -293,12 +293,19 @@ function CollegeFacts({ r, squad }: { r: CollegeSeasonRecord; squad: ClubOvervie
         value={r.conference_position ? `${ordinal(r.conference_position)} of ${r.conference_teams}` : '–'}
         note={confPlayed ? `${r.conference_won}-${r.conference_drawn}-${r.conference_lost} in conference · ${r.conference_points} pts` : 'No conference games yet'}
       />
-      <Fact label={lower ? 'Division ranking' : 'RPI ranking'} value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note={lower ? 'By points a game' : 'Nationally'} />
+      <Fact label={lower ? 'Division ranking' : 'RPI ranking'} value={r.rpi_rank ? ordinal(r.rpi_rank) : '–'} note={lower ? 'RPI, in its division' : 'Nationally'} />
       <Fact
         label={lower ? 'National tournament' : 'NCAA tournament'}
         value={!r.ncaa ? 'Not in it' : /champions$/i.test(r.ncaa) ? 'Champions' : r.ncaa.includes(': out') ? 'Knocked out' : 'Still in it'}
         note={r.ncaa && !/champions$/i.test(r.ncaa) ? r.ncaa.replace(/^(NCAA|National) tournament: |^In the (NCAA|national) tournament(: )?/, '') : undefined}
       />
+      {r.all_division && (
+        <Fact
+          label="All-Division Tournament"
+          value={/champions$/i.test(r.all_division) ? 'Champions' : r.all_division.includes(': out') ? 'Knocked out' : 'Still in it'}
+          note={/champions$/i.test(r.all_division) ? 'The best team in college soccer' : r.all_division.replace(/^All-Division Tournament: /, '')}
+        />
+      )}
       <Fact
         label="Titles this season"
         value={r.titles.length ? String(r.titles.length) : 'None'}

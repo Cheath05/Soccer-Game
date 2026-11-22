@@ -404,6 +404,7 @@ class SeasonFinalOut(BaseModel):
     # competition, position and the record are its conference's and its own over every game)
     conference_champions: list["ConferenceChampionsOut"] = []  # a college coach's summary
     national_champion: "ClubRef | None" = None
+    all_division_champion: "ClubRef | None" = None  # the All-Division Tournament's (22 Nov)
     class_signed: dict[int, int] = {}  # a college coach's new class: recruits by stars
 
 
@@ -532,6 +533,8 @@ class CollegeSeasonRecordOut(BaseModel):
     rpi_rank: int | None
     ncaa: str | None  # how far it got in the NCAA tournament, in words
     titles: list[str]  # "regular season", "conference tournament", "national"
+    # How far it got in the All-Division Tournament (22 Nov), in words; None if not in it.
+    all_division: str | None = None
     tier: int
     prestige: float  # as recruits see it: with the facilities' bonus (program builder)
     prestige_facilities: float = 0.0  # the facilities' share of it

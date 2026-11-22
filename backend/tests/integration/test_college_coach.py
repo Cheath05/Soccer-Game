@@ -154,6 +154,53 @@ def test_the_hall_of_fame_lists_who_played(career: tuple[Engine, World]) -> None
     rules = world.defs.lifecycle.hall_of_fame
     assert all(p.appearances >= rules.min_apps for p in out.players if p.hall_of_fame)
     assert all(p.now == "with_you" for p in out.players)  # nobody has left yet
+    assert out.favorites == [] and not any(p.favorite for p in out.players)
+
+
+def test_hall_of_fame_favorites(career: tuple[Engine, World]) -> None:
+    """Starring players on the Hall of fame page (22 Nov): kept in the order starred, unstarred
+    on request, and only for someone who has played for the club."""
+    from contextlib import contextmanager
+    from typing import Any
+
+    from fastapi import HTTPException
+
+    from footsim.api.hall_of_fame import FavoriteIn, set_favorite
+
+    engine, _ = career
+
+    class _Session:
+        sim = None
+
+        @contextmanager
+        def read(self) -> Any:
+            with engine.connect() as conn:
+                yield conn
+
+        @contextmanager
+        def write(self) -> Any:
+            with engine.begin() as conn:
+                yield conn
+
+        def autosave(self) -> None:
+            pass
+
+    with engine.connect() as conn:
+        user = read_meta(conn).user_club_id
+        ids = [int(r[0]) for r in conn.execute(text(
+            "SELECT DISTINCT player_id FROM player_match WHERE club_id = :c ORDER BY player_id "
+            "LIMIT 2"), {"c": user})]
+    assert len(ids) == 2
+    session: Any = _Session()
+    set_favorite(ids[1], FavoriteIn(favorite=True), session)
+    out = set_favorite(ids[0], FavoriteIn(favorite=True), session)
+    assert out.favorites == [ids[1], ids[0]]
+    assert {p.player_id for p in out.players if p.favorite} == set(ids)
+    out = set_favorite(ids[1], FavoriteIn(favorite=False), session)
+    assert out.favorites == [ids[0]]
+    with pytest.raises(HTTPException):
+        set_favorite(-1, FavoriteIn(favorite=True), session)
+    assert set_favorite(ids[0], FavoriteIn(favorite=False), session).favorites == []
 
 
 def test_a_game_day_visit_moves_with_the_result(career: tuple[Engine, World]) -> None:

@@ -218,13 +218,47 @@ export const useConferences = (enabled = true, division = 1) =>
     enabled,
   })
 
-export const useRankings = (enabled: boolean) =>
-  useQuery({ queryKey: ['college', 'rankings'], queryFn: () => api.get<Ranking[]>('/college/rankings?limit=50'), enabled, retry: noRetryOn404 })
+export const useRankings = (enabled: boolean, division = 1) =>
+  useQuery({
+    queryKey: ['college', 'rankings', division],
+    queryFn: () => api.get<Ranking[]>(`/college/rankings?limit=50${division === 1 ? '' : `&division=${division}`}`),
+    enabled,
+    retry: noRetryOn404,
+  })
 
 export const useBracket = (event: string, enabled: boolean) =>
   useQuery({
     queryKey: ['college', 'bracket', event],
     queryFn: () => api.get<Bracket>(`/college/bracket?event=${encodeURIComponent(event)}`),
+    enabled,
+    retry: noRetryOn404,
+  })
+
+// GET /api/college/all-division (world/college/all_division.py): D-I, D-II and D-III's best after
+// the national finals.
+export interface AllDivisionEntrant {
+  seed: number
+  club: ClubRef
+  division: number
+  division_name: string
+  rank: number
+  enters: string
+}
+
+export interface AllDivision {
+  name: string
+  season: string
+  selection: string
+  entrants: AllDivisionEntrant[]
+  rounds: BracketRound[]
+  champion: ClubRef | null
+  champion_division: string | null
+}
+
+export const useAllDivision = (enabled = true) =>
+  useQuery({
+    queryKey: ['college', 'all-division'],
+    queryFn: () => api.get<AllDivision>('/college/all-division'),
     enabled,
     retry: noRetryOn404,
   })

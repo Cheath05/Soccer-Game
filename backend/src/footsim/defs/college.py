@@ -185,6 +185,7 @@ class ContinueStopsDef(DefModel):
 
     ncaa_selection: bool = True
     ncaa_final: bool = True
+    all_division_final: bool = True  # the All-Division Tournament's final (22 Nov)
     superdraft: bool = True
     recruiting: bool = True
     monthly: bool = True
@@ -570,6 +571,68 @@ class PortalDef(DefModel):
         return _month_day(value)
 
 
+class AllDivisionDef(DefModel):
+    """The All-Division Tournament (22 Nov): once the three national finals are played, each
+    division's best meet in one knockout, the best entering latest (their byes). Each round is
+    drawn when the one before it ends: the best seed left meets the worst left from another
+    division (world/college/all_division.py)."""
+
+    key: str  # its competition's key
+    name: str
+    short_name: str
+    selection: str  # MM-DD: the field is picked once every national final is played
+    # Division (1 for D-I) -> how many of its best enter in each round, the first round first:
+    # its champion first, then by the season's final RPI.
+    entries: dict[int, list[int]]
+    rounds: list[str]  # a date per round, the last the final's
+    round_names: list[str]
+    neutral_from: int = Field(ge=0)  # rounds from this one (0 the first) at a neutral ground
+
+    @field_validator("selection")
+    @classmethod
+    def _selection(cls, value: str) -> str:
+        return _month_day(value)
+
+    @field_validator("rounds")
+    @classmethod
+    def _dates(cls, value: list[str]) -> list[str]:
+        return [_month_day(v) for v in value]
+
+    @model_validator(mode="after")
+    def _shape(self) -> "AllDivisionDef":
+        if len(self.round_names) != len(self.rounds):
+            raise ValueError(f"{self.name}: a name for each of its {len(self.rounds)} rounds")
+        if any(len(e) > len(self.rounds) or min(e, default=0) < 0
+               for e in self.entries.values()):
+            raise ValueError(f"{self.name}: entries per round, at most one per round")
+        teams = 0
+        for k in range(len(self.rounds)):
+            teams = teams // 2 + self.entering(k)
+            if teams < 2 or teams % 2:
+                raise ValueError(f"{self.name}: round {k + 1} has {teams} teams: it needs an "
+                                 "even number")
+        if teams != 2:
+            raise ValueError(f"{self.name}: its last round has {teams} teams, not two")
+        return self
+
+    def entering(self, round_: int) -> int:
+        """How many teams enter in round ``round_`` (0 the first)."""
+        return sum(e[round_] for e in self.entries.values() if round_ < len(e))
+
+    def field_size(self, division: int) -> int:
+        return sum(self.entries.get(division, []))
+
+    def entry_round(self, division: int, rank: int) -> int:
+        """The round the division's ``rank``-th team (1 its best) enters: the best last."""
+        counts = self.entries[division]
+        left = rank
+        for k in range(len(counts) - 1, -1, -1):
+            if left <= counts[k]:
+                return k
+            left -= counts[k]
+        raise ValueError(f"{self.name}: rank {rank} isn't in division {division}'s field")
+
+
 class LowerDef(DefModel):
     """NCAA Divisions II and III (W9e): their programs are played with quick results."""
 
@@ -578,6 +641,15 @@ class LowerDef(DefModel):
     level_sd: float = Field(ge=0)
     roster_size: int = Field(ge=11)
     regular_season: RegularSeasonDef
+    all_division: AllDivisionDef | None = None
+
+    @model_validator(mode="after")
+    def _all_divisions(self) -> "LowerDef":
+        if self.all_division is not None:
+            unknown = set(self.all_division.entries) - {1, *self.divisions}
+            if unknown:
+                raise ValueError(f"All-Division Tournament: no division {sorted(unknown)}")
+        return self
 
 
 class CollegeDef(DefModel):

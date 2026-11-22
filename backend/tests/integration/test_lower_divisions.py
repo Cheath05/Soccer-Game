@@ -4,6 +4,7 @@ entrants as recruits of D-I's class, a signed portal player moving up at the rol
 rollover's seniors leaving and unsigned high-school seniors arriving. Results are written
 directly (the match engines aren't what's tested). Needs the built world."""
 
+import itertools
 import shutil
 from datetime import date, timedelta
 from pathlib import Path
@@ -13,6 +14,7 @@ import pytest
 from sqlalchemy import Connection, Engine, text
 
 from footsim.core.paths import data_dir
+from footsim.defs.college import on
 from footsim.persistence.database import open_database
 from footsim.persistence.migrations import migrate
 from footsim.world.career import initialize_career
@@ -161,3 +163,113 @@ def test_the_season_and_the_portal(career: tuple[Engine, World]) -> None:
             "SELECT COUNT(*) FROM lower_player GROUP BY club_id"))}
         assert sizes == {defs.roster_size}
         conn.rollback()
+
+
+def test_rankings_are_the_rpi(career: tuple[Engine, World]) -> None:
+    """D-II and D-III are ranked by the RPI, as D-I (22 Nov)."""
+    engine, world = career
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        start = _season_start(conn, meta.season_id)
+        comps = lower.competitions(conn, world)
+        _play(conn, comps[2], "lower", date(start.year, 10, 1), 7)
+        ratings = lower.rpi_ratings(conn, world, 2, meta.season_id)
+        order = lower.ranking(conn, world, 2, meta.season_id)
+        assert order and set(order) == set(ratings)
+        assert all(ratings[a] >= ratings[b] for a, b in itertools.pairwise(order))
+        conn.rollback()
+
+
+def test_the_all_division_tournament(career: tuple[Engine, World]) -> None:
+    """The All-Division Tournament (22 Nov): once the three national finals are played, each
+    division's champion and best by the RPI, the best entering latest; each round drawn
+    across the divisions; a champion, and the news."""
+    from footsim.world.college import all_division
+    from footsim.world.college.season import NATIONAL_TITLE, _title, college_competition
+
+    engine, world = career
+    adt = all_division.rules(world)
+    assert adt is not None
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        start = _season_start(conn, meta.season_id)
+        comps = lower.competitions(conn, world)
+        for div, comp in comps.items():
+            _play(conn, comp, "lower", date(start.year, 12, 31), div)
+        d1 = college_competition(conn, world)
+        assert d1 is not None
+        _play(conn, d1, "college", date(start.year, 12, 31), 1)
+        news: list[str] = []
+        day = date(start.year, 11, 9)
+        while day <= date(start.year, 12, 10):
+            for div, comp in comps.items():
+                _play(conn, comp, lower.event(div), day + timedelta(days=1), 10 + div)
+            news += lower.progress_lower(conn, world, meta, day)
+            day += timedelta(days=1)
+        # No field until D-I has its champion too.
+        assert all_division.progress_all_division(conn, world, meta, date(start.year, 12, 16)
+                                                  ) == []
+        assert all_division.field(conn, world, meta.season_id) == []
+        champion = int(conn.execute(text(
+            "SELECT club_id FROM college_team ORDER BY club_id DESC LIMIT 1")).scalar_one())
+        _title(conn, d1, meta.season_id, NATIONAL_TITLE, champion, "champion", "NCAA",
+               date(start.year, 12, 14))
+        assert all_division.progress_all_division(conn, world, meta, date(start.year, 12, 14)
+                                                  ) == []  # before selection day
+        day = on(adt.selection, start)
+        comp: int | None = None
+        while day <= date(start.year + 1, 1, 10):
+            news += all_division.progress_all_division(conn, world, meta, day)
+            comp = all_division.competition_id(conn, world)
+            if comp is not None:
+                _play(conn, comp, all_division.ALL_DIVISION, day + timedelta(days=1), 99)
+            day += timedelta(days=1)
+        teams, matches = all_division.matches(conn, world, meta.season_id)
+        assert len(teams) == sum(adt.field_size(d) for d in adt.entries)
+        assert [e.seed for e in teams] == list(range(1, len(teams) + 1))
+        mine = next(e for e in teams if e.club_id == champion)
+        assert (mine.division, mine.rank, mine.enters) == (1, 1, len(adt.entries[1]) - 1)
+        # Each division's champion is its first, and the best enter latest.
+        for d in adt.entries:
+            ours = sorted((e for e in teams if e.division == d), key=lambda e: e.rank)
+            assert [e.rank for e in ours] == list(range(1, adt.field_size(d) + 1))
+            assert all(a.enters >= b.enters for a, b in itertools.pairwise(ours))
+        assert all(a.enters >= b.enters for a, b in itertools.pairwise(teams))
+        # Within a round's entrants, the divisions take turns, D-I first.
+        later = {d: [sum(c[k + 1:]) for k in range(len(c))] for d, c in adt.entries.items()}
+        for k in range(len(adt.rounds)):
+            group = [e for e in teams if e.enters == k]
+            places = [(e.rank - later[e.division][k], e.division) for e in group]
+            assert places == sorted(places)
+        # Every round played, with the shape the rules give, and no rematch of a division in
+        # the first round while another division was left.
+        playing = 0
+        for k in range(len(adt.rounds)):
+            games = [m for m in matches if m.round == k]
+            playing = playing // 2 + adt.entering(k)
+            assert len(games) == playing // 2
+            assert all(m.winner is not None and m.a.seed < m.b.seed for m in games)
+            assert all(bool(m.fixture.neutral) == (k >= adt.neutral_from) for m in games)
+        first = [m for m in matches if m.round == 0]
+        assert all(m.a.division != m.b.division for m in first)
+        won = conn.execute(text(
+            "SELECT club_id FROM league_title WHERE competition_id = :c AND title = :t"),
+            {"c": comp, "t": all_division.TITLE}).scalar_one()
+        final = next(m for m in matches if m.round == len(adt.rounds) - 1)
+        assert final.winner is not None and won == final.winner.club_id
+        assert any("field of" in n for n in news)
+        assert sum("All-Division champions" in n for n in news) == 1
+        # The champion's season says so.
+        assert all_division.run(conn, world, meta.season_id, won) == "All-Division champions"
+        conn.rollback()
+
+
+def test_the_draw_pairs_across_divisions() -> None:
+    from footsim.world.college.all_division import Entrant, draw
+
+    teams = [Entrant(seed=k, club_id=k, division=d, rank=k, enters=0)
+             for k, d in enumerate([1, 1, 2, 2, 3, 3], start=1)]
+    pairs = [(a.seed, b.seed) for a, b in draw(teams)]
+    assert pairs == [(1, 6), (2, 5), (3, 4)]  # the best meets the worst of another division
+    same = [Entrant(seed=k, club_id=k, division=1, rank=k, enters=0) for k in range(1, 5)]
+    assert [(a.seed, b.seed) for a, b in draw(same)] == [(1, 4), (2, 3)]

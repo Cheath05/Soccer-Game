@@ -1,14 +1,15 @@
-import { Alert, Badge, Card, Group, Loader, SegmentedControl, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Alert, Badge, Card, Group, Loader, SegmentedControl, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 
-import { type FormerPlayer, useHallOfFame } from '../api/hallOfFame'
+import { type FormerPlayer, useHallOfFame, useSetFavorite } from '../api/hallOfFame'
 import ClubLink from '../components/ClubLink'
 import { useDevice } from '../lib/device'
 import { matchRatingColor, positionColor } from '../lib/format'
 
 // The Hall of fame (api/hall_of_fame.py): your club's greats, and everyone who has played for it
-// in your career with their record there and where they are now.
+// in your career with their record there and where they are now. A star makes a player a
+// favourite: favourites get their own cards at the top.
 
 type SortKey = 'appearances' | 'goals' | 'assists' | 'average_rating' | 'seasons' | 'last_season'
 
@@ -45,17 +46,39 @@ function PlayerName({ p }: { p: FormerPlayer }) {
   )
 }
 
-/** A Hall of famer's card. */
+/** The favourite star: filled for a favourite. */
+function Star({ p }: { p: FormerPlayer }) {
+  const set = useSetFavorite()
+  return (
+    <ActionIcon
+      variant="subtle"
+      color="yellow"
+      size="sm"
+      aria-label={p.favorite ? `Remove ${p.name} from favourites` : `Add ${p.name} to favourites`}
+      title={p.favorite ? 'Remove from favourites' : 'Add to favourites'}
+      loading={set.isPending}
+      onClick={() => set.mutate({ id: p.player_id, favorite: !p.favorite })}
+      style={{ flexShrink: 0 }}
+    >
+      <Text span fz="md" lh={1} c={p.favorite ? 'yellow.6' : 'dimmed'}>
+        {p.favorite ? '★' : '☆'}
+      </Text>
+    </ActionIcon>
+  )
+}
+
+/** A Hall of famer's (or a favourite's) card. */
 function Legend({ p }: { p: FormerPlayer }) {
   return (
-    <Card withBorder padding="sm" bg="var(--mantine-color-yellow-light)">
+    <Card withBorder padding="sm" bg={p.hall_of_fame ? 'var(--mantine-color-yellow-light)' : undefined}>
       <Group gap="xs" wrap="nowrap">
-        <Badge color={positionColor(p.position)} variant="light" w={44}>
+        <Badge color={positionColor(p.position)} variant="light" w={44} style={{ flexShrink: 0 }}>
           {p.position}
         </Badge>
-        <Text fw={700} truncate>
+        <Text fw={700} truncate style={{ flex: 1, minWidth: 0 }}>
           <PlayerName p={p} />
         </Text>
+        <Star p={p} />
       </Group>
       <Text size="sm" mt={4}>
         {p.appearances} apps · {p.goals} goals · {p.assists} assists
@@ -79,7 +102,7 @@ export default function HallOfFamePage() {
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'appearances', desc: true })
   const [who, setWho] = useState('all')
   const rows = useMemo(() => {
-    const list = (data.data?.players ?? []).filter((p) => who === 'all' || (who === 'current' ? p.now === 'with_you' : p.now !== 'with_you'))
+    const list = (data.data?.players ?? []).filter((p) => who === 'all' || (who === 'favorites' ? p.favorite : who === 'current' ? p.now === 'with_you' : p.now !== 'with_you'))
     const value = (p: FormerPlayer) => (sort.key === 'last_season' ? p.last_season : sort.key === 'average_rating' ? (p.average_rating ?? 0) : p[sort.key])
     return [...list].sort((a, b) => {
       const x = value(a)
@@ -93,6 +116,8 @@ export default function HallOfFamePage() {
   if (data.error) return <Alert color="red">{data.error.message}</Alert>
   const h = data.data
   const legends = h.players.filter((p) => p.hall_of_fame)
+  const byId = new Map(h.players.map((p) => [p.player_id, p]))
+  const favorites = h.favorites.flatMap((id) => byId.get(id) ?? [])
 
   return (
     <Stack gap="sm">
@@ -102,6 +127,23 @@ export default function HallOfFamePage() {
           {h.club.name}: everyone who has played for you, and the greats.
         </Text>
       </div>
+      <Card withBorder padding="md">
+        <Text fw={700}>Your favourites</Text>
+        <Text size="xs" c="dimmed" mb="xs">
+          Star anyone who has played for you (☆) to keep them here.
+        </Text>
+        {favorites.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            No favourites yet.
+          </Text>
+        ) : (
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="xs">
+            {favorites.map((p) => (
+              <Legend key={p.player_id} p={p} />
+            ))}
+          </SimpleGrid>
+        )}
+      </Card>
       <Card withBorder padding="md">
         <Text fw={700}>The greats</Text>
         <Text size="xs" c="dimmed" mb="xs">
@@ -121,11 +163,11 @@ export default function HallOfFamePage() {
       </Card>
       <Group justify="space-between" align="center">
         <Title order={3}>Everyone who has played for you</Title>
-        <SegmentedControl size="xs" value={who} onChange={setWho} data={[{ value: 'all', label: 'All' }, { value: 'current', label: 'Current' }, { value: 'former', label: 'Former' }]} />
+        <SegmentedControl size="xs" value={who} onChange={setWho} data={[{ value: 'all', label: 'All' }, { value: 'favorites', label: '★' }, { value: 'current', label: 'Current' }, { value: 'former', label: 'Former' }]} />
       </Group>
       {rows.length === 0 ? (
         <Text size="sm" c="dimmed">
-          Nobody has played a match for you yet.
+          {who === 'favorites' ? 'No favourites yet: star a player with ☆.' : 'Nobody has played a match for you yet.'}
         </Text>
       ) : (
         <Table.ScrollContainer minWidth={phone ? 0 : 720}>
@@ -149,6 +191,7 @@ export default function HallOfFamePage() {
                 <Table.Tr key={p.player_id}>
                   <Table.Td>
                     <Group gap={6} wrap="nowrap">
+                      <Star p={p} />
                       <Badge color={positionColor(p.position)} variant="light" w={44} style={{ flexShrink: 0 }}>
                         {p.position}
                       </Badge>

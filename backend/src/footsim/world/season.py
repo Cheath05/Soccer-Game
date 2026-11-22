@@ -50,8 +50,14 @@ from footsim.persistence.schema import (
     tactic,
 )
 from footsim.world.club_names import apply_club_names, apply_club_nations
+from footsim.world.college.all_division import progress_all_division
 from footsim.world.college.assistant import weekly as assistant_recruiting
-from footsim.world.college.common import LOWER_REGULAR, is_college_stage, is_lower_stage
+from footsim.world.college.common import (
+    ALL_DIVISION,
+    LOWER_REGULAR,
+    is_college_stage,
+    is_lower_stage,
+)
 from footsim.world.college.draft import college_turnover
 from footsim.world.college.lower import progress_lower
 from footsim.world.college.program import growth_factors, progress_program
@@ -326,6 +332,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
             messages += news
     messages += progress_college(conn, world, meta, day)
     messages += progress_lower(conn, world, meta, day)
+    messages += progress_all_division(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
     messages += settle_visits(conn, world, meta, day)
     messages += assistant_recruiting(conn, world, meta, day)
@@ -613,7 +620,7 @@ def decider_for(conn: Connection, world: World, fx: Row[Any]) -> Decider | None:
         return finals_decider(fx)
     if fx.stage == LOWER_REGULAR:  # D-II/D-III regular season (W9e): draws stand
         return None
-    if is_lower_stage(fx.stage):  # D-II/D-III national tournaments
+    if is_lower_stage(fx.stage) or fx.stage == ALL_DIVISION:  # D-II/D-III, the All-Division
         return Decider(extra_time=True, penalties=True)
     if is_college_stage(fx.stage):
         return college_decider(world, fx.stage)

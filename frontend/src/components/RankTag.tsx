@@ -3,29 +3,39 @@ import { Text } from '@mantine/core'
 
 import { api } from '../api/client'
 
-// The college top 25 by RPI (GET /api/college/top25): "#12" beside a ranked program's name, so a
-// college coach can see a strong opponent at a glance. Nothing for anyone outside it.
+// The college top 25 of each division by RPI (GET /api/college/top25): "#12" beside a ranked D-I
+// program's name, "D-II #3" beside a D-II one's, so a college coach can see a strong opponent at
+// a glance. Nothing for anyone outside them.
 
 export const useTop25 = () =>
   useQuery({
     queryKey: ['college', 'top25'],
-    queryFn: () => api.get<{ club_id: number; rank: number }[]>('/college/top25'),
+    queryFn: () => api.get<Rank[]>('/college/top25'),
     staleTime: 60_000,
-    select: (rows) => new Map(rows.map((r) => [r.club_id, r.rank])),
+    select: (rows) => new Map(rows.map((r) => [r.club_id, r])),
   })
 
-export function useRank(clubId: number | undefined): number | undefined {
+interface Rank {
+  club_id: number
+  rank: number
+  division: number
+}
+
+const DIVISION = ['', '', 'D-II', 'D-III']
+
+export function useRank(clubId: number | undefined): Rank | undefined {
   const top = useTop25().data
   return clubId === undefined ? undefined : top?.get(clubId)
 }
 
-/** "#12 " before a top-25 program's name (nothing otherwise). */
+/** "#12 " before a top-25 program's name, "D-II #3 " for a lower division's (nothing otherwise). */
 export default function RankTag({ clubId }: { clubId: number }) {
   const rank = useRank(clubId)
   if (!rank) return null
+  const division = DIVISION[rank.division] ?? ''
   return (
-    <Text span c="dimmed" fw={700} fz="0.85em" mr={4} title={`No. ${rank} in the RPI`}>
-      #{rank}
+    <Text span c="dimmed" fw={700} fz="0.85em" mr={4} title={`No. ${rank.rank} in the ${division ? `${division} ` : ''}RPI`}>
+      {division ? `${division} ` : ''}#{rank.rank}
     </Text>
   )
 }

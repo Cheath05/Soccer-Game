@@ -26,7 +26,7 @@ being able to transfer schools to D1".
   out as it does D1. `recruit.source` marks a portal entrant (`player_id` is his player).
 - **Seasons:** each division is a competition (`NCAA2`, `NCAA3`, type `college_lower`), always
   fast-simulated: a conference schedule (non-conference games to fill), the table's champion
-  takes the automatic bid, the best of the rest by points a game fill the national
+  takes the automatic bid, the best of the rest by the RPI (points a game until 22 Nov) fill the national
   tournament's field (seeded by the same), single-match knockout rounds with extra time and
   penalties.
 - **Players:** generated at a division's level; each rollover seniors leave the game (retire),

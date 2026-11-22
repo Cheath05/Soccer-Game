@@ -449,6 +449,12 @@ def _college_final(conn: Connection, world: World, user: int, ended: int, messag
     national = conn.execute(select(league_title.c.club_id).where(
         league_title.c.season_id == ended, league_title.c.competition_id == comp,
         league_title.c.title == NATIONAL_TITLE)).scalar()
+    from footsim.world.college import all_division
+
+    adt_comp = all_division.competition_id(conn, world)
+    adt = conn.execute(select(league_title.c.club_id).where(
+        league_title.c.season_id == ended, league_title.c.competition_id == adt_comp,
+        league_title.c.title == all_division.TITLE)).scalar() if adt_comp is not None else None
     signed: dict[int, int] = defaultdict(int)
     for r in conn.execute(select(recruit.c.stars).where(
             recruit.c.class_season == ended + 1, recruit.c.club_id == user,
@@ -464,4 +470,5 @@ def _college_final(conn: Connection, world: World, user: int, ended: int, messag
         news_sections=news_sections(news, names.get(user)), college=rec,
         conference_champions=champions,
         national_champion=ref(int(national)) if national is not None else None,
+        all_division_champion=ref(int(adt)) if adt is not None else None,
         class_signed=dict(sorted(signed.items(), reverse=True)))

@@ -316,12 +316,26 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Divisions II and III, and the transfer portal',
     summary: 'Where unsigned recruits develop, and how their best move up to D-I.',
     blocks: [
-      'The NCAA’s Divisions II and III are in the game: about 200 D-II and 400 D-III programs, real schools in their conferences, played with quick results (scores, scorers and ratings, no full match). Nobody coaches them; on the College page, switch to Division II or III for their conference tables and national tournament.',
+      'The NCAA’s Divisions II and III are in the game: about 200 D-II and 400 D-III programs, real schools in their conferences, played with quick results (scores, scorers and ratings, no full match). Nobody coaches them; on the College page, switch to Division II or III for their conference tables, RPI rankings and national tournament. A top-25 team in D-II or D-III shows its rank beside its name (“D-II #3”), as D-I’s top 25 do (“#3”).',
       [
-        'Their seasons: each team plays its conference once and fills the rest with non-conference games, from late August to early November. Each conference’s table winner takes its title and an automatic bid; the best of the rest by points a game fill the national tournament (36 teams in D-II, 64 in D-III), single matches to the final in early December.',
+        'Their seasons: each team plays its conference once and fills the rest with non-conference games, from late August to early November. Each conference’s table winner takes its title and an automatic bid; the best of the rest by the RPI (as in D-I) fill the national tournament (36 teams in D-II, 64 in D-III), single matches to the final in early December.',
         'Hidden gems: the high-school seniors no D-I program signed don’t leave the game any more. At the season’s start they join D-II and D-III programs as freshmen (the best of them to the strongest D-II programs), keeping their potential, and develop there. Rosters are filled with generated freshmen beside them; seniors graduate and leave.',
         'The transfer portal opens on 8 December, after the national tournaments: the best D-II and D-III players who aren’t seniors (60 at most, each at least a 43 overall now) want to move up. They join D-I’s recruiting class: on Recruiting, the Transfer portal tab lists them, each marked with his school. Offer, visit and sign them as you would a high-school senior; the other D-I programs recruit them too.',
         'A portal player who signs joins his D-I program at the season’s start, a class on from where he was (a D-II sophomore arrives a junior), on the scholarship he signed for. One nobody signs stays at his school.',
+      ],
+    ],
+  },
+  {
+    id: 'all-division',
+    title: 'The All-Division Tournament',
+    summary: 'D-I, D-II and D-III’s best, after the national finals, to settle the best team in college soccer.',
+    blocks: [
+      'Once D-I’s College Cup and the D-II and D-III finals are played, the All-Division Tournament (on the College page, the All-Division tab) brings the three divisions together, from 16 to 29 December. Its games count in no division’s table, RPI or record.',
+      [
+        'The field (picked on 15 December): each division’s national champion, then its best by the season’s final RPI. 16 from D-I, 12 each from D-II and D-III, 40 in all.',
+        'Byes: D-I’s top four start in the Round of 16 (two byes); D-I’s 5th to 8th and the top four of D-II and D-III start in the second round (one bye); the rest play the first round.',
+        'Matchups: the field is seeded as one list (the later a team starts, the better its seed). Each round is drawn when the one before it ends: the best seed left meets the worst seed left from another division, so every round is D-I against D-II or D-III wherever it can be. The better seed is at home until the semifinals, which with the final are at a neutral ground; extra time, then penalties.',
+        'If your team is in it, you play its games as any other; the rest are quick results. Continue stops after the final.',
       ],
     ],
   },
@@ -353,7 +367,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     blocks: [
       [
         'Search for any club by name with the box in the header (on a narrow screen, at the top of the menu). Accents don’t matter.',
-        'A club page shows its league position, squad, average age and rating, manager, reputation, wage bill, budget and balance (estimates for other clubs), and its squad table. Click a player there for his page. Hall of fame in the menu lists everyone who has played for you in the career, with his record for your club (years, appearances, goals, assists, average rating), the titles won while he was there and where he is now; the greats (40 appearances, and a 7.0 average rating, 20 goals, 20 assists or a national title) get a card at the top. Club & history in the menu is your own club’s page, with its history: how each past season ended. The history lists the trophies won, European ones in their competition’s colour (Champions League blue, Europa League orange, Conference League green), and each season’s European run; winning the league, the main domestic cup and the Champions League in one season is a Treble, shown with a gold banner.',
+        'A club page shows its league position, squad, average age and rating, manager, reputation, wage bill, budget and balance (estimates for other clubs), and its squad table. Click a player there for his page. Hall of fame in the menu lists everyone who has played for you in the career, with his record for your club (years, appearances, goals, assists, average rating), the titles won while he was there and where he is now; the greats (40 appearances, and a 7.0 average rating, 20 goals, 20 assists or a national title, the All-Division Tournament included) get a card. Star (☆) anyone on the list to make him a favourite: your favourites get their own cards at the top, and the ★ filter shows only them. Club & history in the menu is your own club’s page, with its history: how each past season ended. The history lists the trophies won, European ones in their competition’s colour (Champions League blue, Europa League orange, Conference League green), and each season’s European run; winning the league, the main domestic cup and the Champions League in one season is a Treble, shown with a gold banner.',
       ],
     ],
   },

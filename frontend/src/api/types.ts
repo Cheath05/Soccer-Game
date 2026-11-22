@@ -197,6 +197,7 @@ export interface SeasonFinal {
   college?: CollegeSeasonRecord | null // a college coach's season
   conference_champions?: ConferenceChampions[] // a college coach's summary
   national_champion?: ClubRef | null
+  all_division_champion?: ClubRef | null
   class_signed?: Record<string, number> // a college coach's new class: recruits by stars
 }
 
@@ -1057,6 +1058,7 @@ export interface CollegeSeasonRecord {
   prestige: number // as recruits see it (with the facilities' bonus)
   prestige_facilities?: number
   division?: number // 2 or 3 for a D-II/D-III program
+  all_division?: string | null // its All-Division Tournament run, in words; null if not in it
 }
 
 // GET /api/international/world-cup: the finals (empty before the draw).

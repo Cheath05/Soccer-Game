@@ -34,6 +34,8 @@ def conference_event(conference: str) -> str:
 LOWER_PREFIX = "LOWER"  # a D-II/D-III national tournament's stage and event: LOWER2, LOWER3 (W9e)
 LOWER_TYPE = "college_lower"  # the competition type of NCAA Divisions II and III
 LOWER_REGULAR = "lower"  # a D-II/D-III regular-season fixture's stage (apart from D-I's)
+ALL_DIVISION = "ADT"  # the All-Division Tournament's stage and event (22 Nov)
+ALL_TYPE = "college_all"  # its competition's type
 
 
 def is_lower_stage(stage: str) -> bool:

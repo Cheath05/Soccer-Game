@@ -1,9 +1,10 @@
 import { Badge, Button, Card, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 
-import { type Conference, useBracket, useConferences, useDraftPool, useRankings, wdl } from '../api/americas'
+import { type Conference, useAllDivision, useBracket, useConferences, useDraftPool, useRankings, wdl } from '../api/americas'
 import { ApiError } from '../api/client'
 import { useCareer } from '../api/hooks'
+import AllDivisionBracket from '../components/AllDivisionBracket'
 import CollegeBracket from '../components/CollegeBracket'
 import ClubLink from '../components/ClubLink'
 import PlayerLink from '../components/PlayerLink'
@@ -38,8 +39,11 @@ const DIVISIONS = [
 
 const LOWER_TABS = [
   { value: 'tables', label: 'Conferences' },
+  { value: 'rpi', label: 'RPI' },
   { value: 'ncaa', label: 'National tournament' },
 ]
+
+const PHONE_LABELS: Record<string, string> = { tables: 'Tables', draft: 'Draft', ncaa: 'NCAA', adt: 'All-Div' }
 
 export default function CollegePage() {
   const [div, setDiv] = useUrlState('div', '1')
@@ -48,7 +52,13 @@ export default function CollegePage() {
   const [tab, setTab] = useUrlState('tab', 'tables')
   const missing = conferences.error instanceof ApiError && conferences.error.status === 404
   const lower = division !== 1
-  const tabs = lower ? LOWER_TABS : TABS
+  // The All-Division Tournament, with Divisions II and III (a college coach's career).
+  const adt = useAllDivision(true)
+  const { phone } = useDevice()
+  // On a phone the labels are shortened so every tab fits.
+  const tabs = [...(lower ? LOWER_TABS : TABS), ...(adt.data ? [{ value: 'adt', label: 'All-Division' }] : [])].map((t) =>
+    phone ? { ...t, label: PHONE_LABELS[t.value] ?? t.label } : t,
+  )
   const shown = tabs.some((t) => t.value === tab) ? tab : 'tables'
 
   return (
@@ -75,9 +85,10 @@ export default function CollegePage() {
         <>
           <SegmentedControl fullWidth value={shown} onChange={setTab} data={tabs} aria-label="College view" />
           {shown === 'tables' && <Conferences key={div} list={conferences.data} />}
-          {shown === 'rpi' && <Rankings />}
+          {shown === 'rpi' && <Rankings division={division} />}
           {shown === 'ncaa' && (lower ? <LowerBracket division={division} /> : <NcaaBracket />)}
           {shown === 'draft' && <DraftPool />}
+          {shown === 'adt' && adt.data && <AllDivisionPanel />}
         </>
       )}
     </Stack>
@@ -215,8 +226,9 @@ function Conferences({ list }: { list: Conference[] }) {
   )
 }
 
-function Rankings() {
-  const rankings = useRankings(true)
+function Rankings({ division }: { division: number }) {
+  const rankings = useRankings(true, division)
+  const lower = division !== 1
   if (rankings.isPending) return <Loader />
   if (!rankings.data) return <Text c="red">{rankings.error?.message}</Text>
   if (rankings.data.length === 0) {
@@ -229,7 +241,8 @@ function Rankings() {
   return (
     <Card withBorder padding="sm">
       <Text size="xs" c="dimmed" mb={4}>
-        The Rating Percentage Index: a quarter a team’s own winning share, half its opponents’, a quarter their opponents’. The NCAA’s 25 at-large bids and its seeds follow it.
+        The Rating Percentage Index: a quarter a team’s own winning share, half its opponents’, a quarter their opponents’.{' '}
+        {lower ? 'The national tournament’s at-large bids and its seeds follow it.' : 'The NCAA’s 25 at-large bids and its seeds follow it.'}
       </Text>
       <Table highlightOnHover verticalSpacing={5}>
         <Table.Thead>
@@ -244,7 +257,7 @@ function Rankings() {
         <Table.Tbody>
           {rankings.data.map((r) => (
             <Table.Tr key={r.club.id}>
-              <Table.Td className="fs-num" c={r.rank <= 16 ? 'teal' : 'dimmed'}>
+              <Table.Td className="fs-num" c={r.rank <= (lower ? 25 : 16) ? 'teal' : 'dimmed'}>
                 {r.rank}
               </Table.Td>
               <Table.Td>
@@ -313,8 +326,25 @@ function LowerBracket({ division }: { division: number }) {
       </Title>
       <CollegeBracket
         bracket={b}
-        empty={`The ${b.seeded}-team field is picked on 9 November, when the regular season is over: each conference's table winner, then the best of the rest by points a game. The final is in early December.`}
+        empty={`The ${b.seeded}-team field is picked on 9 November, when the regular season is over: each conference's table winner, then the best of the rest by the RPI, seeded by it. The final is in early December.`}
       />
+    </Stack>
+  )
+}
+
+function AllDivisionPanel() {
+  const t = useAllDivision(true)
+  if (t.isPending) return <Loader />
+  if (!t.data) return <Text c="red">{t.error?.message}</Text>
+  return (
+    <Stack gap="sm">
+      <Title order={3}>
+        {t.data.name}{' '}
+        <Text span c="dimmed" fz="md">
+          {t.data.season}
+        </Text>
+      </Title>
+      <AllDivisionBracket tournament={t.data} />
     </Stack>
   )
 }

@@ -6,8 +6,8 @@ and players in ``lower_player``, apart from D-I's tables, so D-I's recruiting, r
 program builder never see them; the professional game leaves them out like D-I's
 (college/common.py). A season: each team plays its conference once and fills the rest with
 non-conference games (as D-I); the table's top takes its conference title and the automatic bid;
-the best of the rest by points a game fill the national tournament's field, seeded the same way;
-single matches, the higher seed at home until the late rounds, extra time and penalties. At the
+the best of the rest by the RPI (as D-I's) fill the national tournament's field, seeded the same
+way; single matches, the higher seed at home until the late rounds, extra time and penalties. At the
 rollover seniors leave the game, the rest move up a class, and rosters refill with freshmen.
 Nobody coaches these programs: they are the game's."""
 
@@ -231,13 +231,26 @@ def records(conn: Connection, world: World, division: int, season_id: int
     return found
 
 
+def rpi_ratings(conn: Connection, world: World, division: int, season_id: int
+                ) -> dict[int, float]:
+    """Every team's RPI from the division's games this season, as D-I's (22 Nov)."""
+    from footsim.competitions.college import Game, rpi
+    from footsim.world.college.season import _score
+
+    comp = competitions(conn, world).get(division)
+    if comp is None:
+        return {}
+    weights = world.defs.college.rules.ranking
+    return rpi([Game(r.home_club_id, r.away_club_id, _score(r, weights.draw_value))
+                for r in _results(conn, comp, season_id)], weights.weights)
+
+
 def ranking(conn: Connection, world: World, division: int, season_id: int) -> list[int]:
-    """The division's teams best first: points a game, then goal difference a game, goals."""
+    """The division's teams best first by the RPI (as D-I's), then points a game."""
+    ratings = rpi_ratings(conn, world, division, season_id)
     found = records(conn, world, division, season_id)
-    return sorted(found, key=lambda c: (-found[c].points_a_game,
-                                        -(found[c].goals_for - found[c].goals_against)
-                                        / max(1, found[c].played),
-                                        -found[c].goals_for, c))
+    return sorted(ratings, key=lambda c: (-round(ratings[c], 6),
+                                          -found[c].points_a_game if c in found else 0.0, c))
 
 
 def _division_title(d: DivisionDef) -> str:
@@ -304,7 +317,8 @@ def _select_field(conn: Connection, world: World, meta: CareerMeta, division: in
             field.append(club_id)
     seeded = sorted(field, key=lambda c: (rank_of.get(c, len(order) + 1), c))
     _seed(conn, meta.season_id, event(division), seeded,
-          {c: "auto" if c in auto else "at_large" for c in seeded}, None,
+          {c: "auto" if c in auto else "at_large" for c in seeded},
+          rpi_ratings(conn, world, division, meta.season_id),
           {c: rank_of.get(c, 0) for c in seeded})
     return []
 
@@ -567,7 +581,7 @@ class LowerSeason:
     conference: str  # its key
     row: TableRow | None
     record: Standing
-    rank: int | None  # in its division, by points a game
+    rank: int | None  # in its division, by the RPI
     national: str | None  # its national tournament run, in words
     titles: list[str]
 

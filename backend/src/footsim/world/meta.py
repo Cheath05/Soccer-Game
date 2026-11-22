@@ -55,6 +55,9 @@ class CareerMeta:
     # The recruiting assistant (world/college/assistant.py): each Monday until signing day it
     # targets and offers recruits to replace the college coach's leavers.
     auto_recruiting: bool = False
+    # The players the user starred on the Hall of fame page (api/hall_of_fame.py), in the order
+    # starred.
+    hall_of_fame_favorites: list[int] = field(default_factory=list)
 
     @property
     def seed(self) -> int:
@@ -88,6 +91,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         auto_position_training=bool(values.get("auto_position_training", False)),
         gameday_visits={int(k): int(v) for k, v in values.get("gameday_visits", {}).items()},
         auto_recruiting=bool(values.get("auto_recruiting", False)),
+        hall_of_fame_favorites=[int(p) for p in values.get("hall_of_fame_favorites", [])],
     )
 
 
@@ -112,6 +116,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "auto_position_training": meta.auto_position_training,
         "gameday_visits": {str(k): v for k, v in meta.gameday_visits.items()},
         "auto_recruiting": meta.auto_recruiting,
+        "hall_of_fame_favorites": meta.hall_of_fame_favorites,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

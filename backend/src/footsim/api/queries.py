@@ -112,6 +112,7 @@ from footsim.scouting.estimates import (
 from footsim.transfers.valuation import value_eur, years_old
 from footsim.world.club_names import load_club_names
 from footsim.world.college.common import (
+    ALL_TYPE,
     CONFERENCE_PREFIX,
     LOWER_PREFIX,
     LOWER_REGULAR,
@@ -218,6 +219,15 @@ def _lower_stage(stage: str, round_: int) -> str:
     return names[round_] if 0 <= round_ < len(names) else "National tournament"
 
 
+def _all_division_stage(round_: int) -> str:
+    """An All-Division Tournament fixture's round (22 Nov)."""
+    lower = get_world().defs.college.lower
+    adt = lower.all_division if lower is not None else None
+    if adt is None or not 0 <= round_ < len(adt.round_names):
+        return "All-Division Tournament"
+    return adt.round_names[round_]
+
+
 def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]],
                 firsts: FirstLegs | None = None) -> FixtureOut:
     comp = comps[row.competition_id]
@@ -227,7 +237,8 @@ def fixture_out(row: Row[Any], names: dict[int, str], comps: dict[int, Row[Any]]
     named = (cup.rounds[row.round].name if cup
              else stage_name(continental, row.round) if continental
              else _college_stage(row.stage, row.round) if comp.type == "college"
-             else _lower_stage(row.stage, row.round) if comp.type == LOWER_TYPE else None)
+             else _lower_stage(row.stage, row.round) if comp.type == LOWER_TYPE
+             else _all_division_stage(row.round) if comp.type == ALL_TYPE else None)
     prior = _first_leg_goals(row, firsts or {})
     played = row.status == "played" and row.home_goals is not None and row.away_goals is not None
     agg = ((prior[0] + row.home_goals, prior[1] + row.away_goals)
@@ -1138,6 +1149,7 @@ def club_overview(conn: Connection, world: World, club_id: int) -> ClubOverviewO
 def college_season_record(conn: Connection, world: World, meta: CareerMeta, club_id: int,
                           season_id: int) -> CollegeSeasonRecordOut | None:
     """A college program's season, for its club page and the season summary."""
+    from footsim.world.college import all_division
     from footsim.world.college.season import conference_tables, team_season
 
     ts = team_season(conn, world, meta, club_id, season_id)
@@ -1160,14 +1172,15 @@ def college_season_record(conn: Connection, world: World, meta: CareerMeta, club
         goals_for=ts.overall.goals_for, goals_against=ts.overall.goals_against,
         rpi_rank=ts.rpi_rank, ncaa=ts.ncaa, titles=ts.titles, tier=int(team.tier),
         prestige=round(float(team.prestige or 0.0) + bonus, 1),
-        prestige_facilities=round(bonus, 1))
+        prestige_facilities=round(bonus, 1),
+        all_division=all_division.run(conn, world, season_id, club_id))
 
 
 
 def _lower_season_record(conn: Connection, world: World, meta: CareerMeta, club_id: int,
                          season_id: int) -> CollegeSeasonRecordOut | None:
     """A D-II/D-III program's season (W9e), in the same shape as D-I's."""
-    from footsim.world.college import lower
+    from footsim.world.college import all_division, lower
 
     ls = lower.team_season(conn, world, meta, club_id, season_id)
     defs = lower.rules(world)
@@ -1187,7 +1200,7 @@ def _lower_season_record(conn: Connection, world: World, meta: CareerMeta, club_
         won=ls.record.won, drawn=ls.record.drawn, lost=ls.record.lost,
         goals_for=ls.record.goals_for, goals_against=ls.record.goals_against,
         rpi_rank=ls.rank, ncaa=ls.national, titles=ls.titles, tier=0, prestige=0.0,
-        division=ls.division)
+        division=ls.division, all_division=all_division.run(conn, world, season_id, club_id))
 
 RECENT_TRANSFERS = 5
 
@@ -1366,13 +1379,17 @@ class _Line:
     red: int
 
 
+SCHOOL_TYPES = ("college", LOWER_TYPE, ALL_TYPE)  # a school's competitions: "School", not "Club"
+
+
 def _college_merged(conn: Connection, comps: dict[int, Row[Any]], query: Any, player_id: int
                     ) -> list[_Line]:
     """The season lines with a college season's stages (regular season, conference
-    tournament, NCAA tournament) as one line: they're one competition."""
+    tournament, NCAA tournament; a D-II/D-III season and its national tournament) as one line:
+    they're one competition."""
     merged: dict[tuple[int, int, str, int], _Line] = {}
     for r in conn.execute(query, {"pid": player_id}):
-        college = comps[r.competition_id].type == "college"
+        college = comps[r.competition_id].type in ("college", LOWER_TYPE)
         stage = comps[r.competition_id].key if college else str(r.stage)
         key = (int(r.season_id), int(r.competition_id), stage, int(r.club_id))
         line = merged.get(key)
@@ -1422,7 +1439,7 @@ def player_seasons(conn: Connection, world: World, player_id: int) -> list[Playe
             season_id=season_id, season=labels[season_id],
             lines=[_season_line(ClubRef(id=r.club_id, name=names[r.club_id]), key, name, r.apps,
                                 r.starts, r.minutes, r.goals, r.assists, r.rating_sum, r.yellow,
-                                r.red, school=comps[r.competition_id].type == "college")
+                                r.red, school=comps[r.competition_id].type in SCHOOL_TYPES)
                    for _, key, name, r in entries],
             total=_season_line(None, "", "All competitions", sum(r.apps for r in rows),
                                sum(r.starts for r in rows), sum(r.minutes for r in rows),

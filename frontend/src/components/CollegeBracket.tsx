@@ -118,7 +118,7 @@ function goals(m: BracketMatch, side: BracketSide | null): { goals: number | nul
   return { goals: home ? m.home_goals : m.away_goals, pens: home ? m.home_pens : m.away_pens }
 }
 
-function MatchCard({ match }: { match: BracketMatch }) {
+export function MatchCard({ match }: { match: BracketMatch }) {
   const navigate = useNavigate()
   const played = match.fixture_id !== null && match.home_goals !== null
   const open = () => played && void navigate({ to: '/match/$fixtureId', params: { fixtureId: String(match.fixture_id) } })

@@ -107,6 +107,7 @@ draft:
 continue_stops:
   ncaa_selection: true  # the NCAA tournament's field is picked
   ncaa_final: true  # the College Cup final
+  all_division_final: true  # the All-Division Tournament's final (with Divisions II and III)
   superdraft: true  # the MLS SuperDraft
   recruiting: true  # offers open, signing day, the class closes
   monthly: true  # the first of each month, once the coach has no games left this season

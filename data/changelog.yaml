@@ -27,7 +27,7 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
-- version: "1.145"
+- version: "1.147"
   date: "2026-11-22"
   title: "The All-Division Tournament, D-II and D-III rankings, Hall of fame favourites"
   changes:
@@ -36,6 +36,15 @@
     - "D-II and D-III have RPI rankings like D-I's (College page → Division II or III → RPI), and their tournaments' at-large bids and seeds now follow them. Their top 25 show their rank beside their name (\"D-II #3\"), as D-I's do."
     - "Hall of fame: star (☆) anyone who has played for you to make him a favourite. Favourites get their own cards at the top, and the ★ filter shows only them."
     - "A D-II or D-III player's season is now one line on his Seasons table, as D-I's is."
+
+- version: "1.145"
+  date: "2026-11-20"
+  title: "World Cups after 2030, and world trophies"
+  changes:
+    - "The World Cup carries on every four years: after the 2030 final the 2034 qualifiers start in September 2031, with Saudi Arabia hosting (Europe 16 places, Africa 9, Asia 7 plus the hosts), then 2038 and on."
+    - "International → World Cup shows the World Cup being played or the next one (the finals stay up for a few months after the final)."
+    - "Trophy cabinets: a World Cup winner has it in its national team's History, and a Club World Cup winner in its club's, with the year, above the other trophies."
+    - "Fixed: a second Club World Cup (2033) would have mixed its groups with 2029's."
 
 - version: "1.144"
   date: "2026-11-20"

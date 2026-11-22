@@ -3,7 +3,8 @@ career has the guest clubs, with squads of their country's made-up players (also
 pool). The 2029 edition is drawn on its day: 32 entrants by each confederation's share and
 country cap, the host's club, 8 groups with no two clubs of one confederation (UEFA's, two at
 most); its results filled in, the knockouts follow to a champion, and prize money is paid to
-the clubs with finances. Needs the built world."""
+the clubs with finances; the champion has the trophy in its cabinet. The 2033 edition is drawn
+apart from 2029's. Needs the built world."""
 
 import shutil
 from collections import Counter
@@ -46,6 +47,26 @@ def _play(conn: Connection, stage: str) -> None:
                      {"h": 2 if home_wins else 1, "a": 1 if home_wins else 2, "i": f.id})
 
 
+def _tournament(conn: Connection, world: World, year: int) -> list[str]:
+    """The ``year`` edition, drawn on its day and played out."""
+    news: list[str] = []
+    spec = world.defs.international.club_world_cup
+    meta = read_meta(conn)
+    meta.current_date = draw_date(world, year)
+    write_meta(conn, meta)
+    news += club_world_cup_day(conn, world, meta, draw_date(world, year))
+    for stage, month_day in (("CWC:G", spec.dates.groups[0]),
+                             ("CWC:R16", spec.dates.round_of_16),
+                             ("CWC:QF", spec.dates.quarter_finals),
+                             ("CWC:SF", spec.dates.semi_finals),
+                             ("CWC:F", spec.dates.final)):
+        day = date(year, int(month_day[:2]), int(month_day[3:]))
+        news += club_world_cup_day(conn, world, meta, day)
+        _play(conn, stage)
+        news += club_world_cup_day(conn, world, meta, day)
+    return news
+
+
 @pytest.fixture(scope="module")
 def career(tmp_path_factory: pytest.TempPathFactory) -> tuple[Engine, World, list[str]]:
     world = get_world()
@@ -55,22 +76,8 @@ def career(tmp_path_factory: pytest.TempPathFactory) -> tuple[Engine, World, lis
     migrate(engine)
     with engine.begin() as conn:
         initialize_career(conn, world, None, None, seed=37)
-    news: list[str] = []
-    spec = world.defs.international.club_world_cup
     with engine.begin() as conn:
-        meta = read_meta(conn)
-        meta.current_date = draw_date(world, YEAR)
-        write_meta(conn, meta)
-        news += club_world_cup_day(conn, world, meta, draw_date(world, YEAR))
-        for stage, month_day in (("CWC:G", spec.dates.groups[0]),
-                                 ("CWC:R16", spec.dates.round_of_16),
-                                 ("CWC:QF", spec.dates.quarter_finals),
-                                 ("CWC:SF", spec.dates.semi_finals),
-                                 ("CWC:F", spec.dates.final)):
-            day = date(YEAR, int(month_day[:2]), int(month_day[3:]))
-            news += club_world_cup_day(conn, world, meta, day)
-            _play(conn, stage)
-            news += club_world_cup_day(conn, world, meta, day)
+        news = _tournament(conn, world, YEAR)
     return engine, world, news
 
 
@@ -116,7 +123,7 @@ def test_the_tournament_is_played_to_a_champion(career: tuple[Engine, World, lis
                                                 ) -> None:
     engine, world, news = career
     with engine.connect() as conn:
-        tables = group_tables(conn)
+        tables = group_tables(conn, YEAR)
         assert sorted(tables) == list(LETTERS) and all(len(t) == 4 for t in tables.values())
         confed = {int(r.club_id): str(r.conf) for r in conn.execute(text(
             "SELECT c.id AS club_id, COALESCE(g.confederation, 'X') AS conf FROM club c "
@@ -148,3 +155,35 @@ def test_the_page_before_the_draw(tmp_path: Path) -> None:
     view = client.get("/api/international/club-world-cup").json()
     assert view["year"] == YEAR and view["draw"] == "2028-12-05" and view["host"] == "USA"
     assert view["entrants"] == [] and view["groups"] == [] and view["rounds"] == []
+
+
+def test_the_next_edition_is_drawn_apart(career: tuple[Engine, World, list[str]]) -> None:
+    engine, world, _ = career
+    with engine.begin() as conn:
+        news = club_world_cup_day(conn, world, read_meta(conn), draw_date(world, YEAR + 4))
+        tables = group_tables(conn, YEAR + 4)
+        assert sorted(tables) == list(LETTERS) and all(len(t) == 4 for t in tables.values())
+        assert all(r.points == 0 for t in tables.values() for r in t)
+        assert len(group_tables(conn, YEAR)["A"]) == 4
+        conn.rollback()
+    assert any(m.startswith(f"The {YEAR + 4} Club World Cup draw") for m in news)
+
+
+def test_the_champion_has_the_trophy(tmp_path: Path) -> None:
+    world = get_world()
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    client = TestClient(create_app(session=session, frontend=None))
+    league = next(lg for lg in client.get("/api/world/leagues").json() if lg["key"] == "ENG1")
+    client.post("/api/saves/1/new", json={"club_id": league["clubs"][0]["id"],
+                                          "manager_name": "Tester"})
+    with session.write() as conn:
+        news = _tournament(conn, world, YEAR)
+        final = conn.execute(text("SELECT * FROM fixture WHERE stage = 'CWC:F'")).one()
+    champion = min(final.home_club_id, final.away_club_id)  # _play: the lower id wins
+    assert any("win the 2029 FIFA Club World Cup" in m for m in news)
+    trophies = client.get(f"/api/clubs/{champion}/history").json()["trophies"]
+    assert trophies[0] == {"kind": "world", "key": "CWC", "name": "FIFA Club World Cup",
+                           "seasons": [str(YEAR)]}
+    loser = max(final.home_club_id, final.away_club_id)
+    assert all(t["kind"] != "world"
+               for t in client.get(f"/api/clubs/{loser}/history").json()["trophies"])

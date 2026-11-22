@@ -190,10 +190,10 @@ class EuropeRunOut(BaseModel):
 class TrophyOut(BaseModel):
     """One kind of trophy in a club's honours: how many times, and when."""
 
-    kind: str  # europe | league | cup
+    kind: str  # world | europe | league | cup
     key: str
     name: str
-    seasons: list[str]  # oldest first
+    seasons: list[str]  # oldest first: season labels, a world title's year ("2030")
 
 
 class TableRowOut(BaseModel):

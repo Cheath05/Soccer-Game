@@ -1,5 +1,10 @@
-# World Cup 2030 qualifiers, realistic-lite (W8 I3, world/international/qualifiers.py).
-# 48 places: the 3 hosts, UEFA 14, CONMEBOL 6, CAF 8, AFC 8, CONCACAF 6, OFC 1, and 2 from the
+# The World Cup qualifiers, realistic-lite (W8 I3, world/international/qualifiers.py): every
+# edition's, from this template. The stages are written for the 2030 edition (``cycle``); a later
+# one plays them with every window moved on by the years between (2034's UEFA groups from
+# 2033-03), and with its own hosts and the changes to stages its hosts need (world_cup.yaml
+# ``editions``).
+#
+# 2030's 48 places: the 3 hosts, UEFA 14, CONMEBOL 6, CAF 8, AFC 8, CONCACAF 6, OFC 1, and 2 from the
 # intercontinental play-off (FIFA's 2026 allocation, the hosts counted in their confederations':
 # UEFA 16, CAF 9). The formats follow the 2026 qualifiers, played in the game's international
 # windows (each named by its start's year and month: "2028-09"; two matchdays each, four in the
@@ -21,8 +26,7 @@
 #           entrants' order (a stage's own ranking first, then Elo).
 #   outcomes: who goes where: qualified, or a later stage (that stage's entrants say so).
 
-cycle: 2030
-hosts: [ESP, POR, MAR]
+cycle: 2030  # the edition the windows below are written for
 draw_days_before: 1  # a stage is drawn this many days before its first window
 
 stages:

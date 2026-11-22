@@ -13,7 +13,8 @@ go through to the round of 16 (A1 v B2, B1 v A2, ...), and single-match knockout
 final in mid-July. Prize money is paid as FIFA's 2025 was. The fixtures don't hold up the
 season's rollover. Competition ``CWC`` (type ``club_world_cup``); group fixtures' stage
 ``CWC:G`` with the group's letter as ``tie``; knockouts ``CWC:R16``, ``CWC:QF``, ``CWC:SF``,
-``CWC:F`` with ``tie`` the match's number.
+``CWC:F`` with ``tie`` the match's number. Every edition's fixtures carry the same stages: an
+edition's are those dated in its year (``edition_fixtures``).
 """
 
 import json
@@ -44,6 +45,13 @@ LETTERS = "ABCDEFGH"
 
 def is_cwc(stage: str) -> bool:
     return stage.startswith("CWC:")
+
+
+def edition_fixtures(conn: Connection, year: int, stage: str) -> list[Any]:
+    """The ``year`` edition's fixtures of a stage (all played in its year), in id order."""
+    return list(conn.execute(text(
+        "SELECT * FROM fixture WHERE stage = :s AND date >= :a AND date <= :b ORDER BY id"),
+        {"s": stage, "a": f"{year}-01-01", "b": f"{year}-12-31"}).all())
 
 
 def _meta_key(year: int) -> str:
@@ -330,10 +338,9 @@ class _Row:
     gf: int = 0
 
 
-def group_tables(conn: Connection) -> dict[str, list[_Row]]:
+def group_tables(conn: Connection, year: int) -> dict[str, list[_Row]]:
     rows: dict[str, dict[int, _Row]] = {}
-    for f in conn.execute(text("SELECT * FROM fixture WHERE stage = :s ORDER BY id"),
-                          {"s": GROUPS}):
+    for f in edition_fixtures(conn, year, GROUPS):
         group = rows.setdefault(f.tie, {})
         for c in (f.home_club_id, f.away_club_id):
             group.setdefault(c, _Row(c))
@@ -372,10 +379,9 @@ def _progress(conn: Connection, world: World, meta: CareerMeta, year: int) -> li
     state = _get(conn, _meta_key(year)) or {}
     paid: list[str] = state.get("paid", [])
     news: list[str] = []
-    stages = {r: list(conn.execute(text("SELECT * FROM fixture WHERE stage = :s ORDER BY tie"),
-                                   {"s": f"CWC:{r}"}).all()) for r in ROUNDS}
-    groups = list(conn.execute(text("SELECT * FROM fixture WHERE stage = :s"),
-                               {"s": GROUPS}).all())
+    stages = {r: sorted(edition_fixtures(conn, year, f"CWC:{r}"), key=lambda f: f.tie)
+              for r in ROUNDS}
+    groups = edition_fixtures(conn, year, GROUPS)
     if "groups" not in paid and groups and all(f.status == "played" for f in groups):
         amounts = []
         for f in groups:
@@ -385,7 +391,7 @@ def _progress(conn: Connection, world: World, meta: CareerMeta, year: int) -> li
                                 spec.prizes.draw if us == them else 0.0))
         _pay(conn, world, meta, year, amounts)
         paid.append("groups")
-        tables = group_tables(conn)
+        tables = group_tables(conn, year)
         pairs = []
         for k in range(0, 8, 2):
             a, b = tables[LETTERS[k]], tables[LETTERS[k + 1]]
@@ -394,8 +400,7 @@ def _progress(conn: Connection, world: World, meta: CareerMeta, year: int) -> li
                 [(_round_day(world, year, "R16"), h, a, str(n + 1), 1)
                  for n, (h, a) in enumerate(pairs)])
         _pay(conn, world, meta, year, [(c, spec.prizes.round_of_16) for p in pairs for c in p])
-        stages["R16"] = list(conn.execute(text(
-            "SELECT * FROM fixture WHERE stage = 'CWC:R16' ORDER BY CAST(tie AS INTEGER)")).all())
+        stages["R16"] = sorted(edition_fixtures(conn, year, "CWC:R16"), key=lambda f: int(f.tie))
     prize = {"QF": spec.prizes.quarter_finals, "SF": spec.prizes.semi_finals,
              "F": spec.prizes.final}
     for before, after in zip(ROUNDS, ROUNDS[1:], strict=False):
@@ -414,6 +419,7 @@ def _progress(conn: Connection, world: World, meta: CareerMeta, year: int) -> li
         assert champion is not None
         _pay(conn, world, meta, year, [(champion, spec.prizes.champions)])
         paid.append("champions")
+        state["champion"] = champion
         name = str(conn.execute(text("SELECT name FROM club WHERE id = :c"),
                                 {"c": champion}).scalar_one())
         news.append(f"{name} win the {year} FIFA Club World Cup.")

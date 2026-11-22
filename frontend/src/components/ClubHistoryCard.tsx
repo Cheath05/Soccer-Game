@@ -17,13 +17,14 @@ export default function ClubHistoryCard({ clubId }: { clubId: number }) {
     history.promotions && `${history.promotions} ${history.promotions === 1 ? 'promotion' : 'promotions'}`,
     history.relegations && `${history.relegations} ${history.relegations === 1 ? 'relegation' : 'relegations'}`,
   ].filter(Boolean)
-  const trophyColor = (t: Trophy) => (t.kind === 'europe' ? EUROPE_COLOR[t.key] : t.kind === 'league' ? 'yellow' : competitionColor(t.key))
+  const trophyColor = (t: Trophy) =>
+    t.kind === 'world' ? 'teal' : t.kind === 'europe' ? EUROPE_COLOR[t.key] : t.kind === 'league' ? 'yellow' : competitionColor(t.key)
   return (
     <Card withBorder padding="sm" aria-label="Club history">
       <Group justify="space-between" mb={4}>
         <Title order={4}>History</Title>
         <Text size="sm" c="dimmed">
-          {honours.length ? honours.join(' · ') : 'No honours yet in this career'}
+          {honours.length ? honours.join(' · ') : history.trophies.length ? '' : 'No honours yet in this career'}
         </Text>
       </Group>
       {history.trophies.length > 0 && (

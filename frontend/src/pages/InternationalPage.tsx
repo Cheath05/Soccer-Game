@@ -37,7 +37,7 @@ export default function InternationalPage() {
       <Tabs defaultValue={only ? 'mine' : 'ranking'} keepMounted={false}>
         <Tabs.List mb="sm">
           <Tabs.Tab value="ranking">Ranking</Tabs.Tab>
-          <Tabs.Tab value="wc">World Cup 2030</Tabs.Tab>
+          <Tabs.Tab value="wc">World Cup</Tabs.Tab>
           <Tabs.Tab value="cwc">Club World Cup</Tabs.Tab>
           <Tabs.Tab value="mine">My country</Tabs.Tab>
         </Tabs.List>

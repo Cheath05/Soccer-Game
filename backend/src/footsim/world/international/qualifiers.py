@@ -1,12 +1,13 @@
 """The World Cup qualifiers (W8 I3), realistic-lite, from data/config/international/
-qualifiers_2030.yaml.
+qualifiers.yaml: every edition's (world/international/editions.py), each in its own names.
 
 Each stage is drawn the day before its first window: a group stage from Elo pots, its rounds on
 the stage's matchdays one after another; play-off paths seeded by Elo, their semi-finals first and
 each final once its semi-finals are decided. The teams a stage's ``qualified_ranks`` or
 ``qualified_winners`` name are through to the finals (``game_meta`` ``wc_qualified``, with the
-hosts from the start). Fixtures: competition ``WCQ``, stage ``WCQ:<stage key>``; a group's
-fixtures carry its letter as ``tie``, a path's ``<path>-SF<n>`` or ``<path>-F``.
+hosts from the start). Fixtures: competition ``WCQ``, stage ``WCQ:<stage key>`` (2030's; a later
+edition's ``WCQ2034`` and ``WCQ:2034:<stage key>``); a group's fixtures carry its letter as
+``tie``, a path's ``<path>-SF<n>`` or ``<path>-F``.
 """
 
 import json
@@ -25,12 +26,10 @@ from footsim.defs.international import EntrantSourceDef, QualifierStageDef
 from footsim.match.report import Decider
 from footsim.persistence.schema import fixture
 from footsim.world.context import World
+from footsim.world.international.editions import QUALIFIERS, Edition, edition, of_stage, qualifying
 from footsim.world.meta import CareerMeta
 
-STAGE = "WCQ:"  # fixture.stage = STAGE + the stage's key
-KEY = "WCQ"  # the qualifiers' competition
-QUALIFIED_KEY = "wc_qualified"  # game_meta: {code: how it qualified}
-DONE_KEY = "wcq_done"  # game_meta: the stages whose outcomes are recorded
+STAGE = QUALIFIERS  # every edition's fixture.stage starts so (editions.Edition.qualifier_stage)
 LETTERS = "ABCDEFGHIJKLMNOP"
 
 
@@ -49,29 +48,35 @@ def _meta_set(conn: Connection, key: str, value: Any) -> None:
                  {"k": key, "v": json.dumps(value)})
 
 
-_WINDOWS: dict[str, dict[str, DateRange]] = {}  # by base calendar: they never change
+# FIFA's windows by "YYYY-MM" of their start, by base calendar (they never change), and how many
+# of the career's seasons they cover so far.
+_WINDOWS: dict[str, tuple[dict[str, DateRange], int]] = {}
+MAX_SEASONS = 200  # how far ahead a window is looked for
 
 
-def career_windows(world: World, meta: CareerMeta) -> dict[str, DateRange]:
-    """FIFA's windows over the career's first eight seasons, by "YYYY-MM" of their start."""
-    found = _WINDOWS.get(meta.base_calendar)
-    if found is None:
-        base = world.defs.calendars[meta.base_calendar]
-        found = {w.start.strftime("%Y-%m"): w for k in range(8)
-                 for w in shifted_calendar(base, k).international_windows}
-        _WINDOWS[meta.base_calendar] = found
-    return found
+def career_window(world: World, meta: CareerMeta, ym: str) -> DateRange:
+    """The career's international window starting in month ``ym`` ("YYYY-MM"), from its
+    calendar's seasons as far ahead as needed."""
+    found, seasons = _WINDOWS.get(meta.base_calendar, ({}, 0))
+    base = world.defs.calendars[meta.base_calendar]
+    while ym not in found and seasons < MAX_SEASONS:
+        found.update({w.start.strftime("%Y-%m"): w
+                      for w in shifted_calendar(base, seasons).international_windows})
+        seasons += 1
+    _WINDOWS[meta.base_calendar] = (found, seasons)
+    if ym not in found:
+        raise KeyError(f"no international window in {ym}")
+    return found[ym]
 
 
 def stage_days(world: World, meta: CareerMeta, stage: QualifierStageDef) -> list[date]:
     from footsim.world.international.windows import matchdays
 
-    windows = career_windows(world, meta)
-    return [d for ym in stage.windows for d in matchdays(world, windows[ym])]
+    return [d for ym in stage.windows for d in matchdays(world, career_window(world, meta, ym))]
 
 
 def draw_day(world: World, meta: CareerMeta, stage: QualifierStageDef) -> date:
-    first = career_windows(world, meta)[stage.windows[0]]
+    first = career_window(world, meta, stage.windows[0])
     return first.start - timedelta(days=world.defs.international.qualifiers.draw_days_before)
 
 
@@ -92,9 +97,9 @@ class _Teams:
                    {int(r.club_id): str(r.name) for r in rows})
 
 
-def _fixtures(conn: Connection, key: str) -> list[Any]:
+def _fixtures(conn: Connection, stage: str) -> list[Any]:
     return list(conn.execute(text("SELECT * FROM fixture WHERE stage = :s ORDER BY id"),
-                             {"s": STAGE + key}).all())
+                             {"s": stage}).all())
 
 
 # --- tables and ties ---------------------------------------------------------------------
@@ -109,10 +114,11 @@ class Row:
     gf: int = 0
 
 
-def group_tables(conn: Connection, key: str, teams: _Teams) -> dict[str, list[Row]]:
-    """Each group's table, best first: points, goal difference, goals, then Elo."""
+def group_tables(conn: Connection, stage: str, teams: _Teams) -> dict[str, list[Row]]:
+    """Each group's table of a group stage (its fixtures' ``stage``), best first: points, goal
+    difference, goals, then Elo."""
     rows: dict[str, dict[int, Row]] = {}
-    for f in _fixtures(conn, key):
+    for f in _fixtures(conn, stage):
         group = rows.setdefault(f.tie, {})
         for c in (f.home_club_id, f.away_club_id):
             group.setdefault(c, Row(c))
@@ -147,9 +153,9 @@ def _tie_result(legs: list[Any]) -> tuple[int, int] | None:
     return (a, b) if goals[a] > goals[b] else (b, a)
 
 
-def path_ties(conn: Connection, key: str) -> dict[str, list[Any]]:
+def path_ties(conn: Connection, stage: str) -> dict[str, list[Any]]:
     ties: dict[str, list[Any]] = {}
-    for f in _fixtures(conn, key):
+    for f in _fixtures(conn, stage):
         ties.setdefault(f.tie, []).append(f)
     return ties
 
@@ -157,7 +163,8 @@ def path_ties(conn: Connection, key: str) -> dict[str, list[Any]]:
 def decider(conn: Connection, world: World, fx: Any) -> Decider | None:
     """Knockout rules for a qualifier: None in a group; a path's single match or second leg
     goes to extra time and penalties (with the first leg's goals)."""
-    stage = _stage(world, fx.stage[len(STAGE):])
+    found = of_stage(world, fx.stage)
+    stage = found[0].stage(found[1]) if found is not None else None
     if stage is None or stage.format == "groups":
         return None
     if stage.legs == 1:
@@ -171,10 +178,6 @@ def decider(conn: Connection, world: World, fx: Any) -> Decider | None:
     return Decider(extra_time=True, penalties=True, first_leg=prior)
 
 
-def _stage(world: World, key: str) -> QualifierStageDef | None:
-    return next((s for s in world.defs.international.qualifiers.stages if s.key == key), None)
-
-
 # --- entrants ----------------------------------------------------------------------------
 
 
@@ -184,12 +187,10 @@ def _record_key(r: Row, teams: _Teams) -> tuple[float, float, float, float]:
     return (-r.points / n, -r.gd / n, -r.gf / n, -teams.elo[r.club_id])
 
 
-def _from_source(conn: Connection, world: World, source: EntrantSourceDef, teams: _Teams
+def _from_source(conn: Connection, ed: Edition, source: EntrantSourceDef, teams: _Teams
                  ) -> list[int]:
-    stage = _stage(world, source.stage)
-    assert stage is not None
     if source.winners or source.losers:
-        ties = path_ties(conn, source.stage)
+        ties = path_ties(conn, ed.qualifier_stage(source.stage))
         finals = [legs for tie, legs in ties.items() if tie.endswith("-F")]
         picked = []
         for legs in finals:
@@ -197,7 +198,7 @@ def _from_source(conn: Connection, world: World, source: EntrantSourceDef, teams
             if result is not None:
                 picked.append(result[0] if source.winners else result[1])
         return sorted(picked, key=lambda c: -teams.elo[c])
-    tables = group_tables(conn, source.stage, teams)
+    tables = group_tables(conn, ed.qualifier_stage(source.stage), teams)
     if source.ranks is not None:
         low, high = source.ranks
         found = [r for table in tables.values() for r in table[low - 1:high]]
@@ -213,39 +214,45 @@ def _rank_of(tables: dict[str, list[Row]], club_id: int) -> int:
     return next(k for table in tables.values() for k, r in enumerate(table) if r.club_id == club_id)
 
 
-def entrants(conn: Connection, world: World, stage: QualifierStageDef, teams: _Teams
+def entrants(conn: Connection, ed: Edition, stage: QualifierStageDef, teams: _Teams
              ) -> list[int]:
     spec = stage.entrants
     if spec.confederation is not None:
-        hosts = set(world.defs.international.qualifiers.hosts)
+        hosts = set(ed.hosts)
         pool = [c for c, conf in teams.confederation.items()
                 if conf == spec.confederation and teams.code[c] not in hosts]
         pool.sort(key=lambda c: (-teams.elo[c], c))
         return pool[:spec.top] if spec.top else pool
     found: list[int] = []
     for source in spec.from_:
-        found += [c for c in _from_source(conn, world, source, teams) if c not in found]
+        found += [c for c in _from_source(conn, ed, source, teams) if c not in found]
     return found
 
 
 # --- the draw and the paths --------------------------------------------------------------
 
 
-def _insert(conn: Connection, meta: CareerMeta, comp: int, stage: QualifierStageDef,
+def _insert(conn: Connection, meta: CareerMeta, comp: int, ed: Edition,
+            stage: QualifierStageDef,
             rows: Sequence[tuple[date, int, int, str, int, int | None]]) -> None:
     """Fixtures as (date, home, away, tie, round, leg)."""
     if rows:
         conn.execute(fixture.insert(), [
-            {"season_id": meta.season_id, "competition_id": comp, "stage": STAGE + stage.key,
+            {"season_id": meta.season_id, "competition_id": comp,
+             "stage": ed.qualifier_stage(stage.key),
              "round": rnd, "tie": tie, "leg": leg, "date": day.isoformat(),
              "home_club_id": home, "away_club_id": away, "neutral": int(stage.neutral),
              "status": "scheduled"} for day, home, away, tie, rnd, leg in rows])
 
 
-def _draw_groups(conn: Connection, world: World, meta: CareerMeta, comp: int,
+def _rng_key(ed: Edition, stage: QualifierStageDef) -> str:
+    return stage.key if ed.first else f"{ed.year}:{stage.key}"
+
+
+def _draw_groups(conn: Connection, world: World, meta: CareerMeta, comp: int, ed: Edition,
                  stage: QualifierStageDef, teams: _Teams) -> None:
-    clubs = entrants(conn, world, stage, teams)
-    rng = derive_rng(meta.seed, "wcq-draw", stage.key)
+    clubs = entrants(conn, ed, stage, teams)
+    rng = derive_rng(meta.seed, "wcq-draw", _rng_key(ed, stage))
     groups: list[list[int]] = [[] for _ in range(stage.groups)]
     for k in range(0, len(clubs), stage.groups):
         pot = list(clubs[k:k + stage.groups])
@@ -259,7 +266,7 @@ def _draw_groups(conn: Connection, world: World, meta: CareerMeta, comp: int,
             if r >= len(days):
                 raise ValueError(f"{stage.key}: more rounds than matchdays")
             rows += [(days[r], home, away, LETTERS[g], r + 1, None) for home, away in pairs]
-    _insert(conn, meta, comp, stage, rows)
+    _insert(conn, meta, comp, ed, stage, rows)
 
 
 def _paths(clubs: list[int], count: int) -> list[list[int]]:
@@ -279,9 +286,9 @@ def _tie_rows(days: list[date], legs: int, first_day: int, better: int, worse: i
             (days[first_day + 1], better, worse, tie, rnd, 2)]
 
 
-def _draw_paths(conn: Connection, world: World, meta: CareerMeta, comp: int,
+def _draw_paths(conn: Connection, world: World, meta: CareerMeta, comp: int, ed: Edition,
                 stage: QualifierStageDef, teams: _Teams) -> None:
-    clubs = sorted(entrants(conn, world, stage, teams), key=lambda c: (-teams.elo[c], c))
+    clubs = sorted(entrants(conn, ed, stage, teams), key=lambda c: (-teams.elo[c], c))
     days = stage_days(world, meta, stage)
     rows = []
     for p, seeds in enumerate(_paths(clubs, stage.paths)):
@@ -295,16 +302,16 @@ def _draw_paths(conn: Connection, world: World, meta: CareerMeta, comp: int,
             rows += _tie_rows(days, stage.legs, 0, seeds[0], seeds[1], f"{letter}-F", 1)
         else:
             raise ValueError(f"{stage.key}: a path of {len(seeds)}")
-    _insert(conn, meta, comp, stage, rows)
-    _meta_set(conn, f"wcq_seeds:{stage.key}",
+    _insert(conn, meta, comp, ed, stage, rows)
+    _meta_set(conn, ed.seeds_key(stage.key),
               {LETTERS[p]: seeds for p, seeds in enumerate(_paths(clubs, stage.paths))})
 
 
-def _progress_paths(conn: Connection, world: World, meta: CareerMeta, comp: int,
+def _progress_paths(conn: Connection, world: World, meta: CareerMeta, comp: int, ed: Edition,
                     stage: QualifierStageDef, teams: _Teams) -> None:
     """Each path's final, once its semi-finals are decided."""
-    ties = path_ties(conn, stage.key)
-    seeds = _meta_get(conn, f"wcq_seeds:{stage.key}") or {}
+    ties = path_ties(conn, ed.qualifier_stage(stage.key))
+    seeds = _meta_get(conn, ed.seeds_key(stage.key)) or {}
     days = stage_days(world, meta, stage)
     later = 1 if stage.legs == 1 else 2
     rows = []
@@ -319,81 +326,96 @@ def _progress_paths(conn: Connection, world: World, meta: CareerMeta, comp: int,
         finalists = winners if len(path) == 4 else [path[0], winners[0]]
         better, worse = sorted(finalists, key=lambda c: (-teams.elo[c], c))
         rows += _tie_rows(days, stage.legs, later, better, worse, f"{letter}-F", 2)
-    _insert(conn, meta, comp, stage, rows)
+    _insert(conn, meta, comp, ed, stage, rows)
 
 
 # --- the day -----------------------------------------------------------------------------
 
 
 def qualifiers_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
-    """Draw the stages due tomorrow's window, add path finals, and record who has qualified
-    once a stage is over. Returns news."""
-    from footsim.world.international.windows import competition_id
-
-    spec = world.defs.international.qualifiers
+    """Every edition being qualified for: draw the stages due tomorrow's window, add path
+    finals, and record who has qualified once a stage is over. Returns news."""
     news: list[str] = []
-    qualified: dict[str, str] = _meta_get(conn, QUALIFIED_KEY) or {}
-    if not qualified:
-        qualified = {code: "Hosts" for code in spec.hosts}
-        _meta_set(conn, QUALIFIED_KEY, qualified)
-    done: list[str] = _meta_get(conn, DONE_KEY) or []
-    teams: _Teams | None = None
-    for stage in spec.stages:
-        if stage.key in done:
-            continue
-        drawn = conn.execute(text("SELECT 1 FROM fixture WHERE stage = :s LIMIT 1"),
-                             {"s": STAGE + stage.key}).first() is not None
-        if not drawn and draw_day(world, meta, stage) != day:
-            continue
-        teams = teams or _Teams.load(conn)
-        comp = competition_id(conn, KEY, f"World Cup {spec.cycle} qualifiers", "WC qualifiers")
-        if not drawn:
-            if stage.format == "groups":
-                _draw_groups(conn, world, meta, comp, stage, teams)
-            else:
-                _draw_paths(conn, world, meta, comp, stage, teams)
-            continue
-        if stage.format == "paths":
-            _progress_paths(conn, world, meta, comp, stage, teams)
-        if _complete(conn, stage):
-            news += _record(conn, world, stage, teams, qualified, spec.cycle)
-            done.append(stage.key)
-            _meta_set(conn, DONE_KEY, done)
-            _meta_set(conn, QUALIFIED_KEY, qualified)
+    for ed in qualifying(world, day):
+        news += _edition_day(conn, world, meta, ed, day)
     return news
 
 
-def _complete(conn: Connection, stage: QualifierStageDef) -> bool:
+def _edition_day(conn: Connection, world: World, meta: CareerMeta, ed: Edition, day: date
+                 ) -> list[str]:
+    from footsim.world.international.windows import competition_id
+
+    news: list[str] = []
+    done: list[str] = _meta_get(conn, ed.done_key) or []
+    teams: _Teams | None = None
+    for stage in ed.stages:
+        if stage.key in done:
+            continue
+        due = draw_day(world, meta, stage)
+        if due > day:
+            continue  # not drawn yet: drawn on its day
+        drawn = conn.execute(text("SELECT 1 FROM fixture WHERE stage = :s LIMIT 1"),
+                             {"s": ed.qualifier_stage(stage.key)}).first() is not None
+        if not drawn and due != day:
+            continue
+        teams = teams or _Teams.load(conn)
+        key, name = ed.qualifiers_competition
+        comp = competition_id(conn, key, name, "WC qualifiers")
+        if not drawn:
+            if stage.format == "groups":
+                _draw_groups(conn, world, meta, comp, ed, stage, teams)
+            else:
+                _draw_paths(conn, world, meta, comp, ed, stage, teams)
+            continue
+        if stage.format == "paths":
+            _progress_paths(conn, world, meta, comp, ed, stage, teams)
+        if _complete(conn, ed, stage):
+            qualified: dict[str, str] = _meta_get(conn, ed.qualified_key) or {}
+            news += _record(conn, ed, stage, teams, qualified)
+            done.append(stage.key)
+            _meta_set(conn, ed.done_key, done)
+            _meta_set(conn, ed.qualified_key, qualified)
+    return news
+
+
+def _complete(conn: Connection, ed: Edition, stage: QualifierStageDef) -> bool:
     """Every match played; for paths, every path's final decided."""
-    rows = _fixtures(conn, stage.key)
+    rows = _fixtures(conn, ed.qualifier_stage(stage.key))
     if not rows or any(f.status != "played" for f in rows):
         return False
     if stage.format == "groups":
         return True
-    ties = path_ties(conn, stage.key)
-    letters = (_meta_get(conn, f"wcq_seeds:{stage.key}") or {}).keys()
+    ties = path_ties(conn, ed.qualifier_stage(stage.key))
+    letters = (_meta_get(conn, ed.seeds_key(stage.key)) or {}).keys()
     return all(_tie_result(ties.get(f"{letter}-F", [])) is not None for letter in letters)
 
 
-def _record(conn: Connection, world: World, stage: QualifierStageDef, teams: _Teams,
-            qualified: dict[str, str], cycle: int) -> list[str]:
+def _record(conn: Connection, ed: Edition, stage: QualifierStageDef, teams: _Teams,
+            qualified: dict[str, str]) -> list[str]:
     through: list[int] = []
+    fixtures_stage = ed.qualifier_stage(stage.key)
     if stage.format == "groups" and stage.qualified_ranks is not None:
         low, high = stage.qualified_ranks
-        through = [r.club_id for table in group_tables(conn, stage.key, teams).values()
+        through = [r.club_id for table in group_tables(conn, fixtures_stage, teams).values()
                    for r in table[low - 1:high]]
     elif stage.format == "paths" and stage.qualified_winners:
-        through = [result[0] for tie, legs in path_ties(conn, stage.key).items()
+        through = [result[0] for tie, legs in path_ties(conn, fixtures_stage).items()
                    if tie.endswith("-F") and (result := _tie_result(legs)) is not None]
     for club_id in through:
         qualified[teams.code[club_id]] = stage.name
     if not through:
         return []
     names = ", ".join(sorted(teams.name[c] for c in through))
-    return [f"World Cup {cycle}: {names} qualify ({stage.name})."]
+    return [f"World Cup {ed.year}: {names} qualify ({stage.name})."]
 
 
-def qualified_teams(conn: Connection) -> dict[str, str]:
-    """The teams through to the finals so far, by code, with how."""
-    return dict(_meta_get(conn, QUALIFIED_KEY) or {})
+def qualified_teams(conn: Connection, ed: Edition) -> dict[str, str]:
+    """The teams through to an edition's finals so far, by code, with how: the hosts from the
+    start."""
+    return {**{code: "Hosts" for code in ed.hosts}, **(_meta_get(conn, ed.qualified_key) or {})}
+
+
+def first_edition(world: World) -> Edition:
+    """The first World Cup the career plays (2030)."""
+    return edition(world, world.defs.international.world_cup.year)
 

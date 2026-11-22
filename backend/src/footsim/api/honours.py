@@ -1,5 +1,5 @@
 """A club's European record and its honours: how far it went in each European competition each
-season, the trophies it has won (European, league and cup), and the Treble.
+season, the trophies it has won (world, European, league and cup), and the Treble.
 
 The Treble is a season's top league, its country's main domestic cup (the one whose winners take
 the cup place in Europe, ``country_cup``) and the Champions League, all won by one club."""
@@ -24,8 +24,9 @@ from footsim.world.europe.access import cup_winner, holder
 from footsim.world.europe.common import KNOCKOUT, competitions_by_rank, qualifying_round
 from footsim.world.europe.places import country_cup
 from footsim.world.europe.qualifying import node_of, round_name
+from footsim.world.international.titles import WorldTitle
 
-_KIND_ORDER = {"europe": 0, "league": 1, "cup": 2}
+_KIND_ORDER = {"world": 0, "europe": 1, "league": 2, "cup": 3}
 
 
 @dataclass(frozen=True)
@@ -137,10 +138,16 @@ def european_runs(conn: Connection, world: World, club_id: int) -> dict[int, lis
 
 
 def trophy_cabinet(world: World, labels: dict[int, str], titles: list[tuple[int, str, str]],
-                   cups: dict[int, list[CupRunOut]], europe: dict[int, list[EuropeRunOut]]
-                   ) -> list[TrophyOut]:
-    """The honours by trophy, European first, then league titles, then cups; each with the
-    seasons it was won, oldest first. ``titles``: (season id, league key, league name)."""
+                   cups: dict[int, list[CupRunOut]], europe: dict[int, list[EuropeRunOut]],
+                   world_titles: list[WorldTitle] | None = None) -> list[TrophyOut]:
+    """The honours by trophy, world titles first (the World Cup, the Club World Cup), then
+    European, then league titles, then cups; each with the seasons it was won, oldest first (a
+    world title's by its year). ``titles``: (season id, league key, league name)."""
+    cabinet: dict[str, TrophyOut] = {}
+    for t in world_titles or []:
+        found = cabinet.setdefault(t.key, TrophyOut(kind="world", key=t.key, name=t.name,
+                                                    seasons=[]))
+        found.seasons.append(t.year)
     won: dict[tuple[str, str], tuple[str, list[int]]] = {}
 
     def add(kind: str, key: str, name: str, season_id: int) -> None:
@@ -165,6 +172,6 @@ def trophy_cabinet(world: World, labels: dict[int, str], titles: list[tuple[int,
                 and league in world.defs.leagues else 0)
         return _KIND_ORDER[kind], rank, name
 
-    return [TrophyOut(kind=kind, key=key, name=name,
-                      seasons=[labels[s] for s in sorted(seasons)])
-            for (kind, key), (name, seasons) in sorted(won.items(), key=order)]
+    return sorted(cabinet.values(), key=lambda t: t.name) + [
+        TrophyOut(kind=kind, key=key, name=name, seasons=[labels[s] for s in sorted(seasons)])
+        for (kind, key), (name, seasons) in sorted(won.items(), key=order)]

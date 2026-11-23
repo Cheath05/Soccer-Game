@@ -241,17 +241,34 @@ def test_the_all_division_tournament(career: tuple[Engine, World]) -> None:
             group = [e for e in teams if e.enters == k]
             places = [(e.rank - later[e.division][k], e.division) for e in group]
             assert places == sorted(places)
-        # Every round played, with the shape the rules give, and no rematch of a division in
-        # the first round while another division was left.
-        playing = 0
-        for k in range(len(adt.rounds)):
-            games = [m for m in matches if m.round == k]
-            playing = playing // 2 + adt.entering(k)
-            assert len(games) == playing // 2
-            assert all(m.winner is not None and m.a.seed < m.b.seed for m in games)
-            assert all(bool(m.fixture.neutral) == (k >= adt.neutral_from) for m in games)
-        first = [m for m in matches if m.round == 0]
-        assert all(m.a.division != m.b.division for m in first)
+        # Every match of the set bracket played, at a neutral ground from neutral_from, the
+        # better seed at home before it.
+        assert [len([m for m in matches if m.round == k]) for k in range(len(adt.rounds))] == [
+            len(games) for games in adt.bracket]
+        for m in matches:
+            assert m.a is not None and m.b is not None and m.winner in (m.a, m.b)
+            assert m.fixture is not None
+            assert bool(m.fixture.neutral) == (m.round >= adt.neutral_from)
+            if not m.fixture.neutral:
+                assert int(m.fixture.home_club_id) == min((m.a, m.b), key=lambda e: e.seed).club_id
+            # The sides are the bracket's: an entrant, or the named match's winner.
+            for code, team in zip(adt.bracket[m.round][m.index], (m.a, m.b), strict=True):
+                entrant, winner = adt.entrant(code), adt.winner(code)
+                if entrant is not None:
+                    assert (team.division, team.rank) == entrant
+                else:
+                    assert winner is not None
+                    assert team == next(x.winner for x in matches
+                                        if (x.round, x.index) == winner)
+        # Mixed across the divisions, but D-II and D-III's top two meet none of D-I's top four
+        # before the quarterfinals.
+        assert any(m.a.division != m.b.division for m in matches if m.round == 0 and m.a and m.b)
+        quarters = adt.round_names.index("Quarterfinals")
+        for m in matches:
+            if m.round < quarters and m.a is not None and m.b is not None:
+                tops = sorted((t for t in (m.a, m.b) if t.rank <= (4 if t.division == 1 else 2)),
+                              key=lambda t: t.division)
+                assert not (len(tops) == 2 and tops[0].division == 1 and tops[1].division > 1)
         won = conn.execute(text(
             "SELECT club_id FROM league_title WHERE competition_id = :c AND title = :t"),
             {"c": comp, "t": all_division.TITLE}).scalar_one()
@@ -264,12 +281,23 @@ def test_the_all_division_tournament(career: tuple[Engine, World]) -> None:
         conn.rollback()
 
 
-def test_the_draw_pairs_across_divisions() -> None:
-    from footsim.world.college.all_division import Entrant, draw
+def test_the_set_bracket_rejects_a_broken_one() -> None:
+    """The bracket's checks: every entrant once, every winner but the final's on once."""
+    from typing import Any
 
-    teams = [Entrant(seed=k, club_id=k, division=d, rank=k, enters=0)
-             for k, d in enumerate([1, 1, 2, 2, 3, 3], start=1)]
-    pairs = [(a.seed, b.seed) for a, b in draw(teams)]
-    assert pairs == [(1, 6), (2, 5), (3, 4)]  # the best meets the worst of another division
-    same = [Entrant(seed=k, club_id=k, division=1, rank=k, enters=0) for k in range(1, 5)]
-    assert [(a.seed, b.seed) for a, b in draw(same)] == [(1, 4), (2, 3)]
+    from pydantic import ValidationError
+
+    from footsim.defs.college import AllDivisionDef
+
+    base: dict[str, Any] = {"key": "X", "name": "X", "short_name": "X", "selection": "12-15",
+            "rounds": ["12-16", "12-18"], "round_names": ["Semifinals", "Final"],
+            "neutral_from": 1}
+    good = AllDivisionDef(**base, bracket=[[("D1-1", "D2-2"), ("D2-1", "D1-2")],
+                                           [("R1M1", "R1M2")]])
+    assert good.entries == {1: [2], 2: [2]} and good.entry_round(2, 1) == 0
+    for broken in ([[("D1-1", "D2-2"), ("D2-1", "D1-1")], [("R1M1", "R1M2")]],  # twice
+                   [[("D1-1", "D2-2"), ("D2-1", "D1-2")], [("R1M1", "R1M1")]],  # a winner twice
+                   [[("D1-1", "D2-2"), ("D2-1", "D1-3")], [("R1M1", "R1M2")]],  # no D-I 2nd
+                   [[("D1-1", "D2-2"), ("D2-1", "D1-2")], [("R1M1", "R2M1")]]):  # not earlier
+        with pytest.raises(ValidationError):
+            AllDivisionDef(**base, bracket=broken)

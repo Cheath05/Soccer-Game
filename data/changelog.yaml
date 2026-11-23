@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.148"
+  date: "2026-11-22"
+  title: "The All-Division Tournament's set bracket"
+  changes:
+    - "The All-Division Tournament is now a set bracket, all of it shown once the field is picked (each undecided side says which match's winner it will be). It no longer redraws every round, which kept sending D-II and D-III's winners straight at D-I's best."
+    - "It still mixes the divisions from the first round, but D-II and D-III's top two meet none of D-I's top four before the quarterfinals."
+
 - version: "1.147"
   date: "2026-11-22"
   title: "The All-Division Tournament, D-II and D-III rankings, Hall of fame favourites"

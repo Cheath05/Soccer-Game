@@ -571,19 +571,24 @@ class PortalDef(DefModel):
         return _month_day(value)
 
 
+_ENTRANT = re.compile(r"^D(?P<division>\d+)-(?P<rank>\d+)$")  # "D2-5": D-II's 5th
+_WINNER = re.compile(r"^R(?P<round>\d+)M(?P<match>\d+)$")  # "R1M3": round 1's 3rd match's
+
+
 class AllDivisionDef(DefModel):
     """The All-Division Tournament (22 Nov): once the three national finals are played, each
-    division's best meet in one knockout, the best entering latest (their byes). Each round is
-    drawn when the one before it ends: the best seed left meets the worst left from another
-    division (world/college/all_division.py)."""
+    division's best meet in one knockout on a set bracket (``bracket``), the best entering
+    latest (their byes) (world/college/all_division.py)."""
 
     key: str  # its competition's key
     name: str
     short_name: str
     selection: str  # MM-DD: the field is picked once every national final is played
-    # Division (1 for D-I) -> how many of its best enter in each round, the first round first:
-    # its champion first, then by the season's final RPI.
-    entries: dict[int, list[int]]
+    # Each round's matches, in order: two sides each, an entrant ("D2-5": D-II's 5th; a
+    # division's 1st is its national champion, then its best by the final RPI) or a winner
+    # ("R1M3": the winner of round 1's 3rd match). Every entrant plays once and every winner
+    # but the final's goes on once.
+    bracket: list[list[tuple[str, str]]]
     rounds: list[str]  # a date per round, the last the final's
     round_names: list[str]
     neutral_from: int = Field(ge=0)  # rounds from this one (0 the first) at a neutral ground
@@ -600,20 +605,64 @@ class AllDivisionDef(DefModel):
 
     @model_validator(mode="after")
     def _shape(self) -> "AllDivisionDef":
-        if len(self.round_names) != len(self.rounds):
-            raise ValueError(f"{self.name}: a name for each of its {len(self.rounds)} rounds")
-        if any(len(e) > len(self.rounds) or min(e, default=0) < 0
-               for e in self.entries.values()):
-            raise ValueError(f"{self.name}: entries per round, at most one per round")
-        teams = 0
-        for k in range(len(self.rounds)):
-            teams = teams // 2 + self.entering(k)
-            if teams < 2 or teams % 2:
-                raise ValueError(f"{self.name}: round {k + 1} has {teams} teams: it needs an "
-                                 "even number")
-        if teams != 2:
-            raise ValueError(f"{self.name}: its last round has {teams} teams, not two")
+        if not len(self.round_names) == len(self.rounds) == len(self.bracket):
+            raise ValueError(f"{self.name}: a date, a name and the matches for each round")
+        if len(self.bracket[-1]) != 1:
+            raise ValueError(f"{self.name}: its last round is one match, the final")
+        seen: set[tuple[int, int]] = set()
+        winners: set[tuple[int, int]] = set()
+        for k, games in enumerate(self.bracket):
+            if not games:
+                raise ValueError(f"{self.name}: round {k + 1} has no matches")
+            for side in (s for game in games for s in game):
+                entrant, winner = self.entrant(side), self.winner(side)
+                if entrant is not None:
+                    if entrant in seen or entrant[1] < 1:
+                        raise ValueError(f"{self.name}: {side} plays twice or isn't a rank")
+                    seen.add(entrant)
+                elif winner is not None:
+                    if winner in winners or winner[0] >= k or winner[1] >= len(
+                            self.bracket[winner[0]]):
+                        raise ValueError(f"{self.name}: {side} in round {k + 1} isn't an "
+                                         "earlier match's, or goes on twice")
+                    winners.add(winner)
+                else:
+                    raise ValueError(f"{self.name}: {side!r} is neither D<n>-<rank> nor "
+                                     "R<round>M<match>")
+        every = {(k, i) for k, games in enumerate(self.bracket) for i in range(len(games))}
+        if winners != every - {(len(self.bracket) - 1, 0)}:
+            raise ValueError(f"{self.name}: every match's winner but the final's must go on")
+        for division in {d for d, _ in seen}:
+            ranks = sorted(r for d, r in seen if d == division)
+            if ranks != list(range(1, len(ranks) + 1)):
+                raise ValueError(f"{self.name}: division {division}'s entrants aren't its "
+                                 f"1st to {len(ranks)}th")
         return self
+
+    @staticmethod
+    def entrant(side: str) -> tuple[int, int] | None:
+        """(division, rank) for an entrant's side, else None."""
+        hit = _ENTRANT.match(side)
+        return (int(hit["division"]), int(hit["rank"])) if hit else None
+
+    @staticmethod
+    def winner(side: str) -> tuple[int, int] | None:
+        """(round, match), both from 0, for a winner's side, else None."""
+        hit = _WINNER.match(side)
+        return (int(hit["round"]) - 1, int(hit["match"]) - 1) if hit else None
+
+    @property
+    def entries(self) -> dict[int, list[int]]:
+        """Division -> how many of its teams enter in each round, the first round first."""
+        out: dict[int, list[int]] = {}
+        for k, games in enumerate(self.bracket):
+            for side in (s for game in games for s in game):
+                entrant = self.entrant(side)
+                if entrant is not None:
+                    counts = out.setdefault(entrant[0], [])
+                    counts += [0] * (k + 1 - len(counts))
+                    counts[k] += 1
+        return out
 
     def entering(self, round_: int) -> int:
         """How many teams enter in round ``round_`` (0 the first)."""
@@ -623,13 +672,10 @@ class AllDivisionDef(DefModel):
         return sum(self.entries.get(division, []))
 
     def entry_round(self, division: int, rank: int) -> int:
-        """The round the division's ``rank``-th team (1 its best) enters: the best last."""
-        counts = self.entries[division]
-        left = rank
-        for k in range(len(counts) - 1, -1, -1):
-            if left <= counts[k]:
+        """The round the division's ``rank``-th team (1 its best) enters."""
+        for k, games in enumerate(self.bracket):
+            if any(self.entrant(s) == (division, rank) for game in games for s in game):
                 return k
-            left -= counts[k]
         raise ValueError(f"{self.name}: rank {rank} isn't in division {division}'s field")
 
 

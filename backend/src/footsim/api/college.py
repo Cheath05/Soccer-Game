@@ -100,6 +100,10 @@ class BracketMatchOut(BaseModel):
     extra_time: bool
     home_club_id: int | None  # the home side (the better seed, unless neutral)
     winner: BracketSideOut | None
+    # Where an undecided side comes from (the All-Division Tournament's set bracket): "Winner of
+    # First round 8".
+    a_from: str | None = None
+    b_from: str | None = None
 
 
 class BracketRoundOut(BaseModel):
@@ -498,7 +502,7 @@ class AllDivisionOut(BaseModel):
     season: str
     selection: str  # the day the field is picked (ISO)
     entrants: list[AllDivisionEntrantOut]
-    rounds: list[BracketRoundOut]  # every round; a round's matches once it's drawn
+    rounds: list[BracketRoundOut]  # every round and match of the set bracket
     champion: ClubRef | None
     champion_division: str | None
 
@@ -534,11 +538,15 @@ def college_all_division(session: Session, season_id: int | None = None) -> AllD
             for m in (m for m in matches if m.round == k):
                 f = m.fixture
                 out.append(BracketMatchOut(
-                    index=m.index, a=side(m.a), b=side(m.b), bye=False, fixture_id=f.id,
-                    date=f.date, neutral=bool(f.neutral), home_goals=f.home_goals,
-                    away_goals=f.away_goals, home_pens=f.home_pens, away_pens=f.away_pens,
-                    extra_time=bool(f.extra_time), home_club_id=f.home_club_id,
-                    winner=side(m.winner)))
+                    index=m.index, a=side(m.a), b=side(m.b), bye=False,
+                    fixture_id=f.id if f else None, date=f.date if f else None,
+                    neutral=bool(f.neutral) if f else k >= adt.neutral_from,
+                    home_goals=f.home_goals if f else None,
+                    away_goals=f.away_goals if f else None,
+                    home_pens=f.home_pens if f else None, away_pens=f.away_pens if f else None,
+                    extra_time=bool(f.extra_time) if f else False,
+                    home_club_id=f.home_club_id if f else None, winner=side(m.winner),
+                    a_from=m.a_from, b_from=m.b_from))
             rounds.append(BracketRoundOut(round=k, name=name, date=on(when, start).isoformat(),
                                           matches=out))
         final = [m for m in matches if m.round == len(adt.rounds) - 1 and m.winner is not None]

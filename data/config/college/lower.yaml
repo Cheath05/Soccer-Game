@@ -57,20 +57,37 @@ portal:
 
 # The All-Division Tournament (22 Nov; world/college/all_division.py): once D-I's College Cup
 # and the D-II and D-III finals are played, each division's best meet to settle which is the
-# best team in college soccer. A division's champion is its first, then its best by the final
-# RPI. The best enter latest: D-I's top four have two byes (they start in the Round of 16), D-I's
-# next four and the top four of D-II and D-III one. Each round is drawn when the one before it
-# ends: the best seed left meets the worst left from another division, the better seed at home
-# until the semifinals; extra time, then penalties.
+# best team in college soccer. A division's 1st is its national champion, then its best by the
+# final RPI. A set bracket (the user, 22 Nov: no redraw each round, which kept sending D-II and
+# D-III's winners straight at D-I's best), mixed across the divisions from the first round. D-I's
+# top four start in the Round of 16 (two byes); D-I's 5th-8th and the top four of D-II and D-III
+# in the second round (one bye). D-II and D-III's top two meet none of D-I's top four before
+# the quarterfinals. The better seed is at home until the semifinals; extra time, then penalties.
 all_division:
   key: NCAAALL
   name: NCAA All-Division Tournament
   short_name: All-Division Tournament
   selection: "12-15"
-  entries:  # division -> how many enter in each round, the first round first
-    1: [8, 4, 4]  # D-I: 9th-16th in the first round, 5th-8th the second, the top 4 the third
-    2: [8, 4]  # D-II: 5th-12th in the first round, the top 4 the second
-    3: [8, 4]
+  # Each round's matches in order. A side is an entrant ("D2-5": D-II's 5th) or the winner of
+  # an earlier match ("R1M3": round 1's 3rd).
+  bracket:
+    - # First round: D-I 9th-16th, D-II and D-III 5th-12th
+      [["D1-9", "D3-12"], ["D2-8", "D3-5"], ["D1-12", "D3-9"], ["D2-5", "D3-8"],
+       ["D1-10", "D3-11"], ["D2-7", "D3-6"], ["D1-11", "D3-10"], ["D2-6", "D3-7"],
+       ["D1-13", "D2-12"], ["D1-16", "D2-9"], ["D1-14", "D2-11"], ["D1-15", "D2-10"]]
+    - # Second round: D-I 5th-8th and D-II and D-III's top four v the first round's winners
+      [["D2-4", "R1M1"], ["D1-8", "R1M2"], ["D3-1", "R1M9"], ["D3-4", "R1M3"],
+       ["D1-5", "R1M4"], ["D2-1", "R1M10"], ["D2-3", "R1M5"], ["D1-7", "R1M6"],
+       ["D3-2", "R1M11"], ["D3-3", "R1M7"], ["D1-6", "R1M8"], ["D2-2", "R1M12"]]
+    - # Round of 16: D-I's top four enter
+      [["D1-1", "R2M1"], ["R2M2", "R2M3"], ["D1-4", "R2M4"], ["R2M5", "R2M6"],
+       ["D1-3", "R2M7"], ["R2M8", "R2M9"], ["D1-2", "R2M10"], ["R2M11", "R2M12"]]
+    - # Quarterfinals
+      [["R3M1", "R3M2"], ["R3M3", "R3M4"], ["R3M5", "R3M6"], ["R3M7", "R3M8"]]
+    - # Semifinals: D-I 1st's quarter v 4th's, 3rd's v 2nd's
+      [["R4M1", "R4M2"], ["R4M3", "R4M4"]]
+    - # Final
+      [["R5M1", "R5M2"]]
   rounds: ["12-16", "12-18", "12-20", "12-22", "12-27", "12-29"]
   round_names: [First round, Second round, Round of 16, Quarterfinals, Semifinals, Final]
   neutral_from: 4

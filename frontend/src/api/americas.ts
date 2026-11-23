@@ -177,6 +177,8 @@ export interface BracketMatch {
   extra_time: boolean
   home_club_id: number | null
   winner: BracketSide | null
+  a_from?: string | null // where an undecided side comes from (the All-Division Tournament)
+  b_from?: string | null
 }
 
 export interface BracketRound {

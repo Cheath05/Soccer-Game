@@ -334,7 +334,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       [
         'The field (picked on 15 December): each division’s national champion, then its best by the season’s final RPI. 16 from D-I, 12 each from D-II and D-III, 40 in all.',
         'Byes: D-I’s top four start in the Round of 16 (two byes); D-I’s 5th to 8th and the top four of D-II and D-III start in the second round (one bye); the rest play the first round.',
-        'Matchups: the field is seeded as one list (the later a team starts, the better its seed). Each round is drawn when the one before it ends: the best seed left meets the worst seed left from another division, so every round is D-I against D-II or D-III wherever it can be. The better seed is at home until the semifinals, which with the final are at a neutral ground; extra time, then penalties.',
+        'Matchups: a set bracket, all of it known once the field is picked, so a team’s path doesn’t change as others win or lose. It mixes the divisions from the first round (D-I’s 9th to 16th and D-II and D-III’s 5th to 12th), but D-II and D-III’s top two meet none of D-I’s top four before the quarterfinals. The better seed (the later a team starts, the better) is at home until the semifinals, which with the final are at a neutral ground; extra time, then penalties.',
         'If your team is in it, you play its games as any other; the rest are quick results. Continue stops after the final.',
       ],
     ],

@@ -141,18 +141,18 @@ export function MatchCard({ match }: { match: BracketMatch }) {
   ].filter(Boolean)
   return (
     <div className="fs-match" data-played={played || undefined} onClick={open} role={played ? 'link' : undefined} aria-label={played ? 'Match report' : undefined}>
-      <Line side={match.a} {...goals(match, match.a)} won={decided && match.winner?.seed === match.a?.seed} lost={decided && match.winner?.seed !== match.a?.seed} />
-      <Line side={match.b} {...goals(match, match.b)} won={decided && match.winner?.seed === match.b?.seed} lost={decided && match.winner?.seed !== match.b?.seed} />
+      <Line side={match.a} from={match.a_from} {...goals(match, match.a)} won={decided && match.winner?.seed === match.a?.seed} lost={decided && match.winner?.seed !== match.a?.seed} />
+      <Line side={match.b} from={match.b_from} {...goals(match, match.b)} won={decided && match.winner?.seed === match.b?.seed} lost={decided && match.winner?.seed !== match.b?.seed} />
       {notes.length > 0 && <div className="fs-match-note">{notes.join(' · ')}</div>}
     </div>
   )
 }
 
-function Line({ side, goals, pens, won, lost }: { side: BracketSide | null; goals?: number | null; pens?: number | null; won?: boolean; lost?: boolean }) {
+function Line({ side, from, goals, pens, won, lost }: { side: BracketSide | null; from?: string | null; goals?: number | null; pens?: number | null; won?: boolean; lost?: boolean }) {
   return (
     <div className="fs-match-line" data-won={won || undefined} data-lost={lost || undefined}>
       <span className="fs-match-seed">{side?.seed ?? ''}</span>
-      <span className="fs-match-name">{side ? <ClubLink club={side.club} /> : <Text span size="xs" c="dimmed">To be decided</Text>}</span>
+      <span className="fs-match-name">{side ? <ClubLink club={side.club} /> : <Text span size="xs" c="dimmed">{from ?? 'To be decided'}</Text>}</span>
       {goals !== null && goals !== undefined && (
         <span className="fs-match-score">
           {goals}

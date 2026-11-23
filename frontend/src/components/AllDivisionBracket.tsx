@@ -8,9 +8,10 @@ import ClubLink from './ClubLink'
 import { MatchCard } from './CollegeBracket'
 
 // The All-Division Tournament (api/college.py /all-division): D-I, D-II and D-III's best after the
-// national finals. Each round is drawn when the one before it ends (the best seed left meets the
-// worst left from another division), so it isn't a fixed tree: the rounds stand side by side as
-// lists on a computer, one at a time on a phone. Below them, the field by the round it enters.
+// national finals, on a set bracket (data/config/college/lower.yaml). Teams enter in different
+// rounds, so it isn't a tree of pairs: the rounds stand side by side as lists on a computer, one
+// at a time on a phone, each match saying where an undecided side comes from. Below them, the
+// field by the round it enters.
 
 const DIVISION_COLOR: Record<number, string> = { 1: 'blue', 2: 'teal', 3: 'grape' }
 
@@ -22,12 +23,10 @@ export function DivisionBadge({ division, name }: { division: number; name: stri
   )
 }
 
-/** The first round with a match still to play, or the last one drawn. */
+/** The first round with a match still to play, or the last. */
 function liveRound(t: AllDivision): number {
   const open = t.rounds.findIndex((r) => r.matches.some((m) => !m.winner))
-  if (open !== -1) return open
-  const drawn = t.rounds.filter((r) => r.matches.length > 0).length
-  return Math.max(0, drawn - 1)
+  return open === -1 ? t.rounds.length - 1 : open
 }
 
 export default function AllDivisionBracket({ tournament: t }: { tournament: AllDivision }) {
@@ -37,7 +36,7 @@ export default function AllDivisionBracket({ tournament: t }: { tournament: AllD
   if (t.entrants.length === 0) {
     return (
       <Text size="sm" c="dimmed">
-        The field is picked on {shortDate(t.selection)}, once D-I’s College Cup and the D-II and D-III finals are played: each division’s national champion, then its best by the RPI. D-I’s top four start in the Round of 16 (two byes); D-I’s next four and the top four of D-II and D-III start in the second round.
+        The field is picked on {shortDate(t.selection)}, once D-I’s College Cup and the D-II and D-III finals are played: each division’s national champion, then its best by the RPI. A set bracket, mixed across the divisions; D-II and D-III’s top two meet none of D-I’s top four before the quarterfinals. D-I’s top four start in the Round of 16 (two byes); D-I’s next four and the top four of D-II and D-III start in the second round.
       </Text>
     )
   }
@@ -49,22 +48,20 @@ export default function AllDivisionBracket({ tournament: t }: { tournament: AllD
   }
   const Round = ({ index }: { index: number }) => {
     const r = t.rounds[index]
-    if (r.matches.length === 0) {
-      return (
-        <Text size="xs" c="dimmed">
-          Drawn when the {index > 0 ? t.rounds[index - 1].name.toLowerCase() : 'field'} is {index > 0 ? 'over' : 'picked'}.
-        </Text>
-      )
-    }
     return (
       <Stack gap={8}>
         {r.matches.map((m) => (
           <div key={m.index}>
             <Group gap={4} mb={2}>
-              {label(m.a?.seed)}
               <Text size="xs" c="dimmed">
-                v
+                {m.index + 1}
               </Text>
+              {label(m.a?.seed)}
+              {m.a && m.b && (
+                <Text size="xs" c="dimmed">
+                  v
+                </Text>
+              )}
               {label(m.b?.seed)}
             </Group>
             <MatchCard match={m} />
@@ -114,7 +111,7 @@ export default function AllDivisionBracket({ tournament: t }: { tournament: AllD
           The field
         </Text>
         <Text size="xs" c="dimmed" mb={4}>
-          Seeded as one list: the later a team starts, the better its seed. Each round the best seed left meets the worst left from another division; the better seed is at home until the semifinals.
+          A set bracket, mixed across the divisions: D-II and D-III’s top two meet none of D-I’s top four before the quarterfinals. Seeded as one list (the later a team starts, the better its seed): the better seed is at home until the semifinals.
         </Text>
         <Table verticalSpacing={3} highlightOnHover>
           <Table.Thead>

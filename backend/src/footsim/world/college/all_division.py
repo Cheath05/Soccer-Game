@@ -2,14 +2,14 @@
 D-I's College Cup and the D-II and D-III finals are played, each division's best meet in one
 knockout to settle which is the best team in college soccer.
 
-A division's champion is its first entrant, then its best by the season's final RPI. The best
-enter latest: with the shipped rules D-I's top four have two byes, D-I's next four and the top
-four of D-II and D-III one. The field is seeded as one list (the later a team enters, the better
-its seed; within a round's entrants, by place among its division's that round, D-I before D-II
-before D-III: D-I's 9th, D-II's 5th, D-III's 5th, D-I's 10th...). Each round
-is drawn when the one before it ends: the best seed left meets the worst left from another
-division (or the worst left, when only one division is), the better seed at home until
-``neutral_from``; extra time, then penalties.
+A division's champion is its first entrant, then its best by the season's final RPI. The
+matches are a set bracket (``bracket``; the user, 22 Nov: no redraw each round), mixed across
+the divisions from the first round; with the shipped one D-II and D-III's top two meet none of
+D-I's top four before the quarterfinals. D-I's top four have two byes, D-I's next four and the
+top four of D-II and D-III one. The field is also seeded as one list (the later a team enters,
+the better its seed; within a round's entrants, by place among its division's that round, D-I
+before D-II before D-III): the better seed is at home until ``neutral_from``; extra time, then
+penalties.
 
 It's a competition of its own (type ``college_all``), so its games count in no division's
 table, RPI or record. Its fixtures' stage and its entries' event are ``ADT``; an entry's ``bid``
@@ -172,82 +172,89 @@ def field(conn: Connection, world: World, season_id: int) -> list[Entrant]:
 # --- the rounds ---------------------------------------------------------------------------------
 
 
-def draw(teams: list[Entrant]) -> list[tuple[Entrant, Entrant]]:
-    """A round's pairs, the better seed first: the best left meets the worst left from another
-    division, or the worst left when there's none."""
-    left = sorted(teams, key=lambda e: e.seed)
-    pairs = []
-    while len(left) >= 2:
-        best = left.pop(0)
-        other = [e for e in left if e.division != best.division]
-        rival = (other or left)[-1]
-        left.remove(rival)
-        pairs.append((best, rival))
-    return pairs
-
-
 @dataclass(frozen=True)
-class Match:
-    round: int
-    index: int
-    a: Entrant  # the better seed: at home unless it's neutral
-    b: Entrant
-    fixture: Row[Any]
+class Slot:
+    """A match of the set bracket, played or not."""
+
+    round: int  # 0 the first
+    index: int  # its place in the round, 0 the first
+    a: Entrant | None  # its sides in the bracket's order; None until the match before is won
+    b: Entrant | None
+    a_from: str  # where a side comes from, in words: "Winner of First round 8"
+    b_from: str
+    fixture: Row[Any] | None
     winner: Entrant | None
 
 
-def matches(conn: Connection, world: World, season_id: int) -> tuple[list[Entrant], list[Match]]:
-    """The field and every match drawn so far, round by round."""
+def _source(adt: AllDivisionDef, side: str, world: World) -> str:
+    entrant, winner = adt.entrant(side), adt.winner(side)
+    if entrant is not None:
+        return f"{division_name(world, entrant[0])} #{entrant[1]}"
+    assert winner is not None
+    return f"Winner of {adt.round_names[winner[0]]} {winner[1] + 1}"
+
+
+def matches(conn: Connection, world: World, season_id: int) -> tuple[list[Entrant], list[Slot]]:
+    """The field and every match of the bracket as it stands, round by round (none before the
+    field is picked)."""
+    adt = rules(world)
     teams = field(conn, world, season_id)
     comp = competition_id(conn, world)
-    if not teams or comp is None:
+    if adt is None or not teams or comp is None:
         return teams, []
     by_club = {e.club_id: e for e in teams}
-    out = []
-    for r in conn.execute(select(fixture).where(
-            fixture.c.season_id == season_id, fixture.c.competition_id == comp,
-            fixture.c.stage == ALL_DIVISION).order_by(fixture.c.round, fixture.c.id)):
-        a, b = by_club[int(r.home_club_id)], by_club[int(r.away_club_id)]
-        if b.seed < a.seed:
-            a, b = b, a
-        won = _knockout_winner(r)
-        out.append(Match(int(r.round), int(r.tie), a, b, r,
-                         by_club[won] if won is not None else None))
-    return teams, out
+    by_rank = {(e.division, e.rank): e for e in teams}
+    played = {(int(r.round), int(r.tie)): r for r in conn.execute(select(fixture).where(
+        fixture.c.season_id == season_id, fixture.c.competition_id == comp,
+        fixture.c.stage == ALL_DIVISION))}
+    slots: dict[tuple[int, int], Slot] = {}
+
+    def side(code: str) -> Entrant | None:
+        entrant, winner = adt.entrant(code), adt.winner(code)
+        if entrant is not None:
+            return by_rank.get(entrant)
+        assert winner is not None
+        return slots[winner].winner
+
+    for k, games in enumerate(adt.bracket):
+        for i, (x, y) in enumerate(games):
+            r = played.get((k, i))
+            won = _knockout_winner(r) if r is not None else None
+            slots[(k, i)] = Slot(k, i, side(x), side(y), _source(adt, x, world),
+                                 _source(adt, y, world), r,
+                                 by_club[won] if won is not None else None)
+    return teams, list(slots.values())
 
 
 def _advance(conn: Connection, world: World, meta: CareerMeta, comp: int, day: date
              ) -> int | None:
-    """Draw the next round once the one before it is over; the champion's club once decided."""
+    """Schedule the bracket's matches whose sides are known; the champion's club once
+    decided."""
     adt = rules(world)
     assert adt is not None
-    teams, played = matches(conn, world, meta.season_id)
+    _, slots = matches(conn, world, meta.season_id)
     start = _season_start(conn, meta.season_id)
-    winners: list[Entrant] = []
-    for k in range(len(adt.rounds)):
-        games = [m for m in played if m.round == k]
-        if games:
-            if any(m.winner is None for m in games):
-                return None  # still being played
-            winners = [m.winner for m in games if m.winner is not None]
+    rows = []
+    for m in slots:
+        if m.fixture is not None or m.a is None or m.b is None:
             continue
-        playing = [e for e in teams if e.enters == k] + winners
-        when = max(on(adt.rounds[k], start), day + timedelta(days=1))
-        neutral = k >= adt.neutral_from
-        conn.execute(fixture.insert(), [
-            {"season_id": meta.season_id, "competition_id": comp, "stage": ALL_DIVISION,
-             "round": k, "tie": str(index), "leg": None, "date": when.isoformat(),
-             "home_club_id": a.club_id, "away_club_id": b.club_id, "neutral": int(neutral),
-             "status": "scheduled"}
-            for index, (a, b) in enumerate(draw(playing))])
-        return None
-    return winners[0].club_id if len(winners) == 1 else None
+        home, away = (m.a, m.b) if m.a.seed < m.b.seed else (m.b, m.a)  # the better seed hosts
+        when = max(on(adt.rounds[m.round], start), day + timedelta(days=1))
+        rows.append({"season_id": meta.season_id, "competition_id": comp,
+                     "stage": ALL_DIVISION, "round": m.round, "tie": str(m.index), "leg": None,
+                     "date": when.isoformat(), "home_club_id": home.club_id,
+                     "away_club_id": away.club_id, "neutral": int(m.round >= adt.neutral_from),
+                     "status": "scheduled"})
+    if rows:
+        conn.execute(fixture.insert(), rows)
+    final = slots[-1] if slots else None
+    return final.winner.club_id if final is not None and final.winner is not None else None
 
 
 def progress_all_division(conn: Connection, world: World, meta: CareerMeta, day: date
                           ) -> list[str]:
     """A day of the tournament: its field once every national final is played (from
-    ``selection``), each round's draw, and its champion. Returns news."""
+    ``selection``), each match once its sides are known, and its champion. Returns news."""
     adt = rules(world)
     if adt is None or not lower.competitions(conn, world):
         return []
@@ -276,14 +283,12 @@ def progress_all_division(conn: Connection, world: World, meta: CareerMeta, day:
 def run(conn: Connection, world: World, season_id: int, club_id: int) -> str | None:
     """A team's tournament this season, in words (None if it isn't in the field)."""
     adt = rules(world)
-    teams, played = matches(conn, world, season_id)
-    mine = next((e for e in teams if e.club_id == club_id), None)
-    if adt is None or mine is None:
+    _, slots = matches(conn, world, season_id)
+    mine = [m for m in slots if club_id in (m.a.club_id if m.a else None,
+                                            m.b.club_id if m.b else None)]
+    if adt is None or not mine:
         return None
-    games = [m for m in played if club_id in (m.a.club_id, m.b.club_id)]
-    if not games:
-        return f"All-Division Tournament: starts in the {adt.round_names[mine.enters]}"
-    last = max(games, key=lambda m: m.round)
+    last = max(mine, key=lambda m: m.round)
     name = adt.round_names[last.round]
     if last.winner is None:
         return f"All-Division Tournament: {name} next"

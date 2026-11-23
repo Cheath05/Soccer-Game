@@ -63,6 +63,9 @@ class CareerMeta:
     # A college coach's asks to stay (world/college/stay.py): player id -> (the season asked,
     # 1 if he agreed to stay, 0 if not). One a player a season.
     stay_pitches: dict[int, tuple[int, int]] = field(default_factory=dict)
+    # The recruits the recruiting assistant offered (world/college/assistant.py), so it pulls
+    # only its own offers, never the coach's.
+    assistant_offers: list[int] = field(default_factory=list)
 
     @property
     def seed(self) -> int:
@@ -100,6 +103,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         hall_of_fame_favorites=[int(p) for p in values.get("hall_of_fame_favorites", [])],
         stay_pitches={int(k): (int(v[0]), int(v[1]))
                       for k, v in values.get("stay_pitches", {}).items()},
+        assistant_offers=[int(r) for r in values.get("assistant_offers", [])],
     )
 
 
@@ -127,6 +131,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "auto_recruiting": meta.auto_recruiting,
         "hall_of_fame_favorites": meta.hall_of_fame_favorites,
         "stay_pitches": {str(k): list(v) for k, v in meta.stay_pitches.items()},
+        "assistant_offers": meta.assistant_offers,
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

@@ -57,11 +57,15 @@ def _meta(engine: Engine) -> CareerMeta:
 
 
 def test_the_assistant_recruits_the_leavers_replacements(career: tuple[Engine, World]) -> None:
-    """The recruiting assistant (20 Nov): Top targets with offers, at the leavers' position
-    groups, to realistic recruits; nothing twice; the user's own targets left alone. (Rolled
-    back, so the recruiting year below starts as before.)"""
+    """The recruiting assistant (20 Nov; 22 Nov: by next season's squad): Top targets with
+    offers, only at the position groups next season is short of a balanced roster, to realistic
+    recruits, about ``overcommit`` per place; nothing twice; the user's own targets left alone.
+    Once a group is covered it pulls its own open offers there. (Rolled back, so the recruiting
+    year below starts as before.)"""
+    import math
+
     from footsim.world.college import coach
-    from footsim.world.college.assistant import leaving, recruit_for_leavers
+    from footsim.world.college.assistant import needs, recruit_for_leavers, targets
 
     engine, world = career
     with engine.connect() as conn:
@@ -69,8 +73,8 @@ def test_the_assistant_recruits_the_leavers_replacements(career: tuple[Engine, W
         meta = read_meta(conn)
         meta.auto_recruiting = True
         meta.current_date = date(meta.current_date.year, 8, 3)  # offers are open
-        need = leaving(conn, world, meta)
-        assert sum(need.values()) > 0
+        need = needs(conn, world, meta)
+        assert sum(need.values()) > 0 and set(need) <= set(targets(world))
         mine = next(v for v in coach.recruits(conn, world, meta) if v.fit == "good")
         coach.set_target(conn, world, meta, mine.id, rc.WATCH)
         news = recruit_for_leavers(conn, world, meta, meta.current_date)
@@ -79,10 +83,33 @@ def test_the_assistant_recruits_the_leavers_replacements(career: tuple[Engine, W
         offered = [v for v in views if v.offer_status == "open"]
         assert offered and all(v.priority == rc.TOP and v.fit in ("good", "reach")
                                for v in offered)
-        groups = {str(world.defs.positions[v.position].group) for v in offered}
-        assert groups <= set(need)
+        by_group: dict[str, int] = {}
+        for v in offered:
+            g = str(world.defs.positions[v.position].group)
+            by_group[g] = by_group.get(g, 0) + 1
+        overcommit = world.defs.college.recruiting.assistant.overcommit
+        assert all(g in need and n <= math.ceil(need[g] * overcommit)
+                   for g, n in by_group.items())
         assert next(v for v in views if v.id == mine.id).priority == rc.WATCH
+        meta = read_meta(conn)
+        assert set(meta.assistant_offers) == {v.id for v in offered}
         assert recruit_for_leavers(conn, world, meta, meta.current_date) == []
+        # A group covered by commitments (here, recruits made to commit): its offers are pulled.
+        group, _ = max(by_group.items(), key=lambda kv: kv[1])
+        positions = [p for p, d in world.defs.positions.items() if str(d.group) == group]
+        marks = ",".join(f"'{p}'" for p in positions)
+        conn.execute(text(
+            f"UPDATE recruit SET status = 'committed', club_id = :c, share = 0 WHERE id IN "
+            f"(SELECT id FROM recruit WHERE class_season = :s AND status = 'open' AND position "
+            f"IN ({marks}) AND id NOT IN (SELECT recruit_id FROM recruit_offer WHERE club_id = "
+            f":c) LIMIT :n)"),
+            {"c": meta.user_club_id, "s": meta.season_id + 1, "n": need[group]})
+        assert needs(conn, world, meta)[group] == 0
+        news = recruit_for_leavers(conn, world, meta, meta.current_date)
+        assert any(n.startswith("Your assistant withdrew") for n in news)
+        still = [v for v in coach.recruits(conn, world, meta) if v.offer_status == "open"
+                 and str(world.defs.positions[v.position].group) == group]
+        assert still == []
         tx.rollback()
 
 

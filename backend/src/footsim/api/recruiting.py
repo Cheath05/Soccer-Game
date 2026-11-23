@@ -360,6 +360,9 @@ def put_visit(recruit_id: int, body: VisitIn, session: Session) -> RecruitOut:
 class AssistantOut(BaseModel):
     auto: bool  # the assistant recruits your leavers' replacements
     leaving: dict[str, int]  # your leavers after this season, by position group
+    # The places next season's squad is still short of a balanced roster, by group (22 Nov).
+    needs: dict[str, int] = {}
+    places_left: int | None = None  # next season's roster places not yet taken
 
 
 class AssistantIn(BaseModel):
@@ -367,12 +370,14 @@ class AssistantIn(BaseModel):
 
 
 def _assistant(session: Session) -> AssistantOut:
-    from footsim.world.college.assistant import leaving
+    from footsim.world.college.assistant import leaving, needs, places_left
 
     with session.read() as conn:
         meta = read_meta(conn)
-        return AssistantOut(auto=meta.auto_recruiting,
-                            leaving=dict(leaving(conn, get_world(), meta)))
+        world = get_world()
+        return AssistantOut(auto=meta.auto_recruiting, leaving=dict(leaving(conn, world, meta)),
+                            needs=dict(needs(conn, world, meta)),
+                            places_left=places_left(conn, world, meta))
 
 
 @router.get("/assistant")

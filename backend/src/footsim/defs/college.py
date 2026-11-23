@@ -418,6 +418,13 @@ class StateDef(DefModel):
     weight: float = Field(ge=0)
 
 
+class AssistantDef(DefModel):
+    """The recruiting assistant (world/college/assistant.py): how many offers it keeps out for
+    each place it still needs at a position group."""
+
+    overcommit: float = Field(default=1.5, ge=1)
+
+
 class HsRecruitingDef(DefModel):
     """High-school recruiting (W9c, data/config/college/recruiting.yaml)."""
 
@@ -434,6 +441,7 @@ class HsRecruitingDef(DefModel):
     programs: ProgramRulesDef
     user: UserRecruitingDef
     states: dict[str, StateDef]
+    assistant: AssistantDef = AssistantDef()
 
 
 class ProgramCostsDef(DefModel):

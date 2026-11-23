@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.152"
+  date: "2026-11-22"
+  title: "A smarter recruiting assistant"
+  changes:
+    - "The recruiting assistant now plans from next season's squad, the players staying plus your committed class, against a balanced roster (3 keepers, 4 centre-backs, 4 full-backs, 8 midfielders, 4 wingers, 4 strikers), instead of replacing leavers one for one. A position you already have plenty of gets no more offers, and one you're short of gets them even if nobody there is leaving."
+    - "Fixed: it made twice as many offers as it needed and never withdrew any, so when they were all accepted you got twice the players at that position. It now keeps about one and a half offers a place, fills the biggest gaps first, and withdraws its own open offers at a position once it's covered (never yours)."
+    - "Its switch on Recruiting shows what next season still needs, and warns when your roster is too full to recruit for it (pull an offer, or a commitment at a position you have too many of, to make room)."
+
 - version: "1.151"
   date: "2026-11-22"
   title: "SuperDraft history; no declaring after a freshman year"

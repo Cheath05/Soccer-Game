@@ -163,6 +163,8 @@ export const useSetVisit = () => useRecruitAction(({ id, fixtureId }: { id: numb
 export interface RecruitingAssistant {
   auto: boolean
   leaving: Record<string, number> // your leavers after this season, by position group
+  needs?: Record<string, number> // places next season is still short of a balanced roster, by group
+  places_left?: number | null // next season's roster places not yet taken
 }
 
 export const useRecruitingAssistant = (enabled = true) => useQuery({ queryKey: [...KEY, 'assistant'], queryFn: () => api.get<RecruitingAssistant>('/recruiting/assistant'), enabled })

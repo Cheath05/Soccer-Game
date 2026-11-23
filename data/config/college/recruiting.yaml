@@ -219,3 +219,11 @@ states:
   WV: {lat: 38.8, lon: -80.9, weight: 0.3}
   WI: {lat: 43.7, lon: -89.0, weight: 1.4}
   WY: {lat: 42.6, lon: -106.7, weight: 0.1}
+
+# The recruiting assistant (world/college/assistant.py; the user's fix of 22 Nov): it plans from
+# next season's squad, the players staying plus the class committed, against a balanced roster
+# (the first roster_target positions of rules.yaml's roster shape) by position group, and keeps
+# this many offers out for each place still short there. A group that's covered gets no more,
+# and the assistant pulls its own offers there that are still open (never the coach's own).
+assistant:
+  overcommit: 1.5

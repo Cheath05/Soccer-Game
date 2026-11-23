@@ -27,6 +27,17 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.150"
+  date: "2026-11-22"
+  title: "Draft watch, asking players to stay, next season's squad, and Home for your country"
+  changes:
+    - "College coaches: players who may leave early for the MLS SuperDraft are marked all season (May leave, or Draft watch for the next in line) on your squad and their page, and a news warning comes on 2 November, before the declarations after the College Cup. No more surprises at the end of the season."
+    - "Ask him to stay (on his page): once a season, before he declares or after (until the draft). His chance is shown: higher with more playing time and a bigger program, lower the bigger a prospect he is. If he agrees he stays another season."
+    - "Next season: Squad → Next season (and a card on Home) shows your squad after this season by line: who joins (your committed and signed recruits with stars and estimates, portal transfers included), who leaves (graduating, declared, likely to declare early) and who stays, with the places left under the roster limit."
+    - "The recruiting assistant now also replaces players likely to leave early for the draft."
+    - "Managing a national team too: when its match is next, Home shows the country instead of your club: its world rank, Elo, call-ups and injuries, where it stands for the next World Cup, its recent results and its coming matches. Your club's page comes back once the window is over."
+    - "Fixed: international friendlies were labelled \"Play-off\"; they now say Friendly."
+
 - version: "1.149"
   date: "2026-11-22"
   title: "World Cup history, and position training for your national team"

@@ -1,7 +1,7 @@
 import { Badge, Button, Card, Grid, Group, Stack, Table, Text } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 
-import { useConferences, wdl } from '../api/americas'
+import { useConferences, useNextSeason, wdl } from '../api/americas'
 import { useProgram } from '../api/program'
 import { useRecruiting } from '../api/recruiting'
 import { useCareer, useFinances, useInternational, useMyNation, useSquad, useTable } from '../api/hooks'
@@ -24,12 +24,17 @@ export default function DashboardPage() {
   const conferences = useConferences(!!college)
   const finances = useFinances(!!career && !college && !only).data
   const recruiting = useRecruiting(!!college).data
+  const outlook = useNextSeason(!!college).data
   const program = useProgram(college?.mode === 'builder').data
   const navigate = useNavigate()
   if (!career) return null
 
   const next = career.next_fixture
   const today = next?.date === career.date
+  // The next match is the national team's (an international window, 22 Nov): the page is about
+  // the country, not the club, until it's over.
+  const nationId = career.nation?.id
+  const intl = !only && nationId !== undefined && !!next && (next.home.id === nationId || next.away.id === nationId)
   const conference = college ? conferences.data?.find((c) => c.key === college.conference) : undefined
   const rows = conference
     ? conference.rows.map((r) => ({ position: r.position, club: r.club, played: r.played, goal_difference: r.goals_for - r.goals_against, points: r.points }))
@@ -79,6 +84,27 @@ export default function DashboardPage() {
         )}
       </Card>
 
+      {intl && nationId !== undefined ? (
+        <Grid gap="sm">
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <CountryCard onOpen={() => void navigate({ to: '/international' })} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <NationResults teamId={nationId} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <NationFixtures teamId={nationId} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/squad' })}>
+              <span className="fs-label">{career.club.name}</span>
+              <Text size="sm" mt="xs" c="dimmed">
+                Your club’s table, results and squad come back here once this international window is over.
+              </Text>
+            </Card>
+          </Grid.Col>
+        </Grid>
+      ) : (
       <Grid gap="sm">
         {only && (
           <Grid.Col span={{ base: 12, md: 6 }}>
@@ -236,6 +262,26 @@ export default function DashboardPage() {
             </Card>
           </Grid.Col>
         )}
+        {college && outlook && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/squad', search: { view: 'next' } as never })}>
+              <Group justify="space-between">
+                <span className="fs-label">Next season, {outlook.season}</span>
+                {outlook.may_leave > 0 && (
+                  <Badge color="orange" variant="light">
+                    {outlook.may_leave} may leave early
+                  </Badge>
+                )}
+              </Group>
+              <Group mt="sm" grow align="flex-start">
+                <Figure label="Staying" value={`${outlook.staying}`} />
+                <Figure label="Leaving" value={`${outlook.leaving}`} />
+                <Figure label="Joining" value={`${outlook.joining}`} />
+                <Figure label="Places" value={`${outlook.staying + outlook.joining}/${outlook.roster_max}`} />
+              </Group>
+            </Card>
+          </Grid.Col>
+        )}
         {recruiting && (
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder h="100%" style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/recruiting' })}>
@@ -273,9 +319,92 @@ export default function DashboardPage() {
           </Grid.Col>
         )}
       </Grid>
+      )}
     </Stack>
   )
 
+}
+
+/** The national team's latest results (an international window on Home). */
+function NationResults({ teamId }: { teamId: number }) {
+  const mine = useMyNation().data
+  const navigate = useNavigate()
+  const recent = mine?.recent ?? []
+  return (
+    <Card withBorder h="100%">
+      <span className="fs-label">{mine?.team?.name ?? 'Your country'}: recent results</span>
+      <Stack gap={2} mt="xs">
+        {recent.length === 0 && (
+          <Text size="sm" c="dimmed">
+            No matches played yet.
+          </Text>
+        )}
+        {recent.map((f: Fixture) => {
+          const home = f.home.id === teamId
+          return (
+            <Group key={f.id} className="fs-row" justify="space-between" wrap="nowrap" gap="xs" py={8} px={6} style={{ cursor: 'pointer' }} onClick={() => void navigate({ to: '/match/$fixtureId', params: { fixtureId: String(f.id) } })}>
+              <ResultBadge fixture={f} clubId={teamId} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Text size="sm" fw={600} truncate>
+                  {home ? f.away.name : f.home.name}
+                  <Text span c="dimmed" fw={400}>
+                    {' '}
+                    ({f.neutral ? 'N' : home ? 'H' : 'A'})
+                  </Text>
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
+                  {shortDate(f.date)} · {f.competition_name}
+                </Text>
+              </div>
+              <Text className="fs-num" fz={20} style={{ whiteSpace: 'nowrap' }}>
+                {score(f)}
+              </Text>
+            </Group>
+          )
+        })}
+      </Stack>
+    </Card>
+  )
+}
+
+/** The national team's coming matches (an international window on Home). */
+function NationFixtures({ teamId }: { teamId: number }) {
+  const mine = useMyNation().data
+  const fixtures = mine?.fixtures ?? []
+  return (
+    <Card withBorder h="100%">
+      <span className="fs-label">Coming up</span>
+      <Stack gap={6} mt="xs">
+        {fixtures.length === 0 && (
+          <Text size="sm" c="dimmed">
+            Nothing else scheduled yet.
+          </Text>
+        )}
+        {fixtures.map((f: Fixture) => {
+          const home = f.home.id === teamId
+          return (
+            <Group key={f.id} justify="space-between" wrap="nowrap" gap="xs">
+              <div style={{ minWidth: 0 }}>
+                <Text size="sm" fw={600} truncate>
+                  {home ? f.away.name : f.home.name}
+                  <Text span c="dimmed" fw={400}>
+                    {' '}
+                    ({f.neutral ? 'N' : home ? 'H' : 'A'})
+                  </Text>
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
+                  {f.competition_name}
+                </Text>
+              </div>
+              <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                {shortDate(f.date)}
+              </Text>
+            </Group>
+          )
+        })}
+      </Stack>
+    </Card>
+  )
 }
 
 /** A national team's manager without a club: his country's world ranking and call-ups. */
@@ -296,6 +425,11 @@ function CountryCard({ onOpen }: { onOpen: () => void }) {
         <Figure label="Elo" value={ranked ? `${Math.round(ranked.elo)}` : '–'} />
         <Figure label="Squad" value={`${called.length}/${mine.squad_size}`} />
       </Group>
+      {mine.world_cup && (
+        <Text size="sm" mt="xs" fw={600}>
+          {mine.world_cup}
+        </Text>
+      )}
       <Stack gap={6} mt="sm">
         {injured.length === 0 ? (
           <Text size="sm">

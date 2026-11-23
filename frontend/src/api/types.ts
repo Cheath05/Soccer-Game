@@ -144,6 +144,9 @@ export interface CollegePlayerInfo {
   scholarship: number // a share of a full scholarship; 0 for a walk-on
   declared: boolean // declared for the MLS SuperDraft
   leaves: string // the season he leaves after, as a senior
+  draft_risk?: 'likely' | 'possible' | null // the draft watch: may declare early after the College Cup
+  stay_chance?: number | null // yours: his chance of agreeing to stay if asked now (null: can't ask)
+  stay_answer?: 'stays' | 'leaving' | null // yours: his answer, once asked this season
 }
 
 // Sim to date (api/sim.py): the career moving on to a chosen day in the background.
@@ -1090,6 +1093,8 @@ export interface MyNation {
   squad_size: number // the most he can call up
   players: CallUp[] // the eligible players, the best first
   fixtures: Fixture[] // the team's next matches
+  recent?: Fixture[] // its latest results, the latest first
+  world_cup?: string | null // where it stands for the next World Cup, in words
 }
 
 // GET /api/international/history: every World Cup and Club World Cup final played, latest first.

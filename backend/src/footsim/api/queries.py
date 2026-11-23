@@ -1032,9 +1032,14 @@ def squad(conn: Connection, world: World, club_id: int) -> list[SquadPlayerOut]:
 
 def _college_players(conn: Connection, meta: CareerMeta, ids: list[int]
                      ) -> dict[int, CollegePlayerOut]:
-    """Each college player among ``ids``: his class, scholarship and draft status."""
+    """Each college player among ``ids``: his class, scholarship and draft status, with the
+    draft watch and, for the user's own, whether he can be asked to stay (world/college/stay.py)."""
+    from footsim.world.college import stay
+
     if not ids:
         return {}
+    world = get_world()
+    watch: dict[int, str] | None = None
     start = int(conn.execute(select(season.c.start_date).where(
         season.c.id == meta.season_id)).scalar_one()[:4])
     found = {}
@@ -1043,9 +1048,19 @@ def _college_players(conn: Connection, meta: CareerMeta, ids: list[int]
             college_player.c.status.in_(("enrolled", "prospect")))):
         year = min(4, int(r.class_year))
         last = start + (4 - year)  # the autumn of his last season
-        found[int(r.player_id)] = CollegePlayerOut(
+        out = CollegePlayerOut(
             class_year=CLASS_NAMES[year], scholarship=round(float(r.scholarship), 2),
             declared=r.status == "prospect", leaves=f"{last}-{str(last + 1)[2:]}")
+        if year < 4 and r.status == "enrolled":
+            if watch is None:
+                watch = stay.draft_watch(conn, world, meta)
+            out.draft_risk = watch.get(int(r.player_id))
+        if int(r.club_id) == meta.user_club_id and year < 4 and (
+                out.draft_risk or out.declared or int(r.player_id) in meta.stay_pitches):
+            p = stay.pitch(conn, world, meta, int(r.player_id), out.draft_risk)
+            out.stay_chance = p.chance if p.can_ask else None
+            out.stay_answer = p.asked
+        found[int(r.player_id)] = out
     return found
 
 

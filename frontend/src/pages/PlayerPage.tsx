@@ -6,7 +6,8 @@ import { useClubPlayers, useOfferRules, usePlayer, usePlayerSeasons, useReleaseP
 import { type Training, useSetTraining, useTraining } from '../api/training'
 import { type AvailabilityStatus, useAvailability, useSetAvailability } from '../api/transfers'
 import BackButton from '../components/BackButton'
-import type { FamiliarityBand, PlayerSeasonLine, PositionRating } from '../api/types'
+import { useAskToStay } from '../api/americas'
+import type { CollegePlayerInfo, FamiliarityBand, PlayerSeasonLine, PositionRating } from '../api/types'
 import AutoTrainingSwitch from '../components/AutoTrainingSwitch'
 import ClubLink from '../components/ClubLink'
 import { SeasonChange } from '../components/SeasonChange'
@@ -246,6 +247,7 @@ export default function PlayerPage() {
 
       <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player || !!p.trains_with_you} />
 
+      {p.own_player && p.college && p.college.class_year !== 'Sr' && (p.college.draft_risk || p.college.declared || p.college.stay_answer) && <DraftCard playerId={p.id} name={p.name} info={p.college} />}
       {(p.own_player || p.trains_with_you) && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} team={p.own_player ? 'club' : 'nation'} />}
       {p.own_player && !p.college && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
       {p.international && (
@@ -454,6 +456,50 @@ function PositionsCard({ playerId, ratings, own }: { playerId: number; ratings: 
       {set.error && (
         <Text c="red" size="sm" mt="xs">
           {set.error.message}
+        </Text>
+      )}
+    </Card>
+  )
+}
+
+/** A college coach's underclassman who may leave early for the draft (or has declared): the
+ * warning, and asking him to stay, once a season. */
+function DraftCard({ playerId, name, info }: { playerId: number; name: string; info: CollegePlayerInfo }) {
+  const ask = useAskToStay()
+  const result = ask.data
+  const answer = info.stay_answer
+  const status = info.declared
+    ? `${name} has declared for the MLS SuperDraft. He can still withdraw before the draft in January.`
+    : info.draft_risk === 'likely'
+      ? `${name} is likely to declare early for the MLS SuperDraft after the College Cup: as things stand he’d be one of the country’s top underclassmen.`
+      : `${name} is on the draft watch: he could declare early for the MLS SuperDraft after the College Cup if he keeps progressing.`
+  return (
+    <Card withBorder padding="sm" aria-label="Draft" bg={info.declared || info.draft_risk === 'likely' ? 'var(--mantine-color-orange-light)' : undefined}>
+      <Title order={4} mb={4}>
+        Leaving early for the draft?
+      </Title>
+      <Text size="sm">{status}</Text>
+      {answer === 'stays' || result?.stays ? (
+        <Text size="sm" mt="xs" fw={600} c="teal">
+          He has agreed to stay another season.
+        </Text>
+      ) : answer === 'leaving' || result?.stays === false ? (
+        <Text size="sm" mt="xs" fw={600} c="orange">
+          You asked him to stay: he has made up his mind to leave after this season.
+        </Text>
+      ) : info.stay_chance !== null && info.stay_chance !== undefined ? (
+        <Group mt="xs" gap="sm">
+          <Button size="xs" loading={ask.isPending} onClick={() => ask.mutate(playerId)}>
+            Ask him to stay
+          </Button>
+          <Text size="xs" c="dimmed">
+            About a {Math.round(info.stay_chance * 100)}% chance: more with more playing time and a bigger program, less the bigger a prospect he is{info.declared ? ' and now that he has declared' : ''}. You can ask once a season.
+          </Text>
+        </Group>
+      ) : null}
+      {ask.error && (
+        <Text c="red" size="sm">
+          {ask.error.message}
         </Text>
       )}
     </Card>

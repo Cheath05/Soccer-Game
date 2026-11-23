@@ -146,3 +146,18 @@ def test_the_assistant_trains_the_squads_positions(
             "(SELECT player_id FROM national_squad) LIMIT 1")).scalar_one()
         assert not trains(conn, meta, int(outsider))
         conn.rollback()
+
+
+def test_my_team_has_results_and_the_world_cup(career: tuple[Engine, World, dict[str, object]]
+                                               ) -> None:
+    """Home during an international window (22 Nov): the national team's latest results and
+    where it stands for the next World Cup."""
+    from footsim.api.international import _my_nation
+
+    engine, _, seen = career
+    with engine.connect() as conn:
+        out = _my_nation(conn)
+    assert out.team is not None and out.team.id == seen["nation"]
+    assert len(out.recent) == 2 and all(f.status == "played" for f in out.recent)
+    assert out.recent[0].date >= out.recent[1].date
+    assert out.world_cup is not None and "World Cup" in out.world_cup

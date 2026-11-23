@@ -267,3 +267,50 @@ export const useAllDivision = (enabled = true) =>
 
 export const useDraftPool = (enabled: boolean) =>
   useQuery({ queryKey: ['college', 'draft-pool'], queryFn: () => api.get<Prospect[]>('/college/draft-pool'), enabled, retry: noRetryOn404 })
+
+// A college coach's next season (api/college.py /next-season): who stays, leaves and joins.
+export interface OutlookPlayer {
+  id: number
+  name: string
+  position: string
+  overall: number
+  class_year: string
+  note: string | null
+}
+
+export interface OutlookRecruit {
+  id: number
+  name: string
+  position: string
+  stars: number
+  status: 'committed' | 'signed'
+  overall_low: number
+  overall_high: number
+  portal_from: string | null
+}
+
+export interface NextSeason {
+  season: string
+  roster_max: number
+  staying: number
+  leaving: number
+  may_leave: number
+  joining: number
+  lines: { line: string; staying: OutlookPlayer[]; leaving: OutlookPlayer[]; joining: OutlookRecruit[] }[]
+}
+
+export const useNextSeason = (enabled = true) =>
+  useQuery({ queryKey: ['college', 'next-season'], queryFn: () => api.get<NextSeason>('/college/next-season'), enabled, retry: noRetryOn404 })
+
+/** Ask one of your underclassmen not to leave early for the draft (once a season). */
+export function useAskToStay() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (playerId: number) => api.post<{ stays: boolean; message: string }>(`/college/players/${playerId}/stay`, {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['college', 'next-season'] })
+      void client.invalidateQueries({ queryKey: ['squad'] })
+      void client.invalidateQueries({ queryKey: ['player'] })
+    },
+  })
+}

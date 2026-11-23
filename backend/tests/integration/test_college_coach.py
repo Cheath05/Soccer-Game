@@ -241,3 +241,102 @@ def test_a_game_day_visit_moves_with_the_result(career: tuple[Engine, World]) ->
         assert read_meta(conn).gameday_visits == {}
         assert visits.factor(world, 1, 0) > visits.factor(world, 1, 1) > visits.factor(world, 0, 1)
         conn.rollback()
+
+
+def test_the_draft_watch_and_asking_to_stay(career: tuple[Engine, World]) -> None:
+    """Draft watch (22 Nov): the underclassmen who'd declare early if it were today, the coach's
+    news about his own, asking one to stay (once; if he agrees he doesn't declare), and the
+    next season's outlook counting him."""
+    from contextlib import contextmanager
+    from typing import Any
+
+    from footsim.api.college import next_season
+    from footsim.defs.college import on
+    from footsim.world.college.draft import declare_prospects
+    from footsim.world.college.season import _season_start
+    from footsim.world.college.stay import (
+        LIKELY,
+        StayRefused,
+        ask_to_stay,
+        draft_watch,
+        pitch,
+        watch_news,
+    )
+
+    engine, world = career
+    rules = world.defs.college.rules.draft
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        user = meta.user_club_id
+        # One of the user's sophomores becomes the country's best prospect.
+        star = int(conn.execute(text(
+            "SELECT player_id FROM college_player WHERE club_id = :c AND class_year = 2 "
+            "AND status = 'enrolled' ORDER BY player_id LIMIT 1"), {"c": user}).scalar_one())
+        conn.execute(text("UPDATE player SET pa_hidden = 95 WHERE person_id = :p"), {"p": star})
+        watch = draft_watch(conn, world, meta)
+        assert watch[star] == LIKELY
+        assert sum(r == LIKELY for r in watch.values()) == rules.underclassmen
+        assert len(watch) == rules.underclassmen + rules.watch_extra
+        day = on(rules.watch_news, _season_start(conn, meta.season_id))
+        news = watch_news(conn, world, meta, day)
+        assert any("Draft watch: your player" in n for n in news)
+        assert watch_news(conn, world, meta, day.replace(day=day.day + 1)) == []
+        p = pitch(conn, world, meta, star)
+        assert p.can_ask and p.asked is None
+        assert rules.stay_pitch is not None
+        assert rules.stay_pitch.least <= p.chance <= rules.stay_pitch.most
+
+        class _Session:
+            @contextmanager
+            def read(self) -> Any:
+                yield conn
+
+        before = next_season(_Session())  # type: ignore[arg-type]
+        leaving = {pl.id: pl.note for ln in before.lines for pl in ln.leaving}
+        assert leaving[star] == "likely to declare early" and before.may_leave >= 1
+        roster = conn.execute(text(
+            "SELECT COUNT(*) FROM college_player WHERE club_id = :c AND status IN "
+            "('enrolled', 'prospect')"), {"c": user}).scalar_one()
+        assert before.staying + before.leaving == roster
+        stays = ask_to_stay(conn, world, meta, star)
+        with pytest.raises(StayRefused):
+            ask_to_stay(conn, world, meta, star)  # once a season
+        assert pitch(conn, world, meta, star).asked == ("stays" if stays else "leaving")
+        declare_prospects(conn, world, meta, meta.season_id, meta.current_date)
+        status = conn.execute(text("SELECT status FROM college_player WHERE player_id = :p"),
+                              {"p": star}).scalar_one()
+        assert status == ("enrolled" if stays else "prospect")
+        after = next_season(_Session())  # type: ignore[arg-type]
+        kept = {pl.id: pl.note for ln in after.lines for pl in ln.staying}
+        if stays:
+            assert kept[star] == "agreed to stay"
+        else:
+            assert {pl.id: pl.note for ln in after.lines for pl in ln.leaving}[star] == (
+                "declared for the draft")
+        conn.rollback()
+
+
+def test_a_declared_player_can_withdraw(career: tuple[Engine, World]) -> None:
+    """Asked after he declared, a player who agrees withdraws from the draft pool."""
+    from footsim.world.college.stay import ask_to_stay, pitch
+
+    engine, world = career
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        found = None
+        for (pid,) in conn.execute(text(
+                "SELECT player_id FROM college_player WHERE club_id = :c AND class_year < 4 "
+                "AND status = 'enrolled' ORDER BY player_id"), {"c": meta.user_club_id}):
+            conn.execute(text("UPDATE college_player SET status = 'prospect', ga = 1, "
+                              "declared_season = :s WHERE player_id = :p"),
+                         {"s": meta.season_id, "p": pid})
+            p = pitch(conn, world, meta, int(pid))
+            assert p.can_ask
+            if ask_to_stay(conn, world, meta, int(pid)):
+                found = int(pid)
+                break
+        assert found is not None  # some agree
+        row = conn.execute(text("SELECT status, ga, declared_season FROM college_player "
+                                "WHERE player_id = :p"), {"p": found}).one()
+        assert (row.status, row.ga, row.declared_season) == ("enrolled", 0, None)
+        conn.rollback()

@@ -60,6 +60,9 @@ class CareerMeta:
     # The players the user starred on the Hall of fame page (api/hall_of_fame.py), in the order
     # starred.
     hall_of_fame_favorites: list[int] = field(default_factory=list)
+    # A college coach's asks to stay (world/college/stay.py): player id -> (the season asked,
+    # 1 if he agreed to stay, 0 if not). One a player a season.
+    stay_pitches: dict[int, tuple[int, int]] = field(default_factory=dict)
 
     @property
     def seed(self) -> int:
@@ -95,6 +98,8 @@ def read_meta(conn: Connection) -> CareerMeta:
         gameday_visits={int(k): int(v) for k, v in values.get("gameday_visits", {}).items()},
         auto_recruiting=bool(values.get("auto_recruiting", False)),
         hall_of_fame_favorites=[int(p) for p in values.get("hall_of_fame_favorites", [])],
+        stay_pitches={int(k): (int(v[0]), int(v[1]))
+                      for k, v in values.get("stay_pitches", {}).items()},
     )
 
 
@@ -121,6 +126,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "gameday_visits": {str(k): v for k, v in meta.gameday_visits.items()},
         "auto_recruiting": meta.auto_recruiting,
         "hall_of_fame_favorites": meta.hall_of_fame_favorites,
+        "stay_pitches": {str(k): list(v) for k, v in meta.stay_pitches.items()},
     }
     for key, value in values.items():
         conn.execute(game_meta.delete().where(game_meta.c.key == key))

@@ -5,13 +5,20 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import Connection, select
+from sqlalchemy import Connection, select, text
 
 from footsim.api.routes import Session
 from footsim.api.schemas import ClubRef
 from footsim.competitions.bracket import BYE, rounds_for
 from footsim.defs.college import on
-from footsim.persistence.schema import club, college_entry, college_team, league_title, season
+from footsim.persistence.schema import (
+    club,
+    college_entry,
+    college_team,
+    league_title,
+    person,
+    season,
+)
 from footsim.world.college.common import LOWER_PREFIX, NCAA, conference_event, is_lower_stage
 from footsim.world.college.draft import draft_pool
 from footsim.world.college.lower import Standing
@@ -560,3 +567,156 @@ def college_all_division(session: Session, season_id: int | None = None) -> AllD
             rounds=rounds,
             champion=ClubRef(id=won.club_id, name=names[won.club_id]) if won else None,
             champion_division=all_division.division_name(world, won.division) if won else None)
+
+
+# --- a college coach's next season (22 Nov) -------------------------------------------------
+
+
+class StayOut(BaseModel):
+    stays: bool
+    message: str
+
+
+@router.post("/players/{player_id}/stay")
+def ask_to_stay(player_id: int, session: Session) -> StayOut:
+    """Ask one of the user's underclassmen not to leave early for the draft (once a season)."""
+    from footsim.api.routes import _not_simulating
+    from footsim.world.college.stay import StayRefused
+    from footsim.world.college.stay import ask_to_stay as ask
+    from footsim.world.squads import display_name
+
+    _not_simulating(session)
+    world = get_world()
+    with session.write() as conn:
+        meta = read_meta(conn)
+        try:
+            stays = ask(conn, world, meta, player_id)
+        except StayRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+        p = conn.execute(select(person.c.first_name, person.c.last_name, person.c.known_as)
+                         .where(person.c.id == player_id)).one()
+    session.autosave()
+    name = display_name(p.first_name, p.last_name, p.known_as)
+    return StayOut(stays=stays, message=(
+        f"{name} is staying another season." if stays else
+        f"{name} has made up his mind: he's leaving for the draft after this season."))
+
+
+class OutlookPlayerOut(BaseModel):
+    id: int
+    name: str
+    position: str
+    overall: int
+    class_year: str  # next season's (Fr..Sr); this season's for a leaver
+    note: str | None = None  # "may declare early", "draft watch", "staying" (asked)...
+
+
+class OutlookRecruitOut(BaseModel):
+    id: int  # the recruit's
+    name: str
+    position: str
+    stars: int
+    status: str  # committed | signed
+    overall_low: int  # the staff's estimate
+    overall_high: int
+    portal_from: str | None = None  # a transfer from D-II/D-III
+
+
+class OutlookLineOut(BaseModel):
+    line: str  # Goalkeepers, Defence, Midfield, Attack
+    staying: list[OutlookPlayerOut]
+    leaving: list[OutlookPlayerOut]
+    joining: list[OutlookRecruitOut]
+
+
+class NextSeasonOut(BaseModel):
+    season: str  # next season's label
+    roster_max: int
+    staying: int
+    leaving: int
+    may_leave: int  # leaving because likely to declare early (not yet declared)
+    joining: int
+    lines: list[OutlookLineOut]
+
+
+LINES = {"GK": "Goalkeepers", "CB": "Defence", "FB": "Defence", "DM": "Midfield",
+         "CM": "Midfield", "AM": "Midfield", "W": "Attack", "ST": "Attack"}
+
+
+@router.get("/next-season")
+def next_season(session: Session) -> NextSeasonOut:
+    """The user's program as it will be next season: who stays, who leaves (seniors, those who
+    declared, and those likely to declare early) and who joins (his signed and committed
+    recruits, portal transfers included), by line."""
+    from footsim.defs.college import CLASS_NAMES
+    from footsim.world.college import coach
+    from footsim.world.college import recruiting as rc
+    from footsim.world.college.common import is_college_club
+    from footsim.world.college.stay import LIKELY, POSSIBLE, _overalls, draft_watch, staying
+    from footsim.world.squads import display_name
+
+    world = get_world()
+    with session.read() as conn:
+        meta = read_meta(conn)
+        user = meta.user_club_id
+        if user is None or not is_college_club(conn, user):
+            raise HTTPException(404, "not a college coach's career")
+        watch = draft_watch(conn, world, meta)
+        kept = staying(meta, meta.season_id)
+        rows = conn.execute(text(
+            "SELECT cp.player_id, cp.status, cp.class_year, p.first_name, p.last_name, "
+            "p.known_as, (SELECT position FROM player_position pp WHERE pp.player_id = "
+            "cp.player_id ORDER BY familiarity DESC, position LIMIT 1) AS position "
+            "FROM college_player cp JOIN person p ON p.id = cp.player_id "
+            "WHERE cp.club_id = :c AND cp.status IN ('enrolled', 'prospect')"),
+            {"c": user}).all()
+        overall = _overalls(conn, world, [int(r.player_id) for r in rows])
+        lines: dict[str, OutlookLineOut] = {
+            name: OutlookLineOut(line=name, staying=[], leaving=[], joining=[])
+            for name in dict.fromkeys(LINES.values())}
+
+        def line_of(position: str) -> OutlookLineOut:
+            spec = world.defs.positions.get(position)
+            return lines[LINES.get(str(spec.group) if spec else "CM", "Midfield")]
+
+        may_leave = 0
+        for r in rows:
+            pid, year = int(r.player_id), min(4, int(r.class_year))
+            position = str(r.position or "CM")
+            risk = watch.get(pid)
+            name = display_name(r.first_name, r.last_name, r.known_as)
+            senior, declared = year >= 4, r.status == "prospect"
+            if senior or declared or risk == LIKELY:
+                note: str | None = ("graduating" if senior else "declared for the draft"
+                                    if declared else "likely to declare early")
+                may_leave += int(risk == LIKELY and not senior and not declared)
+                line_of(position).leaving.append(OutlookPlayerOut(
+                    id=pid, name=name, position=position, overall=round(overall.get(pid, 0)),
+                    class_year=CLASS_NAMES[year], note=note))
+            else:
+                note = ("agreed to stay" if pid in kept else
+                        "draft watch: may declare early" if risk == POSSIBLE else None)
+                line_of(position).staying.append(OutlookPlayerOut(
+                    id=pid, name=name, position=position, overall=round(overall.get(pid, 0)),
+                    class_year=CLASS_NAMES[year + 1], note=note))
+        for v in coach.recruits(conn, world, meta):
+            if v.committed_to is None or v.committed_to[0] != user or v.status not in (
+                    rc.COMMITTED, rc.SIGNED):
+                continue
+            line_of(v.position).joining.append(OutlookRecruitOut(
+                id=v.id, name=v.name, position=v.position, stars=v.stars, status=v.status,
+                overall_low=v.overall.low, overall_high=v.overall.high,
+                portal_from=v.portal_from))
+        label: str = conn.execute(select(season.c.label).where(season.c.id == meta.season_id)
+                             ).scalar_one()
+    for ln in lines.values():
+        ln.staying.sort(key=lambda p: -p.overall)
+        ln.leaving.sort(key=lambda p: -p.overall)
+        ln.joining.sort(key=lambda r: (-r.stars, -r.overall_high))
+    start = int(str(label)[:4]) + 1
+    out = list(lines.values())
+    return NextSeasonOut(
+        season=f"{start}-{str(start + 1)[2:]}",
+        roster_max=world.defs.college.recruiting.programs.roster_max,
+        staying=sum(len(ln.staying) for ln in out), leaving=sum(len(ln.leaving) for ln in out),
+        may_leave=may_leave, joining=sum(len(ln.joining) for ln in out), lines=out)

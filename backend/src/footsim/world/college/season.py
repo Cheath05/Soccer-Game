@@ -508,6 +508,8 @@ def stop_days(conn: Connection, world: World, meta: CareerMeta) -> set[date]:
         days.add(on(college.rules.ncaa.selection, start))
     if stops.ncaa_final:
         days.add(on(college.rules.ncaa.rounds[-1], start))
+    if stops.draft_watch:
+        days.add(on(college.rules.draft.watch_news, start))
     adt = college.lower.all_division if college.lower is not None else None
     if stops.all_division_final and adt is not None and conn.execute(text(
             "SELECT 1 FROM lower_team LIMIT 1")).first() is not None:

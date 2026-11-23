@@ -166,6 +166,20 @@ class RecruitingDef(DefModel):
     age_sd: float = Field(ge=0)
 
 
+class StayPitchDef(DefModel):
+    """A college coach asking an underclassman not to leave early for the draft (22 Nov;
+    world/college/stay.py): his chance of staying, kept between ``least`` and ``most``."""
+
+    base: float  # the chance before the rest
+    playing_time: float  # added at his share of the team's minutes this season (0-1)
+    prestige: float  # added per 10 points of the program's prestige above ``prestige_par``
+    prestige_par: float
+    talent: float  # taken off per point of potential above the draft's min_potential
+    declared: float  # taken off once he has declared (withdrawing is harder)
+    least: float = Field(ge=0, le=1)
+    most: float = Field(ge=0, le=1)
+
+
 class DraftDef(DefModel):
     """Who leaves college after the College Cup, and what becomes of the undrafted."""
 
@@ -173,8 +187,14 @@ class DraftDef(DefModel):
     min_potential: int  # an underclassman declares only with this much potential
     release: str  # MM-DD (the spring): prospects nobody drafted become free agents
     grace_seasons: int = Field(ge=0)  # an undrafted free agent unsigned this long retires
+    # Draft watch (22 Nov): the underclassmen who would declare if it were today are "likely";
+    # the next ``watch_extra`` by the same order "possible". The coach hears of his own on
+    # ``watch_news``, before the declarations.
+    watch_extra: int = Field(default=8, ge=0)
+    watch_news: str = "11-02"
+    stay_pitch: StayPitchDef | None = None
 
-    @field_validator("release")
+    @field_validator("release", "watch_news")
     @classmethod
     def _release(cls, value: str) -> str:
         return _month_day(value)
@@ -185,6 +205,7 @@ class ContinueStopsDef(DefModel):
 
     ncaa_selection: bool = True
     ncaa_final: bool = True
+    draft_watch: bool = True  # the draft watch's news, before the declarations (22 Nov)
     all_division_final: bool = True  # the All-Division Tournament's final (22 Nov)
     superdraft: bool = True
     recruiting: bool = True

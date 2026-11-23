@@ -175,6 +175,7 @@ export function score(f: { home_goals: number | null; away_goals: number | null;
 
 export function stageLabel(stage: string, round: number, tie: string | null, leg: number | null, stageName?: string | null): string {
   if (stage === 'league') return `Matchday ${round}`
+  if (stage === 'INTL_FRIENDLY' || stage === 'friendly') return 'Friendly' // not a play-off: an international friendly
   const name = stageName ?? (tie?.startsWith('F') ? 'Play-off final' : tie?.startsWith('SF') ? 'Play-off semi-final' : 'Play-off')
   return leg ? `${name}, leg ${leg}` : name
 }

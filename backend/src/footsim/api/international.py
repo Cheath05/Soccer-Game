@@ -290,6 +290,8 @@ class MyNationOut(BaseModel):
     squad_size: int  # the most he can call up
     players: list[CallUpOut]  # the eligible players, the best first
     fixtures: list[FixtureOut]  # the team's next matches
+    recent: list[FixtureOut] = []  # its latest results, the latest first (22 Nov)
+    world_cup: str | None = None  # where it stands for the next World Cup, in words
 
 
 class JobIn(BaseModel):
@@ -335,13 +337,46 @@ def _my_nation(conn: Any) -> MyNationOut:
                          injured=c.player_id in injured, selected=c.selected)
                for c in found if c.player_id in people]
     team = meta.user_nation_id
+    comps = queries._competitions(conn)
     upcoming = conn.execute(text(
         "SELECT * FROM fixture WHERE status = 'scheduled' AND (home_club_id = :t OR "
         "away_club_id = :t) ORDER BY date, id LIMIT 6"), {"t": team}).all()
+    recent = conn.execute(text(
+        "SELECT * FROM fixture WHERE status = 'played' AND (home_club_id = :t OR "
+        "away_club_id = :t) ORDER BY date DESC, id DESC LIMIT 5"), {"t": team}).all()
+    code = manager.nation_code(conn, team)
     return MyNationOut(team=ClubRef(id=team, name=names[team]),
-                       code=manager.nation_code(conn, team), squad_size=size, players=players,
-                       fixtures=queries.fixtures_out(conn, upcoming, names,
-                                                     queries._competitions(conn)))
+                       code=code, squad_size=size, players=players,
+                       fixtures=queries.fixtures_out(conn, upcoming, names, comps),
+                       recent=queries.fixtures_out(conn, recent, names, comps),
+                       world_cup=_world_cup_status(conn, world, today, team, code))
+
+
+def _world_cup_status(conn: Any, world: Any, today: date, team: int, code: str | None
+                      ) -> str | None:
+    """Where the team stands for the next World Cup: qualified (and how), its qualifying
+    group's place, or not started."""
+    ed = editions.current(world, today, FINALS_SHOWN_DAYS)
+    if code is None:
+        return None
+    through = q.qualified_teams(conn, ed)
+    if code in through:
+        how = through[code]
+        return f"World Cup {ed.year}: qualified" + ("" if how == "Qualified" else f" ({how})")
+    teams = q._Teams.load(conn)
+    for stage in reversed(ed.stages):
+        if stage.format != "groups":
+            continue
+        for letter, table in q.group_tables(conn, ed.qualifier_stage(stage.key), teams).items():
+            ids = [r.club_id for r in table]
+            if team in ids:
+                place = ids.index(team) + 1
+                suffix = {1: "st", 2: "nd", 3: "rd"}.get(place, "th")
+                return (f"World Cup {ed.year} qualifying: {place}{suffix} in {stage.name}, "
+                        f"group {letter}")
+    started = any(conn.execute(text("SELECT 1 FROM fixture WHERE stage = :s LIMIT 1"),
+                               {"s": ed.qualifier_stage(s.key)}).first() for s in ed.stages)
+    return (f"World Cup {ed.year} qualifying" + ("" if started else ": not started yet"))
 
 
 @router.get("/my-team")

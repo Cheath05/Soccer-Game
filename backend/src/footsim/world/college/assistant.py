@@ -2,12 +2,13 @@
 players who'll replace those leaving.
 
 Every Monday from the day offers open until signing day (and when the setting is switched on) it
-counts the program's leavers at each position group: the seniors and the players who declared for
-the draft. For each group still short (less the class already committed there) it keeps about
-``offer_overcommit`` times that many offers out, to the best realistic recruits at it (a good fit
-or a reach for the program's prestige; the best by the staff's estimate of their potential,
-then by national rank), each a Top target offered the scholarship he hopes for. It stops where
-the program's money or places run out, and never changes the user's own targets or offers."""
+counts the program's leavers at each position group: the seniors, the players who declared for
+the draft and those likely to declare early (the draft watch). For each group still short (less
+the class already committed there) it keeps about ``offer_overcommit`` times that many offers
+out, to the best realistic recruits at it (a good fit or a reach for the program's prestige; the
+best by the staff's estimate of their potential, then by national rank), each a Top target
+offered the scholarship he hopes for. It stops where the program's money or places run out, and
+never changes the user's own targets or offers."""
 
 import math
 from collections import Counter
@@ -25,15 +26,19 @@ REALISTIC = ("good", "reach")
 
 
 def leaving(conn: Connection, world: World, meta: CareerMeta) -> Counter[str]:
-    """The user's players leaving after this season, by position group: the seniors and those
-    who declared for the draft."""
+    """The user's players leaving after this season, by position group: the seniors, those who
+    declared for the draft, and those likely to declare early (the draft watch, stay.py)."""
+    from footsim.world.college.stay import LIKELY, draft_watch
+
+    likely = {p for p, risk in draft_watch(conn, world, meta).items() if risk == LIKELY}
     found: Counter[str] = Counter()
     for r in conn.execute(text(
-            "SELECT (SELECT position FROM player_position pp WHERE pp.player_id = cp.player_id "
-            "ORDER BY familiarity DESC, position LIMIT 1) AS position FROM college_player cp "
-            "WHERE cp.club_id = :c AND ((cp.status = :e AND cp.class_year >= 4) "
-            "OR cp.status = :p)"),
+            "SELECT cp.player_id, cp.status, cp.class_year, (SELECT position FROM player_position "
+            "pp WHERE pp.player_id = cp.player_id ORDER BY familiarity DESC, position LIMIT 1) "
+            "AS position FROM college_player cp WHERE cp.club_id = :c AND cp.status IN (:e, :p)"),
             {"c": meta.user_club_id, "e": ENROLLED, "p": PROSPECT}):
+        if not (r.status == PROSPECT or r.class_year >= 4 or int(r.player_id) in likely):
+            continue
         if r.position in world.defs.positions:
             found[str(world.defs.positions[r.position].group)] += 1
     return found

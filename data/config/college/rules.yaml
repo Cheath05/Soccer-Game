@@ -101,12 +101,29 @@ draft:
   # one still unsigned this many seasons after retires.
   release: "02-15"
   grace_seasons: 1
+  # Draft watch (22 Nov): the underclassmen who'd declare if it were today are "likely" to
+  # leave early; the next this many by the same order (potential, then overall) "possible". A
+  # college coach hears about his own on this day, before the declarations after the College Cup.
+  watch_extra: 8
+  watch_news: "11-02"
+  # Asking one of them to stay (once a season, before he declares or after, until the draft):
+  # his chance, from playing time, the program's prestige and how big a prospect he is.
+  stay_pitch:
+    base: 0.45
+    playing_time: 0.30  # at his share of the team's minutes this season
+    prestige: 0.06  # per 10 points of prestige above prestige_par
+    prestige_par: 60
+    talent: 0.03  # off per point of potential above min_potential
+    declared: 0.15  # off once he has declared
+    least: 0.05
+    most: 0.90
 
 # Continue stops a college coach on these days (landing on the day after, with the day's news),
 # when no match of theirs comes first: a season over early still has days to stop on.
 continue_stops:
   ncaa_selection: true  # the NCAA tournament's field is picked
   ncaa_final: true  # the College Cup final
+  draft_watch: true  # who may leave early for the draft (draft.watch_news)
   all_division_final: true  # the All-Division Tournament's final (with Divisions II and III)
   superdraft: true  # the MLS SuperDraft
   recruiting: true  # offers open, signing day, the class closes

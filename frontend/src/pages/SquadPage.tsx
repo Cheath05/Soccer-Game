@@ -6,6 +6,7 @@ import { MLS_LEAGUE } from '../api/americas'
 import { useCareer, useSquad, useTactics } from '../api/hooks'
 import type { SquadPlayer } from '../api/types'
 import { SeasonChange } from '../components/SeasonChange'
+import NextSeasonCard from '../components/NextSeasonCard'
 import { CLASS_NAMES, scholarshipLabel } from '../lib/college'
 import { money, positionColor, ratingColor, wage } from '../lib/format'
 import { rememberPlayerList } from '../lib/playerList'
@@ -35,6 +36,27 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: 'value_eur', label: 'Value', numeric: true },
   { key: 'wage_weekly_eur', label: 'Wage', numeric: true },
 ]
+
+/** A college player's draft status: declared, may leave early, on the watch, or staying. */
+function DraftBadge({ p }: { p: SquadPlayer }) {
+  const c = p.college
+  if (!c) return null
+  const [label, color, title] = c.declared
+    ? ['Draft', 'grape', 'Declared for the MLS SuperDraft']
+    : c.stay_answer === 'stays'
+      ? ['Staying', 'teal', 'Agreed to stay another season']
+      : c.draft_risk === 'likely'
+        ? ['May leave', 'orange', 'Likely to declare early for the draft after the College Cup: ask him to stay on his page']
+        : c.draft_risk === 'possible'
+          ? ['Draft watch', 'yellow', 'Could declare early for the draft after the College Cup']
+          : [null, '', '']
+  if (!label) return null
+  return (
+    <Badge ml={6} size="xs" color={color} title={title} style={{ flexShrink: 0 }}>
+      {label}
+    </Badge>
+  )
+}
 
 // A college coach's squad (W9c) has no values or wages: each player's class and scholarship.
 const COLLEGE_COLUMNS = COLUMNS.map((c) =>
@@ -68,6 +90,11 @@ export default function SquadPage() {
   )
   const [sort, setSort] = useUrlState<{ key: SortKey; desc: boolean }>('sort', { key: 'position', desc: false })
   const isCollege = !!career?.college
+  // A college coach also sees next season: who stays, leaves and joins.
+  const [view, setView] = useUrlState('view', 'now')
+  const viewSwitch = isCollege && (
+    <SegmentedControl size="xs" value={view} onChange={setView} data={[{ value: 'now', label: 'This season' }, { value: 'next', label: 'Next season' }]} aria-label="Season" />
+  )
   const columns = isCollege ? COLLEGE_COLUMNS : COLUMNS
   // A player's money, or for a college player his class and scholarship.
   const worth = (p: SquadPlayer) => (p.college ? `${p.college.class_year} · ${scholarshipLabel(p.college.scholarship)}` : money(p.value_eur))
@@ -82,6 +109,18 @@ export default function SquadPage() {
   const open = (id: number) => {
     rememberPlayerList(rows.map((r) => r.id))
     void navigate({ to: '/players/$playerId', params: { playerId: String(id) } })
+  }
+
+  if (isCollege && view === 'next') {
+    return (
+      <Stack gap="sm">
+        <Group justify="space-between" align="center">
+          <Title order={2}>Squad</Title>
+          {viewSwitch}
+        </Group>
+        <NextSeasonCard />
+      </Stack>
+    )
   }
 
   if (phone) {
@@ -103,6 +142,7 @@ export default function SquadPage() {
             data={columns.map((c) => ({ value: c.key, label: `Sort: ${c.label === 'Pos' ? 'Position' : c.label === 'Ovr' ? 'Overall' : c.label}` }))}
           />
         </Group>
+        {viewSwitch}
         <SegmentedControl fullWidth value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
         <Stack gap={8}>
           {rows.map((p) => {
@@ -128,6 +168,7 @@ export default function SquadPage() {
                           SUS
                         </Badge>
                       )}
+                      <DraftBadge p={p} />
                     </Group>
                     <Text size="xs" c="dimmed" truncate>
                       {p.age}y{role !== undefined ? ` · ${['XI', 'Bench', 'Reserve'][role]}` : ''} · {worth(p)}
@@ -156,6 +197,7 @@ export default function SquadPage() {
         <Group gap="sm">
           <Title order={2}>Squad</Title>
           {mlsButton}
+          {viewSwitch}
         </Group>
         <SegmentedControl value={group} onChange={setGroup} data={Object.keys(GROUPS)} />
       </Group>
@@ -238,11 +280,7 @@ export default function SquadPage() {
                   <>
                     <Table.Td ta="right" title={CLASS_NAMES[p.college.class_year]}>
                       {p.college.class_year}
-                      {p.college.declared && (
-                        <Badge ml={6} size="xs" color="grape" title="Declared for the MLS SuperDraft">
-                          Draft
-                        </Badge>
-                      )}
+                      <DraftBadge p={p} />
                     </Table.Td>
                     <Table.Td ta="right" visibleFrom="sm">{scholarshipLabel(p.college.scholarship)}</Table.Td>
                     <Table.Td visibleFrom="sm">{p.college.leaves}</Table.Td>

@@ -462,6 +462,13 @@ class CollegePlayerOut(BaseModel):
     scholarship: float  # a share of a full scholarship; 0 for a walk-on
     declared: bool  # declared for the MLS SuperDraft
     leaves: str  # the season label he leaves after, as a senior
+    # The draft watch (22 Nov): "likely" to declare early after the College Cup if it were
+    # today, "possible" (next in line); None for neither.
+    draft_risk: str | None = None
+    # The user's own: the chance he agrees to stay if asked now (None: he can't be asked), and
+    # his answer once asked this season ("stays" or "leaving").
+    stay_chance: float | None = None
+    stay_answer: str | None = None
 
 
 class ClubPlayerOut(BaseModel):

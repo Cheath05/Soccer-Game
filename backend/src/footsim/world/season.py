@@ -67,6 +67,7 @@ from footsim.world.college.season import (
     create_college_fixtures,
     progress_college,
 )
+from footsim.world.college.stay import watch_news as draft_watch_news
 from footsim.world.college.visits import settle as settle_visits
 from footsim.world.context import AI_FORMATIONS, World, default_instructions
 from footsim.world.cups import blocked_dates, cup_decider, progress_cups, start_cups
@@ -333,6 +334,7 @@ def after_day(conn: Connection, world: World, meta: CareerMeta, day: date) -> li
     messages += progress_college(conn, world, meta, day)
     messages += progress_lower(conn, world, meta, day)
     messages += progress_all_division(conn, world, meta, day)
+    messages += draft_watch_news(conn, world, meta, day)
     messages += progress_recruiting(conn, world, meta, day)
     messages += settle_visits(conn, world, meta, day)
     messages += assistant_recruiting(conn, world, meta, day)

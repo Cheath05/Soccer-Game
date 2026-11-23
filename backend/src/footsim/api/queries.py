@@ -144,6 +144,7 @@ from footsim.world.season import (
     standings,
 )
 from footsim.world.squads import display_name, load_squad, short_name, team_sheet
+from footsim.world.training import trains
 from footsim.world.transfers import Move, MoveRefused, complete_move, owner_contract
 
 # --- helpers --------------------------------------------------------------------------
@@ -1283,6 +1284,7 @@ def player_detail(conn: Connection, world: World, player_id: int) -> PlayerDetai
         potential=PotentialOut(low=low, high=high, label=potential_label(high)),
         traits=traits, own_player=own, retired=r.retired_on is not None,
         international=_international_career(conn, world, player_id),
+        trains_with_you=r.retired_on is None and trains(conn, meta, player_id),
     )
 
 

@@ -24,6 +24,7 @@ import {
 } from "../api/hooks";
 import type { MyNation } from "../api/types";
 import { foldText, longDate, positionColor } from "../lib/format";
+import AutoTrainingSwitch from "./AutoTrainingSwitch";
 import ClubLink from "./ClubLink";
 import PlayerLink from "./PlayerLink";
 
@@ -183,6 +184,10 @@ function Job({ data }: { data: MyNation }) {
             ))}
           </Stack>
         )}
+        <Title order={5} mt="sm" mb={4}>
+          Position training
+        </Title>
+        <AutoTrainingSwitch team="nation" />
       </Card>
       <Card withBorder padding="sm" aria-label="Squad">
         <Group justify="space-between" mb="xs">

@@ -15,18 +15,23 @@ export default function SettingsPage() {
   const save = useSetSimulation()
   const career = useCareer().data
   const college = !!career?.college
-  // A national team's manager without a club has no players of his own to sell or train.
+  // A national team's manager without a club has no players of his own to sell; his squad's
+  // players train with him.
   const club = !career?.nation_only
+  const nation = !!career?.nation || !!career?.nation_only
   return (
     <Stack>
       <Title order={2}>Settings</Title>
       {club && <OfferRulesCard />}
-      {club && (
+      {(club || nation) && (
         <Card withBorder padding="md">
           <Title order={4} mb="xs">
             Position training
           </Title>
-          <AutoTrainingSwitch />
+          <Stack gap="sm">
+            {club && <AutoTrainingSwitch />}
+            {nation && <AutoTrainingSwitch team="nation" />}
+          </Stack>
         </Card>
       )}
       {college && (

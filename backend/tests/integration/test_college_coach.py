@@ -115,6 +115,8 @@ def test_the_assistant_trains_positions(career: tuple[Engine, World]) -> None:
     natural = world.defs.development.position_training.natural
     with engine.begin() as conn:
         meta = read_meta(conn)
+        assert auto_train(conn, world, meta, meta.current_date) == 0  # its switch is off
+        meta.auto_position_training = True
         started = auto_train(conn, world, meta, meta.current_date)
         assert started > 0
         assert auto_train(conn, world, meta, meta.current_date) == 0  # nobody twice

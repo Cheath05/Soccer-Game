@@ -114,3 +114,35 @@ def test_the_api(tmp_path: Path) -> None:
     assert career["next_fixture"] is not None
     assert client.delete("/api/international/job").json()["team"] is None
     assert client.get("/api/career").json()["nation"] is None
+
+
+def test_the_assistant_trains_the_squads_positions(
+        career: tuple[Engine, World, dict[str, object]]) -> None:
+    """Position training for a national team's manager (22 Nov): his squad's players train with
+    him, by hand and, with its switch on, by the assistant."""
+    from footsim.world.training import auto_train, set_training, trains
+
+    engine, world, seen = career
+    squad = seen["squad"]
+    assert isinstance(squad, set)
+    with engine.begin() as conn:
+        meta = read_meta(conn)
+        assert auto_train(conn, world, meta, meta.current_date) == 0  # both switches off
+        meta.auto_position_training_nation = True
+        started = auto_train(conn, world, meta, meta.current_date)
+        trained = {int(r[0]) for r in conn.execute(text(
+            "SELECT player_id FROM position_training"))}
+        assert started > 0 and trained <= squad
+        one = min(squad)
+        assert trains(conn, meta, one)
+        conn.execute(text("DELETE FROM position_training WHERE player_id = :p"), {"p": one})
+        known = conn.execute(text(
+            "SELECT position FROM player_position WHERE player_id = :p AND familiarity < :n "
+            "ORDER BY position LIMIT 1"),
+            {"p": one, "n": world.defs.development.position_training.natural}).scalar_one()
+        set_training(conn, world, meta, one, str(known), meta.current_date)
+        outsider = conn.execute(text(
+            "SELECT person_id FROM contract WHERE is_active = 1 AND person_id NOT IN "
+            "(SELECT player_id FROM national_squad) LIMIT 1")).scalar_one()
+        assert not trains(conn, meta, int(outsider))
+        conn.rollback()

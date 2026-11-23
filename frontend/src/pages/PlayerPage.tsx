@@ -244,9 +244,9 @@ export default function PlayerPage() {
         </Grid.Col>
       </Grid>
 
-      <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player} />
+      <PositionsCard playerId={p.id} ratings={p.position_ratings ?? []} own={p.own_player || !!p.trains_with_you} />
 
-      {p.own_player && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} />}
+      {(p.own_player || p.trains_with_you) && <TrainingCard playerId={p.id} familiarity={p.familiarity} ratings={p.position_ratings ?? []} team={p.own_player ? 'club' : 'nation'} />}
       {p.own_player && !p.college && <AvailabilityCard playerId={p.id} value={p.value_eur} />}
       {p.international && (
         <Card withBorder padding="sm" aria-label="International">
@@ -460,8 +460,9 @@ function PositionsCard({ playerId, ratings, own }: { playerId: number; ratings: 
   )
 }
 
-/** Teach one of the user's players a new position, one at a time. */
-function TrainingCard({ playerId, familiarity, ratings }: { playerId: number; familiarity: Record<string, number>; ratings: PositionRating[] }) {
+/** Teach one of the user's players (his club's, or his national squad's) a new position, one at a
+ * time. */
+function TrainingCard({ playerId, familiarity, ratings, team }: { playerId: number; familiarity: Record<string, number>; ratings: PositionRating[]; team: 'club' | 'nation' }) {
   const training = useTraining(playerId, true)
   const set = useSetTraining(playerId)
   const [choice, setChoice] = useState<string | null>(null)
@@ -523,7 +524,7 @@ function TrainingCard({ playerId, familiarity, ratings }: { playerId: number; fa
             {set.error.message}
           </Text>
         )}
-        <AutoTrainingSwitch compact />
+        <AutoTrainingSwitch compact team={team} />
       </Stack>
     </Card>
   )

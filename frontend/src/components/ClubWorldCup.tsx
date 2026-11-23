@@ -1,17 +1,41 @@
-import { Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { useClubWorldCup } from '../api/hooks'
+import { useClubWorldCup, useCupHistory } from '../api/hooks'
+import type { ClubWorldCupView } from '../api/types'
 import { longDate } from '../lib/format'
 import ClubLink from './ClubLink'
+import PastFinals from './PastFinals'
 
 const ORDER = ['UEFA', 'CONMEBOL', 'CONCACAF', 'AFC', 'CAF', 'OFC']
 
 /** The FIFA Club World Cup: before the draw, how it's chosen; after it, the entrants, the
  * groups and the knockout rounds. */
 export default function ClubWorldCup() {
-  const data = useClubWorldCup().data
+  // A past edition picked from the history, shown instead of the next (or current) one.
+  const [past, setPast] = useState<number | null>(null)
+  const current = useClubWorldCup().data
+  const picked = useClubWorldCup(past ?? undefined).data
+  const history = useCupHistory().data
+  const data = past !== null ? picked : current
   if (!data) return null
+  return (
+    <Stack>
+      {past !== null && (
+        <Group>
+          <Button size="xs" variant="default" onClick={() => setPast(null)}>
+            ← Back to the {current?.year} Club World Cup
+          </Button>
+        </Group>
+      )}
+      <Edition data={data} />
+      <PastFinals title="Past Club World Cups" finals={history?.club_world_cup ?? []} onView={setPast} />
+    </Stack>
+  )
+}
+
+function Edition({ data }: { data: ClubWorldCupView }) {
   if (data.entrants.length === 0) {
     return (
       <Card withBorder padding="sm">

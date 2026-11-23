@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.149"
+  date: "2026-11-22"
+  title: "World Cup history, and position training for your national team"
+  changes:
+    - "International → World Cup and Club World Cup: Past World Cups and Past Club World Cups list every final played in your career, with the champions, runners-up, score, hosts and (World Cup) third place. View opens a past edition's groups and knockout rounds."
+    - "Position training for your national team: its squad's players now train positions with you, by hand on a player's Position training card or with the assistant (its own switch in Settings → Position training and on International → My country). Your club keeps its own switch."
+
 - version: "1.148"
   date: "2026-11-22"
   title: "The All-Division Tournament's set bracket"

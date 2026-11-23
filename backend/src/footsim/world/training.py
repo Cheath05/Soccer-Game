@@ -10,7 +10,8 @@ choice for their own players; AI clubs pick formations that suit their players i
 With the assistant training positions (a setting, ``auto_train``), each month every one of the
 user's players who isn't learning a position starts on his best alternate one: the position he
 already plays a little (familiar but not natural) that he knows best. Once he's natural everywhere
-he plays, he has nothing more to learn.
+he plays, he has nothing more to learn. A national team's manager (W8 I5) trains his squad's
+players the same way (22 Nov), with a switch of their own; they learn at their clubs.
 """
 
 from datetime import date
@@ -42,13 +43,34 @@ def familiarity(conn: Connection, player_id: int, position: str) -> int:
     return int(value or 0)
 
 
+def _own_players_sql(club: bool, nation: bool) -> str | None:
+    """SQL for the players the user trains: his club's (contracted, not on loan) and his national
+    team's squad, as chosen; None for neither."""
+    parts = []
+    if club:
+        parts.append("SELECT person_id AS pid FROM contract WHERE club_id = :club "
+                     "AND is_active = 1 AND kind != 'loan'")
+    if nation:
+        parts.append("SELECT player_id AS pid FROM national_squad WHERE club_id = :nation")
+    return " UNION ".join(parts) or None
+
+
+def trains(conn: Connection, meta: CareerMeta, player_id: int) -> bool:
+    """Whether the user trains the player: one of his club's, or in his national team's squad."""
+    sql = _own_players_sql(meta.user_club_id is not None, meta.user_nation_id is not None)
+    return sql is not None and conn.execute(
+        text(f"SELECT 1 FROM ({sql}) WHERE pid = :p"),
+        {"club": meta.user_club_id, "nation": meta.user_nation_id, "p": player_id}
+    ).first() is not None
+
+
 def set_training(conn: Connection, world: World, meta: CareerMeta, player_id: int,
                  position: str | None, day: date) -> None:
-    """Have one of the user's players learn ``position`` (None: stop training)."""
-    owner = conn.execute(text("SELECT club_id FROM contract WHERE person_id = :p AND "
-                              "is_active = 1 AND kind != 'loan'"), {"p": player_id}).scalar()
-    if owner is None or owner != meta.user_club_id:
-        raise TrainingRefused("Only your own players train with you.")
+    """Have one of the user's players (his club's, or his national squad's) learn ``position``
+    (None: stop training)."""
+    if not trains(conn, meta, player_id):
+        raise TrainingRefused("Only your own players train with you: your club's, or your "
+                              "national team's squad.")
     conn.execute(text("DELETE FROM position_training WHERE player_id = :p"), {"p": player_id})
     if position is None:
         return
@@ -63,17 +85,21 @@ def set_training(conn: Connection, world: World, meta: CareerMeta, player_id: in
 
 def auto_train(conn: Connection, world: World, meta: CareerMeta, day: date) -> int:
     """The assistant starts each of the user's players not learning a position on his best
-    alternate one (the familiar but not natural position he knows best). Returns how many."""
-    if meta.user_club_id is None:
+    alternate one (the familiar but not natural position he knows best): his club's with
+    ``auto_position_training``, his national squad's with ``auto_position_training_nation``.
+    Returns how many."""
+    sql = _own_players_sql(meta.auto_position_training and meta.user_club_id is not None,
+                           meta.auto_position_training_nation
+                           and meta.user_nation_id is not None)
+    if sql is None:
         return 0
     natural = world.defs.development.position_training.natural
     rows = conn.execute(text(
-        "SELECT pp.player_id, pp.position, pp.familiarity FROM player_position pp "
-        "JOIN contract c ON c.person_id = pp.player_id AND c.is_active = 1 AND c.kind != 'loan' "
-        "WHERE c.club_id = :club AND pp.familiarity > 0 AND pp.familiarity < :natural "
-        "AND pp.player_id NOT IN (SELECT player_id FROM position_training) "
-        "ORDER BY pp.player_id, pp.familiarity DESC, pp.position"),
-        {"club": meta.user_club_id, "natural": natural}).all()
+        f"SELECT pp.player_id, pp.position, pp.familiarity FROM player_position pp "
+        f"WHERE pp.player_id IN ({sql}) AND pp.familiarity > 0 AND pp.familiarity < :natural "
+        f"AND pp.player_id NOT IN (SELECT player_id FROM position_training) "
+        f"ORDER BY pp.player_id, pp.familiarity DESC, pp.position"),
+        {"club": meta.user_club_id, "nation": meta.user_nation_id, "natural": natural}).all()
     chosen: dict[int, str] = {}
     for r in rows:
         if r.position in world.defs.positions:
@@ -89,7 +115,7 @@ def auto_train(conn: Connection, world: World, meta: CareerMeta, day: date) -> i
 def train_positions(conn: Connection, world: World, meta: CareerMeta, day: date) -> list[str]:
     """A month of position training (the assistant's choices first, with the setting on).
     Returns news of players who became natural."""
-    if meta.auto_position_training:
+    if meta.auto_position_training or meta.auto_position_training_nation:
         auto_train(conn, world, meta, day)
     natural = world.defs.development.position_training.natural
     rows = conn.execute(text(

@@ -1,10 +1,11 @@
-import { Badge, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useQualifiers, useWorldCupFinals } from '../api/hooks'
+import { useCupHistory, useQualifiers, useWorldCupFinals } from '../api/hooks'
 import type { QualifierStage, WorldCupFinals } from '../api/types'
 import ClubLink from './ClubLink'
+import PastFinals from './PastFinals'
 
 const REGIONS = [
   { value: 'UEFA', label: 'UEFA' },
@@ -24,9 +25,33 @@ const month = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(
 export default function WorldCupQualifiers() {
   const data = useQualifiers().data
   const finals = useWorldCupFinals().data
+  const history = useCupHistory().data
   const [region, setRegion] = useState('UEFA')
+  // A past World Cup picked from the history, shown instead of the current one.
+  const [past, setPast] = useState<number | null>(null)
   if (!data) return null
-  if (finals && finals.groups.length > 0) return <Finals data={finals} />
+  const pastFinals = <PastFinals title="Past World Cups" finals={history?.world_cup ?? []} onView={setPast} />
+  if (past !== null) {
+    return (
+      <Stack>
+        <Group>
+          <Button size="xs" variant="default" onClick={() => setPast(null)}>
+            ← Back to the {finals && finals.groups.length > 0 ? finals.year : data.cycle} World Cup
+          </Button>
+        </Group>
+        <PastWorldCup year={past} />
+        {pastFinals}
+      </Stack>
+    )
+  }
+  if (finals && finals.groups.length > 0) {
+    return (
+      <Stack>
+        <Finals data={finals} />
+        {pastFinals}
+      </Stack>
+    )
+  }
   const stages = data.stages.filter((s) => s.confederation === region)
   return (
     <Stack>
@@ -47,8 +72,16 @@ export default function WorldCupQualifiers() {
       {stages.map((s) => (
         <StageCard key={s.key} stage={s} />
       ))}
+      {pastFinals}
     </Stack>
   )
+}
+
+function PastWorldCup({ year }: { year: number }) {
+  const finals = useWorldCupFinals(year)
+  if (finals.isPending) return null
+  if (!finals.data) return <Text c="red">{finals.error?.message}</Text>
+  return <Finals data={finals.data} />
 }
 
 function StageCard({ stage }: { stage: QualifierStage }) {

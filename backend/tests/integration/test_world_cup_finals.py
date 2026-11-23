@@ -160,6 +160,13 @@ def test_the_champion_has_the_trophy(finals: tuple[TestClient, Engine, World, li
     assert _trophies(client, runner_up) == []
     view = client.get("/api/international/world-cup?year=2030").json()
     assert view["champion"]["id"] == champion
+    # The history (22 Nov): the 2030 final, its runner-up, hosts and third place.
+    history = client.get("/api/international/history").json()
+    assert [f["year"] for f in history["world_cup"]] == [2030]
+    past = history["world_cup"][0]
+    assert (past["champion"]["id"], past["runner_up"]["id"]) == (champion, runner_up)
+    assert past["hosts"] and past["third"] is not None and past["score"]
+    assert history["club_world_cup"] == []
 
 
 def test_the_2034_edition_follows(finals: tuple[TestClient, Engine, World, list[str]]) -> None:

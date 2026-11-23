@@ -534,6 +534,7 @@ export interface PlayerDetail extends Omit<SquadPlayer, 'condition' | 'wage_week
   potential: { low: number; high: number; label: string }
   traits: string[]
   own_player: boolean
+  trains_with_you?: boolean // his club's or his national squad's: he trains positions with you
   retired?: boolean
   international?: InternationalCareer | null // his national team (W8)
 }
@@ -1089,4 +1090,20 @@ export interface MyNation {
   squad_size: number // the most he can call up
   players: CallUp[] // the eligible players, the best first
   fixtures: Fixture[] // the team's next matches
+}
+
+// GET /api/international/history: every World Cup and Club World Cup final played, latest first.
+export interface PastFinal {
+  year: number
+  hosts: string[]
+  champion: ClubRef
+  runner_up: ClubRef
+  score: string // the champion's goals first: "2-1", "1-1 (4-3 pens)", "2-1 aet"
+  fixture_id: number
+  third: ClubRef | null
+}
+
+export interface CupHistory {
+  world_cup: PastFinal[]
+  club_world_cup: PastFinal[]
 }

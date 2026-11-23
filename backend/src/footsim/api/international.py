@@ -186,15 +186,20 @@ class ClubWorldCupOut(BaseModel):
 
 
 @router.get("/club-world-cup")
-def club_world_cup_view(session: Session) -> ClubWorldCupOut:
-    """The next (or current) Club World Cup: its entrants, groups and knockout rounds."""
+def club_world_cup_view(session: Session, year: int | None = None) -> ClubWorldCupOut:
+    """A Club World Cup (``year``'s, else the next or current one): its entrants, groups and
+    knockout rounds."""
     world = get_world()
     spec = world.defs.international.club_world_cup
+    if year is not None and (year < spec.first_year
+                             or (year - spec.first_year) % spec.every_years):
+        raise HTTPException(404, f"no Club World Cup in {year}")
     with session.read() as conn:
         today = read_meta(conn).current_date
-        year = spec.first_year
-        while date(year, 7, 31) < today:
-            year += spec.every_years
+        if year is None:
+            year = spec.first_year
+            while date(year, 7, 31) < today:
+                year += spec.every_years
         state = cwc._get(conn, cwc._meta_key(year)) or {}
         names = queries._club_names(conn)
         comps = queries._competitions(conn)
@@ -393,3 +398,79 @@ def put_squad(body: SquadIn, session: Session) -> MyNationOut:
     session.autosave()
     with session.read() as conn:
         return _my_nation(conn)
+
+
+# --- history (22 Nov) ----------------------------------------------------------------------
+
+
+class PastFinalOut(BaseModel):
+    year: int
+    hosts: list[str]  # the hosts' names
+    champion: ClubRef
+    runner_up: ClubRef
+    score: str  # the final's, the champion's goals first: "2-1", "1-1 (4-3 pens)", "2-1 aet"
+    fixture_id: int
+    third: ClubRef | None = None  # the World Cup's third-place play-off's winner
+
+
+class CupHistoryOut(BaseModel):
+    world_cup: list[PastFinalOut]  # every World Cup played in the career, the latest first
+    club_world_cup: list[PastFinalOut]
+
+
+def _final(f: Any, year: int, hosts: list[str], names: dict[int, str],
+           third: int | None) -> PastFinalOut | None:
+    won = wcf._winner(f)
+    if won is None:
+        return None
+    lost = int(f.away_club_id if won == f.home_club_id else f.home_club_id)
+    home = won == f.home_club_id
+    goals = (f.home_goals, f.away_goals) if home else (f.away_goals, f.home_goals)
+    score = f"{goals[0]}-{goals[1]}"
+    if f.home_pens is not None:
+        pens = (f.home_pens, f.away_pens) if home else (f.away_pens, f.home_pens)
+        score += f" ({pens[0]}-{pens[1]} pens)"
+    elif f.extra_time:
+        score += " aet"
+    return PastFinalOut(year=year, hosts=hosts, champion=ClubRef(id=won, name=names[won]),
+                        runner_up=ClubRef(id=lost, name=names[lost]), score=score,
+                        fixture_id=int(f.id),
+                        third=ClubRef(id=third, name=names[third]) if third else None)
+
+
+@router.get("/history")
+def cup_history(session: Session) -> CupHistoryOut:
+    """Every World Cup and Club World Cup final played in the career: the champions, the
+    runners-up and the scores."""
+    world = get_world()
+    cup = world.defs.international.world_cup
+    with session.read() as conn:
+        names = queries._club_names(conn)
+        by_code = {str(r.code): str(r.name) for r in conn.execute(text(
+            "SELECT n.code, c.name FROM national_team n JOIN club c ON c.id = n.club_id"))}
+        rows = conn.execute(text(
+            "SELECT * FROM fixture WHERE status = 'played' AND (stage IN (:f, :t, :c) "
+            "OR stage GLOB :later_f OR stage GLOB :later_t) ORDER BY date"),
+            {"f": "WCF:F", "t": "WCF:3P", "c": "CWC:F", "later_f": "WCF:[0-9]*:F",
+             "later_t": "WCF:[0-9]*:3P"}).all()
+
+        def wc_year(stage: str) -> int:
+            parts = stage.split(":")
+            return int(parts[1]) if len(parts) == 3 else cup.year
+
+        thirds = {wc_year(f.stage): wcf._winner(f) for f in rows if f.stage.endswith(":3P")}
+        world_cup, club = [], []
+        for f in rows:
+            if f.stage == "CWC:F":
+                year = int(str(f.date)[:4])
+                host = world.defs.international.club_world_cup.host
+                found = _final(f, year, [by_code.get(host, host)], names, None)
+                if found:
+                    club.append(found)
+            elif f.stage.endswith(":F"):
+                year = wc_year(f.stage)
+                hosts = [by_code.get(h, h) for h in editions.edition(world, year).hosts]
+                found = _final(f, year, hosts, names, thirds.get(year))
+                if found:
+                    world_cup.append(found)
+    return CupHistoryOut(world_cup=world_cup[::-1], club_world_cup=club[::-1])

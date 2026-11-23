@@ -716,6 +716,8 @@ class PlayerDetailOut(SquadPlayerOut):
     own_player: bool
     retired: bool = False
     international: InternationalCareerOut | None = None  # his national team (W8), if any
+    # He trains positions with the user: his club's, or his national team's squad (22 Nov).
+    trains_with_you: bool = False
 
 
 class MatchEventOut(BaseModel):

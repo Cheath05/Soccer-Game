@@ -141,12 +141,17 @@ def put_asking_price(player_id: int, body: AskingPriceIn, session: Session) -> O
 
 
 class TrainingSettingOut(BaseModel):
-    auto: bool  # the assistant trains every player's alternate positions (world/training.py)
-    training: int  # the user's players learning a position now
+    auto: bool  # the assistant trains the club's players' alternate positions (world/training.py)
+    training: int  # the user's club's players learning a position now
+    # The same for the national team's squad (22 Nov); None without a national team job.
+    nation_auto: bool | None = None
+    nation_training: int | None = None
+    has_club: bool = True
 
 
 class TrainingSettingIn(BaseModel):
-    auto: bool
+    auto: bool | None = None  # the club's switch; None: leave it
+    nation_auto: bool | None = None  # the national team's
 
 
 def _training_out(conn: Connection, meta: CareerMeta) -> TrainingSettingOut:
@@ -154,7 +159,16 @@ def _training_out(conn: Connection, meta: CareerMeta) -> TrainingSettingOut:
         "SELECT COUNT(*) FROM position_training t JOIN contract c ON c.person_id = t.player_id "
         "AND c.is_active = 1 AND c.kind != 'loan' WHERE c.club_id = :club"),
         {"club": meta.user_club_id}).scalar_one()
-    return TrainingSettingOut(auto=meta.auto_position_training, training=int(count))
+    nation = None
+    if meta.user_nation_id is not None:
+        nation = int(conn.execute(text(
+            "SELECT COUNT(*) FROM position_training t JOIN national_squad s ON "
+            "s.player_id = t.player_id WHERE s.club_id = :n"),
+            {"n": meta.user_nation_id}).scalar_one())
+    return TrainingSettingOut(
+        auto=meta.auto_position_training, training=int(count),
+        nation_auto=meta.auto_position_training_nation if nation is not None else None,
+        nation_training=nation, has_club=meta.user_club_id is not None)
 
 
 @router.get("/settings/training")
@@ -165,15 +179,19 @@ def get_training_setting(session: Session) -> TrainingSettingOut:
 
 @router.put("/settings/training")
 def put_training_setting(body: TrainingSettingIn, session: Session) -> TrainingSettingOut:
-    """Have the assistant train positions: switched on, every player not learning a position
-    starts on his best alternate one at once, and again each month."""
+    """Have the assistant train positions, for the club's players or the national team's squad:
+    switched on, every one not learning a position starts on his best alternate one at once,
+    and again each month."""
     _not_simulating(session)
     world = get_world()
     with session.write() as conn:
         meta = read_meta(conn)
-        meta.auto_position_training = body.auto
+        if body.auto is not None:
+            meta.auto_position_training = body.auto
+        if body.nation_auto is not None:
+            meta.auto_position_training_nation = body.nation_auto
         write_meta(conn, meta)
-        if body.auto:
+        if body.auto or body.nation_auto:
             auto_train(conn, world, meta, meta.current_date)
         result = _training_out(conn, meta)
     session.autosave()

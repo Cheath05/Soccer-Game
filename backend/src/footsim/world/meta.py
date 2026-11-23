@@ -49,6 +49,8 @@ class CareerMeta:
     # The assistant trains positions (world/training.py auto_train): each month every one of the
     # user's players not learning a position starts on his best alternate one.
     auto_position_training: bool = False
+    # The same for the national team the user manages (22 Nov): its called-up squad's players.
+    auto_position_training_nation: bool = False
     # A college coach's game-day visits (world/college/visits.py): recruit id -> the home
     # fixture he's invited to.
     gameday_visits: dict[int, int] = field(default_factory=dict)
@@ -89,6 +91,7 @@ def read_meta(conn: Connection) -> CareerMeta:
         college_mode=str(values.get("college_mode", "classic")),
         god_players={int(k): int(v) for k, v in values.get("god_players", {}).items()},
         auto_position_training=bool(values.get("auto_position_training", False)),
+        auto_position_training_nation=bool(values.get("auto_position_training_nation", False)),
         gameday_visits={int(k): int(v) for k, v in values.get("gameday_visits", {}).items()},
         auto_recruiting=bool(values.get("auto_recruiting", False)),
         hall_of_fame_favorites=[int(p) for p in values.get("hall_of_fame_favorites", [])],
@@ -114,6 +117,7 @@ def write_meta(conn: Connection, meta: CareerMeta) -> None:
         "college_mode": meta.college_mode,
         "god_players": {str(k): v for k, v in meta.god_players.items()},
         "auto_position_training": meta.auto_position_training,
+        "auto_position_training_nation": meta.auto_position_training_nation,
         "gameday_visits": {str(k): v for k, v in meta.gameday_visits.items()},
         "auto_recruiting": meta.auto_recruiting,
         "hall_of_fame_favorites": meta.hall_of_fame_favorites,

@@ -46,6 +46,7 @@ import type {
   TacticsTeam,
   TacticsUpdate,
   WorldCupFinals,
+  CupHistory,
 } from './types'
 
 // Refetched on focus once stale, so a tab left open across an update notices the new server.
@@ -103,8 +104,11 @@ export function useSetSimulation() {
 
 /** Settings → Position training: the assistant trains every player's alternate positions. */
 export interface TrainingSetting {
-  auto: boolean
-  training: number // your players learning a position now
+  auto: boolean // your club's players
+  training: number // your club's players learning a position now
+  nation_auto: boolean | null // your national team's squad (null: no national team job)
+  nation_training: number | null
+  has_club: boolean
 }
 
 export const useTrainingSetting = () => useQuery({ queryKey: ['training-setting'], queryFn: () => api.get<TrainingSetting>('/settings/training') })
@@ -112,7 +116,7 @@ export const useTrainingSetting = () => useQuery({ queryKey: ['training-setting'
 export function useSetTrainingSetting() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (auto: boolean) => api.put<TrainingSetting>('/settings/training', { auto }),
+    mutationFn: (body: { auto?: boolean; nation_auto?: boolean }) => api.put<TrainingSetting>('/settings/training', body),
     onSuccess: (data) => {
       client.setQueryData(['training-setting'], data)
       void client.invalidateQueries({ queryKey: ['training'] })
@@ -148,13 +152,22 @@ export const useInternational = () =>
 export const useQualifiers = () =>
   useQuery({ queryKey: ['wc-qualifiers'], queryFn: () => api.get<Qualifiers>('/international/qualifiers') })
 
-/** The next (or current) FIFA Club World Cup. */
-export const useClubWorldCup = () =>
-  useQuery({ queryKey: ['club-world-cup'], queryFn: () => api.get<ClubWorldCupView>('/international/club-world-cup') })
+/** The next (or current) FIFA Club World Cup, or ``year``'s. */
+export const useClubWorldCup = (year?: number) =>
+  useQuery({
+    queryKey: ['club-world-cup', year ?? 'current'],
+    queryFn: () => api.get<ClubWorldCupView>(year ? `/international/club-world-cup?year=${year}` : '/international/club-world-cup'),
+  })
 
-/** The World Cup finals: groups and knockout rounds once drawn. */
-export const useWorldCupFinals = () =>
-  useQuery({ queryKey: ['wc-finals'], queryFn: () => api.get<WorldCupFinals>('/international/world-cup') })
+/** The World Cup finals: groups and knockout rounds once drawn (``year``'s, else the current). */
+export const useWorldCupFinals = (year?: number) =>
+  useQuery({
+    queryKey: ['wc-finals', year ?? 'current'],
+    queryFn: () => api.get<WorldCupFinals>(year ? `/international/world-cup?year=${year}` : '/international/world-cup'),
+  })
+
+/** Every World Cup and Club World Cup final played in the career (GET /international/history). */
+export const useCupHistory = () => useQuery({ queryKey: ['cup-history'], queryFn: () => api.get<CupHistory>('/international/history') })
 
 export const useNations = () =>
   useQuery({ queryKey: ['nations'], queryFn: () => api.get<Nation[]>('/world/nations'), staleTime: Infinity, retry: 1 })

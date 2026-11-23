@@ -159,3 +159,108 @@ def sign(player_id: int, session: Session) -> DraftOut:
         result = _draft(conn, world, meta)
     session.autosave()
     return result
+
+
+# --- history (22 Nov) ----------------------------------------------------------------------
+
+
+class HistoryPickOut(BaseModel):
+    season: str  # the draft's season ("2026-27": the January 2027 draft)
+    pick: int
+    round: int
+    mls_club: ClubRef  # who picked him
+    player_id: int
+    name: str
+    position: str  # his best now
+    college: ClubRef | None  # the program he was drafted from
+    alumnus: bool  # one of the user's program's
+    ga: bool  # an underclassman who declared early (Generation adidas)
+    signed: bool  # signed by the club that picked him
+    age: int
+    overall: int  # now
+    value_eur: int  # his market value now, in the career's currency
+    now: str  # with_club | free_agent | retired
+    club: ClubRef | None  # where he plays now
+    pro_apps: int  # appearances since, outside college soccer
+    pro_goals: int
+    pro_assists: int
+
+
+@router.get("/history")
+def draft_history(session: Session) -> list[HistoryPickOut]:
+    """Every SuperDraft made in the career, pick by pick, the latest first: where each pick came
+    from (the user's alumni marked) and how he has done since."""
+    import numpy as np
+
+    from footsim.domain.attributes import ATTRIBUTES
+    from footsim.importers.generate import age_on
+    from footsim.transfers.valuation import value_eur, years_old
+    from footsim.world.college.common import ALL_TYPE, LOWER_TYPE
+    from footsim.world.money import quote
+
+    world = get_world()
+    with session.read() as conn:
+        meta = read_meta(conn)
+        rows = conn.execute(text(
+            "SELECT d.season_id, d.pick, d.round, d.club_id AS mls, d.player_id, d.signed, "
+            "s.label, cp.club_id AS college, cp.ga, p.first_name, p.last_name, p.known_as, "
+            "p.birth_date, pl.retired_on, pl.reputation AS player_reputation, pl.value_premium, "
+            "(SELECT c.club_id FROM contract c WHERE c.person_id = d.player_id AND c.is_active = 1 "
+            " AND c.kind != 'staff' ORDER BY c.kind = 'loan' LIMIT 1) AS now_club, "
+            "(SELECT position FROM player_position pp WHERE pp.player_id = d.player_id "
+            " ORDER BY familiarity DESC, position LIMIT 1) AS position "
+            "FROM draft_pick d JOIN season s ON s.id = d.season_id "
+            "JOIN person p ON p.id = d.player_id JOIN player pl ON pl.person_id = d.player_id "
+            "LEFT JOIN college_player cp ON cp.player_id = d.player_id "
+            "ORDER BY d.season_id DESC, d.pick")).all()
+        if not rows:
+            return []
+        ids = [int(r.player_id) for r in rows]
+        marks = ",".join(str(i) for i in ids)
+        attrs = {int(r.player_id): r for r in conn.execute(text(
+            f"SELECT * FROM player_attr WHERE player_id IN ({marks})"))}
+        names = {int(r.id): str(r.name) for r in conn.execute(text("SELECT id, name FROM club"))}
+        reputation = {int(r.id): r.reputation for r in conn.execute(text(
+            "SELECT id, reputation FROM club"))}
+        stats = {int(r.player_id): r for r in conn.execute(text(
+            f"SELECT pm.player_id, COUNT(*) AS apps, SUM(pm.goals) AS goals, "
+            f"SUM(pm.assists) AS assists FROM player_match pm JOIN fixture f "
+            f"ON f.id = pm.fixture_id JOIN competition c ON c.id = f.competition_id "
+            f"WHERE pm.player_id IN ({marks}) AND c.type NOT IN ('college', :lower, :all) "
+            f"GROUP BY pm.player_id"), {"lower": LOWER_TYPE, "all": ALL_TYPE})}
+        known = [i for i in ids if i in attrs]
+        groups = world.model.group_overalls(np.array(
+            [[getattr(attrs[i], a) for a in ATTRIBUTES] for i in known], dtype=float))
+        overall_of = {}
+        for k, pid in enumerate(known):
+            pos = next(str(r.position or "CM") for r in rows if int(r.player_id) == pid)
+            spec = world.defs.positions.get(pos) or world.defs.positions["CM"]
+            overall_of[pid] = round(float(groups[spec.group][k]))
+        today = meta.current_date
+        out = []
+        for r in rows:
+            pid = int(r.player_id)
+            position = str(r.position or "CM")
+            overall = overall_of.get(pid, 0)
+            club_id = int(r.now_club) if r.now_club is not None else None
+            rep = reputation.get(club_id) if club_id is not None else None
+            value = 0 if r.retired_on else value_eur(
+                world.defs.valuation, overall, years_old(r.birth_date, today), position == "GK",
+                rep if rep is not None else r.player_reputation, r.value_premium or 0.0)
+            st = stats.get(pid)
+            college = int(r.college) if r.college is not None else None
+            out.append(HistoryPickOut(
+                season=str(r.label), pick=int(r.pick), round=int(r.round),
+                mls_club=ClubRef(id=int(r.mls), name=names[int(r.mls)]), player_id=pid,
+                name=display_name(r.first_name, r.last_name, r.known_as), position=position,
+                college=ClubRef(id=college, name=names[college]) if college else None,
+                alumnus=college is not None and college == meta.user_club_id,
+                ga=bool(r.ga), signed=bool(r.signed),
+                age=age_on(date.fromisoformat(r.birth_date), today), overall=overall,
+                value_eur=quote(value, world, meta.currency),
+                now="retired" if r.retired_on else "with_club" if club_id else "free_agent",
+                club=ClubRef(id=club_id, name=names[club_id]) if club_id and not r.retired_on
+                else None,
+                pro_apps=int(st.apps) if st else 0, pro_goals=int(st.goals or 0) if st else 0,
+                pro_assists=int(st.assists or 0) if st else 0))
+        return out

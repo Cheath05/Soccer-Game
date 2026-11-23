@@ -314,3 +314,29 @@ export function useAskToStay() {
     },
   })
 }
+
+// GET /api/draft/history: every SuperDraft made in the career, pick by pick, the latest first.
+export interface DraftHistoryPick {
+  season: string
+  pick: number
+  round: number
+  mls_club: ClubRef
+  player_id: number
+  name: string
+  position: string
+  college: ClubRef | null
+  alumnus: boolean
+  ga: boolean
+  signed: boolean
+  age: number
+  overall: number
+  value_eur: number
+  now: 'with_club' | 'free_agent' | 'retired'
+  club: ClubRef | null
+  pro_apps: number
+  pro_goals: number
+  pro_assists: number
+}
+
+export const useDraftHistory = (enabled = true) =>
+  useQuery({ queryKey: ['draft-history'], queryFn: () => api.get<DraftHistoryPick[]>('/draft/history'), enabled, retry: noRetryOn404 })

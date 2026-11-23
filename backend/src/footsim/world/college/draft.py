@@ -2,8 +2,9 @@
 season's rollover (data/config/college/rules.yaml ``draft``).
 
 After the College Cup every senior declares for MLS's SuperDraft, with the best underclassmen
-(Generation adidas-style top prospects, flagged ``ga``). They stay on their college rosters, and
-out of the market, until the draft (another step: W9a B5) turns the picks pro with ``turn_pro``.
+(Generation adidas-style top prospects, flagged ``ga``; never a freshman: ``min_class_year``).
+They stay on their college rosters, and out of the market, until the draft (another step: W9a
+B5) turns the picks pro with ``turn_pro``.
 Those nobody drafted become free agents in the spring (``release_undrafted``); one still unsigned
 ``grace_seasons`` later retires. At each rollover the classes move up and every program signs
 its freshmen (world/college/roster.py)."""
@@ -85,8 +86,9 @@ def declare_prospects(conn: Connection, world: World, meta: CareerMeta, season_i
         "WHERE status = :enrolled AND class_year >= 4"),
         {"prospect": PROSPECT, "s": season_id, "enrolled": ENROLLED}).rowcount
     candidates = _players(conn, world, "cp.status = :enrolled AND cp.class_year < 4 "
-                          "AND pl.pa_hidden >= :least",
-                          {"enrolled": ENROLLED, "least": rules.min_potential})
+                          "AND cp.class_year >= :youngest AND pl.pa_hidden >= :least",
+                          {"enrolled": ENROLLED, "least": rules.min_potential,
+                           "youngest": rules.min_class_year})
     # A OP player (world/college/god_player.py) stays his four years, and one who agreed to
     # stay this season (world/college/stay.py) does.
     from footsim.world.college.stay import staying

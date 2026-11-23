@@ -139,3 +139,47 @@ def test_rights_keep_other_mls_clubs_off_an_unsigned_pick(
         problem = addition_problem(conn, world, meta, other, unsigned.player_id, 300_000,
                                    meta.current_date)
         assert problem == "Another MLS club holds his draft rights."
+
+
+def test_the_draft_history(drafted: tuple[Engine, World, int, list[int], list[str]]) -> None:
+    """Draft history (22 Nov): every pick with his college and how he has done since; a
+    program's alumni marked; never a freshman among the early declarers."""
+    from contextlib import contextmanager
+    from typing import Any
+
+    from footsim.api.draft import draft_history
+
+    engine, world, _, _, _ = drafted
+
+    class _Session:
+        @contextmanager
+        def read(self) -> Any:
+            with engine.connect() as conn:
+                yield conn
+
+    with engine.begin() as conn:
+        # Seen by a college coach: one program's alumni are his.
+        college = int(conn.execute(text(
+            "SELECT cp.club_id FROM draft_pick d JOIN college_player cp "
+            "ON cp.player_id = d.player_id ORDER BY d.pick LIMIT 1")).scalar_one())
+        meta = read_meta(conn)
+        mls = meta.user_club_id
+        meta.user_club_id = college
+        write_meta(conn, meta)
+    try:
+        history = draft_history(_Session())  # type: ignore[arg-type]
+    finally:
+        with engine.begin() as conn:
+            meta = read_meta(conn)
+            meta.user_club_id = mls
+            write_meta(conn, meta)
+    assert len(history) == 30 * draft.rules(world).rounds
+    assert [h.pick for h in history] == sorted(h.pick for h in history)
+    assert history[0].alumnus and all(h.college is not None for h in history)
+    assert {h.college.id for h in history if h.alumnus and h.college} == {college}
+    assert all(h.overall > 0 and h.value_eur >= 0 for h in history)
+    assert all(h.now in ("with_club", "free_agent", "retired") for h in history)
+    with engine.connect() as conn:
+        early = conn.execute(text(
+            "SELECT MIN(cp.class_year) FROM college_player cp WHERE cp.ga = 1")).scalar()
+    assert early is None or early >= world.defs.college.rules.draft.min_class_year

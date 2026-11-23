@@ -27,6 +27,13 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.151"
+  date: "2026-11-22"
+  title: "SuperDraft history; no declaring after a freshman year"
+  changes:
+    - "Draft history (College → Draft pool → Draft history, or Past drafts on the SuperDraft page): every SuperDraft of your career, pick by pick, with who picked him, his college, where he plays now, his overall and value now, and his pro appearances, goals and assists. A college coach's alumni are highlighted, and My alumni lists all of them across every draft."
+    - "College players can no longer declare early for the draft straight after their freshman year: sophomores and juniors only."
+
 - version: "1.150"
   date: "2026-11-22"
   title: "Draft watch, asking players to stay, next season's squad, and Home for your country"

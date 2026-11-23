@@ -97,6 +97,7 @@ draft:
   # this much potential.
   underclassmen: 8
   min_potential: 66
+  min_class_year: 2  # no declaring after a freshman year: sophomores and juniors only
   # Prospects the SuperDraft (January) didn't take become free agents on this day of the spring;
   # one still unsigned this many seasons after retires.
   release: "02-15"

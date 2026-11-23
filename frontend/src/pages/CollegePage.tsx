@@ -6,6 +6,7 @@ import { ApiError } from '../api/client'
 import { useCareer } from '../api/hooks'
 import AllDivisionBracket from '../components/AllDivisionBracket'
 import CollegeBracket from '../components/CollegeBracket'
+import DraftHistory from '../components/DraftHistory'
 import ClubLink from '../components/ClubLink'
 import PlayerLink from '../components/PlayerLink'
 import { positionColor, ratingColor } from '../lib/format'
@@ -350,6 +351,27 @@ function AllDivisionPanel() {
 }
 
 function DraftPool() {
+  // The pool now, or every past draft's picks (22 Nov).
+  const [view, setView] = useUrlState('draft', 'pool')
+  const college = !!useCareer().data?.college
+  const toggle = (
+    <SegmentedControl size="xs" value={view} onChange={setView} data={[{ value: 'pool', label: 'Draft pool' }, { value: 'history', label: 'Draft history' }]} aria-label="Draft" />
+  )
+  if (view === 'history') {
+    return (
+      <Stack gap="sm">
+        <Group>{toggle}</Group>
+        <Text size="sm" c="dimmed">
+          Every SuperDraft of your career, pick by pick: where each player came from{college ? ' (yours highlighted)' : ''}, and how he has done since: where he plays, his overall and value now, and his professional appearances.
+        </Text>
+        <DraftHistory college={college} />
+      </Stack>
+    )
+  }
+  return <DraftPoolList toggle={toggle} />
+}
+
+function DraftPoolList({ toggle }: { toggle: React.ReactNode }) {
   const { phone } = useDevice()
   const pool = useDraftPool(true)
   const [group, setGroup] = useUrlState('group', 'All')
@@ -363,12 +385,13 @@ function DraftPool() {
   return (
     <Stack gap="sm">
       <Group>
+        {toggle}
         <Button component={Link} to="/draft" size="compact-sm" variant="light">
           The SuperDraft: rank your picks
         </Button>
       </Group>
       <Text size="sm" c="dimmed">
-        After the College Cup final every senior declares for MLS’s SuperDraft in January, with a few underclassmen signed by Generation adidas (GA). Those not drafted become free agents in February.
+        After the College Cup final every senior declares for MLS’s SuperDraft in January, with a few underclassmen signed by Generation adidas (GA), never a freshman. Those not drafted become free agents in February.
       </Text>
       {pool.data.length === 0 ? (
         <Text size="sm" c="dimmed">

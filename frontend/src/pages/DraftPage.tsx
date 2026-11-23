@@ -61,6 +61,10 @@ export default function DraftPage() {
             <Link to="/college" search={{ tab: "draft" }}>
               NCAA season
             </Link>
+            {" · "}
+            <Link to="/college" search={{ tab: "draft", draft: "history" } as never}>
+              Past drafts
+            </Link>
           </Text>
         </div>
         {data.made && <Badge variant="light">Made</Badge>}

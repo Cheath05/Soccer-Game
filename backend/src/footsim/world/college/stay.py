@@ -67,8 +67,9 @@ def draft_watch(conn: Connection, world: World, meta: CareerMeta) -> dict[int, s
     rows = conn.execute(text(
         "SELECT cp.player_id, pl.pa_hidden FROM college_player cp "
         "JOIN player pl ON pl.person_id = cp.player_id "
-        "WHERE cp.status = :e AND cp.class_year < 4 AND pl.pa_hidden >= :least"),
-        {"e": ENROLLED, "least": rules.min_potential}).all()
+        "WHERE cp.status = :e AND cp.class_year < 4 AND cp.class_year >= :youngest "
+        "AND pl.pa_hidden >= :least"),
+        {"e": ENROLLED, "least": rules.min_potential, "youngest": rules.min_class_year}).all()
     skip = set(meta.god_players) | staying(meta, meta.season_id)
     rows = [r for r in rows if int(r.player_id) not in skip]
     overall = _overalls(conn, world, [int(r.player_id) for r in rows])

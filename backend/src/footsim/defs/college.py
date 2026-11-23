@@ -185,6 +185,8 @@ class DraftDef(DefModel):
 
     underclassmen: int = Field(ge=0)  # Generation adidas: the best underclassmen who declare
     min_potential: int  # an underclassman declares only with this much potential
+    # The earliest class that may declare early (22 Nov, the user: not after a freshman year).
+    min_class_year: int = Field(default=2, ge=1, le=4)
     release: str  # MM-DD (the spring): prospects nobody drafted become free agents
     grace_seasons: int = Field(ge=0)  # an undrafted free agent unsigned this long retires
     # Draft watch (22 Nov): the underclassmen who would declare if it were today are "likely";

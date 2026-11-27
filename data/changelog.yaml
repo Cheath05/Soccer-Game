@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.153"
+  date: "2026-11-27"
+  title: A blue logo
+  changes:
+    - "The app icon and the home-screen icon are blue instead of green."
+
 - version: "1.152"
   date: "2026-11-22"
   title: "A smarter recruiting assistant"

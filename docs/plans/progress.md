@@ -16,6 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **27 Nov, v1.153: the logo is blue** (the iOS app icon and the web icons, recoloured from teal #12b886 to blue #228be6; the PWA theme colour too). No tests touched. The iOS build passed (`just ios-bundle` and `generic/platform=iOS`). Not yet installed on the iPad, which was asleep or unreachable. The Mac build (Designed for iPad) needs an Apple account in Xcode to add the Mac to the team profile.
 - **Order of work from 15 Oct (the user): W7, all of UEFA, comes first** (`docs/plans/w7-all-of-uefa.md`, checkpoints A1–A8):
   - every league that can qualify for Europe, with its cup (36 more associations: Transfermarkt squads where they exist, generated ones rated to measured strength elsewhere);
   - country coefficients that set each country's places every season, with the European Performance Spots;

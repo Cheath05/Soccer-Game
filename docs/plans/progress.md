@@ -16,6 +16,7 @@
 ## Continuation checkpoint (update at every checkpoint)
 
 - **Branch:** `phase-1-match-believability`.
+- **27 Nov, v1.154: the start page** picks the club, program or country from a searchable dropdown (StartPage `PickSelect`) and can delete a saved career (`DELETE /api/saves/{slot}`, `SaveManager.delete`; it closes the career if it is the one being played). Tests: `test_saves`, `test_api_flow::test_deleting_a_save`, lint, and the smoke and phone e2e on :8765 (the e2e scripts now pick the club from the dropdown). :8000 not restarted.
 - **27 Nov, v1.153: the logo is blue** (the iOS app icon and the web icons, recoloured from teal #12b886 to blue #228be6; the PWA theme colour too). No tests touched. The iOS build passed (`just ios-bundle` and `generic/platform=iOS`). Not yet installed on the iPad, which was asleep or unreachable. The Mac build (Designed for iPad) needs an Apple account in Xcode to add the Mac to the team profile.
 - **Order of work from 15 Oct (the user): W7, all of UEFA, comes first** (`docs/plans/w7-all-of-uefa.md`, checkpoints A1–A8):
   - every league that can qualify for Europe, with its cup (36 more associations: Transfermarkt squads where they exist, generated ones rated to measured strength elsewhere);

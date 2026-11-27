@@ -404,6 +404,16 @@ export function useLoadCareer() {
   })
 }
 
+/** Delete a slot's career for good (its save, autosave and backups); the one being played is
+ * closed first. */
+export function useDeleteCareer() {
+  const invalidate = useInvalidateAll()
+  return useMutation({
+    mutationFn: (slot: number) => api.delete<SaveSlot[]>(`/saves/${slot}`),
+    onSuccess: invalidate,
+  })
+}
+
 export function useReleasePlayer() {
   const invalidate = useInvalidateAll()
   return useMutation({

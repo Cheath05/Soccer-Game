@@ -19,7 +19,9 @@ const shot = (name) => page.screenshot({ path: `${out}/${name}.png` })
 await page.goto(new URL('/start', base).href)
 await page.getByText('New career').waitFor()
 await page.getByPlaceholder('Your name').fill('Season')
-await page.getByRole('button', { name: /^Arsenal / }).click()
+// The club is picked from a dropdown: type to find it, then pick it.
+await page.getByPlaceholder(/^Find a club/).fill('Arsenal')
+await page.getByRole('option', { name: /^Arsenal/ }).first().click()
 await page.getByRole('button', { name: /^Start with/ }).click()
 await page.getByText('Dashboard', { exact: true }).first().waitFor()
 

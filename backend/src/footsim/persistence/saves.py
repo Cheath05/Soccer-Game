@@ -15,6 +15,7 @@ A crash mid-save therefore leaves the previous save intact.
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -199,6 +200,13 @@ class SaveManager:
             if _is_intact(backup):
                 return backup
         raise SaveError(f"slot {slot}: no intact save or backup found")
+
+    def delete(self, slot: int) -> None:
+        """Delete everything in ``slot``: the save, the autosave, the backups and any game in
+        progress. It can't be undone."""
+        directory = self.slot_dir(slot)
+        if directory.exists():
+            shutil.rmtree(directory)
 
     def list_slots(self) -> list[SlotSummary]:
         summaries = []

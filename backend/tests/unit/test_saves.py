@@ -92,3 +92,18 @@ def test_new_career_refuses_to_overwrite(tmp_path: Path, base_world: Path) -> No
 def test_slot_bounds(tmp_path: Path) -> None:
     with pytest.raises(SaveError):
         SaveManager(tmp_path, slots=3).slot_dir(4)
+
+
+def test_delete_clears_the_slot(tmp_path: Path, base_world: Path) -> None:
+    saves = SaveManager(tmp_path / "saves")
+    saves.new_career(2, base_world)
+    saves.save(2)
+    saves.save(2)  # a backup too
+    saves.autosave(2)
+    saves.delete(2)
+    slot = saves.list_slots()[1]
+    assert not slot.has_save and not slot.has_autosave and slot.saved_at is None
+    assert not saves.slot_dir(2).exists()
+    saves.delete(2)  # an empty slot: nothing to do
+    with pytest.raises(SaveError):
+        saves.delete(4)

@@ -106,6 +106,13 @@ class CareerSession:
             working = self.saves.load(slot, autosave=autosave)
             self._open(slot, working)
 
+    def delete(self, slot: int) -> None:
+        """Delete the career in ``slot``; if it's the one being played, it's closed first."""
+        with self.lock:
+            if self.slot == slot:
+                self.close()
+            self.saves.delete(slot)
+
     def save(self) -> None:
         with self.lock:
             if self.slot is None:

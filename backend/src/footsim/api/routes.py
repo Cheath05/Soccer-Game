@@ -180,6 +180,18 @@ def load_career(slot: int, session: Session, autosave: bool = False) -> CareerOu
     return _career(session)
 
 
+@router.delete("/saves/{slot}")
+def delete_career(slot: int, session: Session) -> list[SaveSlotOut]:
+    """Delete a slot's career for good: its save, autosave and backups."""
+    if not 1 <= slot <= session.saves.slots:
+        raise HTTPException(404, "no such slot")
+    if session.slot == slot and session.busy:
+        raise HTTPException(409, "this career is playing a match or simulating: wait for it to "
+                                 "finish")
+    session.delete(slot)
+    return saves(session)
+
+
 @router.post("/saves/save")
 def save_career(session: Session) -> list[SaveSlotOut]:
     session.save()

@@ -27,6 +27,14 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.154"
+  date: "2026-11-27"
+  title: A tidier start page, and deleting a save
+  changes:
+    - "Start page: pick your club from a dropdown you can type in, strongest first, with each club's rating and reputation; the club you picked shows below it. College programs and countries are picked the same way."
+    - "Start page: Delete on a saved career removes it for good (its save, autosave and backups), after asking you first."
+    - "Start page: the Pro club, NCAA college and Country switch fits on a phone."
+
 - version: "1.153"
   date: "2026-11-27"
   title: A blue logo

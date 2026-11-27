@@ -115,3 +115,16 @@ def test_live_match_over_websocket(client: TestClient) -> None:
     report = client.get(f"/api/fixtures/{stop['fixture_id']}").json()
     assert report["fixture"]["status"] == "played"
     assert report["stats"]["home"]["passes"] > 100
+
+
+def test_deleting_a_save(client: TestClient) -> None:
+    club = client.get("/api/world/leagues").json()[0]["clubs"][0]["id"]
+    for slot in (1, 2):
+        client.post(f"/api/saves/{slot}/new", json={"club_id": club, "manager_name": "Tester"})
+    # slot 2 is being played: deleting it closes it
+    slots = client.delete("/api/saves/2").json()
+    assert [s["has_save"] for s in slots] == [True, False, False]
+    assert client.get("/api/career").status_code == 409
+    slots = client.delete("/api/saves/1").json()
+    assert not any(s["has_save"] or s["has_autosave"] for s in slots)
+    assert client.delete("/api/saves/9").status_code == 404

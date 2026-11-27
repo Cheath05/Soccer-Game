@@ -1,14 +1,15 @@
-import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useCollegePrograms, useLoadCareer, useNewCareer, useSaves, useWorldLeagues, useWorldNations } from '../api/hooks'
+import { useCollegePrograms, useDeleteCareer, useLoadCareer, useNewCareer, useSaves, useWorldLeagues, useWorldNations } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
 import { tierStars } from '../lib/college'
 import SimulationPicker from '../components/SimulationPicker'
 import { Crest } from '../components/PhoneNav'
 import VersionTag from '../components/VersionTag'
 import { AccountFooter } from '../components/AuthGate'
+import type { SaveSlot } from '../api/types'
 import { CURRENCIES, type Currency, longDate, setCurrency, toEuros, useCurrency } from '../lib/format'
 
 const MAX_BUDGET_EUR = 10_000_000_000 // the most the sandbox gives (the server's limit)
@@ -18,6 +19,9 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const leagues = useWorldLeagues()
   const newCareer = useNewCareer()
   const loadCareer = useLoadCareer()
+  const deleteCareer = useDeleteCareer()
+  // The save waiting for the player to confirm its deletion.
+  const [deleting, setDeleting] = useState<SaveSlot | null>(null)
   const navigate = useNavigate()
   const currency = useCurrency()
   const [manager, setManager] = useState('')
@@ -128,22 +132,26 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                       {s.active && <Badge color="teal">Playing</Badge>}
                     </Stack>
                   </Group>
-                  <Group gap="xs" grow mt="md">
+                  <Group gap="xs" mt="md" wrap="nowrap">
                     {s.has_save && (
-                      <Button size="md" loading={loadCareer.isPending} onClick={() => void loadCareer.mutateAsync({ slot: s.slot }).then(goHome, ignore)}>
+                      <Button size="md" style={{ flex: 1 }} loading={loadCareer.isPending} onClick={() => void loadCareer.mutateAsync({ slot: s.slot }).then(goHome, ignore)}>
                         Load
                       </Button>
                     )}
                     {s.has_autosave && (
-                      <Button size="md" variant="default" onClick={() => void loadCareer.mutateAsync({ slot: s.slot, autosave: true }).then(goHome, ignore)}>
+                      <Button size="md" style={{ flex: 1 }} variant="default" onClick={() => void loadCareer.mutateAsync({ slot: s.slot, autosave: true }).then(goHome, ignore)}>
                         Autosave
                       </Button>
                     )}
+                    <Button size="md" variant="subtle" color="red" onClick={() => setDeleting(s)} aria-label={`Delete the save in slot ${s.slot}`}>
+                      Delete
+                    </Button>
                   </Group>
                 </Card>
               ))}
             </SimpleGrid>
             {loadCareer.error && <Alert color="red">{loadCareer.error.message}</Alert>}
+            {deleteCareer.error && <Alert color="red">{deleteCareer.error.message}</Alert>}
           </Stack>
         )}
 
@@ -172,7 +180,11 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                   data={['1', '2', '3'].map((n) => ({ value: n, label: `Slot ${n}${free.includes(Number(n)) || !saves.data ? '' : ' · used'}` }))}
                 />
               </div>
-              {slotInfo?.has_save && <Alert color="yellow" variant="light">Slot {slot} already has a career. Starting a new one replaces it.</Alert>}
+              {(slotInfo?.has_save || slotInfo?.has_autosave) && (
+                <Alert color="yellow" variant="light">
+                  Slot {slot} has your {slotInfo.club ?? 'career'} career{slotInfo.manager ? ` (${slotInfo.manager})` : ''}. Starting a new one replaces it.
+                </Alert>
+              )}
             </Stack>
           </Card>
 
@@ -184,9 +196,9 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                 value={kind}
                 onChange={(v) => setKind(v as 'club' | 'college' | 'nation')}
                 data={[
-                  { value: 'club', label: 'Professional club' },
-                  { value: 'college', label: 'NCAA program' },
-                  { value: 'nation', label: 'Manage a country' },
+                  { value: 'club', label: 'Pro club' },
+                  { value: 'college', label: 'NCAA college' },
+                  { value: 'nation', label: 'Country' },
                 ]}
               />
               {country && (
@@ -195,29 +207,13 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                     Manage a national team without a club: pick its squad for every international window and tournament, set its tactics and play its matches. Continue moves on from one window to the next. You can move to another country later, from International → My country.
                   </Text>
                   {nations.error && <Alert color="red">{nations.error.message}</Alert>}
-                  <Select
+                  <PickSelect
                     label="Country"
-                    searchable
                     placeholder="Find a country"
                     value={nationCode}
                     onChange={setNationCode}
-                    data={(nations.data ?? []).map((n) => ({ value: n.code, label: `${n.name} (#${n.rank})` }))}
+                    options={(nations.data ?? []).map((n) => ({ value: n.code, label: n.name, detail: `#${n.rank} in the world · ${n.confederation}` }))}
                   />
-                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
-                    {(nations.data ?? []).slice(0, 12).map((n) => (
-                      <UnstyledButton key={n.code} onClick={() => setNationCode(n.code)} className="fs-club" data-picked={nationCode === n.code || undefined}>
-                        <Crest name={n.name} size={34} mine={nationCode === n.code} />
-                        <div style={{ minWidth: 0 }}>
-                          <Text fw={600} size="sm" truncate>
-                            {n.name}
-                          </Text>
-                          <Text size="xs" c="dimmed" truncate>
-                            #{n.rank} · {n.confederation}
-                          </Text>
-                        </div>
-                      </UnstyledButton>
-                    ))}
-                  </SimpleGrid>
                 </>
               )}
               {college && (
@@ -258,21 +254,13 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                         : 'Recruit, coach and win: scholarship money is set by your program’s tier.'}
                     </Text>
                   </div>
-                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
-                    {programs.map((p) => (
-                      <UnstyledButton key={p.name} onClick={() => setProgram(p.name)} className="fs-club" data-picked={program === p.name || undefined}>
-                        <Crest name={p.name} size={34} mine={program === p.name} />
-                        <div style={{ minWidth: 0 }}>
-                          <Text fw={600} size="sm" truncate>
-                            {p.school}
-                          </Text>
-                          <Text size="xs" c="dimmed" truncate title={`Program tier ${p.tier} of 5`}>
-                            {tierStars(p.tier)} · {p.state}
-                          </Text>
-                        </div>
-                      </UnstyledButton>
-                    ))}
-                  </SimpleGrid>
+                  <PickSelect
+                    label="Program"
+                    placeholder={`Find a program in the ${colleges.data?.find((c) => c.key === conference)?.short_name ?? 'conference'}`}
+                    value={program}
+                    onChange={setProgram}
+                    options={programs.map((p) => ({ value: p.name, label: p.school, detail: `${tierStars(p.tier)} tier ${p.tier} of 5 · ${p.state}` }))}
+                  />
                 </>
               )}
               {!noClub && leagues.isPending && <Loader />}
@@ -287,21 +275,15 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
                       setClubId(null)
                     }}
                   />
-                  <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">
-                    {selectedLeague?.clubs.map((c) => (
-                      <UnstyledButton key={c.id} onClick={() => setClubId(c.id)} className="fs-club" data-picked={clubId === c.id || undefined}>
-                        <Crest name={c.name} size={34} mine={clubId === c.id} />
-                        <div style={{ minWidth: 0 }}>
-                          <Text fw={600} size="sm" truncate>
-                            {c.name}
-                          </Text>
-                          <Text size="xs" c="dimmed" truncate>
-                            {c.average_overall.toFixed(1)} ovr · rep {c.reputation}
-                          </Text>
-                        </div>
-                      </UnstyledButton>
-                    ))}
-                  </SimpleGrid>
+                  <PickSelect
+                    label="Club"
+                    placeholder={`Find a club in ${selectedLeague?.name ?? 'this league'}`}
+                    value={clubId === null ? null : String(clubId)}
+                    onChange={(v) => setClubId(v === null ? null : Number(v))}
+                    options={[...(selectedLeague?.clubs ?? [])]
+                      .sort((a, b) => b.average_overall - a.average_overall)
+                      .map((c) => ({ value: String(c.id), label: c.name, detail: `${c.average_overall.toFixed(1)} overall · reputation ${c.reputation}` }))}
+                  />
                 </>
               )}
             </Stack>
@@ -379,6 +361,28 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           </Group>
         </Stack>
 
+        <Modal opened={deleting !== null} onClose={() => setDeleting(null)} title="Delete this save?" centered>
+          {deleting && (
+            <Stack gap="md">
+              <Text size="sm">
+                Slot {deleting.slot}: <b>{deleting.club ?? 'Career'}</b>
+                {deleting.manager ? ` (${deleting.manager}` : ''}
+                {deleting.game_date ? `${deleting.manager ? ', ' : ' ('}${longDate(deleting.game_date)}` : ''}
+                {deleting.manager || deleting.game_date ? ')' : ''}. Its save, autosave and backups are deleted for good: this can’t be undone.
+                {deleting.active ? ' It’s the career you’re playing, so it closes too.' : ''}
+              </Text>
+              <Group justify="flex-end" gap="xs">
+                <Button variant="default" onClick={() => setDeleting(null)}>
+                  Keep it
+                </Button>
+                <Button color="red" loading={deleteCareer.isPending} onClick={() => void deleteCareer.mutateAsync(deleting.slot).then(() => setDeleting(null), ignore)}>
+                  Delete
+                </Button>
+              </Group>
+            </Stack>
+          )}
+        </Modal>
+
         <Stack gap={4} align="center" mt="md">
           <VersionTag />
           <AccountFooter />
@@ -396,5 +400,56 @@ function Step({ n, title }: { n: number; title: string }) {
         {title}
       </Text>
     </Group>
+  )
+}
+
+type PickOption = { value: string; label: string; detail: string }
+
+/** A searchable dropdown of clubs, programs or countries, each with its crest and a line of detail,
+ * and the one picked shown below it. */
+function PickSelect({ label, placeholder, value, onChange, options }: { label: string; placeholder: string; value: string | null; onChange: (v: string | null) => void; options: PickOption[] }) {
+  const byValue = new Map(options.map((o) => [o.value, o]))
+  const picked = value === null ? undefined : byValue.get(value)
+  return (
+    <Stack gap="xs">
+      <Select
+        size="md"
+        label={label}
+        placeholder={placeholder}
+        searchable
+        clearable
+        nothingFoundMessage="Nothing matches"
+        maxDropdownHeight={360}
+        value={value}
+        onChange={onChange}
+        data={options.map((o) => ({ value: o.value, label: o.label }))}
+        renderOption={({ option }) => (
+          <Group gap="sm" wrap="nowrap">
+            <Crest name={option.label} size={30} />
+            <div style={{ minWidth: 0 }}>
+              <Text size="sm" fw={600} truncate>
+                {option.label}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                {byValue.get(option.value)?.detail}
+              </Text>
+            </div>
+          </Group>
+        )}
+      />
+      {picked && (
+        <div className="fs-club" data-picked>
+          <Crest name={picked.label} size={44} mine />
+          <div style={{ minWidth: 0 }}>
+            <Text fw={700} truncate>
+              {picked.label}
+            </Text>
+            <Text size="sm" c="dimmed" truncate>
+              {picked.detail}
+            </Text>
+          </div>
+        </div>
+      )}
+    </Stack>
   )
 }

@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from match_day import advance_to_match
 
 from footsim.api.app import create_app
-from footsim.api.session import CareerSession
+from footsim.api.session import START_STEPS, CareerSession, StartProgress
 from footsim.core.paths import data_dir
 
 BASE_WORLD = data_dir() / "worlds" / "base-2026-27.sqlite"
@@ -115,6 +115,32 @@ def test_live_match_over_websocket(client: TestClient) -> None:
     report = client.get(f"/api/fixtures/{stop['fixture_id']}").json()
     assert report["fixture"]["status"] == "played"
     assert report["stats"]["home"]["passes"] > 100
+
+
+def test_starting_a_career_reports_each_stage(tmp_path: Path) -> None:
+    """The start page shows how far a new career has got: every stage, in order, then
+    nothing once it's done."""
+    session = CareerSession(tmp_path / "saves", BASE_WORLD)
+    client = TestClient(create_app(session=session, frontend=None))
+    assert client.get("/api/saves/starting").json() is None
+    seen: list[StartProgress | None] = [session.starting]
+    started = session._started
+
+    def record(index: int) -> None:
+        started(index)
+        seen.append(session.starting)
+
+    session._started = record  # type: ignore[method-assign]
+    club = client.get("/api/world/leagues").json()[0]["clubs"][0]["id"]
+    assert client.post("/api/saves/1/new",
+                       json={"club_id": club, "manager_name": "Tester"}).status_code == 200
+    assert [p.step for p in seen if p] == list(START_STEPS)
+    assert [p.done for p in seen if p] == list(range(len(START_STEPS)))
+    assert client.get("/api/saves/starting").json() is None
+    # while one is starting, the route says where it has got to
+    session.starting = StartProgress.at(2)
+    assert client.get("/api/saves/starting").json() == {
+        "step": START_STEPS[2], "done": 2, "total": len(START_STEPS)}
 
 
 def test_deleting_a_save(client: TestClient) -> None:

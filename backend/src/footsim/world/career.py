@@ -2,6 +2,7 @@
 
 import json
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
@@ -49,6 +50,13 @@ from footsim.world.transfers import initialize_value_premiums
 
 MAX_ADVANCE_DAYS = 400
 
+# The stages of setting up a new career, in order, as the start page shows them: together they
+# take about ten seconds on this Mac (most of it the AI clubs' tactics, the fixtures and the
+# national teams), so the player sees which one it's on (``initialize_career``'s ``progress``).
+CAREER_STEPS = ("Picking every club's tactics", "Drawing up the fixtures",
+                "Calling up the national teams", "Opening the season",
+                "Working out the finances", "Valuing the players")
+
 
 @dataclass
 class AdvanceResult:
@@ -63,7 +71,8 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
                       manager_name: str | None, seed: int | None = None,
                       board_enabled: bool = True, fast_leagues: list[str] | None = None,
                       college_program: str | None = None, college_mode: str = "classic",
-                      nation_code: str | None = None) -> None:
+                      nation_code: str | None = None,
+                      progress: Callable[[int], None] | None = None) -> None:
     """Turn a freshly cloned base world into a career for ``club_id`` (None: watch only), or
     for the NCAA program named ``college_program`` (W9c: a college coach's career; its club is
     made with the college world, so it has no id in the base world). ``nation_code``: the
@@ -73,7 +82,9 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
     Each career gets its own random seed (unless one is given), so two careers from the
     same world play out differently; within a career everything stays reproducible. The user
     may play without a board (``board_enabled`` False): no expectations, and their budget is
-    all their cash."""
+    all their cash. ``progress`` is told the index in ``CAREER_STEPS`` of each stage as it
+    starts."""
+    step = progress or (lambda _: None)
     metadata.create_all(conn)  # worlds built before a schema addition get the new tables
     base = {k: json.loads(v) for k, v in conn.execute(select(game_meta.c.key, game_meta.c.value))}
     calendar_key = base["calendar"]
@@ -91,7 +102,9 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
         ["player_id", "condition", "form", "suspended_matches", "season_yellows"],
         select(player.c.person_id, literal(100.0), literal(6.5), literal(0), literal(0)),
     ))
+    step(0)
     refresh_ai_tactics(conn, world, meta, start)
+    step(1)
     create_season_fixtures(conn, world, meta, 1)
     if college_program is not None:
         meta.user_club_id = college_club_id(conn, college_program)
@@ -101,6 +114,7 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
         from footsim.world.college.lower import create_lower_fixtures
 
         create_lower_fixtures(conn, world, meta, 1, start)
+    step(2)
     ensure_international(conn, world, meta, start)  # national teams (W8), before the finances
     if nation_code is not None:
         if meta.user_club_id is None:
@@ -108,12 +122,15 @@ def initialize_career(conn: Connection, world: World, club_id: int | None,
         take_job(conn, world, meta, nation_code, start)
     # MLS's clubs start under its roster rules, their wages set to fit them, before their
     # finances are worked out from those wages (world/mls.py).
+    step(3)
     start_mls(conn, world, meta, start)
     record_season_start(conn, world, 1, start)
+    step(4)
     initialize_finances(conn, world, meta, start)
     charged = charge_dp_fees(conn, world, meta, start)  # a third DP's fee, from the cash...
     if charged:  # ...that the season's budget is planned on
         set_budgets(conn, world, meta, set(charged))
+    step(5)
     initialize_value_premiums(conn, world, start)  # after the leagues have their clubs
 
 

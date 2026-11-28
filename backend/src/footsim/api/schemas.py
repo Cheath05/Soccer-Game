@@ -68,6 +68,13 @@ class SaveSlotOut(BaseModel):
     active: bool
 
 
+class StartProgressOut(BaseModel):
+    """A new career being set up: ``step`` is stage ``done`` + 1 of ``total``."""
+    step: str
+    done: int
+    total: int
+
+
 class NewCareerIn(BaseModel):
     club_id: int | None = None  # the club to manage...
     college_program: str | None = None  # ...or an NCAA program, by name (W9c)

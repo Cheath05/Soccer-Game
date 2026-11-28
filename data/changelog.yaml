@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.157"
+  date: "2026-11-27"
+  title: Seeing a new career being set up
+  changes:
+    - "Start page: setting up a new career takes several seconds, and the page now shows a progress bar and which stage it's on (the clubs' tactics, the fixtures, the national teams, the finances, ...) instead of a silent spinner."
+
 - version: "1.155"
   date: "2026-11-27"
   title: A blue browser tab icon

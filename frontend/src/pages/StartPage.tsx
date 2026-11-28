@@ -1,15 +1,15 @@
-import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
+import { Alert, Badge, Button, Card, Collapse, Container, Group, Loader, Modal, NumberInput, Paper, Progress, SegmentedControl, Select, SimpleGrid, Stack, Switch, Text, TextInput, Title, UnstyledButton } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useCollegePrograms, useDeleteCareer, useLoadCareer, useNewCareer, useSaves, useWorldLeagues, useWorldNations } from '../api/hooks'
+import { useCollegePrograms, useDeleteCareer, useLoadCareer, useNewCareer, useSaves, useStartProgress, useWorldLeagues, useWorldNations } from '../api/hooks'
 import LeaguePicker from '../components/LeaguePicker'
 import { tierStars } from '../lib/college'
 import SimulationPicker from '../components/SimulationPicker'
 import { Crest } from '../components/PhoneNav'
 import VersionTag from '../components/VersionTag'
 import { AccountFooter } from '../components/AuthGate'
-import type { SaveSlot } from '../api/types'
+import type { SaveSlot, StartProgress } from '../api/types'
 import { CURRENCIES, type Currency, longDate, setCurrency, toEuros, useCurrency } from '../lib/format'
 
 const MAX_BUDGET_EUR = 10_000_000_000 // the most the sandbox gives (the server's limit)
@@ -18,6 +18,8 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
   const saves = useSaves()
   const leagues = useWorldLeagues()
   const newCareer = useNewCareer()
+  // Setting up a new career takes several seconds: the page shows which stage it's on.
+  const startProgress = useStartProgress(newCareer.isPending)
   const loadCareer = useLoadCareer()
   const deleteCareer = useDeleteCareer()
   // The save waiting for the player to confirm its deletion.
@@ -354,11 +356,13 @@ export default function StartPage({ hasCareer, error }: { hasCareer: boolean; er
           </Card>
 
           {newCareer.error && <Alert color="red">{newCareer.error.message}</Alert>}
-          <Group style={picked !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
+          <Stack gap="xs" style={picked !== null ? { position: 'sticky', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 5 } : undefined}>
+            {/* Above the button, so it stays in view with it. */}
+            {newCareer.isPending && <StartingCareer progress={startProgress.data ?? null} />}
             <Button size="lg" fullWidth disabled={picked === null} loading={newCareer.isPending} onClick={start}>
               {picked === null ? (college ? 'Pick a program to start' : country ? 'Pick a country to start' : 'Pick a club to start') : `Start with ${picked}`}
             </Button>
-          </Group>
+          </Stack>
         </Stack>
 
         <Modal opened={deleting !== null} onClose={() => setDeleting(null)} title="Delete this save?" centered>
@@ -451,5 +455,20 @@ function PickSelect({ label, placeholder, value, onChange, options }: { label: s
         </div>
       )}
     </Stack>
+  )
+}
+
+/** The new career being set up: which stage it's on, and a bar for how far it has got. */
+function StartingCareer({ progress }: { progress: StartProgress | null }) {
+  const value = progress ? (100 * progress.done) / progress.total : 0
+  return (
+    <Paper withBorder radius="md" p="sm">
+      <Stack gap={6}>
+        <Progress value={value} animated aria-label="Career setup progress" />
+        <Text size="sm" c="dimmed" ta="center">
+          {progress ? `${progress.step}… (${progress.done + 1} of ${progress.total})` : 'Setting up your career…'}
+        </Text>
+      </Stack>
+    </Paper>
   )
 }

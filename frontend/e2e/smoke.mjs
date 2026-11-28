@@ -26,7 +26,12 @@ await page.getByPlaceholder(/^Find a club/).fill('Arsenal')
 await page.getByRole('option', { name: /^Arsenal/ }).first().click()
 await shot('01-start')
 await page.getByRole('button', { name: /^Start with/ }).click()
-await page.getByText('Dashboard', { exact: true }).first().waitFor()
+// Setting up a career takes several seconds (longer on a busy machine): the page shows its
+// progress meanwhile.
+await page.getByRole('progressbar', { name: 'Career setup progress' }).waitFor({ timeout: 10000 })
+await page.getByText(/ \(\d of \d\)$/).waitFor({ timeout: 10000 })
+await shot('01b-starting')
+await page.getByText('Dashboard', { exact: true }).first().waitFor({ timeout: 90000 })
 await shot('02-dashboard')
 await toMatchDay(page)
 await shot('03-matchday')

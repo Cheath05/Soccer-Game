@@ -53,6 +53,13 @@ export interface SaveSlot {
   active: boolean
 }
 
+/** A new career being set up: `step` is stage `done` + 1 of `total`. */
+export interface StartProgress {
+  step: string
+  done: number
+  total: number
+}
+
 export interface Fixture {
   id: number
   date: string

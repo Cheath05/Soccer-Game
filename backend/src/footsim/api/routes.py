@@ -40,6 +40,7 @@ from footsim.api.schemas import (
     SaveSlotOut,
     SeasonOut,
     SquadPlayerOut,
+    StartProgressOut,
     TableOut,
     TacticsIn,
     TacticsOut,
@@ -146,6 +147,16 @@ def _record_club_name(session: CareerSession) -> None:
 
     career = _career(session)
     write_meta(session.engine, {"club_name": career.club.name})
+
+
+@router.get("/saves/starting")
+def starting(session: Session) -> StartProgressOut | None:
+    """How far the career being started has got (None: none is): the start page polls it
+    while ``POST /saves/{slot}/new`` runs, which takes several seconds."""
+    progress = session.starting
+    if progress is None:
+        return None
+    return StartProgressOut(step=progress.step, done=progress.done, total=progress.total)
 
 
 @router.post("/saves/{slot}/new")

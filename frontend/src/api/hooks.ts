@@ -35,6 +35,7 @@ import type {
   PlayerSeason,
   Qualifiers,
   SaveSlot,
+  StartProgress,
   Season,
   SimLeague,
   SimStatus,
@@ -72,6 +73,16 @@ export function useChooseCurrency() {
 }
 
 export const useSaves = () => useQuery({ queryKey: ['saves'], queryFn: () => api.get<SaveSlot[]>('/saves') })
+
+/** How far the career being started has got, polled twice a second while `starting`. */
+export const useStartProgress = (starting: boolean) =>
+  useQuery({
+    queryKey: ['career-starting'],
+    queryFn: () => api.get<StartProgress | null>('/saves/starting'),
+    enabled: starting,
+    refetchInterval: starting ? 500 : false,
+    gcTime: 0,
+  })
 
 /** The NCAA programs a new career can coach (W9c), by conference (no career needed). */
 export const useCollegePrograms = () =>

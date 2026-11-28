@@ -7,6 +7,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ from footsim.defs.server import ServerDef
 from footsim.persistence.database import check_schema, open_database
 from footsim.persistence.migrations import migrate
 from footsim.persistence.saves import SaveManager
-from footsim.world.career import initialize_career
+from footsim.world.career import CAREER_STEPS, initialize_career
 from footsim.world.college.recruiting import forget_overalls
 from footsim.world.context import get_world
 from footsim.world.fast_sim import forget_sheets
@@ -31,6 +32,23 @@ from footsim.world.money import set_currency
 
 class NoCareer(Exception):
     pass
+
+
+# Starting a career: setting up the world (``CAREER_STEPS``), then saving it.
+START_STEPS = (*CAREER_STEPS, "Saving the career")
+
+
+@dataclass(frozen=True)
+class StartProgress:
+    """How far a new career has got: ``step`` (a ``START_STEPS`` label) is stage ``done`` + 1
+    of ``total``."""
+    step: str
+    done: int
+    total: int = len(START_STEPS)
+
+    @classmethod
+    def at(cls, index: int) -> "StartProgress":
+        return cls(step=START_STEPS[index], done=index)
 
 
 class CareerSession:
@@ -49,6 +67,8 @@ class CareerSession:
         self.sim: Any = None  # the latest sim-to-date job (api/sim.py), running or finished
         # Worker processes for heavy simulation (api/workers.py); 0 runs it in the server.
         self.sim_workers = 0
+        # The career being started, while it is (``new_career``): the start page shows it.
+        self.starting: StartProgress | None = None
 
     @property
     def busy(self) -> bool:
@@ -87,18 +107,27 @@ class CareerSession:
         sandbox: ``budget_eur`` is the club's budget to start with for fees and wages (the
         owner puts in the cash). ``board_enabled`` False plays without a board."""
         with self.lock:
-            self.close()
-            working = self.saves.new_career(slot, self.base_world, overwrite=True)
-            self._open(slot, working)
-            with self.engine.begin() as conn:
-                initialize_career(conn, get_world(), club_id, manager_name,
-                                  board_enabled=board_enabled, fast_leagues=fast_leagues,
-                                  college_program=college_program, college_mode=college_mode,
-                                  nation_code=nation_code)
-                set_currency(conn, get_world(), currency)
-                if budget_eur is not None and club_id is not None:
-                    set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)
-            self.saves.save(slot)
+            self.starting = StartProgress.at(0)
+            try:
+                self.close()
+                working = self.saves.new_career(slot, self.base_world, overwrite=True)
+                self._open(slot, working)
+                with self.engine.begin() as conn:
+                    initialize_career(conn, get_world(), club_id, manager_name,
+                                      board_enabled=board_enabled, fast_leagues=fast_leagues,
+                                      college_program=college_program,
+                                      college_mode=college_mode, nation_code=nation_code,
+                                      progress=self._started)
+                    set_currency(conn, get_world(), currency)
+                    if budget_eur is not None and club_id is not None:
+                        set_sandbox_budget(conn, read_meta(conn), club_id, budget_eur * 100)
+                self._started(len(CAREER_STEPS))
+                self.saves.save(slot)
+            finally:
+                self.starting = None
+
+    def _started(self, index: int) -> None:
+        self.starting = StartProgress.at(index)
 
     def load(self, slot: int, autosave: bool = False) -> None:
         with self.lock:

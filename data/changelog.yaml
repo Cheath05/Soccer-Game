@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.158"
+  date: "2026-11-28"
+  title: Potential stays on the 1-99 scale
+  changes:
+    - "A top prospect's potential could show above 99 (as 97-104, say) on his player page, the market overview and the season review, and up to 100 in the draft. It now stops at 99."
+
 - version: "1.157"
   date: "2026-11-27"
   title: Seeing a new career being set up

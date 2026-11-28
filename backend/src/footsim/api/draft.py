@@ -10,6 +10,7 @@ from sqlalchemy import Connection, text
 
 from footsim.api.routes import Session, _not_simulating
 from footsim.api.schemas import ClubRef
+from footsim.scouting.estimates import RATING_MAX
 from footsim.world import draft
 from footsim.world.college import draft_pool
 from footsim.world.context import World, get_world
@@ -20,6 +21,13 @@ from footsim.world.transfers import MoveRefused
 
 router = APIRouter(prefix="/api/draft")
 BAND = 5  # the scouts' potential is shown as a band this wide
+
+
+def potential_band(seen: float, overall: int) -> tuple[int, int]:
+    """The ``BAND``-wide band the scouts' ``seen`` potential falls in, never below the
+    prospect's ``overall`` nor above the top of the rating scale."""
+    low = int(seen // BAND * BAND)
+    return (min(RATING_MAX, max(low, overall)), min(RATING_MAX, max(low + BAND, overall)))
 
 
 class ProspectOut(BaseModel):
@@ -99,12 +107,12 @@ def _draft(conn: Connection, world: World, meta: CareerMeta) -> DraftOut:
     prospects = []
     for pr in draft_pool(conn, world, meta, season_id):
         seen = draft.scouted_potential(meta, season_id, user or 0, pr, sd)
-        low = int(seen // BAND * BAND)
+        low, high = potential_band(seen, pr.overall)
         prospects.append(ProspectOut(
             player_id=pr.player_id, name=pr.name,
             college=ClubRef(id=pr.college_id, name=pr.college), class_year=pr.class_year,
             age=pr.age, position=pr.position, overall=pr.overall,
-            potential_low=max(low, pr.overall), potential_high=max(low + BAND, pr.overall),
+            potential_low=low, potential_high=high,
             ga=pr.ga, board_rank=rank_of.get(pr.player_id)))
     prospects.sort(key=lambda x: (-(x.overall + x.potential_low), x.player_id))
     label = str(conn.execute(text("SELECT label FROM season WHERE id = :s"),

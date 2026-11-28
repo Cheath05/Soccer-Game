@@ -9,6 +9,7 @@ from footsim.core.rng import derive_rng
 
 OWN_CLUB_KNOWLEDGE = 0.8
 OTHER_CLUB_KNOWLEDGE = 0.4
+RATING_MAX = 99  # the top of the 1-99 rating scale (ratings/overall.py clips overalls to it)
 
 
 def potential_range(true_potential: int, current: float, age: int, knowledge: float,
@@ -16,8 +17,9 @@ def potential_range(true_potential: int, current: float, age: int, knowledge: fl
     uncertainty = max(1.0, (24 - age) * 1.1) * (1.6 - knowledge)
     bias = float(derive_rng(seed, "scout-bias", player_id).normal(0, uncertainty / 2))
     centre = true_potential + bias
-    low = max(round(current), round(centre - uncertainty))
-    high = max(low, min(99, round(centre + uncertainty)))
+    # Within the rating scale: a top prospect's bias can carry the whole range past 99.
+    low = min(RATING_MAX, max(round(current), round(centre - uncertainty)))
+    high = max(low, min(RATING_MAX, round(centre + uncertainty)))
     return low, high
 
 

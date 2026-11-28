@@ -27,6 +27,12 @@
 # backend/tests/unit/test_changelog.py checks this file: every entry's fields, each version once,
 # and newest first.
 
+- version: "1.155"
+  date: "2026-11-27"
+  title: A blue browser tab icon
+  changes:
+    - "The browser tab now shows the game's blue football instead of a placeholder logo."
+
 - version: "1.154"
   date: "2026-11-27"
   title: A tidier start page, and deleting a save
